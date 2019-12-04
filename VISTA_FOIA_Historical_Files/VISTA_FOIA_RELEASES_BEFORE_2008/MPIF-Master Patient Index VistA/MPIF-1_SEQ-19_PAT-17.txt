@@ -1,0 +1,284 @@
+$TXT Created by CHESNEY,CHRISTINE M at DEVCRN.FO-ALBANY.MED.VA.GOV  (KIDS) on FRIDAY, 02/08/02 at 10:57
+=============================================================================
+Run Date: FEB 12, 2002                     Designation: MPIF*1*17
+Package : MPIF - MASTER PATIENT INDEX VISTA Priority: Mandatory
+Version : 1        SEQ #19                      Status: Released
+=============================================================================
+
+Associated patches: (v)MPIF*1*9    <<= must be installed BEFORE `MPIF*1*17'
+                    (v)MPIF*1*10   <<= must be installed BEFORE `MPIF*1*17'
+                    (v)MPIF*1*13   <<= must be installed BEFORE `MPIF*1*17'
+                    (v)MPIF*1*15   <<= must be installed BEFORE `MPIF*1*17'
+                    (v)MPIF*1*16   <<= must be installed BEFORE `MPIF*1*17'
+
+Subject: SELECTION SCREEN AND MISC CHANGES
+
+Category: 
+  - Routine
+  - Enhancement (Mandatory)
+
+Description: 
+============
+
+  NOTE:  MPIF and RG patches should NOT be installed on Legacy systems to
+  avoid issues with the legacy systems ending up as Coordinating Master
+  of Records (CMORs), Treating Facilities or Subscribers.  
+  
+  
+   Issue 1: To minimize the risk for selecting the wrong patient from the
+   List Manager screen during Single Patient Initialization, a check will 
+   be made to make sure the sex and Social Security Number (SSN) fields are
+   the same on the Master Patient Index (MPI) and the local site when
+   selecting a patient from the list. If the patient selected from the list
+   has a different sex or SSN than your site, the user will get a message
+   saying the sex or SSN is different and can't be matched until the fields
+   are the same. The SEX (#.02) field from the Patient (#2) file will now
+   be displayed at the top of the List Manager screen with the other local
+   site data. Also, the column name for "CIRN Master Record" has been 
+   changed to "CMOR" on the List Manager screen. Routines modified: MPIFQ0,
+   MPIFVTQ, MPIFSAQ, MPIFBT1, and MPIFRES.  List Template modified: MPIF
+   REAL-TIME QUERY. 
+  
+   Issue 2:  Patients being sent to the MPI are required to have the 
+   NAME (#.01) and DATE OF BIRTH (#.03) fields from the Patient (#2) file
+   sent to the MPI.  The check for these two fields was happening at the 
+   MPI in Austin.  This can cause problems when the DATE OF BIRTH (#.03)
+   field has a value other than a date.  The check for NAME (#.01) and
+   DATE OF BIRTH (#.03) will now be made at the site, prior to sending
+   the patient to the MPI for Integration Control Number (ICN) assignment.
+   If either field is not an appropriate value, an exception will be 
+   logged to the CIRN HL7 EXCEPTION LOG (#991.1) file and a Local ICN 
+   will be assigned if there isn't one assigned already.  Routines
+   modified:  MPIFQ1, MPIFQ0 and MPIFVTQ.
+  
+   Issue 3:  Master Patient Index/Patient Demographics project developer
+   asked for an Application Programmer Interface (API) that will return the
+   internal entry number (IEN) of the patient in the Patient (#2) file that
+   has an Integration Control Number (ICN) (passed parameter to API) but
+   only if that ICN is the active one. $$GETADFN^MPIFAPI(ICN).  This will
+   be a supported API via integration agreement # 2702.  Routine MPIFAPI
+   contains this new API.
+  
+   Issue 4:  Software Quality Assurance (SQA) staff reported a typo in the
+   text displayed to the user during the Display Only Query [MPIF DISPLAY
+   ONLY QUERY TO MPI] option. The text said: "Attempting to connect to the
+   Master Patient Index in Austin... If DOB is inexact or if SSN is not
+   passed or if common name, this could take sometime - please be
+   patient...."  The word "sometime" has been replaced by "some time".  
+   Routine MPIFSAQ has been modified.
+  
+   ISSUE 5:  API $$SEG^RGRSUTIL has been replaced by $$SEG^MPIFAPI within 
+   the MPIF namespace.  RGDC variable has been replaced by MPIDC within 
+   the MPIF namespace. There wasn't an Integration Agreement in place to
+   utilize either the API or the variable.  Routines MPIFAPI, MPIFSAQ and
+   MPIFQ0 have been modified to support this change.
+  
+   ISSUE 6:  In line tag TF of routine MPIFQ1 there was a line of code
+   "I SITE=ARR(991.03) D TFLIST^MPIFBT2(SITE,DFN) Q" that should be 
+   removed.  Another line following it "I $$PATCH^XPDUTL("DG*5.3*261") 
+   D FILE^VAFCTFU(DFN,+$$SITE^VASITE)" handles the addition of the
+   treating facility to the TREATING FACILITY LIST (#391.91) file.
+  
+   ISSUE 7:  In support of the exception handling process, added the 
+   passing of the patient's internal entry number (IEN) at MPIFBT2+58 
+   and MPIFBT2+62. Changed variable being passed from "DFN" to "PATID"
+   at MPIFBT2+83 and MPIFBT2+90. Changed variable being passed at 
+   MPIFBT3+42 from "$P(ACK4,SEP,3)" to "PATID".
+  
+   ISSUE 8:  During the research of NOIS LAH-1001-62548, MPIF was asked
+   to change the ^DIE call during the inactivation of an ICN to a 
+   FILE^DIE call.  This change is in routine MPIFDEL.
+  
+   ISSUE 9:  In support of DG*5.3*244, the Name Standardization patch for
+   the Patient (#2) file, a number of routines will be modified.  When 
+   making a comparison between what the MPI has stored and what is
+   locally stored in the Patient (#2) file the local name will need to be
+   stored in a variable and then standardization in the same fashion as 
+   the name stored on the MPI.  This change will be made in routines: 
+   MPIFBT3, MPIFQ0, and MPIFQ1.
+  
+   ISSUE 10:  When attempting to assign a patient an ICN, if that ICN has
+   already been assigned to another patient in the local Patient (#2) file,
+   the display that follows has a couple typos.  It has been corrected to 
+   read: ..."An exception will be recorded noting that these 2 patients
+   need to be reviewed to determine if they are duplicates."  This change
+   will be made in routine MPIFQ1.
+  
+  
+   TEST SITES:
+   ==========
+  
+   Battle Creek, MI
+   Bay Pines, FL
+   Northern California HCS
+   Prescott, AZ
+   Tennessee Valley HCS
+    
+  
+   Routine Summary:
+   ================
+   The following is a list of the routine(s) included in this patch.  The
+   second line of each of these routine(s) will look like:
+    
+   <TAB>;;1.0; MASTER PATIENT INDEX VISTA ;**[Patch List]**;30 Apr 99
+   CHECK^XTSUMBLD results:
+    
+   Routine       Before Patch       After Patch       Patch List
+   --------      ------------       ------------      ----------
+  
+   MPIFAPI         4856661            5909546         1,3,14,16,17
+   MPIFBT1         8832017            9615011         17
+   MPIFBT2        19698470           19875682         1,3,10,17
+   MPIFBT3        11567331           11411923         1,3,10,17
+   MPIFDEL         8133975            8332610         1,3,9,19,17
+   MPIFQ0         18872236           23133124         1,3,8,14,13,16,17
+   MPIFQ1          9436171           12612911         1,8,12,16,17
+   MPIFRES         3998128            4177646         1,7,10,15,17
+   MPIFSAQ        17934512           18115356         1,3,8,13,17
+   MPIFVTQ        15812033           17186633         1,9,17
+   
+  
+  
+   INSTALLATION INSTRUCTIONS:
+   ==========================
+  
+    This patch should be loaded during non-peak hours to minimize
+    disruption to the users.   
+  
+    This patch will take less than 5 minutes to install.
+   
+    1.  Users are allowed on the system during patch installation.
+        
+    2.  TaskMan does not need to be stopped or placed in a wait state. 
+   
+    3.  These routines are not usually mapped, so you will probably not
+        have to disable mapping. 
+  
+    4.  Via TaskMan, unschedule the Local/Missing ICN Resolution 
+        Background Job [MPIF LOC/MIS ICN RES] if it is scheduled to run 
+        during installation of this patch.
+  
+    5.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu. [Note:
+        TEXT PRINT/DISPLAY option in the PackMan menu will display the
+        patch text only.
+  
+    6.  From the Kernel Installation and Distribution System Menu, select
+        the Installation menu.  
+  
+    7.  From this menu, you may elect to use the following options:
+        a.  Backup a Transport Global - this option will create a backup
+            message of any routines exported with the patch.  It will NOT
+            backup any other changes such as DDs or templates.
+        b.  Compare Transport Global to Current System  - this option will
+            allow you to view all changes that will be made when the patch
+            is installed.  It compares all components of the patch
+            (routines, DDs, templates, etc.).
+        c.  Verify Checksums in Transport Global - this option will allow
+            you to ensure the integrity of the routines that are in the
+            transport global.
+        d.  Print Transport Global - this option will allow you to view the
+            components of the KIDS build.
+  
+    8.  Use the Install Package(s) option and select the package 
+        MPIF*1.0*17.
+   
+    9.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+         YES//', respond No.
+  
+   10.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+        Protocols? YES//', respond Yes:
+  
+        The following options should be disabled during the installation:
+  
+         Inactivate Patient from MPI             [MPIF PAT INACT]
+         Single Patient Initialization to MPI    [MPIF IND MPI LOAD]
+         Display Only Query              [MPIF DISPLAY ONLY QUERY TO MPI] 
+         Local/Missing ICN Resolution Background Job [MPIF LOC/MIS ICN RES]
+  
+         10-10T Registration             [DGRPT 10-10T REGISTRATION]     
+         Register a Patient              [DG REGISTER PATIENT]           
+         Load/Edit Patient Data          [DG LOAD PATIENT DATA]          
+         Electronic 10-10EZ Processing   [EAS EZ 1010EZ PROCESSING]
+  
+  
+    11.  If you unmapped routines in step 3, remap them after installation
+         has completed.
+  
+    12.  Reschedule, via TaskMan, the Local/Missing ICN Resolution 
+         Background Job [MPIF LOC/MIS ICN RES] if unscheduled in step 4.
+
+Routine Information:
+====================
+
+Routine Name:
+  - MPIFBT1
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFQ1
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFQ0
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFVTQ
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFSAQ
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFRES
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFBT2
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFBT3
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFAPI
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFDEL
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : CHESNEY,CHRISTINE M           Date Entered : JUN 06, 2001
+Completed By: HERREN,CATHRYN                Date Completed: FEB 08, 2002
+Released By : BURTS,WANDA                   Date Released : FEB 12, 2002
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

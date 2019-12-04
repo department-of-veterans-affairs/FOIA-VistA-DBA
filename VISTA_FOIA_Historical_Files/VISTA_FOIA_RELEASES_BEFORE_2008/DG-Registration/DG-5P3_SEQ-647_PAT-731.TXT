@@ -1,0 +1,261 @@
+$TXT Created by KOPP,TERRY at PASVFF.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 10/16/06 at 13:43
+=============================================================================
+Run Date: DEC 07, 2006                     Designation: DG*5.3*731
+Package : DG - REGISTRATION                   Priority: EMERGENCY
+Version : 5.3       SEQ #647                    Status: Released
+                  Compliance Date: DEC 14, 2006
+=============================================================================
+
+Associated patches: (v)DG*5.3*564  <<= must be installed BEFORE `DG*5.3*731'
+                    (v)DG*5.3*689  <<= must be installed BEFORE `DG*5.3*731'
+
+Subject: CORRECT ISSUES INTRODUCED BY OEF/OIF PATCHES
+
+Category: 
+  - Data Dictionary
+  - Routine
+
+Description:
+============
+
+ I. OVERVIEW
+  
+ This patch includes updates to the functionality for the Registration V.
+ 5.3 package in support of the Operation Enduring & Iraqi Freedom (OEF/OIF)
+ initiative. It corrects three problems introduced by patches DG*5.3*689 
+ and DG*5.3*673 relating to the processing of OEF/OIF data:
+  
+   - 1 - The software always calculates the COMBAT VETERAN END DATE field 
+         (#.5295) in the PATIENT file (#2) using the first OEF/OIF date
+         entered when there is no COMBAT VETERAN END DATE on file for the
+         patient.
+   - 2 - The Unsupported CV End Dates Report [DG UNSUPPORTED CV END DATE 
+         RPT] option is erroneously including veterans who have only
+         OEF/OIF conflict data to support the COMBAT VETERAN END DATE field
+         (#.5295) in the PATIENT file (#2) for the veteran.
+   - 3 - The functionality where an OEF or OIF date entered on VistA can
+         overlap an UNKNOWN OEF/OIF episode if the conflict from and to 
+         dates correspond EXACTLY does not work.
+  
+ II. ASSOCIATED REMEDY TICKETS & NEW SERVICE REQUESTS
+  
+ The following section lists the Remedy tickets and/or New Service Requests
+ associated with this patch.
+  
+ 1. Associated Remedy Tickets:
+    -----------------------------------------
+    HD0000000162309 Combat Vet Elig. End Date calculation incorrect
+                    Problem: The software calculates the CV End date using
+                              the last OEF/OIF date on file when there is
+                              no CV end date for the patient.  The rule is,
+                              the CV end date should be calculated using 
+                              the LATER of either the latest OEF/OIF 'to'
+                              date or the last service separation date on
+                              file for the veteran. 
+                    Solution: Change the cross reference that sets the CV
+                              end date to check the last service separation
+                              date to see if it is later than the latest
+                              OEF/OIF 'to' date before setting the CV end
+                              date to the appropriate value.
+  
+    HD0000000163542 Unsupported CV End Date Report Problem
+                    Problem: The on the fly calculation of the combat
+                              veteran end date was not updated to include
+                              consideration of the OEF/OIF conflict data
+                              when determining whether or not the
+                              conflict/combat data on file for the veteran
+                              supported the CV end date.  This has caused
+                              ALL veterans with OEF/OIF conflict data to be
+                              erroneously included on the report.
+                   Solution: Change the report logic to include looking at
+                              the OEF/OIF conflict data when making the 
+                              determination for whether or not to include
+                              the veteran's record on the report.
+  
+    HD0000000163195 Trying to enter OEF/OIF locations
+                    Problem: The software is supposed to allow entry of an
+                             OEF or OIF episode on Screen 6 of the 
+                             registration screens which overlaps an 
+                             existing UNKNOWN OEF/OIF episode as long as
+                             the from and to dates of both conflict episode
+                             types are exactly the same. The software does
+                             not allow this scenario to occur.
+                   Solution: Change the 'overlap check' logic in routine
+                             DGRPDT to allow the entry of an OEF or an OIF 
+                             conflict episode where the FROM DATE and TO
+                             DATE of the OEF or OIF episode are exactly
+                             the same as an existing UNKNOWN OEF/OIF 
+                             episode for the veteran.
+  
+ 2. Associated New Service Request(s):
+    -----------------------------------------
+    NONE 
+  
+ III. FUNCTIONAL OVERVIEW
+  
+ The following is an overview of the changes that will be delivered in this
+ patch:
+  
+ 1.  The cross reference ACVCOM1 on the OEF/OIF TO DATE (#.03) field in the
+ PATIENT (#2) file's SERVICE [OEF OR OIF] (#2.3215) subfile incorrectly
+ calculates the COMBAT VETERAN END DATE (#.5295) field.  It currently 
+ calculates this field using the first entered OEF/OIF TO DATE (#.03) for
+ the veteran.  This  patch will change the software so that now a check is
+ made to see if the SERVICE SEPARATION DATE [LAST] (#.327) is later than
+ the OEF/OIF TO DATE and if so, calculates the COMBAT VETERAN END DATE
+ field using the value of the SERVICE SEPARATION DATE [LAST] field.
+  
+ This scenario, where the SERVICE SEPARATION DATE [LAST] is prior to 
+ the OEF/OIF TO DATE and there is not already a COMBAT VETERAN END DATE 
+ on file for the veteran is rare, but could occur:
+  
+   -- If another OEF/OIF data seeding takes place     or
+   -- If another site-of-record for the veteran enters new OEF/OIF data for
+      the veteran within an MSE and it is shared with the non-entering site
+      (via HEC and the Z11) and the vet on that site has no CV End date and
+      no MSE to cover the new OEF/OIF episode.
+  
+ 2.  The Unsupported CV End Dates Report [DG UNSUPPORTED CV END DATE RPT] 
+ is incorrectly including patients who have ONLY OEF/OIF conflict data in 
+ support of the data in the COMBAT VETERAN END DATE (#.5295) field of the 
+ PATIENT (#2) file.  This patch changes the software to include a check 
+ for OEF/OIF data.  If it exists and the COMBAT VETERAN END DATE is set to 
+ the value of the SERVICE SEPARATION DATE [LAST] (#.327) field plus 2 
+ years, it does not include the veteran on the report.
+  
+ 3.  The system is supposed to allow the entry of an OEF or OIF episode on 
+ Screen 6 of the registration screens that overlaps an existing UNKNOWN
+ OEF/OIF episode as long as the from and to dates are exactly the same.  
+ This patch changes the software to make this date check and allow an OEF 
+ or OIF conflict episode to be entered.  The logic was reversed in the 
+ code, allowing any conflict EXCEPT OIF or OEF to overlap exactly with an
+ UNKNOWN OEF/OIF episode.
+  
+  
+ IV. TECHNICAL COMPONENTS
+  
+ The following section describes the technical components being 
+ exported with this patch.
+  
+ 1. The following FILES will be modified.
+  
+  a. PATIENT (#2) file, Subfile 2.3215 (SERVICE [OEF OR OIF] #.3215)
+     Modified Field:
+     ==============
+           FIELD #: .03
+        FIELD NAME: OEF/OIF TO DATE
+      MODIFICATION: Modified cross reference ACVCOM1, described above.
+  
+ 2. The following ROUTINE(s) will be added/modified.
+  
+  ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;5.3;Registration;**[patch list]**; Aug 13,1993;Build 8
+  
+                              CHECK^XTSUMBLD results
+  Routine       Before Patch   After Patch              Patch List
+  =======       ============   ===========              ==========
+  DGCVRPT            5064039       6274857                564,731
+  DGRPDT            21671780      21659051          562,603,626,673,731 
+  
+ Number of routines in patch:           2
+  Number of routines changed:           2
+  
+  
+ V. INSTALLATION INSTRUCTIONS
+  
+  * Users On the System: 
+  
+     This patch may be installed with users on the system, but should be
+     loaded during non-peak hours to minimize disruption to users and to
+     reduce the possibility of errors when the routines are updated.
+  
+  * Software Installation Time:
+  
+     The estimated installation time is less than 5 minutes during off peak
+     hours.
+  
+  
+  Installation Steps:
+  ===================
+  
+   1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu to unload
+      the KIDS distribution included with this message.
+  
+   2. From the 'Kernel Installation & Distribution System' menu, select the
+      Installation menu.
+  
+   3. From this menu, you may now elect to use the following options (when
+      prompted for INSTALL NAME, enter DG*5.3*731).
+  
+      a. Backup a Transport Global - This option will create a backup
+         message of any routines exported with the patch.  It will NOT
+         backup any changes such as DDs or templates.
+  
+      b. Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when the patch is
+         installed.  It compares all components of the patch (routines,
+         DDs, templates, etc.).
+  
+      c. Verify Checksums in Transport Global - This option will allow you
+         to ensure the integrity of the routines that are in the transport
+         global.
+  
+      d. Print Transport Global - this option will allow you to view the
+         components of the KIDS build.
+  
+   4. Use the Install Package(s) option and select package DG*5.3*731.
+  
+   5. When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+      YES//', it is recommended you answer NO.
+  
+   6. When prompted to 'Want to DISABLE Scheduled Options, Menu Options,
+      and Protocols? YES//', respond YES.  When prompted to select the
+      options you would like to place out of order, enter the following:
+  
+        DG REGISTER PATIENT              Register a Patient
+        DG LOAD PATIENT DATA             Load/Edit Patient Data
+        DG UNSUPPORTED CV END DATE RPT   Unsupported CV End Dates Rept
+  
+ VI. IMPLEMENTATION STEPS
+  
+ There are no special implementation steps to take after the successful
+ installation of this software.
+  
+  
+ VII. TEST SITES
+  
+ The following sites participated in the testing of the DG*5.3*731 
+ software.
+                                                                 
+  Test Site                         
+  ------------------------     
+  Fort Harrison (Integrated)              
+  Indianapolis (large)                    
+  Togus (medium)                          
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: DGCVRPT
+    Before: B20362364  After: B26310985  **564,731**
+Routine Name: DGRPDT
+    Before: B69102930  After: B69084078  **562,603,626,673,731**
+
+=============================================================================
+User Information:
+Entered By  : KOPP,TERRY M                  Date Entered  : OCT 05, 2006
+Completed By: LANDRY,DANNA                  Date Completed: DEC 07, 2006
+Released By : GROOMS,ANTHONY E              Date Released : DEC 07, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,401 @@
+$TXT Created by ANTRY,MIKE at DEVCUR.ISC-SLC.VA.GOV  (KIDS) on WEDNESDAY, 07/11/01 at 09:27
+=============================================================================
+Run Date: JUL 18, 2001                     Designation: GMRC*3*21
+Package : GMRC - CONSULT/REQUEST TRACKING     Priority: Mandatory
+Version : 3        SEQ #19                      Status: Released
+=============================================================================
+
+Associated patches: (v)GMRC*3*11   <<= must be installed BEFORE `GMRC*3*21'
+                    (v)GMRC*3*15   <<= must be installed BEFORE `GMRC*3*21'
+
+Subject: AE XREF,ALLOCATION FAILURE,PARENT/CHILD SERVICE,DISASSOCIATED RESULTS,SF513
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description: 
+============
+
+ General Overview:
+ =================
+ 
+ This patch provides the following ten changes to the Consult/Request 
+ Tracking System:
+ 
+        1.  Change the input transform on file REQUEST/CONSULTATION 
+        (#123), field REQUEST PROCESSING ACTIVITY (40), sub-field DATE/TIME 
+        OF ACTUAL ACTIVITY (2) to accept SECONDS when a VA Fileman Verify 
+        is performed on this field.
+ 
+        2.  Including the input transform for the following file to rule 
+        out any site not having the correct input transform for file 
+        REQUEST/CONSULTATION (#123), field REQUEST PROCESSING ACTIVITY (40), 
+        sub-field DATE/TIME OF ACTION ENTRY (.01).
+ 
+        3.  Change the option, "Group update of consult/procedure requests 
+        (GU)", to route the reply, "Y = TO UPDATE", back to the workstation 
+        if the report was not tasked.  Also when using the "Print report & 
+        update records" option and tasking the report, the following message 
+        will be displayed "WARNING - Records will automatically be updated 
+        since the report is being tasked".
+  
+        4.  Change processing so when a note is entered to complete a 
+        consult and the clinician exits the note without saving the note, it 
+        will not leave the status of the consult at "Disassociated Result.
+ 
+        5.  Change the arrays required to run a large listing of consults 
+        to use a ^TMP global instead of a local array.
+ 
+        6.  Change the execution point of updating the audit trail when 
+        printing the SF513 for a new consult or a discontinued consult.
+  
+        7.  Change the Consult Services hierarchy to disallow adding a 
+        sub-service to itself.
+ 
+        8.  Change the option, "Print Service Consults Completed or Pending 
+        Resolution", to remove any bad "AE" cross references.
+ 
+        9.  Change the security on file "REQUEST SERVICES (#123.5)", to 
+        prevent clinicians from deleting a service.
+  
+        10.  Change consult activity log from "ENTERED IN CPRS" to "CPRS 
+        RELEASED ORDER" when ordering a consult.
+ 
+   Change 1.  Change Input transform on field "DATE/TIME OF ACTUAL ACTIVITY 
+   (2)" in file "REQUEST/CONSULTATION (#123)"
+   -------------------------------------------------------------------------
+ 
+        NOIS:  SLC-0401-50216.  During the development of the Health Summary 
+        patch (GMTS*2.7*46) it was noticed that when verifying the file 
+        REQUEST/CONSULTATION (#123) the sub-field "DATE/TIME OF ACTUAL 
+        ACTIVITY (2)" of field "REQUEST PROCESSING ACTIVITY (40)" would not 
+        pass the input transform.  Missing seconds in the date/time stamp 
+        caused the input transform to fail.  This patch will add seconds 
+        into the input transform.
+ 
+   Change 2.  Including Input transform on field "DATE/TIME OF ACTION
+              ENTRY (.01) in file "REQUEST/CONSULTATION (#123).
+   ------------------------------------------------------------------
+ 
+        This input transform is being included due to the possibility 
+        of a site not having the correct input transform.
+ 
+   Change 3.  Group update of consult/procedure requests (GU)
+   ----------------------------------------------------------
+ 
+        During documentation updates the documenter for the Salt Lake 
+        City System Design & Development office noticed that when reports 
+        being generated using the option,  "Group update of 
+        consult/procedure requests (GU)", were run, their terminal would 
+        lock up.  When running these reports the clinician used the 
+        option to run the report and update the data being displayed to 
+        COMPLETED or DISCONTINUED.  After the report was displayed the 
+        option to continue with the update was being routed to the printer 
+        if the job was not tasked.  Since the option to continue to 
+        update the selected records was sent to the printer the clinician's 
+        terminal would lock up pending the reply to continue with the 
+        update.  This patch will change the point at which the IO device 
+        is closed allowing any message that requires clinician response 
+        to appear at the workstation.
+ 
+        Patch adds a warning message when running the tasked report to 
+        notify users that records will be automatically update after the 
+        report is printed.  The following message will appear as a 
+        warning:  
+                          WARNING - Records will automatically be updated 
+                          since the report is being tasked.
+ 
+                          Do you wish to continue??? NO//
+ 
+   Change 4.  Consult Disassociated Results
+   ----------------------------------------
+ 
+        NOIS:  MIA-0500-31136, PUG-0600-51528, PUG-1299-50473.  Normally 
+        when a clinician enters a note to complete a consult and does not 
+        sign the note the consult activity log status shows the consult as 
+        having a Partial Results (PR).  The problem mentioned in the above 
+        NOIS calls occurs when a clinician enters a note and exits without 
+        saving the note.  Whenever this occurs, the consult activity 
+        log reflects the status of "Disassociated Results".  Since the 
+        note was not disassociated the status is in error.  This will be 
+        corrected with this patch.
+ 
+   Change 5.  Allocation Errors when running the consult report "Service 
+   Consults by Status"  
+   ----------------------------------------------------------------------
+ 
+        NOIS:  LIT-0800-72757, CHY-0101-52064, ELP-1100-72394, PAL-0401-60936.  
+        Depending on the site's number of Consult Services the above report 
+        would fail due to allocation errors.  The error was caused by the 
+        local array size not being large enough to accommodate the large 
+        reports. The routines used to generate these reports will be changed 
+        to use a ^TMP global instead of local arrays.
+ 
+   Change 6.  Verification of printing a SF513 on new or discontinued 
+   Consult/Request.
+   -------------------------------------------------------------------
+ 
+        NOIS:  BUT-0101-21829.  Whenever a consult is ordered or discontinued 
+        a SF513 is routed to the service printer for that service.  At 
+        times it was noticed that not all the SF513's are being printed,
+        but the consult activity log indicated that they were printed and 
+        which printer they printed to.  A change has been made to update the 
+        activity log when the print task job has completed.
+  
+   Change 7.  Adding a Request Services sub-service to itself.
+   -----------------------------------------------------------
+      
+        NOIS:  BAY-1100-31750.  If a site adds a consult sub-service to 
+        the same service name it will cause an allocation failure whenever 
+        trying to access this service.  The Request Services hierarchy does 
+        not allow having a sub-service with the same name.  This is due 
+        to the file having a parent/child hierarchy.  This patch will correct 
+        the problem only if the duplicate child sub-service has the same 
+        name of the service if the service is the child's immediate parent. 
+ 
+   Change 8.  Bad "AE" cross reference when using option "Print Service 
+   Consults Completed or Pending Resolution".
+   ---------------------------------------------------------------------
+ 
+        NOIS:  UNY-0900-10262.  The following error has been reported when 
+        using the above option:  "Undefined Variable" at "ONE+14^GMRSTL2:1".  
+ 
+        This error is caused by a bad "AE" cross reference and will be 
+        corrected with the installation of this patch.
+ 
+   Change 9.  Deleting Consult services.
+   -------------------------------------
+ 
+        NOIS:  CPH-0201-42333.  The structure of the Request Services (#123.5) 
+        does not allow deleting of a service due to the service parent/child 
+        relationship in the hierarchy and pointers to the ORDERABLE ITEMS 
+        (101.43) file.  This patch will change the "DEL" node on the file 
+        (#123.5) so that only users with programmer access (@) will be
+        allowed to delete a Consult/Request Service.
+ 
+   Change 10.  Change consult activity log from "ENTERED IN CPRS" to "CPRS 
+   RELEASED ORDER".
+   ---------------------------------------------------------------------
+ 
+        NOIS:  REN-0900-61887.  Some confusion was noticed in the consult 
+        detail activity log of when a consult is entered and when it has 
+        been actually order.  When a consult is entered the current date is 
+        attached to the record as the date the record was entered into CPRS.
+        If the clinician does not sign the request then the consult is not 
+        ordered.  When the consult is signed then the current date is entered 
+        into the consult activity log with the status "ENTERED IN CPRS".  
+        This has been interpreted to be when the consult was entered, which 
+        is not correct.  With the installation of this patch the status in 
+        the activity log will be changed from "ENTERED IN CPRS" to 
+        "CPRS RELEASED ORDER" reflecting when the consult is actually ordered.
+ 
+   NOIS CALLS RESOLVED WITH THIS PATCH:
+   ====================================
+ 
+      BAY-1100-31750
+      BUT-0101-21829
+      CHY-0101-52064
+      CPH-0201-42333
+      ELP-1100-72394
+      LIT-0800-72757
+      MIA-0500-31136
+      PAL-0401-60936
+      PUG-0600-51528
+      PUG-1299-50473
+      REN-0900-61887     
+      UNY-0900-10262     
+      SLC-0401-50216    
+ 
+ Documentation.
+ ==============
+  
+   The User Manual for Consult/Request Tracking has been updated to reflect
+   the enhancements provided by this patch.
+ 
+   The following updated documentation (.PDF) file can be retrieved in 
+   BINARY format by FTP:  CONSUM.PDF 
+ 
+   The preferred method is to FTP the files from "download.vista.med.va.gov",  
+   which will be transmitted from the first available FTP server.
+ 
+        Sites may elect to retrieve software directly from a specific server 
+        as follows:
+ 
+         CIO FIELD OFFICE    FTP ADDRESS              DIRECTORY
+         =================   ============             =========
+          HINES             FTP.FO-HINES.MED.VA.GOV   [ANONYMOUS.SOFTWARE]
+          SALT LAKE CITY    FTP.FO-SLC.MED.VA.GOV     [ANONYMOUS.SOFTWARE]
+          ALBANY            FTP.FO-ALBANY.MED.VA.GOV  [ANONYMOUS.SOFTWARE]
+ 
+ BUILD COMPONENTS:
+ =================
+ 
+   ROUTINE SUMMARY:
+   ================
+ 
+   The following is a list of the routines included in this patch. The
+   routines listed as "N/A" under the New Checksum column are deleted with
+   this build.  Routine GMRCYP21 is deleted after the post-install.  The
+   second line of each routine looks like:
+ 
+      <tab>;;3.0;CONSULT/REQUEST TRACKING;**[patch list]**;DEC 27, 1997
+ 
+                             CHECK^XTSUMBLD results
+  Routine name         Before Patch          After Patch         Patch List
+  ============         ============          ===========         ==========
+  GMRCHL7A                 11584390             11622124        1,5,12,15,21
+  GMRCHL7B                  7420247              7448270         1,5,12,21
+  GMRCHL7U                  8350105              8445539         1,5,12,21
+  GMRCP5A                  15678320             16139770       4,13,12,15,21
+  GMRCPC                    3397799              3512419           1,7,21
+  GMRCSTL1                  6686217              7228041            7,21
+  GMRCSTL2                  4228566              4983158            7,21
+  GMRCSTLM                 10850710             11434140           1,7,21
+  GMRCSTS                   9753222             10334811          8,18,21
+  GMRCSTS1                  7489386              7476561          8,18,21
+  GMRCTIU1                  7355427              7489256           1,4,21
+  GMRCUTL1                  3375694              3306242        1,4,12,15,21
+  GMRCYP21                    N/A                 794875             21
+ 
+  NOTE:  Routine GMRCYP21 will automatically be delete after the KIDS install.
+         This routine is setting the security on ^GMR(123.5) so that only 
+         users with programmer access (@) may delete a Consult/Request 
+         Service.  A Consult/Request Service should be DISABLED and
+         only deleted on rare occasions.
+ 
+   Data Dictionary:
+   ================
+   123     REQUEST/CONSULTATION
+   123.1   REQUEST ACTION TYPES
+   123.5   REQUEST SERVICES
+ 
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ This patch should be installed at non-peak hours due to the high volume
+ use of the routines included. Installation should take less than 3
+ minutes which includes installing all routines and execution of the 
+ post-install.
+ 
+      1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+ 
+      2.  Review your mapped set.  If any of the routines listed in the
+          ROUTINE SUMMARY section are mapped, they should be removed
+          from the mapped set at this time.
+  
+      3.  From the Kernel Installation and Distribution System Menu, select
+          the Installation menu.
+ 
+      4.  From this menu, you may elect to use the following options 
+          (when prompted for INSTALL NAME, enter GMRC*3.0*21):
+               a.  Backup a Transport Global
+               b.  Compare Transport Global to Current System
+               c.  Verify Checksums in Transport Global
+  
+      5. Use the Install Package(s) option and select the patch GMRC*3.0*21.
+ 
+      6. When prompted "Want KIDS to INHIBIT LOGONs during the install?
+         YES//", respond NO. 
+ 
+      7. When prompted "Want to DISABLE Scheduled Options, Menu Options, and
+         Protocols? YES//", respond YES.  When prompted to select the
+         options you would like to place out of order, enter the following:
+ 
+         GMRC*
+ 
+      8. Clean up:  None.  The post-install (GMRCYP21) will automatically
+                           be deleted after the install.
+
+Routine Information:
+====================
+
+Routine Name:
+  - GMRCHL7A
+
+
+Routine Checksum:
+
+Routine Name:
+  - GMRCHL7B
+
+
+Routine Checksum:
+
+Routine Name:
+  - GMRCHL7U
+
+
+Routine Checksum:
+
+Routine Name:
+  - GMRCP5A
+
+
+Routine Checksum:
+
+Routine Name:
+  - GMRCPC
+
+
+Routine Checksum:
+
+Routine Name:
+  - GMRCSTL1
+
+
+Routine Checksum:
+
+Routine Name:
+  - GMRCSTL2
+
+
+Routine Checksum:
+
+Routine Name:
+  - GMRCSTLM
+
+
+Routine Checksum:
+
+Routine Name:
+  - GMRCSTS
+
+
+Routine Checksum:
+
+Routine Name:
+  - GMRCSTS1
+
+
+Routine Checksum:
+
+Routine Name:
+  - GMRCTIU1
+
+
+Routine Checksum:
+
+Routine Name:
+  - GMRCUTL1
+
+
+Routine Checksum:
+
+Routine Name:
+  - GMRCYP21
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : ANTRY,MIKE                     Date Entered : FEB 06, 2001
+Completed By: MCDANIEL,DWIGHT               Date Completed: JUL 18, 2001
+Released By : KREUZ,SHERI B                Date Released : JUL 18, 2001
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

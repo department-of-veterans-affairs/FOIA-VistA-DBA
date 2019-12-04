@@ -1,0 +1,681 @@
+$TXT Created by WESLEY,PAUL at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 10/07/04 at 15:29
+=============================================================================
+Run Date: NOV 22, 2004                     Designation: PSA*3*48
+Package : PSA - DRUG ACCOUNTABILITY           Priority: Mandatory
+Version : 3        SEQ #34                      Status: Released
+                  Compliance Date: DEC 23, 2004
+=============================================================================
+
+Associated patches: (v)PSA*3*26    <<= must be installed BEFORE `PSA*3*48'
+                    (v)PSA*3*37    <<= must be installed BEFORE `PSA*3*48'
+
+Subject: MCKESSON ORDER UNIT AUTO UPDATE
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch addresses two problems:
+  
+ 1.      Uploading on invoices from the new prime vendor has lost the 
+    capability to automatically match invoice items to the drug file
+    entries and manual editing is necessary on nearly every item on every
+    invoice.
+ 2.      The wrong VSN is shown for the selected item to be edited when 
+    editing verified invoices. The VSN displayed belongs to the last item 
+    presented in the choices for selection display.
+  
+ ASSOCIATED NOIS:
+ ================
+ TUA-0704-30097   No price updates when increase is >100%
+ Duplicate:
+  ANN-0704-41088  Prices Not Changing In IV	
+  SPO-0804-51204  Drug Prices not Updating in the Drug File
+ BAY-0604-31249   Wrong VSN is Showing 
+ Duplicates:
+  UNY-0904-10565  Problem Editing Verified Invoices
+  CLE-1004-41893  VSN Not Corrected Using Edit Verified Invoices
+ CLL-1004-40927   Drug Cost Should Update But Is Not Updating  
+ 
+ ASSOCIATED E3R(s):
+ ==================
+ N/A
+   
+ PARTICIPATING TEST SITES:
+ =========================
+ Ann Arbor, MI
+ Bay Pines, FL
+ Spokane, WA                   
+ Tuscaloosa, AL
+ Upstate New York HCS
+                                             
+ NOIS OVERVIEW:
+ ==============
+ I. 
+ SPO-0804-51204  Drug Prices not Updating in the Drug File
+ TUA-0704-30097  No price updates when increase is >100%
+  
+ Problem: The existing Drug Accountability (DA) software provides 
+ automatic matches of the drugs and their synonyms to the items on the 
+ electronic invoices. Properly matched it automatically updates pricing 
+ and inventories in the pharmacy files. The change of prime vendor 
+ contract dropped invoice items required for the current automatic 
+ matching.
+  
+ The automatic matching currently requires:
+  
+ A. A unique National Drug Code (NDC) match between the drug:synonym to 
+ that on the invoice item.
+  
+ B.      A unique Vendor Stock Number (VSN) match between the drug:synonym 
+ to that on the invoice item.
+  
+ C.      Equal 'Order Unit's (OU) between the drug:synonym and the invoice 
+ item. ***
+  
+ D.      Equal 'Dispense Unit per Order Unit's (DUOU) between the 
+ drug:synonym and the invoice item. ***
+  
+ *** Invoice data items dropped. The invoices carry 'EA' for OU on 95% of 
+ all items.
+  
+ If an automatic match is not accomplished a manual match must be 
+ performed on every invoice. Once an item is manually matched it is good 
+ only for that one item on that one invoice.
+  
+ Resolution: The automatic matching has moved to focusing on the VSN which 
+ has been stated to be a stronger unique identifier than the NDC by the 
+ vendor. If auto matching regarding the VSN is accomplished then the 
+ invoice items are edited to contain all necessary items for auto pricing 
+ and inventory updating. The invoice change is to use the facility's drug 
+ OU and DUOU and present a notation in the processing and verifying DA 
+ screens that such a change has taken place.
+  
+ The solution requires the testing of several permutations and 
+ combinations of the invoice and drug file elements.
+  
+ Acronyms
+     IEN - Internal Entry Number
+     SYN - Synonym
+     VSN - Vendor Stock Number
+     INV - Invoice
+     DR  - Drug
+  
+ The solution uses the following data items.
+  
+ DRDA    the IEN of the drug from the invoice
+ DRDUOU  the DUOU of the drug DRDA from the drug file.
+ SYNDA   the IEN of the synonym from the invoice.
+ VSN     the VSN from the invoice
+ SYNDUOU the DUOU value of the synonym using DRDA, SYNDA from the invoice
+ VSNDUOU the DUOU value of the unique VSN in the drug file using the 
+         "AVSN" index of the drug file
+ INVDUOU the DUOU on the invoice (null to start with)
+  
+ The first pass of auto matching adjustment requires a test that all the 
+ following items are equal:
+  
+  the DUOU of the drug DRDA from the drug file
+  the DUOU value of the drug:synonym using DRDA, SYNDA from the invoice 
+      upload.
+  the DUOU value of the unique VSN in the drug file using the "AVSN" index 
+       of the drug file
+  and that the drug:synonym VSN equals the invoice VSN.
+  
+ If there is not a match and the Vendors 
+ ^XTMP("PSAVSN",Vendor_VSN)=Vendor_DUOU data exists then that DUOU is 
+ placed into the invoice data for the users convenience.
+  
+ II.
+ UNY-0904-10565  PROBLEM EDITING VERIFIED INVOICES
+ BAY-0604-31249  Wrong VSN is showing
+  
+ Problem 2) The wrong VSN is shown for the selected item to be edited when 
+ editing verified invoices. The VSN displayed belongs to the last item 
+ presented in the choices for selection display.
+ Resolution: The code has been modified to insure that the item to be 
+ edited display is presenting the proper VSN.
+  
+ TECHNICAL:
+ ========== 
+ Routines PSAUP5 PSABRKU6 have been edited to call new special 
+ matching/editing routines PSAUP8 and PSABRKU9 when it is found that 
+ according to all existing criteria an invoice item has been uploaded with 
+ out any errors.
+  
+ Routines PSAU8 and PSABRKU9 have been added to test the uploaded item to 
+ the drug file with the new VSN matching criteria and added appropriate 
+ elements to the ^XTMP("PSAPV", invoice global.
+  
+ Routines PSAUTL1 and PSAUTL4 have been amended that on the editing item 
+ screen when an item has automatically been VSN matched and elements have 
+ been added the following display is presented.
+  
+ 1  MINOCYCLINE 100MG CAP
+ Qty Invoiced: 1                       UPC: 30009017107
+ Order Unit  : BT (EA)                 NDC: 00009-0171-07
+ Unit Price  : $20.00                  VSN: 2420248
+  
+ *****>
+ Note: The order unit was changed from EACH to BT by Drug Accountability
+       during the upload of the invoiced data. Adjustments may be 
+ necessary.
+ *****<
+ Dispense Units: CAP
+ Dispense Units Per Order Unit: 100
+ Stock Level   : 99
+ Reorder Level : 50
+  
+ Routines PSA48P* are used to install a one time upload of the mapping 
+ McKesson VSNs to McKesson DUOUs for assistance in processing invoices. 
+ The data ^XTMP("PSAVSN") will remove itself March 8th, 2005.
+  
+ ROUTINE SUMMARY 
+ ===============
+ The following is a list of the routines included in this patch.  
+ The second line of each of these routines now looks like: 
+  
+   <tab> ;;3.0; DRUG ACCOUNTABILITY/INVENTORY INTERFACE;** [PATCH LIST]**; 
+ 10/24/97
+  
+                        CHECK^XTSUMBLD results
+ Routine name      Before Patch        After Patch       Patch List
+ ============      ============        ===========       ===========
+ PSA48P0           n/a                 776417            48
+ PSA48P1           n/a                 22474147          48
+ PSA48P10          n/a                 21769727          48
+ PSA48P11          n/a                 22265655          48
+ PSA48P12          n/a                 21669260          48
+ PSA48P13          n/a                 21707101          48
+ PSA48P14          n/a                 21634294          48
+ PSA48P15          n/a                 21550869          48
+ PSA48P16          n/a                 22041740          48
+ PSA48P17          n/a                 22122467          48
+ PSA48P18          n/a                 22058101          48
+ PSA48P19          n/a                 21690018          48
+ PSA48P2           n/a                 21075813          48
+ PSA48P20          n/a                 22193682          48
+ PSA48P21          n/a                 21961927          48
+ PSA48P22          n/a                 22374353          48
+ PSA48P23          n/a                 22228005          48
+ PSA48P24          n/a                 21899418          48
+ PSA48P25          n/a                 21899986          48
+ PSA48P26          n/a                 22310785          48
+ PSA48P27          n/a                 22349491          48
+ PSA48P28          n/a                 22588127          48
+ PSA48P29          n/a                 22224160          48
+ PSA48P3           n/a                 21839681          48
+ PSA48P30          n/a                 22071185          48
+ PSA48P31          n/a                 22162686          48
+ PSA48P32          n/a                 22011934          48
+ PSA48P33          n/a                 21910368          48
+ PSA48P34          n/a                 21909278          48
+ PSA48P35          n/a                 22119528          48
+ PSA48P36          n/a                 22261155          48
+ PSA48P37          n/a                 22010135          48
+ PSA48P38          n/a                 22307791          48
+ PSA48P39          n/a                 22388338          48
+ PSA48P4           n/a                 21932460          48
+ PSA48P40          n/a                 22251431          48
+ PSA48P41          n/a                 22123067          48
+ PSA48P42          n/a                 22143165          48
+ PSA48P43          n/a                 22865482          48
+ PSA48P44          n/a                 9925027           48
+ PSA48P5           n/a                 21803819          48
+ PSA48P6           n/a                 22134046          48
+ PSA48P7           n/a                 21540401          48
+ PSA48P8           n/a                 21946750          48
+ PSA48P9           n/a                 22028008          48
+ PSABRKU6          25107922            25243368          26,48
+ PSABRKU9          n/a                 3667413           48
+ PSAUP5            23758127            23853286          3,21,37,48
+ PSAUP8            n/a                 3666314           48
+ PSAUTL1           23122150            25321698          3,12,15,21,48
+ PSAUTL4           13862959            13922526          3,21,48
+  
+ INSTALLATION INSTRUCTIONS
+ ========================= 
+ Since Drug Accountability is affected by this patch, you should
+ install it at a time when Drug Accountability users are off the system. 
+ 
+ It will take less than ten minutes o perform the KIDS installation.
+  
+ 1.  Start up the Kernel Installation and Distribution System Menu
+      [XPD MAIN]: 
+   
+           Edits and Distribution ...  
+           Utilities ...  
+           Installation ...  
+   
+      Select Kernel Installation & Distribution System Option: Installation
+                                                               
+           1      Load a Distribution
+           2      Verify Checksums in Transport Global
+           3      Print Transport Global
+           4      Compare Transport Global to Current System
+           5      Backup a Transport Global
+           6      Install Package(s)
+                  Restart Install of Package(s)
+                  Unload a Distribution
+   
+  2.  From this menu, you may elect to use the following options
+      (When prompted for the INSTALL NAME, enter PSA*3.0*48):
+      
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will
+          not backup any other changes such as DD's or templates.
+      b.  Compare Transport Global to Current System - This option
+          will allow you to view all changes that will be made when
+          this patch is installed.  It compares all components of this
+          patch (routines, DD's, templates, etc.).
+      c.  Verify Checksums in Transport Global - This option will
+          allow you to ensure the integrity of the routines that are
+          in the transport global.
+  
+  3.  Use the Install Package(s) option and select the package
+      PSA*3.0*48.
+   
+      a. When prompted "Want KIDS to INHIBIT LOGONs during the
+         install? YES//", enter NO
+ 
+      b. When prompted "Want to DISABLE Scheduled Options and Menu Options?
+         YES//", respond YES.  When prompted "Enter options you wish to
+         mark as 'Out of Order':", enter the following to disable all
+         Drug Accountability Med options:
+            PSA*
+         When prompted "Enter protocols you wish to mark as 'Out of
+         Order':", enter the following to disable all Drug Accountability
+         protocols: PSA*
+  
+ 4. Verify that the patch installation completed correctly by using
+    the KIDS 'Utilities...' option [XPD UTILITY] and 'Install File
+    Print' [XPD PRINT INSTALL FILE] and selecting this patch
+    (PSA*3.0*48).
+   
+ 5.  On a mapped system, rebuild your map set.
+  
+ 6.  Remove or delete the routines PSA48P* using your system utilities.
+  
+ INSTALLATION EXAMPLE:
+ ===================== 
+  
+ Select Kernel Installation & Distribution System Option: INstallation
+  
+    1      Load a Distribution
+    2      Verify Checksums in Transport Global
+    3      Print Transport Global
+    4      Compare Transport Global to Current System
+    5      Backup a Transport Global
+    6      Install Package(s)
+           Restart Install of Package(s)
+           Unload a Distribution
+  
+ Select INSTALL NAME: PSA*3.0*48       Loaded from Distribution  
+ 9/17/04@00:17:36
+      => PSA*3*48 TEST v1
+  
+ This Distribution was loaded on Sep 17, 2004@00:17:36 with header of
+    PSA*3*48 TEST v1
+    It consisted of the following Install(s):
+      PSA*3.0*48
+ Checking Install for Package PSA*3.0*48
+  
+ Install Questions for PSA*3.0*48
+  
+ Want KIDS to INHIBIT LOGONs during the install? YES// NO
+ Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES//
+   
+ Enter options you wish to mark as 'Out Of Order': PSA*
+  
+ Enter options you wish to mark as 'Out Of Order':
+  
+ Enter protocols you wish to mark as 'Out Of Order': PSA*
+  No such protocol(s).
+  
+ Enter protocols you wish to mark as 'Out Of Order':
+  
+  =========================================================================
+  
+  Install Started for PSA*3.0*48 :
+                Sep 17, 2004@00:20:30
+  
+ Build Distribution Date: Sep 16, 2004
+  
+  Installing Routines:
+                Sep 17, 2004@00:20:31
+  
+  Running Post-Install Routine: EN^PSA48P0
+ ............................................
+  
+  Updating Routine file...
+  
+  Updating KIDS files...
+  
+  PSA*3.0*48 Installed.
+                Sep 17, 2004@00:20:32
+  
+ Install Completed
+
+Routine Information:
+====================
+
+Routine Name:
+  - PSA48P0
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P10
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P11
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P12
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P13
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P14
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P15
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P16
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P17
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P18
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P19
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P2
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P20
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P21
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P22
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P23
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P24
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P25
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P26
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P27
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P28
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P29
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P3
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P30
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P31
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P32
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P33
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P34
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P35
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P36
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P37
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P38
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P39
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P4
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P40
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P41
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P42
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P43
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P44
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P5
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P6
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P7
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P8
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSA48P9
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSABRKU6
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSABRKU9
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAUP5
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAUP8
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAUTL1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAUTL4
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : WESLEY,PAUL                   Date Entered  : AUG 17, 2004
+Completed By: ANDERSON,MAXINE               Date Completed: NOV 22, 2004
+Released By : WASHINGTON,JANET P            Date Released : NOV 22, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,265 @@
+$TXT Created by ANWER,MOHAMED at MAIVAA.FO-BIRM.MED.VA.GOV  (KIDS) on Tuesday, 08/24/04 at 09:40
+=============================================================================
+Run Date: DEC 09, 2004                     Designation: PSO*7*185
+Package : PSO - OUTPATIENT PHARMACY           Priority: Mandatory
+Version : 7       SEQ #165                      Status: Released
+                  Compliance Date: JAN 09, 2005
+=============================================================================
+
+Associated patches: (v)PSO*7*139   <<= must be installed BEFORE `PSO*7*185'
+                    (v)PSO*7*156   <<= must be installed BEFORE `PSO*7*185'
+                    (v)PSO*7*163   <<= must be installed BEFORE `PSO*7*185'
+                    (v)PSO*7*175   <<= must be installed BEFORE `PSO*7*185'
+
+Subject: PATIENT IDENTITY MANAGEMENT PROJECT - ICN IMPLEMENTATION
+
+Category: 
+  - Routine
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ PATCH OVERVIEW
+ Gail Graham, Director of Information Assurance requested that a process 
+ of Patient Identity Management (PIM) be created that uniquely identifies a
+ patient prior to providing care. In order for the Health Data Repository
+ (HDR) to receive clinical data about patients the patient must have an
+ Integration Control Number (ICN) and Treating Facility (TF) List. VistA
+ under certain circumstances allows backdoor entry of clinical activity to
+ be recorded for a patient without "requiring" a patient to have an ICN.
+ The immediate needs of the HDR have identified several issues within the
+ existing PIM to uniquely identify patients through the ICN enumeration
+ process. PIM services are tied into VistA at several points. In the 
+ current VistA structure, up front identity management is done only within
+ Registration via several different menu options, as that has been the
+ traditional entry point of patients into the system. In addition, there
+ are "hooks" within Appointment Management, which assign a local ICN after
+ the patient has received care. Subsequently, the national ICN is obtained
+ through a nightly job or via manual resolution of the local ICN. The 
+ requester states that the current method does not support good business
+ practices for updating patient identity traits at appropriate entry points
+ and does not provide the full functionality of the benefit of the ICN in
+ linking all patient data together.
+  
+ This is the Outpatient Pharmacy patch PSO*7*185 that places the ICN check
+ (hooks) within the Outpatient Pharmacy V. 7.0 options, to dynamically
+ assign a local ICN for a patient if one was not found.
+  
+ Outpatient Pharmacy will not make any changes to options where the
+ patient look up is done via the FileMan DIC call on the PATIENT file
+ (#2). As part of the PIM project, the Master Patient Index V. 1.0 package
+ will send out a separate patch that will have the ICN "hooks" in place.
+  
+ In Outpatient Pharmacy, the following options do not use the standard
+ patient lookup (FileMan DIC call on the PATIENT file (#2)), as the 
+ primary input for selecting orders.
+  
+ Release Medication [PSO RELEASE]
+ Return Medication to Stock [PSO RETURNED STOCK]
+ Reset Copay Status/Cancel Charges [PSOCP RESET COPAY STATUS]
+ Complete Orders from OERR [PSO LMOE FINISH]
+ Barcode Batch Prescription Entry [PSO BATCH BARCODE]
+ Discontinue Prescription(s) [PSO C]
+ Edit Prescriptions [PSO RXEDIT]
+ Reprint an Outpatient Rx Label [PSO RXRPT]
+ View Prescriptions [PSO VIEW]
+ Pull Early from Suspense [PSO PNDRX]
+  
+ For these options, a check is put in place to see if the INTEGRATION
+ CONTROL NUMBER (ICN) field (#991.01) of the PATIENT file (#2) is populated
+ by calling the API #2701, $$GETICN^MPIF001(DFN). If it is not populated
+ then a call is made to the API #3300, $$MPIQQ^MPIFAPI(DFN) that will
+ populate the INTEGRATION CONTROL NUMBER (ICN) field (#991.01) of the
+ PATIENT file (#2).
+  
+ Note: This patch also carries a fix for NOIS PAL-0804-60841. The other 3 
+ NOIS calls are associated with this primary call.
+ Patch PSO*7*175 - FEE REPLACEMENT ENCAPSULATION PROJECT, calls the API 
+ #4395, $$RXSUM^FBRXUTL(DATE,STATION_NUMBER), to collect the fee basis 
+ prescription count and cost for a given date and the approving Veterans 
+ Affairs Medical Center (VAMC) station number. The station number that is 
+ passed to the API is the STATION NUMBER field (#99) of the INSTITUTION 
+ file (#4), which constitutes a 3 digit station number plus any modifiers. 
+ The API #4395 requires only the first 3 digits of the station number 
+ otherwise it will return an error message, "Valid station number not 
+ specified". This patch fixes this problem.
+  
+  
+ Associated NOISs:
+ ================
+ PAL-0804-60841
+ ALX-0804-71409
+ LIT-0804-71391
+ CLE-0904-40220
+       
+     
+ Test Sites:
+ ===========
+ PALO ALTO HCS, CA
+ ALEXANDRIA, LA 
+ BIRMINGHAM, AL
+ GREATER LOS ANGELES HCS, CA
+ MANCHESTER, NH
+ TOMAH, WI
+  
+  
+ Routine Summary: 
+ ================
+ The second line now reads as follows: 
+  
+    <TAB>;;7.0;OUTPATIENT PHARMACY;**[patch list]**;DEC 1997 
+   
+ CHECK^XTSUMBLD results: 
+    
+ Routine   Before Patch After Patch  Patch List 
+ ==============================================================
+ PSOBBC    22271650     22283408     11,22,27,34,46,130,146,185
+ PSOCAN    27827391     27843791     11,21,24,27,32,37,88,117,131,185
+ PSOCAN1   30554652     30333710     8,20,24,27,32,131,163,185
+ PSOCPB    29736919     29777446     72,71,85,185
+ PSODISP   28611530     28655779     15,71,131,156,185
+ PSODPT     1424045      1570021     139,185
+ PSOMGCM1  20182728     20187280     20,28,175,185
+ PSORESK   32094417     32114365     15,9,27,40,47,55,85,130,185
+ PSORXEDT  20643804     20655562     21,23,44,71,146,185
+ PSORXRP2  20344526     20356284     11,27,120,138,135,156,185
+ PSORXVW   33709142     33725542     14,35,46,96,103,88,117,131,146,156,185
+ PSOSUPAT  31428191     31176517     8,130,185
+ PSOSUPRX  30376463     30425671     8,36,130,185
+  
+  
+ Installation Instructions:     
+ ==========================
+ Before installing this patch, use the List Tasks [XUTM INQ] option on the
+ Taskman Management [XUTM MGR] menu to list currently running tasks.
+ This patch should be installed when there are no Outpatient Pharmacy
+ users on the system. Installation will take no longer than 3 minutes.  
+  
+ 1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu.  
+  
+ 2. Review your mapped set. If the routines are mapped, they should be
+    removed from the mapped set at this time.  
+  
+ 3. From the Kernel Installation & Distribution System menu, select the
+    Installation menu.  
+  
+ 4. From this menu, you may select to use the following options: 
+    (when prompted for INSTALL NAME, enter PSO*7.0*185) 
+  
+     a. Backup a Transport Global - this option will create a backup 
+        message of any routines exported with the patch. It will NOT 
+        backup any other changes such as DDs or templates.  
+  
+     b. Compare Transport Global to Current System - this option will 
+        allow you to view all changes that will be made when the patch 
+        is installed. It compares all components of the patch (routines, 
+        DDs, templates, etc.).  
+  
+     c. Verify Checksums in Transport Global - this option will ensure 
+        the integrity of the routines that are in the transport global.  
+  
+ 5. Use the Install Package(s) option and select the package PSO*7.0*185.
+  
+ 6. When Prompted "Want KIDS to Rebuild Menu Trees Upon Completion of 
+    Install? YES//" respond NO.  
+  
+ 7. When Prompted "Want KIDS to INHIBIT LOGONs during the install? YES//" 
+    respond NO. 
+  
+ 8. If routines were unmapped as part of step 2, they should be returned to
+    the mapped set once the installation has run to completion.
+
+Routine Information:
+====================
+
+Routine Name:
+  - PSOBBC
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOCAN
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOCAN1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOCPB
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSODISP
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSODPT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSORESK
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSORXEDT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSORXRP2
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSORXVW
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOMGCM1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOSUPRX
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOSUPAT
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : ANWER,MOHAMED                 Date Entered  : AUG 04, 2004
+Completed By: NEVEU,MIKE                    Date Completed: DEC 09, 2004
+Released By : CAMPBELL,THOMAS               Date Released : DEC 09, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,613 @@
+$TXT Created by CURRO,MARY ANNE at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 10/28/04 at 14:23
+=============================================================================
+Run Date: MAR 03, 2005                     Designation: PRCA*4.5*159
+Package : PRCA - ACCOUNTS RECEIVABLE          Priority: Mandatory
+Version : 4.5       SEQ #200                    Status: Released
+                  Compliance Date: APR 03, 2005
+=============================================================================
+
+Associated patches: (v)PRCA*4.5*63 <<= must be installed BEFORE `PRCA*4.5*159'
+                    (v)PRCA*4.5*127<<= must be installed BEFORE `PRCA*4.5*159'
+                    (v)PRCA*4.5*147<<= must be installed BEFORE `PRCA*4.5*159'
+                    (v)PRCA*4.5*153<<= must be installed BEFORE `PRCA*4.5*159'
+                    (v)PRCA*4.5*189<<= must be installed BEFORE `PRCA*4.5*159'
+
+Subject: REGIONAL COUNSEL MULTI-DIVISIONS/ADDRESS CHANGE
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ The purpose of this patch is to redirect VISTA transmissions to the new
+ Regional Counsel (RC) systems for processing, and to add new functionality
+ to the existing VISTA RC system so our integrated sites have the ability
+ to send messages to the correct Regional Counsel system. This was 
+ requested by Randy Trexler and endorsed by the Office of General Counsel.
+  
+ The existing Regional Counsel Interface supports the electronic
+ transmission of Reimbursable Insurance (RI) bills, follow-up file, and 
+ payment information between a VAMC's VISTA system, and a Regional
+ Counsel's system.
+  
+ At the time the original interface was developed, the RC systems were 
+ M-based systems. Since that time, the original M-based systems have been
+ re-hosted. The VISTA systems have continued to transmit Accounts
+ Receivable (AR) information to VA MailMan servers on the old RC systems.
+ The legacy RC systems have been forwarding this information to the new
+ RC systems. This patch will make the changes required to transmit the
+ VISTA AR data to the new RC systems. At the conclusion of this project,
+ bi-directional messaging will exist between the VISTA systems and the new
+ RC systems.
+  
+ This patch will also redirect the Death Notification transmissions to RC. 
+ When patients who have bills in RC are discharged with a type of discharge 
+ of 'Death' or 'Death with Autopsy', RC will be notified. These
+ transmissions will be transmitted directly to the new RC systems for death
+ notification.
+  
+ An environment check routine (RCY159EN) will run to make sure that the
+ Remote Domain field is populated with an 'RC-' mail address for the
+ primary division, and all divisions of care. If the Remote Domain is not
+ populated, or it's set to an invalid RC address, the install will abort,
+ and the site will need to enter the correct Remote Domain by using the
+ option RC Parameters Edit [PRCA RC PARAMETERS].
+  
+ A post-init routine (RCY159PO) will look at the old RC addresses, and
+ convert them to the new re-hosted mail addresses assigned to their
+ division or division of care.
+  
+ New RC mail addresses will be similar to the following:
+  
+ For most RC transmissions:
+ --------------------------
+ From RC-BOSTON.GC.VA.GOV  to  OGCBOSRI@MAIL.VA.GOV 
+  
+ Death Notification addresses:
+ -----------------------------
+ From G.RC RC REFERRALS@RC-BOSTON.GC.VA.GOV to 
+   OGCRegion1DeathNotification@mail.va.gov
+  
+   
+ This patch introduces new functionality that will allow integrated sites
+ that have multiple divisions of care, which are supported by multiple
+ Regional Counsel offices, to electronically interface Third Party (TP)
+ Reimbursable Health receivables. General Counsel's Regional Counsel (RC)
+ organizational structure provides specific jurisdictional authority and
+ staffing to allow RC offices to handle claims from specific Medical Center
+ divisions. Once a site integrates into one database, claims are created
+ on the integrated database for all divisions of care. This patch allows
+ claims created under multiple divisions of care in the same database to
+ electronically interface with their associated RC office. 
+  
+  
+ All sites should install this patch.  However, sites may or may not have
+ the need to implement the multi-divisional functionality. If TP
+ Reimbursable Health Insurance claims created in the VISTA database are for
+ multiple divisions of care, which are supported by different RC offices,
+ then the multi-divisional functionality should be implemented. 
+  
+  
+ To implement the RC multi-divisional functionality, the site's MCCR RC
+ Coordinator should use the 'RC Parameters Edit' option to enter in the
+ multiple divisions of care, and their corresponding RC Remote Domain.    
+  
+ See RC Parameter Example below:
+ ------------------------------- 
+  
+ >D ^XUP
+ Select OPTION NAME:    PRCA RC PARAMETERS     RC Parameters Edit
+ RC Parameters Edit
+ PURGE FREQUENCY: 90// 
+  
+ Primary Division: ALBANY
+ RC MAIL ADDRESS: OGCPHIRI@MAIL.VA.GOV  Replace 
+ RC DEATH NOTIFICATION ADDRESS: OGCRegion4DeathNotification@mail.va.gov
+            Replace 
+  
+ Enter Division(s) of care if domain is different from the primary RC Mail 
+ Address.
+  
+ Select DIVISION OF CARE: OLD ALBANY// 
+   DIVISION OF CARE: OLD ALBANY// 
+   RC MAIL ADDRESS: OGCATLRI@MAIL.VA.GOV  Replace 
+   RC DEATH NOTIFICATION ADDRESS: OGCRegion5DeathNotification@mail.va.gov
+            Replace 
+  
+           
+ The new functions of the AR Regional Counsel options are described as 
+ follows.
+                                     
+  
+ RC PARAMETERS EDIT  [PRCA RC PARAMETERS]:
+ -----------------------------------------
+ The value of the Purge Frequency should not be altered for the purpose of
+ this patch. The Remote Domain will no longer be asked by this option after
+ installation of the patch. The RC Mail Address, and RC Death Notification
+ Address will now be asked for the primary division and the Divisions of 
+ Care. The electronic RC interface will not work if these fields are not
+ populated. These fields will be populated with the post-init of this patch. 
+ Use this option to add additional Divisions of Care.
+  
+ To implement or turn on the multi-divisional RC functionality,
+ division(s), who have a different RC Mail Address from the primary RC
+ Mail Address, must be entered in the Division of Care sub-file with their
+ associated RC Mail Address and associated RC Death Notification Address.  
+ Divisions who share the same RC Mail Address as the primary RC Mail Address,
+ if added as a division of care, will be deleted from the system.
+ Note:  Not all sites will need to need to implement the Division
+ of Care, if all sites will be sending RC transmissions to the
+ same RC mail address.
+  
+  
+ Review/Refer TP Bills to RC [PRCAC RC REVIEW/REFER]:
+ ----------------------------------------------------
+ Only sites that implemented the RC multi-divisional functionality will
+ notice a change in this option. This option will allow the users to review
+ and refer TP bills to the appropriate RC offices. Changes to this
+ functionality will occur during the selection of sort criteria. Users will
+ be prompted to select a Medical Center Division to sort by. These
+ divisions were entered in the RC Parameters. Bills with a Default Division
+ as the one selected and meeting other sort criteria will be listed for
+ review and possible referral. The Refer bills to RC action will send bills
+ to the associated RC Mail Address for the selected division. If the bill's
+ division of care is not determinable, the bill will be sent to the Primary
+ RC Remote Domain. The domain (division of care) must be selected at the
+ beginning of the option and will remain the recipient domain for all
+ actions taken during the use of the option until the user selects QUIT and
+ exits the option. A new domain may be selected by starting the option
+ again and selecting a new domain (division of care). The selected domain
+ (division of care) will remain as the recipient of all actions taken
+ during the use of the option until the user again exits the option by
+ selecting QUIT as the action.
+  
+  
+ TP Referred Follow-up [PRCAC RC ACTION MENU]:
+ ---------------------------------------------
+ Only sites that implemented the RC multi-divisional functionality will
+ notice a change in this option. This option allows users to electronically
+ send follow-up requests for various actions to be taken on referred TP
+ bills. Changes to this functionality will occur during the selection of
+ sort criteria. Users will be prompted to select a Medical Center Division
+ to sort by. These divisions were entered in the RC Parameters. Bills with
+ a Default Division as the one selected and meeting other sort criteria
+ will be listed for follow-up action. The Transmit AR Transaction, Request
+ an Action and Increase TP Bill actions will send bills to the associated
+ RC Mail Address for the selected division.
+  
+  
+ Reconciliation Rollup Request for RC  [PRCAC RC RRR]:
+ ---------------------------------------------------
+ Only sites that implemented the RC multi-divisional functionality will
+ notice a change in this option. The AR/RC electronic interface cannot work
+ properly unless the Accounts Receivable and Regional Counsel databases
+ remain in sync. This is ensured by monthly reconciliation reports. The
+ sites may manually request a reconciliation report or wait for the monthly
+ background run. Requests will be sent to all the RC domains listed in the
+ RC Parameters.    
+  
+  
+ Agent Cashier Menu  [RCDP AGENT CASHIER MENU]:
+ ----------------------------------------------
+ Only sites that implemented the RC multi-divisional functionality will
+ notice a change in this option. Payments in full will be sent to the
+ bill's Division of Care. If the division of care cannot be determined, the
+ payment information will be sent to the Primary Division. 
+  
+  
+ Account Profile  [RCDP ACCOUNT PROFILE]:
+ ----------------------------------------
+ The Account Profile's Bill Profile will display the Division of Care if
+ defined for TP bills.  
+  
+  
+ This patch also fixes an undefined error with the reconciliation report.
+ Changes were made to routine RCRCREC to correct this error.
+  
+  
+  
+ This patch addresses the following New Service Request (NSR):            
+ -------------------------------------------------------------
+ 20031003 - AR/RC RI Interface - Change of E-mail Address
+  
+  
+ This patch addresses the following NOIS message(s):
+ ---------------------------------------------------
+ CPH-0804-40120       <UNDEFINED>MAINQ+1^RCRCREC
+  
+  
+ Overview of NOIS Message(s):
+ ----------------------------
+ CPH-0804-40120       <UNDEFINED>MAINQ+1^RCRCREC
+  
+ Problem:
+ --------
+ Site receives a $ZE= <UNDEFINED>MAINQ+1^RCRCREC error.
+  
+ The variables "RCXTYP,RCXMZ" at line MAINQ are killed in routine RCRCREC
+ before attempting to kill a global that references the two variables.
+ This caused the site to receive an undefined error when they ran the
+ Reconciliation Report.                     
+  
+  
+ Resolution:
+ -----------
+ This error is resolved in this patch.
+  
+  
+ Test Sites:
+ -----------
+ Charleston
+ Cleveland
+ Fort Harrison
+ Lexington
+ Nashville
+ Omaha
+  
+  
+  
+        ================INSTALLATION INSTRUCTIONS =================
+  
+ If installed during the normal workday, it is recommended that the 
+ following selection(s) in the OPTION (#19) file, and all of their 
+ descendants be disabled to prevent possible conflicts while running the 
+ KIDS Install. Other VISTA users will not be affected.
+  
+       RC Parameters Edit   [PRCA RC PARAMETERS]         
+       Review/Refer TP Bills to RC   [PRCAC RC REVIEW/REFER] 
+       TP Referred Follow-up   [PRCAC RC ACTION MENU] 
+       Reconciliation Rollup Request for RC   [PRCAC RC RRR]
+       Discharge a Patient   [DG DISCHARGE PATIENT]     
+  
+  
+ Patch installation time should be less than 10 minutes. 
+  
+  
+        ************** PRE-INSTALLATION INSTRUCTIONS **************
+  
+ Before installation of this patch, it is required that all sites check to
+ make sure that REMOTE DOMAIN field (#32) is populated correctly in the AR
+ TRANSMISSION  File (#349.1) with the Regional Counsel mail address for the
+ primary division, and for those sites currently using the multi-divisional
+ functionality, all their divisions of care. You will need to make sure 
+ your primary division, and all divisions of care contain the correct
+ Regional Counsel address starting with the preface 'RC-'. To do this,
+ please use the option RC Parameters Edit [PRCA RC PARAMETERS]. Check to
+ make sure that your Remote Domain field is populated with an address whose
+ first three characters contain 'RC-'. Sites not currently using the
+ multi-divisional functionality, will only need to update your primary
+ division's remote domain. 
+  
+ It is imperative this Remote Domain field be populated correctly for
+ all primary divisions, and divisions of care so that the environment check
+ will allow the patch to load, and the post-init to update the sites with
+ the latest Regional Counsel addresses.
+  
+ For for those sites NOT currently using the multi-divisional
+ functionality, the RC PARAMETERS EDIT will display like the following:
+  
+ Select OPTION NAME: RC PARAMETERS EDIT  PRCA RC PARAMETERS 
+ PURGE FREQUENCY: 90// 
+ REMOTE DOMAIN: RC-NASHVILLE.GC.VA.GOV//
+  
+  
+ For for those sites currently using the multi-divisional functionality,
+ the RC PARAMETERS EDIT will display like the following:
+  
+ RC Parameter Example:
+  
+  
+ Select OPTION NAME: RC PARAMETERS EDIT  PRCA RC PARAMETERS
+  
+ PURGE FREQUENCY: 90// 
+  
+ Primary Division: OMAHA
+ PRIMARY RC REMOTE DOMAIN: RC-STLOUIS.GC.VA.GOV// 
+  
+ Enter Division(s) of care if domain is different then Primary RC Remote
+ Domain.
+  
+ Select DIVISION OF CARE: DES MOINES, IA// 
+   DIVISION OF CARE: DES MOINES, IA // 
+   RC REMOTE DOMAIN: RC-CHICAGO.GC.VA.GOV//
+  
+  
+ ***********************************************************************     
+  
+           
+  1.  LOAD TRANSPORT GLOBAL 
+      ---------------------
+      Choose the PackMan message containing this patch and invoke the
+      INSTALL/CHECK MESSAGE PackMan option.
+  
+               
+  2.  DISABLE ROUTINE MAPPING   (DSM for open VMS sites only)
+      -----------------------
+      Disable routine mapping on all systems for the routines listed in
+      step 3 below.
+      NOTE:  If the routines included in this patch are not currently in
+      your mapped routine set, please skip this step.
+  
+               
+  3.  COMPONENTS SENT WITH PATCH 
+      --------------------------
+      The following is a list of the routine(s) included in this patch.
+      The second line of each of these routine(s) will look like:
+  
+      <tab>;;4.5;Accounts Receivable;**[patch list]**;Mar 20, 1995
+                    
+                              CHECK^XTSUMBLD results 
+  
+      Routine       Before Patch       After Patch       Patch List
+      -------       ------------       -----------       ----------
+      RCAEOB         1676285            1824497          63,159
+      RCAMDTH        6614227            7191130          63,159
+      RCDPBPLM       13541427           13962473         114,153,159
+      RCRCACP        11638700           12336549         63,159
+      RCRCAL2        1891456            1946856          63,159
+      RCRCALB        6090255            6617533          63,159
+      RCRCAT         8711882            9215733          63,127,159
+      RCRCBL1        3606032            3443726          63,159
+      RCRCDIV          N/A              3647831          159
+      RCRCREC        6182945            6481139        61,63,147,159
+      RCRCREC2       5000815            5306327        61,82,63,147,159
+      RCRCRR         7788557            8199584        61,63,147,159
+      RCRCRT         14207920           14758585       63,147,168,169,189,
+                                                             159
+      RCRCSRV        6702326            6650578        61,87,63,147,159
+      RCRCUTL        2895320            7284823          63,159
+      RCRCVL         1976961            1992254          63,159
+      RCRCVL2        2286708            2349459          63,159
+      RCRCVLB        9696117            10182107         63,159
+      RCRCVXM        5567217            5971162          63,159
+      RCRCXMS        6999019            17589524         63,159
+      RCY159EN         N/A              9324868          159
+      RCY159PO         N/A              25878811         159
+  
+      Total number of routines - 22
+  
+        
+      The following is a list of files included in this patch:
+  
+                                      UP    SEND  DATA                USER
+                                      DATE  SEC.  COMES  SITE   RSLV  OVER
+      FILE#    NAME                   DD    CODE  W/FILE DATA   PTS   RIDE
+      ---------------------------------------------------------------------
+      349.1    AR TRANSMISSION TYPE   YES   NO    NO                  NO
+      Partial DD: subDD: 349.1
+                  subDD: 349.161    fld: .01
+                                    fld: .02
+                                    fld: .03
+                                    fld: .04
+        DATA SCREEN: 
+  
+  
+  4.  START UP KIDS 
+      -------------
+      Start up the Kernel Installation and Distribution System Menu
+      [XPD MAIN]:
+               
+            Edits and Distribution ...
+            Utilities ...
+            Installation ...
+               
+      Select Kernel Installation & Distribution System Option: Installation
+                                                               ------------
+               
+           Load a Distribution
+           Print Transport Global
+           Compare Transport Global to Current System
+           Verify Checksums in Transport Global
+           Install Package(s)
+           Restart Install of Package(s)
+           Unload a Distribution
+           Backup a Transport Global
+               
+       Select Installation Option:
+  
+                
+  5.  Select Installation Option: 
+      ---------------------------
+      NOTE:  The following are OPTIONAL - (When prompted for the
+             INSTALL NAME, enter PRCA*4.5*159):
+                
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch.  It will not
+          backup any other changes such as DD's or templates.
+      b.  Compare Transport Global to Current System - This option will
+          allow you to view all changes that will be made when this
+          patch is installed.  It compares all components of this patch
+          (routines, DD's, templates, etc.).
+      c.  Verify Checksums in Transport Global - This option will allow
+          you to ensure the integrity of the routines that are in the
+          transport global.
+         
+      
+  6.  Install KIDS patch
+      ------------------
+      **This is the step to start the installation of this KIDS patch:
+              
+      a. Choose the Install Package(s) option to start the patch install.
+      b. When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+         YES//' answer NO 
+      c. When prompted 'Want to DISABLE Scheduled Options, Menu Options,
+         and Protocols? YES//' answer YES
+      d. When prompted 'Enter options you wish to mark as 'Out Of
+         Order':'  Enter the following options:
+  
+         RC PARAMETERS EDIT    [PRCA RC PARAMETERS]         
+         Review/Refer TP Bills to RC    [PRCAC RC REVIEW/REFER] 
+         TP Referred Follow-up    [PRCAC RC ACTION MENU] 
+         Reconciliation Rollup Request for RC    [PRCAC RC RRR]
+         Discharge a Patient    [DG DISCHARGE PATIENT]     
+  
+      e. When prompted 'Enter protocols you wish to mark as 'Out Of 
+         Order':' press <return>.
+  
+             
+  7.  REBUILD MAPPED ROUTINE(S)  (DSM for open VMS sites only)
+      -------------------------
+      Optional - Include the routines distributed with this patch in the
+      mapped routine set.
+              
+      NOTE: This step is only necessary if you performed step 2 or if
+      you wish to include the routines in your mapped set. 
+  
+  8.  The environment check routine RCY159EN, and post-init routine
+      RCY159PO may be deleted by the site after installation of this patch.
+
+Routine Information:
+====================
+
+Routine Name:
+  - RCRCXMS
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCRCALB
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCRCAL2
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCRCBL1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCRCUTL
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCRCVLB
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCRCDIV
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCRCVL2
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCRCRR
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCRCSRV
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCRCVXM
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCRCAT
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCRCACP
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCRCREC
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCRCREC2
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPBPLM
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCRCVL
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCAEOB
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCAMDTH
+
+  
+
+Routine Checksum:
+ 
+
+Routine Name:
+  - RCRCRT
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCY159PO
+
+  
+
+Routine Checksum:
+ 
+
+Routine Name:
+  - RCY159EN
+
+  
+
+Routine Checksum:
+ 
+
+=============================================================================
+User Information:
+Entered By  : BARRICK,DENISE                Date Entered  : JUN 15, 2000
+Completed By: ROBBINS,BRADLEY               Date Completed: MAR 02, 2005
+Released By : DAVIS,VANESSA J               Date Released : MAR 03, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

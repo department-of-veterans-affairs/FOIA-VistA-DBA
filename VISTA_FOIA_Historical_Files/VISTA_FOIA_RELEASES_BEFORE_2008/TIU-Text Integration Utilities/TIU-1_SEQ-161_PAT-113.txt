@@ -1,0 +1,1311 @@
+
+=============================================================================
+Run Date: MAR 03, 2004                     Designation: TIU*1*113
+Package : TIU - TEXT INTEGRATION UTILITIES    Priority: Mandatory
+Version : 1       SEQ #161                      Status: Released
+                  Compliance Date: APR 03, 2004
+=============================================================================
+
+Associated patches: (v)TIU*1*72    <<= must be installed BEFORE `TIU*1*113'
+                    (v)TIU*1*75    <<= must be installed BEFORE `TIU*1*113'
+                    (v)TIU*1*118   <<= must be installed BEFORE `TIU*1*113'
+                    (v)TIU*1*124   <<= must be installed BEFORE `TIU*1*113'
+                    (v)TIU*1*131   <<= must be installed BEFORE `TIU*1*113'
+                    (v)TIU*1*145   <<= must be installed BEFORE `TIU*1*113'
+                    (v)TIU*1*152   <<= must be installed BEFORE `TIU*1*113'
+                    (v)TIU*1*167   <<= must be installed BEFORE `TIU*1*113'
+                    (v)DG*5.3*534  <<= must be installed BEFORE `TIU*1*113'
+
+Subject: MULTIDIVISIONAL ENHANCEMENT
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Print Template
+  - Input Template
+  - Enhancement (Mandatory)
+  - Other
+
+Description:
+============
+
+ I. DESCRIPTION
+    ===========
+  
+ The purpose of this patch is to provide changes to the TIU application to
+ support multidivisional sites.  The changes will allow administrative
+ users of TIU (such as Health Information Management Service (HIMS),
+ Service Chiefs, and Clinicians) the ability to output data and reports
+ based on one or more selected divisions.
+  
+ A new DIVISION field will be created in the TIU DOCUMENT file (#8925), and
+ a post-installation routine will attempt to load DIVISION data for all
+ existing entries. A new DIVISION field will be created in the TIU UPLOAD
+ LOG file (#8925.4). A new DIVISION entry in the TIU SEARCH CATEGORIES file
+ (#8925.8) will be created. A number of input templates, list templates,
+ print templates, and options have been modified. Several routines have
+ also been modified and there is one new routine.
+  
+ This patch also corrects the functionality of multiple search category
+ requests, as well as several other issues unrelated to Multidivisional
+ Enhancements. See Part "G" - NOIS CALLS, E3R's, & IT REQUESTS RESOLVED BY
+ THIS PATCH, at the end of Section II, FUNCTIONAL OVERVIEW, below.
+  
+ *******  Please note: Section VI. PRE-INSTALLATION INSTRUCTIONS  *******
+   The environment check routine is run when the installer invokes the 
+   option Load a Distribution [XPD LOAD DISTRIBUTION], and again when 
+   the installer invokes the option Install Package(s) [XPD INSTALL BUILD].
+   See details below.
+  
+ II. FUNCTIONAL OVERVIEW 
+     ===================
+  
+ A. What is a Multidivisional site? 
+    ===============================
+  
+ A site is considered multidivisional if the MAS PARAMETERS file (#43)
+ field MULTIDIVISION MED CENTER? is equal to YES. This can occur when a
+ site integrates with another site. It can also occur when a site adds one
+ or more other entries (such as a Community Based Outpatient Clinic (CBOC))
+ to the file. ALL SITES, WHETHER MULTIDIVISIONAL OR NOT, MUST INSTALL 
+ THIS PATCH. 
+  
+ B. How will existing TIU DOCUMENT entries be loaded with DIVISION data?
+    ====================================================================
+  
+ The post-installation routine must be invoked from Programmer Mode upon 
+ completion of the patch installation process. A background task will be
+ created which will attempt to load DIVISION data for all existing TIU 
+ DOCUMENT file (#8925) entries according to the following method:
+    
+    1. If the entry has data in the HOSPITAL LOCATION and ENTRY DATE/TIME
+       fields, load DIVISION with that location's INSTITUTION (extracted as
+       the INSTITUTION FILE POINTER from the DIVISION field of the HOSPITAL
+       LOCATION file (#44) entry). **
+    
+       ** The majority of TIU DOCUMENT file (#8925) entries have HOSPITAL
+          LOCATION field data. Entries that may not have this data include:
+       
+          - documents for outpatient visit types which are an unscheduled
+            event (historical)
+          - addenda to the above
+          - documents in which the document type's type equals component
+            (such as for SOAP components...the main SOAP document has this
+            data, however)
+          - converted documents
+  
+    2. For all exception entries not meeting the above criteria, the
+       DIVISION cannot be determined and will not be loaded. An exception
+       list of these entries will be generated throughout the processing.
+       The exception entries include:
+       
+       - those in which DIVISION could not be determined from the HOSPITAL
+         LOCATION (and ENTRY DATE/TIME) data
+       
+       - those that are currently in use
+    
+    3. Once all TIU DOCUMENT file (#8925) entries have been processed, a
+       bulletin mail message will be sent to the user who initiated the
+       post-installation routine. The message provides information about
+       the DIVISION loading and instructions for printing and updating of
+       exception entries. (see Section VIII - POST-INSTALLATION 
+       INSTRUCTIONS for example)
+       
+    4. Invoking DEVICE^TIUP113 will allow the user to display/print a
+       report which lists the exception entries.
+  
+    5. Invoking UPDATE^TIUP113 will allow the user to finish the
+       post-installation by choosing one or more methods of processing the
+       exception entries. (see Section VIII - POST-INSTALLATION 
+       INSTRUCTIONS for example)
+    
+ C. How will new TIU DOCUMENT entries be loaded with DIVISION data?
+    ===============================================================
+       
+ Upon completion of the patch installation, DIVISION data for the new TIU
+ DOCUMENT file (#8925) entries are loaded according to the following
+ method:
+    
+    1. If HOSPITAL LOCATION field data has been determined, load DIVISION
+       with that location's INSTITUTION (extracted as the INSTITUTION FILE
+       POINTER from the DIVISION field of the HOSPITAL LOCATION file (#44)
+       entry).
+    
+    2. If HOSPITAL LOCATION field data has not been determined, or the
+       HOSPITAL LOCATION file (#44) entry does not have DIVISION field
+       data, load DIVISION with the USER's** VistA LOG-IN DIVISION 
+       (variable DUZ(2)). VistA LOG-IN DIVISION is defined as follows:
+    
+       -  If the user's NEW PERSON file (#200) entry does not have DIVISION
+          field data, the VistA LOG-IN DIVISION is extracted from KERNEL
+          SYSTEM PARAMETERS file (#8989.3), field DEFAULT INSTITUTION.
+          DEFAULT INSTITUTION is a required field.
+    
+       -  If the user's NEW PERSON file (#200) entry has one defined
+          DIVISION, the VistA LOG-IN DIVISION is equal to that DIVISION.
+    
+       -  If the user's NEW PERSON file (#200) entry has two or more
+          defined DIVISIONs, the VistA LOG-IN DIVISION is equal to the
+          selected DIVISION upon user log-in.
+  
+       **Note: USER is the person signed into VistA/CPRS GUI and entering
+               the document; this may NOT be the same as the author.
+    
+ D. Functional Enhancements, CPRS GUI:
+    ==================================
+  
+    1. There are no observable changes for document entry/edit; DIVISION
+       data is loaded automatically.
+  
+    2. A division indicator is displayed upon a detailed display request.
+    
+ E. Functional Enhancements, OE/RR List Manager:
+    ===========================================
+  
+    1. There are no observable changes for document entry/edit; DIVISION
+       data is loaded automatically.
+  
+    2. A division indicator is displayed upon a detailed display request.
+  
+ F. Functional Enhancements, TIU List Manager version:
+    ==================================================
+  
+    1. There are no observable changes for document entry/edit (including
+       uploads); DIVISION data is loaded automatically.
+  
+    2. A division indicator is displayed upon a detailed display request.
+  
+    3. A new DIVISION search category permits searching by one division.
+       Multiple search category requests utilize "and" logic for
+       determining output. The following options are applicable:
+    
+       -  Show Progress Notes Across Patients [TIU REVIEW PN CLINICIAN] 
+       -  Multiple Patient Documents [TIU REVIEW SCREEN CLINICIAN] 
+       -  Multiple Patient Documents [TIU REVIEW SCREEN READ ONLY] 
+       -  Search for Selected Documents [TIU SEARCH LIST MGR] 
+       -  Search for Selected Documents [TIU SEARCH LIST MRT] 
+       -  Multiple Patient Discharge Summaries [TIU REVIEW DS CLINICIAN] 
+       -  All MY UNSIGNED Discharge Summaries [TIU REVIEW DS UNSIGNED]** 
+       -  All MY UNSIGNED Documents [TIU REVIEW UNSIGNED]** 
+       -  All MY UNSIGNED Progress Notes [TIU REVIEW PN UNSIGNED]**
+    
+       **Search category prompt is only available upon invoking action
+         Change View.
+    
+    4. A DIVISION sort prompt (one, multiple, or all) has been added to the
+       following options - only if the site is multidivisional:
+    
+       -  Multiple Patient Documents [TIU REVIEW SCREEN MIS MANAGER]
+       -  Multiple Patient Documents [TIU REVIEW SCREEN MRT]
+       -  Review Upload Filing Events [TIU REVIEW FILING EVENTS]
+       -  Unsigned/Uncosigned Report [TIU UNSIGNED/UNCOSIGNED REPORT]
+    
+    5. A (FileMan) DIVISION sort prompt has been added to the following
+       options:
+          
+       -  Released/Unverified Report [TIU RELEASED/UNVERIFIED REPORT]
+       -  TRANSCRIPTIONIST Line Count Statistics [TIU DS LINE COUNT BY
+          TRANSCR]
+       -  AUTHOR Line Count Statistics [TIU DS LINE COUNT BY AUTHOR]
+       -  SERVICE Line Count Statistics [TIU DS LINE COUNT BY SERVICE]
+    
+    6. A new Unsigned/Uncosigned Report [TIU UNSIGNED/UNCOSIGNED REPORT]
+       option provides full or summary output of unsigned/uncosigned
+       documents by division and author/dictator's service/section for
+       a selected entry date range.
+       
+    7. A new TIU UPLOAD LOG file (#8925.4) field DIVISION is for the 
+       institution associated with the upload filing event.
+  
+    8. A new entry action for option Upload Menu [TIU UPLOAD MENU]
+       displays the user's log-on division and additional help text.
+    
+ G. NOIS CALLS, E3R's, & IT REQUESTS RESOLVED BY THIS PATCH: 
+    ========================================================
+   
+    1. NOIS:
+       BOS-0598-11430  SHOW PROGRESS NOTES FOR MULTIPLE PATIENTS LOOKUP
+                       PROBLEMS
+       LEB-0199-21292  Multiple Search Problem
+       KAN-0499-41567  Show Notes Across Patients
+       EKH-0499-41883  MULTIPLE SORTING PROBLEM
+       FNC-0499-32893  TIU searches not producing correct data
+       BAC-0799-41238  SEARCHES FOR DOCUMENTS
+       BAC-0999-41758  SEARCHES
+       IOW-0500-40067  Multiple entry searches not correct
+       CTX-0500-72210  TIU REVIEW SCREEN CLINICIAN report invalid
+       BEC-0700-22014  search categories not working properly
+       TOG-0101-12892  SEARCH FOR SELECTED DOCUMENT OPTION
+       POR-0501-51989  Cannot do multiple sorts in Multiple Patient
+                       Documents
+       CHY-0801-52773  Can't search by title and location
+       PRO-0402-12266  TIU Search Option doesn't respect search criteria
+  
+       E3R:
+       14142  COMBINE SEARCH CATEGORIES
+    
+       Problem: Several TIU List Manager options which allow multiple
+       search category requests are not utilizing "or" nor "and" logic to
+       determine output.
+    
+       Solution: Multiple search category requests utilize "and" logic;
+       e.g. "search for all unsigned progress notes for author A, patient
+       B" results in a list of only those unsigned progress notes which are
+       authored by A for patient B.
+    
+    2. NOIS: PUG-0800-51511  Search inaccurate after 'Signed for' for Exp
+                             Cosigner
+  
+       Problem: The following TIU List Manager options display Expected
+       Cosigner data under a column heading of "Cosigner":
+       
+       -  Search by Patient AND Title [TIU SEARCH BY PATIENT/TITLE]
+       -  List Notes By Title [TIU LIST NOTES BY TITLE]
+       -  Multiple Patient Discharge Summaries [TIU REVIEW DS CLINICIAN]
+       -  Show Progress Notes Across Patients [TIU REVIEW PN CLINICIAN]
+       -  Multiple Patient Documents [TIU REVIEW SCREEN CLINICIAN]
+       -  All MY UNSIGNED Discharge Summaries [TIU REVIEW DS UNSIGNED]
+       -  All MY UNSIGNED Progress Notes [TIU REVIEW PN UNSIGNED]
+       -  Multiple Patient Documents [TIU REVIEW SCREEN READ ONLY]
+       -  Search for Selected Documents [TIU SEARCH LIST MGR] 
+       -  Search for Selected Documents [TIU SEARCH LIST MRT] 
+    
+       Solution: The column heading will be changed to "Exp. Cos".
+    
+    3. NOIS: ISL-0897-51229  DOUBLE PROMPTING FOR AUTHOR
+  
+       Problem: If the user entering a document via option Enter/Edit
+       Document [TIU ENTER/EDIT TRANSCRIBER] is not a current provider, the
+       AUTHOR/DICTATOR prompt is not defaulted to the response entered at
+       the initial AUTHOR prompt.
+       
+       Solution: AUTHOR/DICTATOR prompt will default to response entered at
+       the initial AUTHOR prompt.
+  
+    4. NOIS: MWV-0601-20697  UNSIGNED DOCUMENT OPTION
+  
+       Problem: Upon installation of TIU*1.0*100, invoking option Search
+       for Selected Documents [TIU SEARCH LIST MGR] now displays signed
+       notes as well as a count of signed notes if they are included in the
+       expanded view.
+  
+       Solution: The new option Unsigned/Uncosigned Report [TIU
+       UNSIGNED/UNCOSIGNED REPORT] displays only those documents that are
+       unsigned/uncosigned.
+  
+    5. NOIS: N/A
+  
+       Problem: It was suggested to correct the description and help-prompt
+       for TIU UPLOAD LOG file (#8925.4), field: BUFFER FILE POINTER.
+  
+       Solution: The DESCRIPTION and 'HELP'-PROMPT fields were modified
+       for TIU UPLOAD LOG file (#8925.4), field: BUFFER FILE POINTER to
+       refer to the TIU UPLOAD BUFFER file (#8925.2) instead of the GMR
+       REPORT BUFFER file (#128.2).
+  
+    6. NOIS: N/A
+  
+       Problem: Modifications to routine TIUPUTCP (uploading of Clinical
+       Procedures results) was not done in released TIU*1.0*131.
+  
+       Solution: TIUPUTCP was modified to ensure consistency. Prior to this
+       modification, when a note was uploaded and the upload found an 
+       existing unsigned note, the text of the document was deleted and  
+       was replaced with the uploaded text.  The modification changes it
+       to replace the text if the existing note is unreleased.   
+  
+    7. NOIS: N/A
+     
+       Problem: Line tags TEXT and LOADADD in routine TIUSRV are no longer
+       called for CPRS GUI Detailed Display.
+  
+       Solution: A comment was added with this information.
+    
+    8. E3R: 13580  UNSIGNED NOTES/DIVISION
+            14516  UNSIGNED NOTES BY SERVICE REPORTING OPTION
+  
+       VHA OI IT Request #20000602  
+       Text Integration Utility - Multidivisional Enhancement
+        
+       Enhancement: Provide changes to VistA TIU software to permit
+       Clinicians and Health Information Management Systems (HIMS) users to
+       track incomplete documents by division and service in a timely
+       manner.
+       
+       Modification: Refer to Technical Components.
+    
+ III. TECHNICAL COMPONENTS 
+      ====================
+  
+ A. DATA DICTIONARY CHANGES:
+    ========================
+  
+    1. TIU DOCUMENT file (#8925)
+    
+       One new field has been added to this file.
+     
+       Field 1212  DIVISION
+       This field contains the institution associated with the document. It
+       is extracted from the document's hospital location if known;
+       otherwise it is extracted from the user's log-on division.
+    
+    2. TIU UPLOAD LOG file (#8925.4)
+       
+       One new field has been added to this file.
+    
+       Field .09  DIVISION
+       This field contains the institution associated with the upload
+       filing event. For TIU DOCUMENT file entries, is extracted from the
+       document's hospital location if known; otherwise it is extracted
+       from the user's log-on division.
+  
+       The description and help-prompt for the BUFFER FILE POINTER field
+       (#.05) have been edited.
+    
+    3. TIU SEARCH CATEGORIES file (#8925.8)
+       
+       One new entry, DIVISION, has been added to this file.
+       
+ B. INPUT TEMPLATE CHANGES:
+    =======================
+  
+    1. The following input templates have been modified to include loading
+       of TIU DOCUMENT file (#8925) entries with DIVISION data upon
+       document entry/edit. These are only utilized in the List Manager
+       environments.
+    
+       -  TIU ENTER/EDIT CLINPROC RESULT
+       -  TIU ENTER/EDIT CONSULT RESULT
+       -  TIU ENTER/EDIT DS
+       -  TIU ENTER/EDIT PROGRESS NOTE
+  
+       In addition, the TIU ENTER/EDIT DS input template has been modified
+       at the AUTHOR/DICTATOR prompt to default to the response entered at
+       the initial AUTHOR prompt when a non-provider is entering a document
+       via option Enter/Edit Document [TIU ENTER/EDIT TRANSCRIBER].
+          
+ C. LIST TEMPLATE CHANGES:
+    ======================
+  
+    1. The following list templates have been modified to include a new
+       DIVISION data column in the display.
+  
+       -  TIU REVIEW BY PATIENT & TITLE
+       -  TIU REVIEW BY TITLE   
+       -  TIU REVIEW DS CLINICIAN
+       -  TIU REVIEW FILING EVENTS
+       -  TIU REVIEW PN CLINICIAN
+       -  TIU REVIEW SCREEN CLINICIAN
+       -  TIU REVIEW SCREEN DS UNSIGNED
+       -  TIU REVIEW SCREEN MGR
+       -  TIU REVIEW SCREEN MRT
+       -  TIU REVIEW SCREEN PN UNSIGNED
+       -  TIU REVIEW SCREEN READ ONLY
+       -  TIU SEARCH LIST MGR
+       -  TIU SEARCH LIST MRT
+  
+    2. The following list templates have been modified so that the Display
+       Text "Exp. Cos." corresponds to the expected cosigner data:
+  
+       -  TIU REVIEW BY PATIENT & TITLE
+       -  TIU REVIEW BY TITLE
+       -  TIU REVIEW DS CLINICIAN
+       -  TIU REVIEW PN CLINICIAN
+       -  TIU REVIEW SCREEN CLINICIAN
+       -  TIU REVIEW SCREEN DS UNSIGNED
+       -  TIU REVIEW SCREEN PN UNSIGNED
+       -  TIU REVIEW SCREEN READ ONLY
+       -  TIU SEARCH LIST MGR
+       -  TIU SEARCH LIST MRT
+    
+ D. PRINT TEMPLATE CHANGES:
+    =======================
+  
+    1. The following print templates have been modified to include the use
+       of a new print template as a header.
+      
+       -  TIU PRINT AUTHOR STATS
+       -  TIU PRINT SERVICE STATS
+       -  TIU PRINT TRANS STATS
+       -  TIU RELEASED/UNVERIFIED PRINT
+    
+    2. The NAME of print template TIU RELEASED/UNVERIFIED PRINT has been
+       modified to TIU PRINT REL/UNV.
+    
+    3. The following print templates have been created to display DIVISION
+       and field header information.
+    
+       -  TIU PRINT AUTHOR STATS HEADER
+       -  TIU PRINT SERVICE STATS HEADER
+       -  TIU PRINT TRANS STATS HEADER
+       -  TIU PRINT REL/UNV HEADER
+    
+ E. OPTION CHANGES:
+    ===============
+  
+    1. The following options have been modified to include prompting for
+       and sorting by TIU DOCUMENT file (#8925) field DIVISION.
+    
+       -  AUTHOR Line Count Statistics [TIU DS LINE COUNT BY AUTHOR]
+       -  SERVICE Line Count Statistics [TIU DS LINE COUNT BY SERVICE]
+       -  TRANSCRIPTIONIST Line Count Statistics [TIU DS LINE COUNT BY
+          TRANSCR]
+       -  Released/Unverified Report [TIU RELEASED/UNVERIFIED REPORT]
+        
+    2. The description of the option Review Upload Filing Events [TIU
+       REVIEW FILING EVENTS] has been modified to include a reference to
+       sorting by division.
+    
+    3. The option Unsigned/Uncosigned Report [TIU UNSIGNED/UNCOSIGNED
+       REPORT] is new. It will be placed on the following menus:
+        
+       -  Text Integration Utilities (MRT) ... [TIU MAIN MENU MRT]
+       -  Text Integration Utilities (MIS Manager) ... [TIU MAIN MENU MGR]
+       
+    4. An entry action has been added for option Upload Menu ... [TIU
+       UPLOAD MENU] which displays information about the user's log-in
+       division.
+    
+ F. ROUTINE SUMMARY:
+    ================
+  
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+  
+ <tab>;;1.0;TEXT INTEGRATION UTILITIES;**[patch list]**;Jun 20, 1997
+  
+                             CHECK^XTSUMBLD results
+  Routine   Before Patch  After Patch                            Patch List
+  =======   ============  ===========                            ==========
+  TIUCPFIX      11668021  11926882                              109,167,113
+  TIUEDI3        7209154   7643974                                  100,113
+  TIUELST        8114612   9259867                                   81,113
+  TIUEN113           N/A   1808513                                      113
+  TIULA          9877605  11645739                                   79,113
+  TIULA1         6961072   7345303                                   75,113
+  TIULC1         7653418   8200882                    3,4,40,49,100,131,113
+  TIULV          9564664   9759135            7,30,55,45,52,148,156,152,113
+  TIUP113            N/A  13044795                                      113
+  TIUP113P           N/A   4962479                                      113
+  TIUPEFIX       9313733   9563806                         1,21,100,167,113
+  TIUPEVNT      11806395  12180351                          3,21,81,131,113
+  TIUPUTC        9483219   9502796                          3,21,81,100,113
+  TIUPUTCN       7410496   7502892                        4,100,120,131,113
+  TIUPUTCP      11696208  11819130                                  109,113
+  TIUPUTPN       6554155   6646551                         3,21,100,131,113
+  TIUPUTU        5613397   5711917                            3,100,120,113
+  TIUR          12147764  12321278                         74,79,58,100,113
+  TIUR1          7375740   8333778                               79,100,113
+  TIUR2         13648784  14531911                                  100,113
+  TIURC1        13044270  13203672                                  100,113
+  TIURD1        18978802  19249316                               1,7,61,113
+  TIURD2        18218997  18598009                           61,100,109,113
+  TIURD3        18711334  19248184                               61,124,113
+  TIURDIV            N/A  11435354                                      113
+  TIURE         10445062  10529314                          3,21,81,131,113
+  TIURECL1       6852165   7063546                                  100,113
+  TIURH          2620835   2719925                                      113
+  TIURM          7481699   7923223                         74,79,58,100,113
+  TIURM1         9018193   9746819                                  100,113
+  TIURPTT1       9416281   9448451                                  100,113
+  TIURTIT1       9456510   9488680                                  100,113
+  TIUSRV        15000641  15191430                1,19,28,87,61,100,109,113
+  TIUSRVP       14859228  15211186  1,7,19,28,47,89,104,100,115,109,167,113
+  TIUSRVP1       8481406   8522129                 19,59,89,100,109,167,113
+  TIUTHLP        3395881   4040247                                   21,113
+  TIUTSK         4583699   4626548                             7,53,100,113
+  
+  
+ IV. INTERFACES AND DEPENDENCIES: 
+     ============================
+  
+ The following interfaces and dependencies exist between TIU and other
+ VistA applications:
+  
+     - Registration (DG) Application
+  
+       Dependency: TIU extracts MULTIDIVISION MED CENTER? data from the MAS
+                   PARAMETERS file (#43) for use in routines TIULA and
+                   TIULA1 to determine if a facility is multidivisional.
+                   Global Reference: $P($G(^DG(43,1,"GL")),U,2)
+       DBIA:       3444
+                   
+       Dependency: TIU extracts INSTITUTION FILE POINTER data from the
+                   MEDICAL CENTER DIVISION file (#40.8) for a one-time use
+                   in the installation environment check routine TIUEN113.
+                   Global Reference: +$G(^DG(40.8,"ADV",DA))
+       DBIA:       3437            
+  
+       Dependency: TIU uses DIVISION^VAUTOMA in routine TIULA to prompt
+                   users to select one, multiple, or all MEDICAL CENTER
+                   DIVISION file (#40.8) entries.
+       DBIA:       664
+  
+       Dependency: TIU references via FileMan utilities the MEDICAL CENTER
+                   DIVISION file (#40.8) in routine TIULA1. 
+       DBIA:       1576
+  
+ V. SOFTWARE AND DOCUMENT RETRIEVAL:
+    ================================
+  
+ A. SOFTWARE: 
+    =========
+  
+ This patch is distributed in a host file. Download it as described below
+ under Section DOCUMENTATION in ASCII format, using file name:
+  
+      TIU_10_113.KID
+  
+ B. DOCUMENTATION: 
+    ==============
+  
+ The following updated documentation (.PDF) file can be retrieved by FTP in
+ BINARY format:
+    
+        TIUTM.PDF
+        TIUUM.PDF
+   
+ The preferred method is to FTP the file from
+   
+        download.vista.med.va.gov    
+   
+ which will transmit the file from the first available FTP server.
+   
+ The file may also be downloaded directly from a particular FTP location at
+ the following locations.
+   
+        Albany                  ftp.fo-albany.med.va.gov
+        Hines                   ftp.fo-hines.med.va.gov
+        Salt Lake City          ftp.fo-slc.med.va.gov
+   
+ The files are available in the ANONYMOUS.SOFTWARE directory.
+  
+ Additional information can be obtained on the TIU Enhancements web page at
+ the following address: http://vista.med.va.gov/tiu/html/Enhance.htm
+  
+  
+ VI. PRE-INSTALLATION INSTRUCTIONS:
+     ==============================
+  
+ The environment check routine is run when the installer invokes the
+ option Load a Distribution [XPD LOAD DISTRIBUTION], and when the installer
+ invokes the option Install Package(s) [XPD INSTALL BUILD]. It checks
+ DIVISION for all Hospital Location file (#44) entries <AND> INSTITUTION
+ FILE POINTER for all Medical Center Division file (#40.8) entries. It will
+ abort the load of the transport global and/or the installation if these
+ conditions are not met, and the transport global will be deleted. 
+ To prevent this, read on....
+   
+     DIVISION field loading depends on the accuracy and completeness of:
+   
+     -- DIVISION field data in the HOSPITAL LOCATION file (#44) 
+        (for post-install and for new TIU DOCUMENT entries)
+        <and>
+     -- INSTITUTION FILE POINTER field data in the MEDICAL CENTER DIVISION
+        file (#40.8)
+        (for post-install and for new TIU DOCUMENT entries)
+        <and>
+     -- DIVISION field data in the NEW PERSON file (#200)
+        (for new TIU DOCUMENT entries only)
+        <and>
+     -- DEFAULT INSTITUTION field data in the KERNEL SYSTEMS PARAMETERS
+        file (#8989.3)
+        (for new TIU DOCUMENT entries only)
+  
+     ...therefore perform the following steps PRIOR to installation:
+  
+     A. Review DIVISION field data for all entries in the HOSPITAL LOCATION
+        file (#44), editing as necessary. The installation process will
+        stop if a DIVISION cannot be determined for all entries. Output
+        from FileMan, such as shown below, can be utilized:
+  
+        Select VA FileMan Option: Print File Entries
+        
+        OUTPUT FROM WHAT FILE: HOSPITAL LOCATION// 
+        SORT BY: NAME// NUMBER
+        START WITH NUMBER: FIRST// 
+          WITHIN NUMBER, SORT BY: 
+        FIRST PRINT FIELD: NUMBER
+        THEN PRINT FIELD: NAME;L30  
+        THEN PRINT FIELD: DIVISION;L30 
+        THEN PRINT FIELD: 
+        Heading (S/C): HOSPITAL LOCATION LIST  Replace 
+        STORE PRINT LOGIC IN TEMPLATE: 
+        DEVICE:
+  
+        To edit DIVISION field data, the following options are available:
+    
+        1. For ward locations: Ward Definition Entry/Edit [DG WARD
+           DEFINITION]
+        2. For clinic locations: Set up a Clinic [SDBUILD]
+        3. For others: FileMan Enter/Edit [DIEDIT] 
+  
+     B. Review INSTITUTION FILE POINTER field data for ALL entries in the
+        MEDICAL CENTER DIVISION file (#40.8), editing as necessary. The
+        installation process will stop if an INSTITUTION FILE POINTER
+        cannot be determined for each entry. Output from FileMan, such as
+        shown below, can be utilized:
+  
+        Select VA FileMan Option: Print File Entries
+     
+        OUTPUT FROM WHAT FILE: MEDICAL CENTER DIVISION//
+              
+        SORT BY: NAME// 
+        START WITH NAME: FIRST// 
+        FIRST PRINT FIELD: NAME  
+        THEN PRINT FIELD: INSTITUTION FILE POINTER  
+        THEN PRINT FIELD: 
+        Heading (S/C): MEDICAL CENTER DIVISION LIST  Replace 
+        DEVICE: 
+  
+        To edit INSTITUTION FILE POINTER field data, the following option
+        is available:
+    
+        MAS Parameter Entry/Edit [DG PARAMETER ENTRY]
+  
+     C. Review DIVISION field data for active entries in the NEW PERSON
+        file (#200), editing as necessary. 
+        
+        NOTES:
+        
+        - Review Section II, Part C., Number 2. for explanation of division
+          determination upon log-in, as needed. 
+        
+        - You may have active entries which have a null division. If it is
+          correct for these users to be logged in under the DEFAULT
+          INSTITUTION of the KERNEL SYSTEM PARAMETERS, then you do not need
+          to take any action for these entries. If it is not correct, the
+          DIVISION field must be edited in the NEW PERSON file as 
+          appropriate.
+               
+        Output from FileMan, such as shown below, can be utilized:
+  
+        Select VA FileMan Option: Print File Entries
+  
+        OUTPUT FROM WHAT FILE: NEW PERSON// 
+        SORT BY: NAME// @TERMINATION DATE  
+        START WITH TERMINATION DATE: FIRST// @
+        GO TO TERMINATION DATE: LAST// @
+          WITHIN TERMINATION DATE, SORT BY: NAME
+             1   NAME  
+             2   NAME COMPONENTS  
+        CHOOSE 1-2: 1  NAME
+          START WITH NAME: FIRST// 
+            WITHIN NAME, SORT BY: @INTERNAL(#2)
+            START WITH INTERNAL(#2): FIRST//
+              WITHIN INTERNAL(#2), SORT BY: @INTERNAL(#11)
+              START WITH INTERNAL(#11): FIRST// 
+                WITHIN INTERNAL(#11), SORT BY: 
+        STORE IN 'SORT' TEMPLATE: 
+        FIRST PRINT FIELD: NAME
+             1   NAME  
+             2   NAME COMPONENTS  
+        CHOOSE 1-2: 1  NAME
+        THEN PRINT FIELD: SERVICE/SECTION  
+        THEN PRINT FIELD: TITLE  
+        THEN PRINT FIELD: DIVISION    (multiple)
+          THEN PRINT DIVISION SUB-FIELD: DIVISION  
+          THEN PRINT DIVISION SUB-FIELD: 
+        THEN PRINT FIELD: 
+        Heading (S/C): NEW PERSON LIST// 
+        STORE PRINT LOGIC IN TEMPLATE: 
+        START AT PAGE: 1// 
+        DEVICE: <choose a 132-column printer>
+  
+        To edit DIVISION field data, the following option is available:
+  
+        Edit an Existing User [XUSEREDIT]
+  
+     D. Review DEFAULT INSTITUTION field data in the KERNEL SYSTEM
+        PARAMETERS file (#8989.3), editing as necessary. The following
+        option is available:
+  
+        Enter/Edit Kernel Site Parameters [XUSITEPARM]
+  
+     E. Due to the methods obtained to load DIVISION field data for each
+        TIU DOCUMENT file (#8925) entry after patch installation, users
+        must be educated/re-educated as follows:
+  
+        1. Users that make appointments, create inpatient movements, and
+           enter new visits in TIU, etc. must choose the correct LOCATION
+           for that patients' episode of care.
+  
+        2. Users that have optionally defined (personal preference) a
+           DEFAULT LOCATION must be aware of the INSTITUTION corresponding
+           to this location. This location does not override outpatient
+           visit locations, but rather is only displayed as a default if a
+           user chooses NEW VISIT.
+  
+        3. Users that create and/or modify HOSPITAL LOCATION file (#44) and
+           NEW PERSON file (#200) entries must load correct DIVISION field
+           data.
+  
+        4. Multidivisional users that create new TIU DOCUMENT entries must
+           choose the correct DIVISION upon VistA log-in applicable to that
+           patients' episode of care. This includes users that perform
+           upload functions.
+  
+ VII. INSTALLATION INSTRUCTIONS: 
+      ==========================
+  
+ This patch may be installed with users on the system; however, it should 
+ be installed at a non-peak time to minimize disruption to the users. 
+ The post-install routine is NOT invoked automatically. Installation of 
+ this patch will take less than 2 minutes.
+  
+  1. Use the LOAD A DISTRIBUTION OPTION on the KIDS INSTALLATION Menu, and
+     enter TIU_10_113.KID. When prompted the following, respond YES:
+  
+     Build TIU*1.0*113 has an Environmental Check Routine
+     Want to RUN the Environment Check Routine? YES// 
+  
+  2. Review your mapped set. If any of the routines listed in this patch 
+     are mapped, they should be removed from the mapped set at this time, 
+     along with the following routines which contain code affected by this
+     patch:
+  
+     - Compiled print templates: TIUSTA*, TIUSTS*, TIUSTT*, TIUPREL* 
+     - Compiled input template: TIUEDS* 
+     - Compiled TIU DOCUMENT (#8925) cross-reference: TIUX* 
+  
+  3. The following option should not be running and should not be scheduled
+     to run during the installation.
+  
+    - TIU NIGHTLY TASK
+  
+  4. On the KIDS menu under the 'INSTALLATION' menu, use the following
+     options as desired:
+        Print Transport Global
+        Compare Transport Global to Current System
+        Verify Checksums in Transport Global
+        Backup a Transport Global
+  
+  5. On the KIDS menu under the 'INSTALLATION' menu, use the following
+     option to install the patch:
+        Install Package(s) (TIU*1.0*113)
+  
+  6. The Environment Check Routine TIUEN113 will AUTOMATICALLY be invoked; 
+     there is no prompting. 
+  
+  7. When prompted "Want KIDS to Rebuild Menu Trees Upon Completion of
+     Install? YES//", respond NO.
+  
+  8. When prompted "Want KIDS to INHIBIT LOGONs during the install? YES//",
+     respond 'NO'.
+  
+  9. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+     Protocols? YES//', respond YES, and DISABLE the TIU* and OR* Options 
+     and Protocols. 
+  
+ 10. When prompted 'Delay Install (Minutes):  (0-60): 0//', respond '0'.
+  
+ 11. If any routines were unmapped as part of step 2, they should be
+     returned to the mapped set once the installation has run to
+     completion.
+  
+ VIII. POST-INSTALLATION INSTRUCTIONS:
+       ===============================
+  
+ 1. The patch installation does not invoke the routine MAIN^TIUP113.  The
+    routine needs to be invoked from Programmer Mode and creates a task. It
+    attempts to load existing TIU DOCUMENT file (#8925) entries with 
+    DIVISION data. Details are as follows:
+  
+    - It is recommended that it be run:
+  
+      - as soon as possible after patch installation
+      - with users on the system and options enabled
+      - during off-hours
+      - at a time that does not conflict with a system backup
+      
+    - Journal space should be planned for as identified below.
+      TIU global growth will occur. Estimates are provided below. There
+      will be a relative increase in (TIU global) journal files as well.
+      Insure you have adequate space for global growth as well as
+      journaling. It is recommended that journaling be enabled or turned
+      ON during this process.
+  
+      System     Number of TIU Document entries  TIU global growth
+      --------------------------------------------------------------
+      VMS DSM     2,567,318                       56,549 DSM blocks
+      VMS DSM    10,630,816                      247,503 DSM blocks
+      VMS DSM     3,237,009                       79,245 DSM blocks
+      VMS DSM     2,831,548                       63,313 DSM blocks
+      NT Cache    1,447,573                       11,142 2k Cache blocks
+      NT Cache      481,010                        3,529 2k Cache blocks
+      NT Cache    1,278,993                       11,249 2k Cache blocks
+      NT Cache    1,928,242                       14,346 2k Cache blocks
+  
+    - Processing times for this task will vary considerably, depending on
+      the load on your system and the number of entries in the TIU
+      DOCUMENT file.
+  
+      The following list shows the processing times and number of TIU 
+      Document entries at the test sites:
+  
+        Time           Number of TIU Document entries
+        ------------   -----------------------------------------------
+         6 hr 49 min    2,567,318
+        21 hr 37 min   10,630,816
+         9 hr 57 min    3,237,009
+         4 hr 51 min    2,831,548
+         3 hr 40 min    1,447,573
+         0 hr 31 min      481,010
+         3 hr 52 min    1,278,993
+         5 hr 35 min    1,928,242
+        25 hr 21 min    2,531,176
+         7 hr 49 min    1,439,479
+  
+      Running the task in your mirror (test) account will provide you
+      with the best estimate for how long it will take in your Production
+      account, if the mirror account has been recently re-created.        
+  
+    - If you need to stop the task while it is running you may use the 
+      TASKMAN USER option on the TOOLBOX menu to do so. To restart 
+      the task invoke MAIN^TIUP113 from Programmer Mode. The task will
+      continue from the last entry processed. Only one task should be 
+      processed at a time.  If multiple tasks are started it will be 
+      necessary to stop all tasks and invoke the routine again. 
+  
+    - The global ^XTMP("TIUP113", will be set as records are processed but
+      the size of the global will be relatively small.
+  
+    - While the task is running:
+  
+      - The new DIVISION search category is available, so if selected may
+        not produce a complete list of matching records.  You may wish to
+        inform your users of this, or edit the DISPLAY NAME temporarily
+        e.g. "Division DO NOT USE".
+  
+      - If ALL divisions is selected for the following options the results
+        will include all documents, including those with null divisions.
+  
+         -  Multiple Patient Documents [TIU REVIEW SCREEN MIS MANAGER]
+         -  Multiple Patient Documents [TIU REVIEW SCREEN MRT]
+         -  Review Upload Filing Events [TIU REVIEW FILING EVENTS]
+  
+ 2. To invoke the post-installation routine from Programmer Mode type
+    (be sure to call ^XUP first, to set up the programmer environment):
+  
+    D MAIN^TIUP113
+  
+    A sample of invoking the routine is as follows:
+    ===============================================
+  
+    >D MAIN^TIUP113
+  
+  
+    PATCH TIU*1*113
+  
+    Load the DIVISION field for TIU DOCUMENT file (#8925) entries.
+  
+    Requested Start Time: NOW//  (AUG 05, 2003@14:21:19)
+  
+    A task has been queued in the background and a bulletin will be sent
+    to you upon completion of the task or if the task is stopped.
+  
+    The task number is 5226124.
+  
+ 3. If you stop the task while it is running a bulletin mail message will 
+    be sent to the user that invoked the post-installation routine.
+  
+    A sample of the bulletin mail message is as follows:
+    ====================================================
+  
+    Subj: PATCH TIU*1*113 Division Loading [#14073] 05/12/03@13:13  8 lines
+    From: PATCH TIU*1*113 DIVISION LOADING  In 'IN' basket.   Page 1
+    -----------------------------------------------------------------
+    Task Started: May 12, 2003@13:03:28
+    Task   Ended: May 12, 2003@13:13:55
+  
+    Task STOPPED: May 12, 2003@13:13:55.
+  
+    The post-install has not completed.
+    To restart invoke MAIN^TIUP113 from Programmer mode.
+    The task will continue from the last entry processed.
+  
+    Enter message action (in IN basket): Ignore// 
+  
+ 4. Once the post-install has completed successfully a bulletin mail
+    message will be sent to the user that invoked the post-installation
+    routine. The message provides information about the DIVISION loading
+    and instructions for printing and updating of exception entries (those
+    that did not get loaded with DIVISION data). Please make sure the
+    message is forwarded to the appropriate people which would include the
+    Clinical Coordinator(s).  
+  
+    A sample of the bulletin mail message is as follows:
+    ====================================================
+  
+    Subj: PATCH TIU*1*113 Division Loading  [#4103234] 05/12/03@17:18  25 
+    lines
+    From: PATCH TIU*1*113 DIVISION LOADING  In 'IN' basket.   Page 1
+    --------------------------------------------------------------------
+    Task Started: May 12, 2003@16:47
+    Task   Ended: May 12, 2003@17:18:19
+  
+    Task and post-install COMPLETED successfully.
+  
+    This patch post-install has reviewed all of the 481010
+    entries in the TIU DOCUMENT file, and has attempted to
+    load each with DIVISION data.
+  
+    There are 51145 total exception entries
+    that could not be loaded with DIVISION data,
+    however. Here's how they break down by types:
+  
+    A. Cannot determine DIVISION from Hospital Location: 51145
+    entry/entries
+    
+    B. Attempted to load DIVISION data but entry in use: 0 entry/entries
+  
+    Next, you can print the entries by type of exception so
+    you can review them before continuing, or you can skip
+    the printing and finish the post-install.
+  
+    To print: invoke DEVICE^TIUP113 from Programmer mode
+              (instructions for finishing the post-install
+              are included in this call)
+  
+    To finish: invoke UPDATE^TIUP113 from Programmer mode
+  
+    Enter message action (in IN basket): Delete//
+  
+ 5. If you wish to invoke the printing/displaying of exception entries 
+    following task completion, you can do so by calling entry point
+    DEVICE^TIUP113 from Programmer Mode (be sure to call ^XUP first, 
+    to set up the programmer environment).
+  
+    A sample of the printout/display is as follows:
+    ===============================================
+  
+    >D DEVICE^TIUP113
+  
+    Remember to finish the post-install after review of
+    the output by invoking UPDATE^TIUP113
+  
+    DEVICE: HOME//   VIRTUAL CONNECTION
+  
+    TIU*1*113 POST-INSTALL EXCEPTION LIST - Printed: MAY 13,2003@11:28:22
+  
+    Listed below are TIU DOCUMENT entry numbers that did not get DIVISION 
+    data loaded. If a division name is listed with an entry number, the
+    record was in use and the division data could not be loaded.
+    ---------------------------------------------------------------------
+  
+ A. Cannot determine DIVISION from Hospital Location: 
+     2  COMPLETED
+     3  COMPLETED
+     4  COMPLETED
+     5  COMPLETED
+     6  COMPLETED
+     7  COMPLETED
+     8  COMPLETED
+     9  COMPLETED
+     10  COMPLETED
+     11  COMPLETED
+     12  COMPLETED
+     13  COMPLETED
+     14  COMPLETED
+     15  COMPLETED
+  
+    Enter RETURN to continue or '^' to exit:
+       
+ 6. If you wish to invoke the updating of exception entries following task
+    completion, you can do so by calling entry point UPDATE^TIUP113 from 
+    Programmer Mode (be sure to call ^XUP first, to set up the programmer 
+    environment).
+  
+    - If choice 2 is selected a task is created. If you need to stop the 
+      task while it is running you may use the TASKMAN USER option on the
+      TOOLBOX menu to do so. To restart the task invoke UPDATE^TIUP113 from
+      Programmer Mode and select choice 2 again. The task will continue
+      from the last entry processed. Only one task should be processed at a
+      time.  If multiple tasks are started it will be necessary to stop all
+      tasks and invoke the routine again.
+   
+    A sample of the display is as follows:
+    ======================================
+     
+    >D UPDATE^TIUP113
+  
+    If you did not receive a mail message which indicated the post-
+    install COMPLETED, you must invoke MAIN^TIUP113 from Programmer
+    mode before following the instructions below.
+  
+    Below are listed the choices for what action(s) to take
+    on the exception entries. It is recommended you select
+    choice 3 and also possibly choice 2. The numbers can be
+    selected by commas, dashes, or a combination of both.
+    You can invoke this entry point (>D UPDATE^TIUP113)
+    as often as you wish.
+  
+    CHOICES:
+  
+    1- Exit and do not load Division for exception entries.
+    2- For exception entries in which Division could not be
+       determined from the Hospital Location, prompt me to
+       select one Division and load entries with this
+       Division. (type A)
+    3- For exception entries that were previously in use,
+       try to load Division data again. (type B)
+  
+    Select (a) NUMBER(S):  (1-3):
+  
+ 7. After the patch has been installed successfully and the post-install
+    completed successfully, sites may delete the Environment and 
+    Post-Install routines TIUEN113, TIUP113, and TIUP113P.
+  
+ 8. Option Clean old Job Nodes in XUTL [XQ XUTL $J NODES] will
+    automatically delete the ^XTMP("TIUP113") global nodes created by
+    running MAIN^TIUP113 approximately 3 months from the date the 
+    routine is initially run.
+  
+ SPECIAL NOTE RE: ROUTINE TIULC1:
+ If you are running Vista Imaging, use the menu option to copy the routines
+ to the Imaging DICOM gateways as follows: "On the Vista server (hospital
+ database), use menu option 'Copy Routines to DICOM Gateway' located under
+ the 'Imaging System Manager' Menu. Then on all Text and Image gateways use
+ the 'System Maintenance' menu to select Gateway Configuration and DICOM
+ Master File and then select 'Download Current Radiology and MAS Routines'.
+ This will cause the up-to-date version of a TIU routine (TIULC1) from 
+ this patch as well as MAS and Radiology routines to be copied to the
+ gateway systems." 
+
+Routine Information:
+====================
+
+Routine Name:
+  - TIUEDI3
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUELST
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUEN113
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIULA
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIULA1
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIULC1
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIULV
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUPEFIX
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUPEVNT
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUPUTCN
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUPUTPN
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUPUTU
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUR1
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUR2
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIURC1
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIURD1
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIURD2
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIURD3
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIURDIV
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIURE
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIURECL1
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIURH
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIURM
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIURM1
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIURPTT1
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIURTIT1
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUSRV
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUSRVP
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUSRVP1
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUTHLP
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUTSK
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUR
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUCPFIX
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUPUTCP
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUPUTC
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUP113
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUP113P
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : KRIEG,JEAN                    Date Entered  : FEB 22, 2001
+Completed By: SCHLEHUBER,PAM                Date Completed: MAR 01, 2004
+Released By : RIDINGS,SCOTT                 Date Released : MAR 03, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

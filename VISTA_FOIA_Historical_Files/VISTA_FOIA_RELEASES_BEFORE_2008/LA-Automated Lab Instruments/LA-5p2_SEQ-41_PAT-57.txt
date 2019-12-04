@@ -1,0 +1,631 @@
+$TXT Created by MCCORMACK,JOHN J at TRAIN.MILWAUKEE.VA.GOV  (KIDS) on WEDNESDAY, 04/04/01 at 16:41
+=============================================================================
+Run Date: APR 16, 2001                     Designation: LA*5.2*57
+Package : LA - AUTOMATED LAB INSTRUMENTS     Priority: Mandatory
+Version : 5.2        SEQ #41                    Status: Released
+=============================================================================
+
+Associated patches: (v)LA*5.2*17   <<= must be installed BEFORE `LA*5.2*57'
+                    (v)LA*5.2*23   <<= must be installed BEFORE `LA*5.2*57'
+                    (v)LA*5.2*25   <<= must be installed BEFORE `LA*5.2*57'
+                    (v)LA*5.2*27   <<= must be installed BEFORE `LA*5.2*57'
+                    (v)LA*5.2*42   <<= must be installed BEFORE `LA*5.2*57'
+
+Subject: LAB UNIVERSAL INTERFACE AUTO DOWNLOAD FIXES 
+
+Category: 
+  - Enhancement (Mandatory)
+  - Data Dictionary
+  - Routine
+
+Description: 
+============
+
+ VISTA Laboratory Package patch LA*5.2*57 contains no changes to software
+ controlled by VHA DIRECTIVE 99-053, titled VISTA BLOOD BANK SOFTWARE.
+  
+ This patch addresses fixes/enhancements to the Lab Universal Interface
+ Auto Download requested in several NOIS's and E3R's. It allows the auto
+ download to be configured to only transmit orders for collected specimens.
+ It enhances the auto download to determine if a test order is transmitted
+ to an automated instrument based on the accession area, specimen type and
+ test urgency of each test on the accession.
+  
+  
+    *****************************************************************
+    * PLEASE NOTE: To utilize the functionality added by this patch *
+    * to control auto downloading of uncollected specimens install  *
+    * patch LR*5.2*262 before implementing this functionality.      *
+    *****************************************************************
+  
+  
+ 1.  NOIS CHA-1199-31572 reported that when a site entered an invalid
+     label^routine name in FILE BUILD ENTRY field (#93) and FILE BUILD
+     ROUTINE field (#94) in the AUTO INSTRUMENT file (#62.4), the auto
+     download process would error with the following message:
+     $ZE= UID+28^LA7ADL:3, %DSM-E-PNAME, bad routine name
+  
+     The auto download process will check for valid routine and label
+     entry points. If an invalid/missing routine/label is found then the
+     auto download process will ignore that entry in file #62.4 and send
+     an alert to the mail group LAB MESSAGING with one of the following
+     messages:
+  
+     a. When no routine is entered in field #94.
+       "No download routine (field #94) specified for AUTO INSTRUMENT: xxx"
+  
+     b. When the routine referenced in field #94 does not exist.
+        "Invalid download routine (field #94) specified for AUTO
+         INSTRUMENT: xxx"
+  
+     c. When the routine label referenced in field #93 does not exist.
+        "Invalid download routine label (field #93) specified for AUTO
+        in the AUTO INSTRUMENT file (#62.4) INSTRUMENT: xxx"
+  
+       where "xxx" is the value of the NAME field (#.01) in AUTO INSTRUMENT
+       file (#62.4).
+  
+  
+ 2.  NOIS CHA-1199-31572 reported an inaccurate comment in the routine
+     LA7ADL. Comment "File build (entry^routine) from fields #92 and #93 in
+     file 62.4". The reference to field numbers is incorrect.  Comment has
+     been corrected to reflect fields #93 and #94.
+  
+  
+ 3.  NOIS IND-0200-41054 requested the ability to screen on an accession's
+     specimen type to determine if an order should be downloaded to the
+     instrument. In addition to screening by specimen type, tests can also
+     be screened by accession area and urgency.
+  
+     This patch adds three new fields to support this functionality.
+     The fields are:
+  
+     ACCESSION AREA (#7), SPECIMEN (#8) and URGENCY (#9) within CHEM TESTS
+     multiple field (#30) of the AUTO INSTRUMENT file (#62.4).
+  
+     When these fields are valued for a test in the CHEM TESTS multiple,
+     an order for the test on the accession will only be transmitted to
+     the instrument if it matches this criteria. Any field that is blank
+     (no value) will match on any value for the field.
+  
+     If the same test requires different screening criteria, the test can
+     be entered multiple times and configured appropriately.
+  
+     Example:
+     Accession CH 0510 20 has a specimen type = plasma with the following
+     tests:  GLUCOSE  (routine)
+             BUN      (routine)
+             CALCIUM  (stat)
+  
+     AUTO INSTRUMENT file is configured with entries that have the following
+     tests:
+     Test       Accession Area    Specimen     Urgency
+     ----       --------------    --------     -------
+     GLUCOSE    CH                <blank>      routine
+     BUN        CH                serum        <blank>
+     CALCIUM    <blank>           <blank>      stat
+  
+     This would create an order for GLUCOSE since it matched on the
+     accession area, urgency and any specimen.
+  
+     The BUN would not be sent to this instrument because it did not match
+     on the specimen type while matching on the accession area and any
+     urgency.
+  
+     The CALCIUM would be sent because it matched on the urgency and any
+     accession area and specimen type.
+  
+  
+ 4.  E3R #13785 - LRPHMAN & LRPHEXCPT BOTH SENDING HL7 MESSAGE requested the
+     ability for the auto download to ignore specimens that have not been
+     collected. This patch adds functionality to have the auto download only
+     download specimens that are marked as collected. The auto download
+     process will use INCLUDE UNCOLLECTED ACCESSIONS (#.1) in the LOAD/WORK
+     LIST file (#68.2) to determine if a specimen should be downloaded to
+     an instrument. Each entry in the AUTO INSTRUMENT file has a related
+     LOAD/WORK LIST entry. Setting the INCLUDE UNCOLLECTED ACCESSIONS field
+     to NO or blank (no value) will prevent the specimen/test downloading to
+     the instrument. If the field is set to YES then uncollected specimens
+     will be downloaded to an instrument. An accession is considered as
+     being "collected" when the LAB ARRIVAL TIME field (#12) within the
+     ACCESSION NUMBER multiple field (#68.02) within the DATE multiple
+     field (#68.01) of ACCESSION file (#68) has a date/time.
+  
+  
+ 5.  The patch introduces the ability to have a test generate more
+     than one test order. If an ordered test actually requires two or more
+     tests to be performed on an instrument, then enter the test multiple
+     times and associate the appropriate UI TEST CODE with the test to be
+     ordered.
+  
+     For result processing purposes the test may need to be entered
+     separately if the result test is associated with a different file
+     #60 test or uses a different result code (UI TEST CODE). If the
+     ordered and result test are the same and use the same UI TEST CODE
+     then the same entry can be used for both purposes.
+  
+     An example would be an order for ionized and normalized calcium.
+     To perform this test on the instrument it may need to perform both
+     a pH and ionized calcium. In the AUTO INSTRUMENT file the test
+     ionized calcium would be entered twice for ordering purposes. The
+     first entry would be associated with ordering the ionized calcium
+     while the second entry could be used to order the pH.
+  
+     TEST: IONIZED CALCIUM
+     UI TEST CODE: mCa++                   ROUTINE STORAGE: TV(695837,1)
+     ACCEPT RESULTS FOR THIS TEST: YES     DOWNLOAD TO INSTRUMENT: YES
+     (Note - this entry is used both to order the test and process the
+     results since it uses the same UI TEST CODE for both purposes.)
+  
+     TEST: IONIZED CALCIUM
+     UI TEST CODE: mpH                     ROUTINE STORAGE:  TV(695837,1)
+     ACCEPT RESULTS FOR THIS TEST: NO      DOWNLOAD TO INSTRUMENT: YES
+     (Note - this entry is only used to order the pH and is not used to
+     accept results.)
+  
+     TEST: NORMALIZED CALCIUM
+     UI TEST CODE: cCa++                   ROUTINE STORAGE: TV(695838,1)
+     ACCEPT RESULTS FOR THIS TEST: YES     DOWNLOAD TO INSTRUMENT: NO
+     (Note - this entry is not used for ordering purposes but instead is
+     used to process the result from the instrument.)
+  
+  
+     A second example would be bicarbonate. To perform this test on the
+     instrument it may need to perform both a pH and pCO2. In the AUTO
+     INSTRUMENT file the test HCO3 would be entered twice for ordering
+     purposes. The first entry would be associated with ordering the
+     pCO2 while the second entry could be used to order the pH. This
+     same test would be added a third time. This entry handles the result
+     being transmitted by the instrument which uses a different UI TEST
+     CODE for result purposes.
+  
+     TEST: HCO3
+     UI TEST CODE: mPCO2                   ROUTINE STORAGE: TV(8,1)
+     ACCEPT RESULTS FOR THIS TEST: NO      DOWNLOAD TO INSTRUMENT: YES
+     (Note - this entry is only used to order the pCO2 and is not used to
+     accept results.)
+  
+     TEST: HCO3
+     UI TEST CODE: mpH                     ROUTINE STORAGE: TV(8,1)
+     ACCEPT RESULTS FOR THIS TEST: NO      DOWNLOAD TO INSTRUMENT: YES
+     (Note - this entry is only used to order the pH and is not used to
+     accept results.)
+  
+     TEST: HCO3
+     UI TEST CODE: cHCO3act                ROUTINE STORAGE: TV(8,1)
+     ACCEPT RESULTS FOR THIS TEST: YES     DOWNLOAD TO INSTRUMENT: NO
+     (Note - this entry is not used for ordering purposes but instead is
+     used to process the result from the instrument.)
+  
+  
+  
+ 6.  NOIS IND-0699-40171 reported that an invalid HL7 time value was being
+     downloaded to an instrument.
+  
+     When building a HL7 message the software will now check time values.
+     If the time is found to not conform to HL7 specifications for a time
+     value it will adjusted as follows:
+  
+     If hours are greater than 24, hours will be reported as 24 with no
+     minutes/seconds.
+     If minutes are greater than 59, minutes will be reported as 59
+     If seconds are greater than 59, seconds will be reported as 59
+  
+  
+ 7.  NOIS WPB-0997-31750 reported an "undefined variable X in routine DIM"
+     when the input transform for PARAM 1 (#2) within CHEM TESTS multiple
+     field (#30) of the AUTO INSTRUMENT file (#62.4) kills the variable X.
+     The input transform will call DIM only if X is defined.
+  
+  
+ 8.  This patch also corrects the following Vista Programming Standards
+     and Conventions (SAC) violations that were observed during software
+     review as part of patch development:
+  
+     a. Removed direct global read of global ^VA(200) which contains the
+        NEW PERSON file.  Routines LA7ADL1 and LA7UID2 were retrieving
+        user's name. Call changed to Kernel supported reference
+        (DBIA # 10060) using FileMan DBS call $$GET1^DIQ.
+  
+     b. Removed several naked indicator references in routine LADOWN that
+        were not documented. Routine changed to use full global reference.
+  
+     c. Changed FileMan security on several fields in AUTO INSTRUMENT file
+        (#62.4) per SAC section 3.2.6. See section "FILE SECURITY" below for
+        additional information.
+  
+  
+ 9.  Corrects an "undefined variable ^(2)" error in routine LADOWN that
+     was detected by laboratory development during the software review for
+     the patch. This error would occur if an attempt to download a load/work
+     list was initiated which have no specimens on the list.
+  
+  
+ 10. Removed software checks that would only allow downloading of entries
+     in file #62.4 when the internal entry number was less than 100.
+  
+  
+ 11. A misspelling of the DOWNLOAD PROTOCOL ROUTINE (#92) field in the
+     AUTO INSTRUMENT file (#62.4) is corrected. The word PROTOCOL in the
+     field name was misspelled.
+  
+  
+ 12. The Download a load list to an Instrument option [LA DOWN] sets up the
+     ^LA global for downloading records to an instrument that are direct
+     connects or interfaced via the Lab LSI. The Lab Universal Interface
+     does not use the LA global for this purpose. This option will only
+     setup the ^LA global when the MESSAGE CONFIGURATION field (#8) in AUTO
+     INSTRUMENT file is empty, indicating that this entry is not using the
+     Lab Universal Interface.
+  
+  
+ 13. During patch development it was found that processing of the HL7
+     specimen source from sequence 15 of the OBR segment of a HL7 Result
+     (ORU) message was checking the entire first component of this field.
+     This checking should occur using the first sub-component of the first
+     component of sequence 15. Routine LA7UIIN1 has been changed to
+     correctly check the specimen source.
+  
+  
+ 14. Functionality that was tested by the test sites:
+  
+                                                      Site
+ Function                      | ASH | BHS | CPL | IND | MIW | STX | TVH | UNY
+ -----------------------------------------------------------------------------
+ Used auto download?           | YES | YES | YES | YES | YES | YES | YES | YES
+  
+ Used download via loadlist?   | YES |  NO | YES |  NO |  NO |  NO |  NO | YES
+  
+ Tested screening capabilities | YES | YES | YES |  NO | YES | YES | YES | YES
+ based on accession area?
+  
+ Tested screening capabilities | YES | YES |  NO | YES | YES |  NO |  NO | YES
+ based on specimen type?
+  
+ Tested screening capabilities | YES |  NO |  NO |  NO |  NO |  NO |  NO | YES
+ based on urgency?
+  
+ Used combination of the above | YES | YES |  NO |  NO |  NO |  NO |  NO | YES
+ test screening capabilities?
+  
+ Screened on collection status | YES | YES | YES | YES | YES | YES |  NO | YES
+ based on the associated
+ loadlist setting?
+  
+ Used capability to generate   | YES |  NO |  NO |  NO | YES |  NO |  NO |  NO
+ additional tests in the order
+ message?
+  
+  Legend:  ASH = Asheville VAMC
+           BHS = Boston HCS
+           CPL = Central Plains HCS
+           IND = Indianapolis VAMC
+           MIW = Milwaukee VAMC
+           STX = South Texas HCS
+           TVH = Tennessee Valley HCS
+           UNY = Upstate New York HCS (VISN 2)
+  
+           YES = tested functionality
+            NO = did not test functionality
+  
+  
+  
+ ASSOCIATED NOIS
+ ---------------
+  BIL-0700-31662
+  CHA-1199-31572
+  CPH-1000-41040
+  IND-0699-40171
+  IND-0200-41054
+  LAH-0299-62613
+  SAJ-0997-70774
+  UNY-0700-10460
+  WPB-0997-31750
+  
+  
+ ASSOCIATED E3R'S
+ ----------------
+  #13785 - LRPHMAN & LRPHEXCPT BOTH SENDING HL7 MESSAGE
+  
+  
+ TEST SITES
+ ----------
+  Asheville VAMC
+  Boston HCS
+  Central Plains HCS
+  Indianapolis VAMC
+  Milwaukee VAMC
+  South Texas HCS
+  Tennessee Valley HCS
+  Upstate New York HCS (VISN 2)
+  
+  
+ ROUTINE SUMMARY
+ ===============
+   The following routines are included in this patch.  The second line
+   of each of these routines now looks like:
+   <tab> ;;5.2;AUTOMATED LAB INSTRUMENTS;<patchlist>;Sep 27, 1994
+  
+                     Checksum       Checksum
+    Routine Name     Before Patch   After Patch    Patch List
+    ------------     ------------   -----------    ------------
+    LA57             N/A            5998709        **57** (Deleted by KIDS)
+    LA7ADL           10978189       5237792        **17,25,23,57**
+    LA7ADL1          7046668        4892374        **17,23,57**
+    LA7UID           2037413        2071504        **17,57**
+    LA7UID1          5866288        2775829        **17,57**
+    LA7UID2          9041764        8668527        **17,27,57**
+    LA7UIIN1         10176639       5544723        **17,23,27,57**
+    LADOWN           9641097        5592262        **17,57**
+    LADOWN1          1620875        814617         **17,42,57**
+  
+  
+ List of preceding patches: 27, 42
+ Sites should use CHECK^XTSUMBLD to verify checksums.
+  
+  
+ FILE SECURITY
+ =============
+  
+  There are six existing fields which have FileMan Write Access changed to
+  "@". This is required for security purposes. To edit these fields requires
+  the user to have FileMan Programmer's Access. The fields affected are:
+  
+   - PROGRAM (#2), DOWNLOAD ENTRY (#91), DOWNLOAD PROTOCOL ROUTINE (#92),
+     FILE BUILD ENTRY (#93) and FILE BUILD ROUTINE (#94) of the
+     AUTO INSTRUMENT file (#62.4).
+  
+   - PARAM 1 (#2) within CHEM TESTS multiple field (#30) of the AUTO
+     INSTRUMENT file (#62.4).
+  
+ ************************************************************************
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+  
+   The install time for this patch is less than 5 minutes. This patch
+   can be installed when Laboratory users are on the system.
+   Suggested time to install: non-peak hours.
+   The install will disable option Download a load list to an Instrument
+   [LA DOWN] as specified in #7 below and turn off Lab Universal Interface
+   Auto Download. Accessioning should not be occurring within the
+   Laboratory package during the installation of this patch.
+  
+  
+ NOTE: Kernel, MailMan and HL7 patches must be current on the target system
+       to avoid problems loading and/or installing this patch.
+  
+       Patch installation needs to be coordinated with the Laboratory
+       Information Manager (LIM/ADPAC).
+  
+  
+   1.  If any of the above routines are mapped, disable mapping for them.
+  
+   2.  Use the 'INSTALL/CHECK MESSAGE' option of the PackMan menu.  This
+       option will load the KIDS patch onto your system.
+  
+   3.  The patch has now been loaded into a Transport global on your
+       system.  You now need to use KIDS to install the transport global.
+  
+   4.  On the 'Kernel Installation & Distribution System' Menu (KIDS),
+       select the 'Installation' menu.
+  
+   5.  Use the 'Verify Checksum in Transport Global' option and verify that
+       all routines have the correct checksums.
+  
+   6.  On the KIDS menu, under the 'Installation' menu, use the following
+       options:
+         Print Transport Global
+         Compare Transport Global to Current System
+         Backup a Transport Global
+  
+       If you wish to preserve a copy of the routines exported in this patch
+       prior to installation, you should use the 'Backup a Transport Global'
+       option at this time.  You may also compare the routines in your
+       production account to the routines in the patch by using the 'Compare
+       a Transport Global to Current System' option.
+  
+   7.  The install will disable the following Lab option during patch
+       installation.
+  
+       Download a load list to an Instrument [LA DOWN]
+  
+   8.  Use the 'Install Package(s)' option under the 'Installation' menu
+       and select the package 'LA*5.2*57'.  When prompted 'Want to
+       DISABLE Scheduled Options, Menu Options, and Protocols? YES//',
+       choose 'NO'.
+  
+   9. On a mapped system, rebuild your map set.
+  
+  10. Routine LA57 will be deleted after successful patch installation.
+  
+  
+ POST-INSTALLATION INSTRUCTIONS:
+ ===============================
+  
+ The Lab ADPAC/LIM should review the AUTO INSTRUMENT and LOAD/WORK LIST
+ files to adjust any field settings based on the corrections/enhancements
+ introduced by this patch.
+  
+ Note: Use FileMan Enter/Edit option to edit LOAD/WORK LIST file (#68.2)
+       and AUTO INSTRUMENT file (#62.4).
+  
+ 1. If using the auto download feature of the Lab Universal Interface then
+ shutdown the auto download process first before making changes. This can
+ be performed by using the Start/Stop Auto Download Background Job
+ [LA7 ADL START/STOP] option and selecting action: 2 Shutdown Auto Download
+ Job.
+  
+ 2. To prevent uncollected accessions from being downloaded via the
+ Universal Interface, use FileMan Enter/Edit to set INCLUDE UNCOLLECTED
+ ACCESSIONS (#.1) field in the LOAD/WORK LIST file (#68.2) to NO for the
+ load/work list that is associated with an instrument in the AUTO INSTRUMENT
+ file via LOAD/WORK LIST field (#3).
+  
+ 3. Configure those tests that will require download eligibility screening.
+ Using FileMan Enter/Edit, edit these tests in the AUTO INSTRUMENT file that
+ should be screened by editing the fields ACCESSION AREA (#7), SPECIMEN (#8)
+ and URGENCY (#9) within CHEM TESTS multiple field (#30) of the AUTO
+ INSTRUMENT file (#62.4).
+  
+ If the same test requires different screening criteria, the test can be
+ entered multiple times and configured appropriately.
+  
+ 4. Restart the auto download if stopped in number #1 above using the same
+ option and selecting action: 1 Start/Restart Auto Download Job.
+  
+  
+  
+ ************************************************************************
+ Installation example:
+  
+ Select Installation Option: 6  Install Package(s)
+ Select INSTALL NAME: LA*5.2*57  Loaded from Distribution  5/11/00@15:44:21
+      => LA*5.2*57
+  
+ This Distribution was loaded on May 11, 2000@15:44:21 with header of
+    LA*5.2*57
+    It consisted of the following Install(s):
+       LA*5.2*57
+ Checking Install for Package LA*5.2*57
+ Will first run the Environment Check Routine, LA57
+  
+  
+                         --- Environment Check is Ok ---
+  
+ Install Questions for LA*5.2*57
+  
+ Incoming Files:
+  
+  
+    62.4      AUTO INSTRUMENT  (Partial Definition)
+ Note:  You already have the 'AUTO INSTRUMENT' File.
+  
+ Want KIDS to Rebuild Menu Trees Upon Completion of Install? YES// NO
+  
+  
+ Want KIDS to INHIBIT LOGONs during the install? YES// NO
+ Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// NO
+  
+ Enter the Device you want to print the Install messages.
+ You can queue the install by enter a 'Q' at the device prompt.
+ Enter a '^' to abort the install.
+ DEVICE: HOME//  TELNET VIRTUAL
+  
+  
+  Install Started for LA*5.2*57 :
+                May 11, 2000@16:24:51
+  
+ Build Distribution Date: May 11, 2000
+  
+  Installing Routines:.........
+                May 11, 2000@16:24:51
+  
+  Running Pre-Install Routine: PRE^LA57.
+  
+                Sending install started alert to mail group G.LMI
+  
+                           *** Pre install started ***
+  
+             Shutting down Lab Universal Interface Auto Download Job
+  
+                          *** Pre install completed ***
+  
+  Installing Data Dictionaries: ..
+                May 11, 2000@16:24:52
+  
+  Installing PACKAGE COMPONENTS:
+  
+  Installing OPTION..
+                May 11, 2000@16:24:52
+  
+  Running Post-Install Routine: POST^LA57.
+  
+                           *** Post install started ***
+  
+               Restarting Lab Universal Interface Auto Download Job
+  
+                  Updating package revision data for file #62.4
+  
+                          *** Post install completed ***
+  
+               Sending install completion alert to mail group G.LMI
+  
+  Updating Routine file......
+  
+  Updating KIDS files.......
+  
+  LA*5.2*57 Installed.
+                May 11, 2000@16:24:52
+  
+  Install Message sent #23893
+
+Routine Information:
+====================
+
+Routine Name:
+  - LA7ADL
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7ADL1
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7UID2
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA57
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7UID
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7UID1
+
+
+Routine Checksum:
+
+Routine Name:
+  - LADOWN
+
+
+Routine Checksum:
+
+Routine Name:
+  - LADOWN1
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7UIIN1
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : MCCORMACK,JOHN                 Date Entered : MAY 05, 2000
+Completed By: ELIJAH,VICKEY                 Date Completed: APR 16, 2001
+Released By : BELSCHWINDER,MICHAEL          Date Released : APR 16, 2001
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,255 @@
+$TXT Created by MULLER,RICHARD at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 09/24/03 at 10:52
+=============================================================================
+Run Date: SEP 30, 2003                     Designation: IVM*2*92
+Package : IVM - INCOME VERIFICATION MATCH     Priority: EMERGENCY
+Version : 2        SEQ #75                      Status: Released
+                  Compliance Date: OCT 02, 2003
+=============================================================================
+
+Associated patches: (v)IVM*2*34    <<= must be installed BEFORE `IVM*2*92'
+
+Subject: FIX Z07 TRANSMISSION STATUS
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch is being released as an EMERGENCY in a continued effort to 
+ reduce the amount of HL7 traffic between VistA and the HEC.
+  
+ One of the operations IVM BACKGROUND JOB performs is to generate the 
+ transmission of an IVM FULL DATA (ORU~Z07) HL7 Transmissions to the HEC.  
+ When the TRANSMISSION STATUS (#.03) field in the IVM PATIENT (#301.5) 
+ File is set to NOT TRANSMITTED, an ORU~Z07 will be generated for the 
+ INCOME YEAR (#.02) field in the IVM PATIENT record.
+  
+ When the ORU~Z07 message is contains an Income Test for an Income Year 
+ other than the year found in the IVM PATIENT record which triggered the 
+ transmission, the TRANSMISSION STATUS field is not being updated to 
+ TRANSMITTED.  This is causing the record to be transmitted daily.
+  
+ When a Date of Death is entered for a patient, a record is added to the 
+ IVM PATIENT File.  This new record is set to NOT TRANSMITTED.  Because 
+ the record is for an Income Year that does not contain an Income Test, 
+ the ORU~Z07 message process updates the IVM PATIENT record that is for 
+ the Income Year containing the last Income Test on file.  The IVM PATIENT 
+ record that is responsible for creating the ORU~Z07 is not getting 
+ updated.
+  
+ The two Income Test API's ($$LST^DGMTU  and $$LST^DGMTCOU1) used during 
+ the creation of an ORU~Z07 message, return the last Income Test found in 
+ the ANNUAL MEANS TEST (#408.31) File.  $$LST^DGMTU is used to update the 
+ IVM PATIENT (#301.5) File to transmitted, and $$LST^DGMTCOU1 is used to 
+ update the IVM TRANSMISSION LOG (#301.6) File to transmitted.
+  
+ The IVM BACKGROUND JOB has been modified with this patch (IVM*2.0*92) to 
+ correctly identify the IVM PATIENT record that requires the TRANSMISSION 
+ STATUS to be updated.
+  
+  
+ This patch addresses the following E3R(s):
+ ------------------------------------------
+ There are no E3Rs associated with this patch.
+  
+  
+ This patch addresses the following NOIS message(s):
+ ---------------------------------------------------
+ IVM-0803-30372     CHECK EXCESSIVE NUMBER OF ORU Z07S
+  
+ Overview of NOIS Message(s):
+ ---------------------------
+  
+ NOIS:       IVM-0803-30372 CHECK EXCESSIVE NUMBER OF ORU Z07S
+  
+ Problem:    Many records are not updating to reflect a TRANSMITTED status 
+ and are creating daily ORU~Z07 messages to the HEC.
+  
+  
+ Resolution: Update the code to correctly identify and update all 
+ transmitted records in the IVM PATIENT (#301.5) File.
+  
+  
+        ================INSTALLATION INSTRUCTIONS =================
+  
+ If installed during the normal workday, it is recommended that the 
+ following menu options (File #19) and all of their descendants be disabled
+ to prevent possible conflicts while running the KIDS Install. Other users 
+ will not be affected.
+  
+                   [IVM BACKGROUND JOB]    IVM BACKGROUND JOB
+  
+  
+ Install Time - 2 minutes
+  
+  
+   1.   LOAD TRANSPORT GLOBAL 
+        ---------------------
+        Choose the PackMan message containing this patch and invoke the 
+        INSTALL/CHECK MESSAGE PackMan option.  
+              
+   2.   DISABLE ROUTINE MAPPING   (DSM for Open VMS sites only) 
+        -----------------------
+        Disable routine mapping on all systems for the routines listed
+        in step 3 below.  
+       
+  NOTE:  If the routines included in this patch are not currently
+               in your mapped routine set, please skip this step.
+   
+   3.   COMPONENTS SENT WITH PATCH 
+        ------------------------
+        The following is a list of the routines included in this patch.  
+        The second line of each of these routines now looks like: 
+   
+            ;;2.0;INCOME VERIFICATION MATCH;**[patch list]**; 21-OCT-94  
+  
+                            CHECK^XTSUMBLD results
+  
+        Routine      Before Patch     After Patch    Patch List 
+        -------      ------------     -----------    ----------
+        IVMPTRN3     1969446          2399403        1,9,34,92
+  
+         Total number of routines - 1
+  
+   4.   START UP KIDS 
+        -------------
+        Start up the Kernel Installation and Distribution System Menu 
+        [XPD MAIN]: 
+    
+             Edits and Distribution ...  
+             Utilities ...  
+             Installation ...  
+    
+   Select Kernel Installation & Distribution System Option: INStallation 
+                                                            ---
+             Load a Distribution 
+             Print Transport Global 
+             Compare Transport Global to Current System 
+             Verify Checksums in Transport Global 
+             Install Package(s) 
+             Restart Install of Package(s) 
+             Unload a Distribution 
+             Backup a Transport Global 
+    
+   Select Installation Option: 
+    
+   5.   Select Installation Option: 
+        --------------------------
+        NOTE:  The following are OPTIONAL - (When prompted for the
+               INSTALL NAME, enter IVM*2.0*92):
+       
+        a.  Backup a Transport Global - This option will create a backup
+            message of any routines exported with this patch. It will 
+            not backup any other changes such as DD's or templates.
+        b.  Compare Transport Global to Current System - This option 
+            will allow you to view all changes that will be made when 
+            this patch is installed.  It compares all components of this 
+            patch (routines, DD's, templates, etc.).
+        c.  Verify Checksums in Transport Global - This option will 
+            allow you to ensure the integrity of the routines that are 
+            in the transport global.
+      
+   6.   Select Installation Option: Install Package(s) 
+                                    ----------------
+        **This is the step to start the installation of this KIDS patch: 
+    
+       a.  Choose the Install Package(s) option to start the patch install.
+       b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+           YES//' answer NO (unless otherwise indicated)
+       c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+           Options, and Protocols? YES//' answer YES (unless otherwise 
+           indicated)
+       d.  When prompted 'Enter options you wish to mark as 'Out Of
+           Order':'  Enter the following option:
+   
+                [IVM BACKGROUND JOB]    IVM BACKGROUND JOB
+  
+       e.  When prompted 'Enter protocols you wish to mark as 'Out Of 
+           Order':' press <return>.
+  
+   7.    REBUILD MAPPED ROUTINE(S)  (DSM for Open VMS sites only)
+        -------------------------
+        Optional - Include the routines distributed with this patch
+        in the mapped routine set.
+      
+        NOTE: This step is only necessary if you performed step 2 or 
+              if you wish to include the routines in your mapped set.
+
+Routine Information:
+====================
+
+Routine Name:
+  - IVMPTRN3
+
+ Before:
+   ;
+   ;find or create entry in IVM PATIENT file
+   S IVMPTR=$$FIND^IVMPLOG(DFN,IVMYR)
+   S:'IVMPTR IVMPTR=$$LOG^IVMPLOG(DFN,IVMYR,.EVENTS)
+   Q:'IVMPTR
+   ;
+   I $$CLEAR^IVMPLOG(IVMPTR,WHEN) ;if successful,IVM PATIENT file has 
+ TRANSMITTED status.
+   ;
+   ; - add TRANSMISSION LOG entry
+   I $$LOG^IVMTLOG(IVMPTR,WHEN,MSGID,.EVENTS,MTSTAT,INSSTAT)
+   ;
+   D DUP(DFN,IVMYR,IVMPTR) ; remove duplicates
+   Q
+  
+ After:
+   ;
+   ;find or create entry in IVM PATIENT file
+   S IVMPTR=$$FIND^IVMPLOG(DFN,IVMYR)
+   S:'IVMPTR IVMPTR=$$LOG^IVMPLOG(DFN,IVMYR,.EVENTS)
+   Q:'IVMPTR
+   ;
+   ; Check the 301.5 record for Transmission Status
+   N TRSTAT S TRSTAT=+$P(^IVM(301.5,IVMPTR,0),U,3)
+   ;
+   ; If this record is not updated, update it only
+   I 'TRSTAT D UPDTLOG(IVMPTR,WHEN,MSGID,.EVENTS,MTSTAT,INSSTAT)
+   ;
+   ; If this record is already updated, check all other records
+   ; for this patient that should be updated.
+   I TRSTAT D
+   .N NXTPTR,NXTYR S NXTPTR=0
+   .F  S NXTPTR=$O(^IVM(301.5,"B",DFN,NXTPTR)) Q:'NXTPTR  D
+   ..Q:NXTPTR=IVMPTR
+   ..S TRSTAT=+$P(^IVM(301.5,NXTPTR,0),U,3)
+   ..Q:TRSTAT
+   ..S NXTYR=$P(^IVM(301.5,NXTPTR,0),U,2)
+   ..I $$LOG^IVMPLOG(DFN,NXTYR,.EVENTS)
+   ..D UPDTLOG(NXTPTR,WHEN,MSGID,.EVENTS,MTSTAT,INSSTAT)
+   ;
+   Q
+  
+ New Section:
+ UPDTLOG(IVMPTR,WHEN,MSGID,EVENTS,MTSTAT,INSSTAT)  ;
+   ; Update record to TRANSMITTED, and remove duplicates
+   ;
+   ; Update the IVM PATIENT (#301.5) record to a TRANSMITTED status.
+   I $$CLEAR^IVMPLOG(IVMPTR,WHEN)
+   ;
+   ; Add an entry in the IVM TRANSMISSION LOG (#301.6) File.
+   I $$LOG^IVMTLOG(IVMPTR,WHEN,MSGID,.EVENTS,MTSTAT,INSSTAT)
+   ;
+   D DUP(DFN,IVMYR,IVMPTR) ; remove duplicates
+   ;
+   Q
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : MULLER,RICHARD                Date Entered  : SEP 23, 2003
+Completed By: LANDRY,DANNA                  Date Completed: SEP 30, 2003
+Released By : GANUS,MAUNETTE                Date Released : SEP 30, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

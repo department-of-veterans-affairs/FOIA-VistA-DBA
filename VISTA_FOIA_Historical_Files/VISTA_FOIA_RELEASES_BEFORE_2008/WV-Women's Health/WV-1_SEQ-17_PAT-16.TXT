@@ -1,0 +1,647 @@
+
+=============================================================================
+Run Date: FEB 24, 2005                     Designation: WV*1*16
+Package : WV - WOMEN'S HEALTH                 Priority: Mandatory
+Version : 1        SEQ #17                      Status: Released
+                  Compliance Date: APR 01, 2005
+=============================================================================
+
+Associated patches: (v)WV*1*9     <<= must be installed BEFORE `WV*1*16'
+                    (v)WV*1*10     <<= must be installed BEFORE `WV*1*16'
+                    (v)WV*1*15     <<= must be installed BEFORE `WV*1*16'
+                    (v)WV*1*17     <<= must be installed BEFORE `WV*1*16'
+
+Subject: WH-CLINICAL REMINDERS LINK
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Enhancement (Mandatory)
+  - Other
+  - Informational
+
+Description:
+============
+
+ Associated NOIS: <None>
+  
+ Associated E3Rs: 18684
+  
+ Test Sites:
+ ===========
+  Northern California HCS
+  Loma Linda
+  Tampa
+  Washington D.C.
+  
+  
+       This patch is part of a multi-KIDS build that includes PXRM*2*1
+       (Clinical Reminders), LR*5.2*311 (Laboratory) and OR*3*210 (CPRS).
+       Please see the patch description for PXRM*2*1 for information on
+       retrieving the host file containing these patches.
+  
+       The Technical Integration approval has been received for the data 
+       dictionary changes.
+  
+  
+ This patch is an enhancement. It adds functionality that allows the
+ Women's Health (WH) package to send data to the Clinical Reminders (CR)
+ package to resolve Mammogram and Pap Smear reminders. Also, the CR package
+ will be able to send data to the WH package to update the WH database.
+  
+ 1) The following APIs are added:
+  
+   a) GETPARAM^WVSITE returns WH site parameters for the facility
+      indicated. It is documented in Integration Agreement (IA) 4101.
+  
+      GETPARAM(.RESULT,IEN)
+  
+      Input:
+        .RESULT = Array name to return data in. (Required)
+            IEN = INSTITUTION file (#4) IEN. (Required)
+  
+     Output: 
+         RESULT(0)=1st piece is 1 (for Success) or -1 (Failure)
+                   2nd piece is the reason for failure 
+         RESULT(1)=1st piece is 1 (for Yes) or 0 (for No or null).
+                   This is the value of the UPDATE RESULTS/DX (#.11) field
+                   in the WV SITE PARAMETER (#790.02) file.
+  
+                   2nd piece is 1 (for Yes) or 0 (for No or null).
+                   This is the value of the UPDATE TREATMENT NEEDS (#.12)
+                   field in the WV SITE PARAMETER (#790.02) file.
+  
+     Example:
+  
+     > D GETPARAM(.RESULT,499) ZW RESULT 
+     > RESULT(0)=1^ 
+     > RESULT(1)=1^1 
+  
+  
+   b) RESULTS^WVALERTS returns an array with data for the WV PROCEDURE 
+      (#790.1) file entry specified. It is documented in IA 4102.
+  
+     RESULTS(.RESULT,IEN)
+  
+     Input:
+       .RESULT = Array name to return data in. (Required)
+           IEN = The internal entry number of a WV PROCEDURE (#790.1) file
+                 entry. (Required)
+  
+     Output: 
+      RESULT(0) = piece1^piece2^piece3^piece4^piece5^piece6^piece7^piece8
+                  ^piece9^piece10
+  
+       where:     piece1 = WV PROCEDURE (#790.1) file entry number
+                  piece2 = patient DFN 
+                  piece3 = 'Breast Ultrasound', 'Mammogram' or 'Pap Smear' 
+                  piece4 = Date of procedure (FileMan internal format) 
+                  piece5 = Radiology procedure name 
+                  piece6 = Primary radiology diagnosis 
+                  piece7 = One or more radiology modifiers separated by 
+                           tildes (~)
+                  piece8 = Lab package test date (external format) 
+                  piece9 = Lab accession number 
+                  piece10 = Lab specimen text 
+                 
+     If the entry is not found, piece 1 will contain '-1' and piece 3
+     will contain an error message.
+  
+     If the entry is a Pap Smear, then pieces 5 through 7 are null.
+  
+     If the entry is a Mammogram or Breast Ultrasound, then pieces 8 
+     through 10 are not returned.
+                 
+     Example of a Pap Smear: 
+                 
+     > D RESULTS(.RESULT,313) ZW RESULT 
+     > RESULT(0)=313^94^Pap Smear^3030131^^^^01/31/2003^CY 03 6^PAP SMEAR
+                 
+     Example of a Mammogram: 
+                 
+     > D RESULTS(.RESULT,314) ZW RESULT 
+     > RESULT(0)=314^94^Mammogram^3030321^MAMMOGRAM SCREENING^NORMAL
+                 ^LEFT~RIGHT 
+  
+  
+   c) LETTER^WVRPCNO1 returns the letter text for the WV NOTIFICATION 
+      PURPOSE (#790.404) file entry specified. It is documented in IA 4103.
+  
+      LETTER(.RESULT,IEN)
+    
+      Input:
+       .RESULT = Array name to return data in. (Required)
+           IEN = WV NOTIFICATION PURPOSE (#790.404) file IEN. (Required)
+  
+      Output:
+       RESULT(0) = Blank if the entry exists  <OR> -1^error message
+       RESULT(n) = Lines of letter text where 'n' is a sequential number
+                 
+      Example:
+  
+      > D LETTER(.RESULT,1) ZW RESULT 
+      > RESULT(0)= 
+      > RESULT(1)=
+      > RESULT(2)= 
+      > RESULT(3)=                     Women's Health Clinic
+      > RESULT(4)= 
+      > RESULT(5)=                        123 Main Street
+      > RESULT(6)= 
+      > RESULT(7)=                       CHICAGO, IL 60612
+      > RESULT(n)= ...
+  
+  
+   d) NEW^WVRPCNO is used to update a procedure result in File 790.1,
+      create a notification entry in FILE 790.4, print a notification and
+      update a patient's treatment needs. It is documented in IA 4104.
+  
+      NEW(.RESULT,.NOTIF)
+                 
+      Input:
+       RESULT = This is an array that identifies what FILE 790.1 entries 
+                will be updated and the result code to use. (Optional)
+                RESULT(n)=FILE 790.1 IEN^"A", "N" or "U" 
+  
+                Where: n is a number greater than zero.
+  
+                The first piece is the WV PROCEDURE (790.1) file IEN.
+               
+                The second piece is a one character code that identifies
+                the diagnosis. 'A' stands for Abnormal, 'N' stands for
+                Normal and 'U' stands for Unsatisfactory (e.g., 1234^N).
+  
+        NOTIF = This is an array that identifies the notification purposes
+                to use to create entries in the WV NOTIFICATION (790.4) 
+                file. (Optional)
+                NOTIF(FILE 790.404 IEN,n) = FILE 790.1 IEN^Type^FILE 3.5
+                                            NAME^DFN
+                             
+                     Where: The first array subscript is a FILE 790.404
+                            internal entry number (IEN).  
+                             
+                            The second subscript is a sequential number
+                            starting with 1.  
+                             
+                            The first piece of data in the node is the FILE
+                            790.1 IEN which identifies the procedure
+                            performed.  
+                             
+                            The second piece is a one character code that
+                            identifies the type of notification. 'I' stands
+                            for In-person, 'L' stands for Letter and 'P' 
+                            stands for "Phone".  
+                             
+                            The third piece identifies the print device. It
+                            consists of the FILE 3.5 IEN, a semi-colon and 
+                            the .01 value of the entry (e.g.,
+                            5;HPLASERJET).  
+                             
+                            The fourth piece is the patient IEN (i.e., DFN)
+                            from FILE 2.  
+  
+  
+      Output: A notification letter for a patient may be printed based on
+              the input parameter values. However, no values are sent back 
+              to the calling routine.
+  
+      Example:
+  
+      > S RESULT(1)="313^N"
+      > S NOTIF(20,1)="313^L^5;HPLASERJET^94"
+      > D NEW(.RESULT,.NOTIF)
+  
+  
+      One new field is added to the WV PROCEDURE (#790.1) file. It is:
+      .16 PROCESSED Y/N?
+  
+  
+   e) LATEST^WVRPCPR returns a list of entries for Pap Smear, Mammogram or
+      Breast Ultrasound in reverse chronological order for the search
+      criteria identified in the input parameters. It is documented in IA
+      4105.
+  
+      LATEST(.RESULT,DFN,TYPE,DATES,MAX,DX)
+  
+       Input:                
+        .RESULT = Array name for return values. (Required)
+            DFN = Patient DFN. (Required)
+           TYPE = A set of codes where "P" stands for Pap Smear, "M" for
+                  Mammogram or "U" for Breast Ultrasound. (Required)
+          DATES = A date range in FileMan internal format separated by an
+                  uparrow (e.g., 3020101^3021231). (Optional).
+                  The default is the previous 3 years.
+            MAX = The maximum number of entries to return. (Optional)
+                  The default value is 10.
+             DX = A set of codes that identify a category of results where
+                  "N" stands for Normal, "A" stands for Abnormal, "P"
+                  stands for Pending and "*" (asterisk) stands for
+                  everything. (Optional)
+                  The default is "*". It returns entries that 
+                  are marked as "Unsatisfactory for DX" as well as Normal, 
+                  Abnormal and Pending.
+                  "P" returns entries that are marked as Unsatisfactory 
+                  for DX as well as Pending.
+       Output: 
+        RESULT(0) = Number of matches 
+        RESULT(n) = IEN^DFN^DATE^TYPE^DX CATEGORY^DX Result^RAD/LAB link
+                    ^STATUS
+                 
+                 where   n = A sequential number starting with 1 
+                       IEN = FILE 790.1 internal entry number 
+                       DFN = FILE 2 internal entry number 
+                       DATE = Procedure date in FileMan format 
+                       TYPE = Procedure name (from FILE 790.2) 
+                       DX Category = 'Normal', 'Abnormal' or 'Pending' 
+                       DX Result = FILE 790.31, Field .01 value
+                       RAD/LAB LINK = 0 stands for no link to radiology
+                                      or lab package 
+                                      1 stands for link to radiology or lab
+                                      package
+                       STATUS = FILE 790.1 entry status. 'OPEN' or 
+                                'CLOSED' 
+                 
+                If no matches were found, RESULT(0)=-1^error message.  
+                 
+      Example: 
+                 
+      > D LATEST(.RESULT,94,"M","3030101^3031231",10,"*") ZW RESULT
+      > RESULT(0)=1^ 
+      > RESULT(1)=314^94^3030321^MAMMOGRAM SCREENING^Normal^Negative^1^OPEN
+                             
+  
+    f) RESULTS^WVALERTF returns any report text for a pap smear, mammogram
+       or breast ultrasound for the WV PROCEDURE (#790.1) file entry
+       identified. It is documented in IA 4106. 
+   
+       RESULTS(.RESULT,IEN)
+                 
+        Input:
+          RESULT = Array name that will identify the global reference
+                   containing the report text (Required).  
+             IEN = The internal entry number of the FILE 790.1 entry to
+                   return data on (Required).
+  
+         Output: 
+           ^TMP("WV RPT",$J,n,0) = report text 
+            
+           where n is a sequential number starting with 1.  
+                 
+           If the entry is not found, the first node of the global array is
+           returned with a '-1' in the first piece and an error message 
+           in the third piece:
+           ^TMP("WV RPT",557902502,1,0) = -1^^Entry not found.  
+                 
+                 
+        Example of report text found: 
+                 
+        > D RESULTS(.RESULT,313) ZW RESULT 
+        > RESULT=^TMP("WV RPT",557902502) 
+        > D ^%G 
+        > ^TMP("WV RPT",557902502,1,0) =          DAY-CASE #: 032103-1515
+        > ^TMP("WV RPT",557902502,2,0) =      EXAM DATE/TIME: MAR 21,
+          2003@13:30
+        > ^TMP("WV RPT",557902502,3,0) = VERIFYING PHYSICIAN: TAYLOR,FRANK
+        > ^TMP("WV RPT",557902502,4,0) =           PROCEDURE: MAMMOGRAM
+          SCREENING
+        > ...
+        > ...
+  
+  
+ 2) A new option, Link Pap Smear with SNOMED Codes [WV PAP SMEAR SNOMED 
+ CODES], is added to the File Maintenance Menu [WV MENU-FILE MAINTENANCE].
+ With this option facilities can identify SNOMED codes used by their Lab
+ Service when coding a Lab test that is a Pap Smear. The SNOMED codes
+ identified here can be matched to the SNOMED codes used in a Lab report to
+ determine if that test is a Pap Smear. Currently, the WH user must look at
+ the lab test and decide whether the lab test is a pap smear. After this
+ patch is installed and the SNOMED codes are entered here, the WH software
+ can make that determination automatically.
+  
+ Several new fields are added to the WV PROCEDURE TYPE (#790.2) file. 
+ They are: 1  MORPHOLOGY SNOMED CODE (subfile #790.21)
+              .01 MORPHOLOGY SNOMED CODE
+              1   DIAGNOSIS
+           2  TOPOGRAPHY SNOMED CODE (subfile #790.22)
+              .01 TOPOGRAPHY SNOMED CODE
+  
+ 3) The Edit Site Parameters [WV EDIT SITE PARAMETERS] option is modified
+ to add two new prompts:
+  
+    a) "Update Result/Dx Field?:" - If set to YES, the data sent from CR 
+       will be used to update the patient's procedure data in FILE 790.1. 
+       If set to NO or null, no updating will be done.
+       The value for this response is stored in a new field, UPDATE
+       RESULTS/DX (.11), in the WV SITE PARAMETER (#790.02) file.
+    b) "Update Treatment Needs?:" - If set to YES, the data sent from CR 
+       will be used to update the patient's treatment needs in FILE 790. 
+       If set to NO or null, no updating will be done.
+       The value for this response is stored in a new field, UPDATE 
+       TREATMENT NEEDS (.12), in the WV SITE PARAMETER (#790.02) file.
+  
+ 4) The Add/Edit a Notification Purpose & Letter [WV ADD/EDIT NOT 
+ PURPOSE&LETTER] option is modified to add four new prompts:
+  
+    a) "Breast Treatment Need:" - This prompt is for a new field, BR 
+       TX NEED (.07), in the WV NOTIFICATION PURPOSE (#790.404) file. This
+       field points to FILE 790.51 and shows the choices related to breast
+       treatment needs.
+    b) "Breast Treatment Due Date:" - This prompt is for a new field, BR
+       TX DUE DATE (.08), in the WV NOTIFICATION PURPOSE (#790.404)
+       file. This field is the amount of time to add to a procedure 
+       date or the current date to calculate a new breast treatment due
+       date. The value should be a number followed by "D", "M" or "Y"
+       (without the quotes). D indicates days. M indicates months. Y
+       indicates years. For example, "90D" means add 90 days to the
+       procedure date or current date to calculate the new breast treatment
+       due date. This new treatment date will be automatically assigned to
+       the patient in the WV PATIENT file (#790).
+    c) "Cervical Treatment Need:" - This prompt is for a new field, CX
+       TX NEED (.09), in the WV NOTIFICATION PURPOSE (#790.404) file. This
+       field points to FILE 790.5 and shows the choices related to cervical
+       treatment needs.
+    d) "Cervical Treatment Due Date:" - This prompt is for a new field, CX
+       TX DUE DATE (.1), in the WV NOTIFICATION PURPOSE (#790.404) file.
+       This field is the amount of time to add to procedure date or the
+       current date to calculate a new cervical treatment due date. The
+       value should be a number followed by "D", "M" or "Y" (without the
+       quotes). D indicates days. M indicates months. Y indicates years.
+       For example, "90D" means add 90 days to the procedure date or
+       current date to calculate the new cervical treatment due date. This
+       new treatment date will be automatically assigned to the patient in
+       the WV PATIENT file (#790). 
+    
+ If the "Update Treatment Needs?" parameter (3b above) is set to Yes and 
+ there are values in fields a-d, the software will use these values to
+ update the patient's treatment needs in the WV PATIENT (#790) file.
+  
+ 5) The Print Notification Purpose & Letter File [WV PRINT NOTIF 
+    PURPOSE&LETTER] option is modified to display in the report output the
+    values of the four new fields identified in #4 above.
+  
+ 6) The following new entries are added to the WV NOTIFICATION PURPOSE
+ (#790.404) file:
+  
+  CPRS UPDATE PAP TX NEED 4M
+  CPRS UPDATE PAP TX NEED 6M
+  CPRS UPDATE PAP TX NEED 3Y
+  CPRS UPDATE PAP TX NEED 2Y 
+  CPRS UPDATE PAP TX NEED 1Y
+  CPRS UPDATE MAM TX NEED 1Y
+  CPRS UPDATE MAM TX NEED 2Y
+  CPRS UPDATE MAM TX NEED 6M
+  CPRS UPDATE MAM TX NEED 4M
+  MAM result NEM, next MAM 1Y
+  MAM result NEM, next MAM 2Y
+  MAM result NEM, next MAM 4M
+  MAM result NEM, next MAM 6M
+  MAM result abnormal, F/U MAM 4M
+  MAM result abnormal, F/U MAM 6M
+  PAP result NEM, next PAP 1Y
+  PAP result NEM, next PAP 2Y
+  PAP result NEM, next PAP 3Y
+  PAP result NEM, next PAP 4M
+  PAP result NEM, next PAP 6M
+  PAP result abnormal, F/U PAP 4M
+  PAP result abnormal, F/U PAP 6M
+  MAM unsatisfactory, need repeat
+  Pap unsatisfactory, need repeat
+  PAP result NEM, further screening not required
+  MAM result NEM, further screening not required
+  
+ Facilities may customize these entries and use them when resolving Pap 
+ Smears and Mammograms or continue to use the entries they created locally.
+ Use the Add/Edit a Notification Purpose & Letter [WV ADD/EDIT NOT 
+ PURPOSE&LETTER] option to customize these new entries.
+  
+ 7) The following entries are added or modified in the WV RESULTS/DIAGNOSIS
+ (#790.31) file:
+  
+  a) No Evidence of Malignancy - This is a new entry that can be used to 
+     result a mammogram, pap smear or breast ultrasound.
+  b) Abnormal - This is a new entry that can be used to result a mammogram,
+     pap smear or breast ultrasound.
+  c) Unsatisfactory for DX - This is an existing entry that is modified 
+     to result a breast ultrasound, too.
+  
+ 8) A new-style Index is added to the WV PROCEDURE (#790.1) file. The 
+ 'AC' index will provide a quicker search for entries needed by CR. A 
+ post-installation routine will index the existing entries in the file. 
+ The format of the index node is: ^WV(790.1,"AC",DFN,DATE,DA)=""
+  
+  where: DFN = is the FILE 2 IEN of the patient
+         DATE = the date of procedure (FileMan internal format)
+         DA = the FILE 790.1 IEN
+  
+ 9) Before this patch, a mail message was sent to the patient's WH Case 
+ Manager when a mammogram was added to the WH database by the link with
+ the Radiology/NM package or when a lab report was verified by the Lab
+ package.
+  
+ After this patch is installed, the WH package will tell the CPRS package 
+ to send a CPRS alert notification to the WH Case Manager and to the
+ provider associated with the procedure.
+  
+ 10) With this patch, a new entry point is added for use with the
+ Laboratory package. The Laboratory package will call the CREATE^WVLABCHK
+ entry point when a SNOMED code change is made to a verified Cytology or
+ Surgical Pathology entry in the LAB DATA (#63) file. IA 4525 grants
+ permission to the Laboratory package to call the CREATE^WVLABCHK entry
+ point.
+  
+ DOCUMENTATION:
+ --------------
+  
+ Documentation in Adobe Acrobat format (.PDF files) may be obtained from 
+ one of the ANONYMOUS.SOFTWARE directories listed below.
+  
+ Sites may retrieve the other files in one of the following ways:
+  
+ (1)     The preferred method is to FTP the files from:
+  
+         download.vista.med.va.gov
+  
+         This will transmit the files from the first available FTP Server.
+  
+ (2)     Sites may also elect to retrieve the software directly from a 
+         specific Server as follows:
+  
+   CIO FIELD OFFICE      FTP ADDRESS                  DIRECTORY
+   ---------------       -----------                  ---------
+   Albany                ftp.fo-albany.med.va.gov     [anonymous.software]
+   Hines                 ftp.fo-hines.med.va.gov      [anonymous.software]
+   Salt Lake City        ftp.fo-slc.med.va.gov        [anonymous.software]
+  
+  FILE NAMES           DESCRIPTION                 RETRIEVAL FORMAT
+  ----------           -----------                 ----------------
+  WV_1_P16_UM.PDF      User Manual (change pages)  Binary
+  WV1_UM.PDF           User Manual (all pages)     Binary
+  
+ The User Manual (all pages) can also be retrieved from the VistA
+ Documentation Library (VDL) on the VA Intranet at the following address:
+   
+         http://vista.med.va.gov/vdl 
+  
+  
+  
+ Routine Version Line:
+ =====================
+  
+ Below is a list of the routines included in this patch. The second line of
+ each of these routines now looks like:
+  
+ ;;1.0;WOMEN'S HEALTH;**[Patch History]**;Sep 30, 1998 
+  
+ Checksum Results:
+ =================
+  
+  Routine Name   Before Patch    After Patch     Patch History
+  ============   ============    ===========     =============
+  WV16PST        new             11581033        16
+  WVALERTC       new             7766262         16
+  WVALERTF       new             4238399         16
+  WVALERTP       new             6283440         16
+  WVALERTR       new             10388781        16
+  WVALERTS       new             6964645         16
+  WVLABCHK       new             6006691         16
+  WVLRLINK       10998343        11070318        6,10,16
+  WVPURP         6633428         7483351         4,9,16
+  WVRADWP        13802139        14533334        4,5,7,15,16
+  WVRALINK       8263814         8700119         3,5,7,9,10,16
+  WVRPCNO        new             5974153         16
+  WVRPCNO1       new             3108408         16
+  WVRPCPR        new             5963412         16
+  WVRPCPR1       new             263463          16
+  WVRPCPT        new             1236685         16
+  WVSITE         1346290         2781460         16
+  WVSNOMED       new             6655356         16
+  
+  
+ Installation Instructions:
+ ==========================
+  
+ This patch is part of a multi-KIDS transport global. Please see the patch
+ description for PXRM*2*1 for instructions to load and install this patch.
+
+Routine Information:
+====================
+
+Routine Name:
+  - WV16PST
+
+
+Routine Checksum:
+
+Routine Name:
+  - WVALERTC
+
+
+Routine Checksum:
+
+Routine Name:
+  - WVALERTF
+
+
+Routine Checksum:
+
+Routine Name:
+  - WVALERTP
+
+
+Routine Checksum:
+
+Routine Name:
+  - WVALERTR
+
+
+Routine Checksum:
+
+Routine Name:
+  - WVALERTS
+
+
+Routine Checksum:
+
+Routine Name:
+  - WVLRLINK
+
+
+Routine Checksum:
+
+Routine Name:
+  - WVPURP
+
+
+Routine Checksum:
+
+Routine Name:
+  - WVRADWP
+
+
+Routine Checksum:
+
+Routine Name:
+  - WVRPCNO
+
+
+Routine Checksum:
+
+Routine Name:
+  - WVRPCNO1
+
+
+Routine Checksum:
+
+Routine Name:
+  - WVRPCPR
+
+
+Routine Checksum:
+
+Routine Name:
+  - WVRPCPR1
+
+
+Routine Checksum:
+
+Routine Name:
+  - WVRPCPT
+
+
+Routine Checksum:
+
+Routine Name:
+  - WVSITE
+
+
+Routine Checksum:
+
+Routine Name:
+  - WVSNOMED
+
+
+Routine Checksum:
+
+Routine Name:
+  - WVRALINK
+
+
+Routine Checksum:
+
+Routine Name:
+  - WVLABCHK
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : TRAXLER,FRANK                 Date Entered  : SEP 19, 2002
+Completed By: REZNIK,CHARMAINE              Date Completed: FEB 09, 2005
+Released By : THORNTON,NANCY                Date Released : FEB 24, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

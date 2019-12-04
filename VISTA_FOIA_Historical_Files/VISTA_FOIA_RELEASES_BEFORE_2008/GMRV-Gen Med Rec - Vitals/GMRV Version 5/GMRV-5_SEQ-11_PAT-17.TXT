@@ -1,0 +1,245 @@
+$TXT Created by MCNEILE,KEN at DEV.DEV.FO-HINES.MED.VA.GOV  (KIDS) on Monday, 04/17/06 at 06:50
+=============================================================================
+Run Date: MAY 03, 2006                     Designation: GMRV*5*17
+Package : GMRV - GEN. MED. REC. - VITALS      Priority: EMERGENCY
+Version : 5        SEQ #11                      Status: Released
+                  Compliance Date: MAY 07, 2006
+=============================================================================
+
+Associated patches: (v)GMRV*5*2    <<= must be installed BEFORE `GMRV*5*17'
+                    (v)GMRV*5*12   <<= must be installed BEFORE `GMRV*5*17'
+
+Subject: HL7 MESSAGE CHANGES
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch will resolve four issues.
+           
+ 1. When Vitals HL7 messages are sent to the Health Data Repository they
+ may be of type 'Entered in Error'.  Currently, that status is not mapped
+ in the IMS (Interim Messaging Solution) Framework.
+            
+ 2. When an HL7 message is received by the Health Data Repository, it may
+ contain an encoding character embedded in a data field.  This causes
+ problems for the message parser because it thinks it has encountered an
+ escape sequence. 
+      
+ It has been requested that all fields being sent to the Health Data
+ Repository be checked for embedded encoding characters.
+      
+ 3. Current programming sends a unit of measure when a pain scale vital is
+ entered.  It has been requested to remove the unit of measure from pain
+ scale vitals entries.
+      
+ 4. It has been requested to add Parent Facility in the ORC segment of the
+ HL7 record. 
+           
+ ASSOCIATED REMEDY TICKETS:
+ ==========================
+ HD0000000121661 - changes for HL7 message 
+ HD0000000122742 - Escape characters are embedded in a text 
+                                   string in a HL7 message
+              
+ REMEDY TICKET OVERVIEW:
+ =======================
+      
+ **NOTE** You must suspend the VDEF Request Queue before 
+ installing this patch and then re-enable it after installation of the 
+ patch.  The steps for doing that are outlined in the installation 
+ instructions.
+      
+ Problem #1
+ -------
+ Vitals HL7 messages may be of type "Entered in Error". Currently, 
+ that status is not mapped in the IMS (Interim Messaging Solutions) 
+ framework. As a result, such messages are returned, by 
+ CDS (Clinical Data Services), to RDV (Remote Data View) with no 
+ indication of error status.  The status should be mapped, in the IMS 
+ framework, so that CDS may either filter such messages or return 
+ this status to RDV.
+               
+ Resolution #1
+ ----------
+ Modifications will be made to routines GMVVDEF1 and GMVHDR 
+ to look at the OBX segment element 11 to determine if the message
+ has been entered in error ('W' in element 11) if so a 'W' will be
+ placed in all subsequent OBX segments and 'E' (Entered in Error) 
+ will be placed in OBR25.
+      
+ Additionally the value of OBX16 (Responsible Observer) will be 
+ placed in OBR34 (Technician or Person who entered the vital into the
+ system)
+      
+ Problem #2
+ ----------
+ Embedded Encoding characters in all fields of Vitals HL7 Messages being
+ sent to the Health Data Repository create problems for the message
+ parser.  The message parser thinks it has encountered an escape sequence
+ and does not interpret the remainder of the HL7 message properly.
+       
+ Resolution #2
+ ----------
+ Modifications will be made to routine GMVVDEF1 to convert 
+ the encoding characters embedded in all fields by using an escape 
+ sequence coding scheme allowed by HL7 messaging. 
+      
+ HL7 escape sequence coding scheme - "\"<type>"\".
+                      
+ Problem #3
+ ---------
+ When entering pain scale vitals, the system will currently send a unit
+ of measure ("Verbal Numeric Analog Scale") as a literal in OBX-6.1 
+ and OBX 6.2 of  the HL7 message.  This does not conform with HDR-hx 
+ and has been requested to be removed.
+      
+ Resolution #3
+ ----------
+ A modification will be made to routine GMVHDR to remove the literal
+ "Verbal Numeric Analog Scale" from the unit of measure field.
+      
+ Problem #4
+ ---------
+ A request has been made by the HDR development group to include 
+ Parent Facility in HL7 segment ORC 21.1.
+      
+ Resolution #4
+ ----------
+ A modification will be made to routine GMVVDEF1 to include using the
+ SITE^VASITE API to obtain the Parent Facility and place in ORC 21.1.
+      
+ ASSOCIATED E3R(s)
+ =================
+ N/A
+      
+ PARTICIPATING TEST SITES:
+ =========================
+ Cheyenne, WI
+ Martinsburg, WV
+ Heartland East (St. Louis) HCS
+  
+           
+ DATA DICTIONARY CHANGES
+ =======================
+ N/A
+      
+ TEMPLATES
+ =========
+ N/A
+           
+ ROUTINE SUMMARY
+ ===============
+ The following routines are included in this patch.  The second line of each
+ of these routines now looks like:
+      ;;5.0;GEN. MED. REC. - VITALS;**[Patch List]**;Oct 31, 2002
+       
+                             CHECK1^XTSUMBLD results
+       
+  Routine name      Before Patch          After Patch      Patch List
+  ============      ============          ===========      ==========
+   GMVHDR             10470656             11333254        **2,17**
+   GMVVDEF1           40198875             49050672        **5,8,12,17**
+      
+                            CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch      Patch List
+  ============      ============          ===========      ==========
+   GMVHDR             4600194              4385336         **2,17**
+   GMVVDEF1           8575731              9555042         **5,8,12,17**
+              
+ DISTRIBUTION:
+ =============
+ The KIDS build is linked to this message. 
+           
+ INSTALLATION INSTRUCTIONS
+ =========================
+                
+ **NOTE** The routine being changed sends data to the HDR.  
+ You MUST stop the VDEF request queue BEFORE installing 
+ this patch.  The steps to do this are outlined in step 1 below.  
+ AFTER installing this patch you must enable the VDEF request 
+ queue by following the instructions in step 8.
+        
+ 1.|TAB|Stop VDEF request queue.  Use option VDEF CONFIGURATION 
+       MENU
+        
+     Select VDEF Configuration and Status Option: ?
+       
+      Site   Site-Wide Parameters
+      Req    Request Queue Parameters
+      ActR   Activate/Inactivate Requestor
+      SusR   Suspend/Run Request Queue
+      Cust   VDEF Custodial Package Activate/Inactivate
+      API    VDEF Event API Activate/Inactivate
+      Stat   Status of VDEF components
+      Sch    Request Processor Schedule
+        
+      Select VDEF Configuration and Status Option: SUSR  Suspend/Run
+      Request Queue
+        
+      Select Request Queue: MAINTENANCE
+      SUSPENDED FLAG: RUNNING// SUSPEND
+      
+ This patch can be installed at any time.  Users do not need to be off
+ the system.  Install time will be less than 2 minutes.
+           
+  2. Use the INSTALL/CHECK MESSAGE option on the PackMan menu. [Note:
+     TEXT PRINT/DISPLAY option in the PackMan menu will display the
+     patch text only].
+           
+  3. From the Kernel Installation and Distribution System (KIDS)
+     menu, select the Installation menu.
+      
+  4. From this menu, you may elect to use the following options:
+     (when prompted for INSTALL NAME, enter GMRV*5.0*17)
+           
+     a.  Backup a Transport Global - this option will create a backup
+          message of any routines exported with the patch.  It will
+          NOT backup any other changes such as DDs or templates.
+     b.  Compare Transport Global to Current System  - this option
+          will allow you to view all changes that will be made when
+           the patch is installed.  It compares all components of the
+           patch (routines, DDs, templates, etc.).
+     c.   Verify Checksums in Transport Global - this option will
+           allow you to ensure the integrity of the routines that are
+           in the transport global.
+     d.   Print Transport Global - this option will allow you to view
+           the components of the KIDS build.
+           
+  5. Use the Install Package(s) option and select the package
+     GMRV*5.0*17.
+           
+  6. When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+     YES//', respond NO
+           
+  7. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+     Protocols? YES//', respond NO.
+       
+  8. After the patch is installed you must enable the VDEF request queue.  
+      Using the same menu option as outlined in step 1, change the SUSPENDED 
+      FLAG from SUSPENDED to RUN.
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: GMVHDR
+    Before: B10470656  After: B11333254  **2,17**
+Routine Name: GMVVDEF1
+    Before: B40198875  After: B49050672  **5,8,12,17**
+
+=============================================================================
+User Information:
+Entered By  : MCNEILE,KEN                   Date Entered  : NOV 21, 2005
+Completed By: CROSSMAN,PAM                  Date Completed: MAY 02, 2006
+Released By : GIVENS,DALE S                 Date Released : MAY 03, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,229 @@
+$TXT Created by IVEY,JOEL at PAT-XWB.FO-OAKLAND.MED.VA.GOV  (KIDS) on TUESDAY, 04/09/02 at 13:09
+=============================================================================
+Run Date: MAY 08, 2002                     Designation: XU*8*173
+Package : XU - KERNEL                          Priority: Mandatory
+Version : 8       SEQ #189                       Status: Released
+=============================================================================
+
+
+Subject: CORRECT ALERT SURROGATE PROCESSING
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description: 
+============
+
+ ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING **
+  
+ If your site does not purge old alerts the post install routine,
+ which reindexes the "B" cross-reference of the FILE: ALERT TRACKING
+ (# 8992.1), may take considerably longer than would be the case if you
+ regularly purge.  In that case, you will want to schedule the
+ installation so the post installation routine may run on a weekend or
+ overnight.
+  
+ --------------------------- End of Warning -------------------------
+  
+ 1. Surrogates for processing alerts may have an end date and time for the
+ surrogate relationship.  The actual removal of the surrogate has been
+ performed when the next alert was sent to an individual.  This resulted,
+ however, in the user still appearing to have a surrogate after the
+ stated end time if another user tried to set them as their surrogate.
+ This patch modifies the processing so that the removal of the specified
+ surrogate happens on any surrogate related look-up after the specified end
+ time.  This will correct the problem that had been reported (E3R #14940).
+  
+ 2. Code has been modified to correct problems identified with setting
+ surrogates (BRX-1000-10427, COS-0401-41366, WRJ-1201-11337).
+  
+ 3. The problem indicated as a mismatch in XQAID values (ISL-0200-52883) is
+ handled by a re-indexing of the "B" cross-reference in FILE: ALERT
+ TRACKING (#8992.1) in the post-installation routine.
+  
+ 4. A small change was made in XQALERT to clarify the way in which alerts
+ are referenced from the menu system (ISL-0898-51279) and to correct a
+ potential problem with matching the "B" cross-reference in FILE: ALERT
+ TRACKING (#8992.1).
+  
+ 5. A cross-reference was added to FIELD: SURROGATE (#.02) of FILE: ALERT
+ (#8992) to permit rapid lookup of users who have specified a selected user
+ as their surrogate (E3R #15158).  This is made available via the "XQAL
+ SURROGATE FOR WHICH USERS" (View Surrogate for Which Users) option on the
+ XQALERT MGR menu.  The supported reference API SUROFOR^XQALSURO has been
+ added for other applications to access this data.
+  
+     D SUROFOR^XQALSURO(.LIST,USERDUZ)
+  
+ will return data in the variable LIST.  The value of LIST indicates the
+ number of entries returned.  The array list will return the users DUZ
+ value in file 200 and the NAME (.01) field from file 200 separated by an
+ '^'.
+       LIST = 3
+       LIST(1) = "54^LNAME1,FNAME1"
+       LIST(2) = "75^LNAME2,FNAME2"
+       LIST(3) = "247^LNAME3,FNAME3"
+  
+ The post-install routine, XQAL173P, also builds the cross-reference for
+ current surrogates.  This routine is set to be removed following the
+ installation.
+  
+ 6. In addition, it was noted that while interactive specification of a
+ surrogate checked for cyclic relationships among surrogates, the API for
+ non-interactive setting of a surrogated (SETSURO^XQALSURO) simply set the
+ specified surrogate.  While this API can continue to be used, a new API
+ (SETSURO1^XQALSURO) has been created which should be used to obtain a
+ return value (1 if successful, 0 if not successful) indicating whether the
+ surrogate could be set.
+  
+   S VAL=$$SETSURO1^XQALSURO(USERDUZ,SURODUZ,STRTDATE,ENDDATE)
+  
+  
+ Where USERDUZ and SURODUZ are the internal entry numbers in file 200 for
+ the user and selected surrogate, respectively.  STRTDATE and ENDDATE are
+ optional date/time values for when the surrogate relationship should
+ start and end.  If STRTDATE is not specified, the surrogate becomes active
+ immediately.  If ENDDATE is not specified, the surrogate remains active
+ until another surrogate is specified or the surrogate is removed.
+  
+  
+ List of Test Sites
+ ==================
+ BATTLE CREEK, MI                                      
+ CHARLESTON, SC                                      
+ CHICAGO HCS                                      
+ LEXINGTON, KY                                      
+ NORTHERN CALIFORNIA HCS                                      
+ SAN FRANCISCO, CA                                      
+ SPOKANE, WA                                      
+ WEST PALM BEACH, FL                                      
+  
+  
+ Routine Summary:
+ ================
+ The following routines are included in this patch.  The second
+ line of each of these routines now looks like:
+  
+      <tab>;;8.0;KERNEL;**[patch list]**;Jul 10, 1995
+  
+ Checksums:
+ ==========
+ Checksums obtained using CHECK^XTSUMBLD
+  
+  Rtn Nm    Chksum Before   Chksum After    Patch List
+  ------    -------------   ------------    ----------
+  XQALERT         5402974        5560549    **1,65,125,173**
+  XQALERT1       30893715       30919356    **20,65,114,123,125,164,173**
+  XQALSET        14823261       15152866    **1,6,65,75,114,125,173**
+  XQALSURO        7933100       12681484    **114,125,173**
+  XQAL173P            N/A         304597    **173**
+  
+ List of preceding patches: 125,164
+  
+  
+ Blood Bank Team Coordination:
+ =============================
+ Clearance - 04/05/2002
+  
+  
+ Installation Instructions:
+  
+      1.   Users ARE allowed to be on the system during the
+      installation but if you have not recently run a scheduled purge of
+      old alerts you may want to schedule the installation for off hours.
+  
+      2.   DSM sites - Some of these routines are usually mapped,
+      so you will need to disable mapping for the affected routines.
+  
+      3.   Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu.
+      This option will load the KIDS (Kernel Installation and Distribution
+      System) package onto your system.
+  
+      4.   You DO NOT need to stop TaskMan or the background filers.
+  
+      5.   The patch has now been loaded into a transport global on your
+      system.  On the KIDS menu, select the 'Installation' menu and use
+      the following options:
+            Verify Checksums in Transport Global
+            Print Transport Global
+            Compare Transport Global to Current System
+            Backup a Transport Global
+            Return to Programmers Prompt and use "D ^XPDKRN":
+            Select KIDS OPTION: Install
+                                =======
+             Install Package(s)
+             Select INSTALL NAME: XU*8.0*173
+                                  ==========
+  
+             Checking Install for Package XU*8.0*173
+  
+             Install Questions for XU*8.0*173
+  
+             Incoming Files:
+  
+  
+                8992      ALERT  (Partial Definition)
+             Note:  You already have the 'ALERT' File.
+  
+             Want KIDS to Rebuild Menu Trees Upon Completion of Install? 
+ YES// NO
+       ==
+             Want KIDS to INHIBIT LOGONs during the install? YES// NO
+                                                                   ==
+             Want to DISABLE Scheduled Options, Menu Options, and 
+ Protocols? YES// NO
+                  ==
+  
+      6.  AXP Sites - Answer 'NO' to the question 'Want to MOVE
+      routines to other CPUs?'.
+  
+      7.  If the routines were unmapped as part of step 2, they should be
+      returned to the mapped set once the installation has run to
+      completion.
+
+Routine Information:
+====================
+
+Routine Name:
+  - XQALSURO
+
+
+Routine Checksum:
+
+Routine Name:
+  - XQALERT
+
+
+Routine Checksum:
+
+Routine Name:
+  - XQAL173P
+
+
+Routine Checksum:
+
+Routine Name:
+  - XQALSET
+
+
+Routine Checksum:
+
+Routine Name:
+  - XQALERT1
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : IVEY,JOEL                      Date Entered : SEP 22, 2000
+Completed By: SINGH,GURBIR                  Date Completed: APR 09, 2002
+Released By : TAYLOR,FRENCH                 Date Released : MAY 08, 2002
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,161 @@
+$TXT Created by BEUSCHEL,GARY at NXT.KERNEL.FO-OAKLAND.MED.VA.GOV  (KIDS) on Thursday, 05/01/03 at 07:20
+=============================================================================
+Run Date: MAY 30, 2003                     Designation: XU*8*300
+Package : XU - KERNEL                          Priority: Mandatory
+Version : 8       SEQ #249                       Status: Released
+                  Compliance Date: JUN 30, 2003
+=============================================================================
+
+Associated patches: (v)XU*8*222    <<= must be installed BEFORE `XU*8*300'
+
+Subject: PERSON CLASS API
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description: 
+============
+
+ XU*8.0*300
+ 
+ NOIS: NHM-0500-11955
+ Test Sites: Northampton, MA
+ Blood Bank Team Clearance: 5/1/2003
+ 
+ This patch concerns the PERSON CLASS (#200.05) subfile of the NEW PERSON
+ (#200) file.
+ 
+ Sometimes, a user's PERSON CLASS history can look pretty confusing:
+ 
+ Person Class                        Effective        Expired
+  Nursing Service                    OCT 1,1995       NOV 17,1998
+  Nursing Service                    NOV 17,1998      APR 13,2000
+  Nursing Service                    APR 13,2000      JUN 2,1998  <<problem
+  Physician Assistants & Advanced Practice  JUN 2,1998  OCT 1,1995 <problem
+  Physician Assistants & Advanced Practice  OCT 1,1995
+ 
+ 1. The API $$GET^XUA4A72, given a person and a date, retrieves the active
+ class for that person on that date.  It can get confused when confronted
+ with problems such as those above, and return an error (no active class for
+ this person on this date) for 5/18/2000, for example.  This patch makes the
+ API a bit smarter.  It will return the last person class for 5/18/2000.  It
+ will return the same one (not the first one) for 11/1/1996.
+ 
+ 2. When a new PERSON CLASS record is added to the multiple, the expired date
+ of the previous one is set to the effective date of the new one.  If the
+ effective date of the new one is prior to the effective date of the previous
+ one, this results in records such as those marked "problem" above. To remedy
+ this, we add a simple check: If the Effective Date of the previous class is
+ greater than the Effective Date of the new class, then we set the Expired
+ Date of the previous class to be the same as its Effective Date.
+ 
+ 3. Patch XU*8*49 purportedly prevented you from adding a new PERSON CLASS
+ record with an effective date prior to the effective date of the previous
+ one.  It didn't work.  This patch does.  A new input transform on the
+ Effective Date (#2) field sees to it.
+ 
+ STANDARD DATA DICTIONARY #200.05 -- PERSON CLASS SUB-FILE   
+ STORED IN ^VA(200,D0,"USC1",
+ 
+ DATA       NAME                  GLOBAL        DATA
+ ELEMENT    TITLE                 LOCATION      TYPE
+ ----------------------------------------------------------------------------
+ 200.05,2   Effective Date         0;2 DATE (Required)
+            INPUT TRANSFORM:  N %DT,% S %DT="EX",%=$O(^VA(200,D0,"USC1",DA),-
+                              1) S:% %=$P($G(^(%,0)),U,2) S:% %DT(0)=% D ^%DT
+                               S X=Y K:Y<1 X
+            LAST EDITED:      APR 24, 2003
+            HELP-PROMPT:      The date that this Person Class became
+                              effective.
+            DESCRIPTION:      This field is trigger by adding a new person
+                              class.
+ 
+            NOTES:            XXXX--CAN'T BE ALTERED EXCEPT BY PROGRAMMER
+ 
+            CROSS-REFERENCE:  200.05^AD 
+                              1)= S ^VA(200,DA(1),"USC1","AD",$E(X,1,30),DA)=""
+                              2)= K ^VA(200,DA(1),"USC1","AD",$E(X,1,30),DA)
+                              3)= Don't Delete
+                              This X-ref is by date and allows us to find the
+                              most current entry in the file.
+ 
+            CROSS-REFERENCE:  200.05^AE^MUMPS
+                              1)= D SET2^XUA4A72
+                              2)= D KILL2^XUA4A72
+                              3)= Special Trigger
+                              This Special X-ref sets the Expiration date of
+                              the previous person class entry to the current
+                              record's Effective date.
+ 
+ NOTE: This patch should be installed during off-hours, when a minimal number
+ of users are on the system.  It requires patch XU*8.0*222.
+ ============================================================================ 
+ 
+ ROUTINES:
+ The second line of the routine now looks like:
+        ;;8.0;KERNEL;**[patch list]**;Jul 10, 1995
+ 
+               Before          After
+ Name          Checksum        Checksum        Patch List
+ ------------------------------------------------------------------
+ XUA4A72        4721844         4894947        27,49,74,132,222,300
+ * Checksums produced by CHECK^XTSUMBLD
+ 
+ This patch introduces no new routines.
+ ===========================================================================
+  
+ INSTALLATION:
+ NOTE: This patch should be installed during off-hours, when a minimal number
+ of users are on the system.  It requires patch XU*8.0*222.
+ 1.  Users may be on the system during installation of this patch.
+ 2.  On the PackMan menu, use the 'INSTALL/CHECK MESSAGE' option.  This loads 
+     the patch into a Transport Global on your system.  
+ 3.  Users may be on the system.  You do not need to stop TaskMan.
+ 4.  On the KIDS:Installation menu, use the following options to install the
+     Transport Global:
+        Verify Checksums in Transport Global
+        Print Transport Global
+        Compare Transport Global to Current System
+        Backup a Transport Global
+        Install Package(s)
+  Select INSTALL NAME:    XU*8.0*300    Loaded from Distribution  <date/time>
+                          ==========
+  Install Questions for XU*8.0*300
+ 
+  Incoming Files:
+    200      NEW PERSON  (Partial Definition)
+  Note:  You already have the 'NEW PERSON' File.
+ 
+  Want KIDS to INHIBIT LOGONs during the install? YES// NO
+                                                        ==
+  Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// NO
+                                                                        ==
+  Enter the Device you want to print the Install messages.
+  You can queue the install by enter a 'Q' at the device prompt.
+  Enter a '^' to abort the install.
+ 
+  DEVICE: HOME// <You may queue it if you wish>
+                 ------------------------------
+
+Routine Information:
+====================
+
+Routine Name:
+  - XUA4A72
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : BEUSCHEL,GARY                  Date Entered : APR 22, 2003
+Completed By: SINGH,GURBIR                  Date Completed: MAY 21, 2003
+Released By : TILLIS,LEWIS                  Date Released : MAY 30, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

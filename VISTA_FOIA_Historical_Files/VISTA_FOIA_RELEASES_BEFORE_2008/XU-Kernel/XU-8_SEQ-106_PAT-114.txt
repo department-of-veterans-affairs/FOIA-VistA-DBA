@@ -1,0 +1,325 @@
+$TXT Created by IVEY,JOEL at NXT.KERNEL.ISC-SF.VA.GOV  (KIDS) on THURSDAY, 06/17/99 at 10:01
+=============================================================================
+Run Date: JUN 24, 1999                     Designation: XU*8*114
+Package : XU - KERNEL                          Priority: Mandatory
+Version : 8       SEQ #106                       Status: Released
+=============================================================================
+
+
+Subject: ALERT SURROGATE/DELETE
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+ $TXT Created by IVEY,JOEL at NXT.KERNEL.ISC-SF.VA.GOV  (KIDS) on THURSDAY, 06/17/99 at 10:01
+  
+  This patch fixes several problems associated with alerts and provides
+  numerous requested enhancements.
+   
+  NOIS
+   
+  HUN-0997-20420   MAC-1198-60864
+   
+  The ability to forward an alert has been limited to the point of
+  selection and prior to processing an alert.  A number of users have
+  requested the ability to view and/or process an alert and then be able to
+  forward (as reflected in the above NOIS entries) or set the alert as new
+  again for subsequent processing. The current patch adds the ability to
+  forward or re-new the alert at the point where previously the user was
+  asked about continuing alert processing.
+  Routines affected:   XQALERT1, XQALFWD
+   
+   
+  WBP-0198-22413
+   
+  While CPRS has supported a capability to send alerts directly to a
+  designated surrogate, this has left other packages without such an
+  ability.  This NOIS and CPRS developers have requested a more generic
+  surrogate capability supported directly by the alerts within Kernel.  The
+  current patch adds the ability for an individual using a new 'S' option
+  within the alerts to designate and/or remove a surrogate for their
+  alerts.  The user may, if desired, specify a start date/time and/or an
+  end date/time for the surrogate to be effective.  If an end date/time is
+  specified, the surrogate will be removed automatically effective with the
+  first alert sent to the user after the end date/time has passed.  If a
+  start date/time is not specified, the surrogate becomes active
+  immediately.  If an end date/time is not specified, the surrogate is
+  active until the user removes the surrogate.  A message is sent to the
+  surrogate to indicate that he has been designated as a surrogate, and a
+  message is sent when the surrogate is removed.  If the user has no alerts
+  and selects the alert option, he will be asked if he wants to add or
+  remove a surrogate.  A new option (XQALERT SURROGATE SET/REMOVE) is also
+  provided which may be used by IRM or ADPAC staff to add or remove a
+  surrogate for a selected user.  This option has been added to the Alert
+  Manager option.
+  Routines affected: XQALERT1, XQALSET, XQALSURO (a new routine)
+   
+   
+  ISL-0299-50356
+   
+  A problem was identified such that if an alert was deleted for a given
+  user, and then the same alert was specified to be deleted for the same
+  user, it resulted in the alert being deleted for the next user with a
+  higher internal entry number and the alert was still active.  This patch
+  corrects this problem.
+  Routines affected: XQALDEL
+   
+   
+  Functionality requested by CPRS developers
+   
+  The ability for a user to delete specific alerts without viewing and/or
+  processing them has been requested many times.  In this patch, this
+  functionality is included by providing the new 'D' option within the
+  alerts. This option provides the ability to delete "information only"
+  alerts. Alerts which require processing can not currently be deleted.  In
+  the future, however, if alerts requiring processing are created with the
+  new variable XQACNDEL set to 1 they too would be able to be deleted
+  (i.e., the developer of the code which creates the alert can specify if
+  it must be processed or can be deleted). Any alerts which were selected
+  for deletion, but could not be deleted will be noted for the user.  The
+  ability for the user to delete alerts other than information only will
+  require that the developers within a package decide that specific alerts,
+  which would normally invoke processing via an option or routine, may be
+  deleted specifically by the user without processing. They would then set
+  the variable XQACNDEL to a value of 1 (one) prior to calling SET^XQALERT
+  to set up the alert.  Deletion of an alert by the user (or by IRM or
+  ADPAC staff using the existing option) is noted within the ALERT TRACKING
+  file as deletion by a user (with the user ID) without processing of the
+  alert.
+  Routines affected: XQALERT1, XQALDEL
+   
+   
+  There have been several requests for the display of pending alerts to
+  return to the current screen after an alert has been processed.  This
+  capability is included within the current patch.
+  Routines affected: XQALERT1
+   
+   
+  The following entry points are added within this patch and are entered as
+  supported references.
+   
+  AHISTORY^XQALBUTL(XQAID,ROOT) - Provides information from the ALERT
+  TRACKING file for the alert indicated by the alert ID (XQAID).  The
+  information is returned descendent from the closed root specified by ROOT
+  in the form that it is present in the ALERT TRACKING file.
+   
+   
+  $$PENDING^XQALBUTL(XQAUSER,XQAID) - Returns 1 (one) if the alert
+  indicated by the alert ID (XQAID) is currently pending for the user with
+  internal entry number specified by XQAUSER.  Otherwise a value of 0
+  (zero) is returned.
+   
+   
+  $$PKGPEND(XQAUSER,XQAPKG) - Returns 1 if the user indicated by XQAUSER
+  has any pending alerts with the first ';'-piece of XQAID equal to the
+  package identifier indicated by XQAPKG.
+   
+   
+  SETSURO^XQALSURO(XQAUSER,XQALSURO,XQALSTRT,XQALEND) - Establishes for the
+  user with internal entry number XQAUSER a surrogate with the internal
+  entry number XQALSURO.  XQALSTRT is an optional start date/time in
+  internal VA Filemanager format, and XQALEND is an optional end date/time
+  in internal VA Filemanager format.
+   
+   
+  REMVSURO^XQALSURO(XQAUSER) - Removes the current surrogate (if any) for
+  the user with the internal entry number XQAUSER.
+   
+   
+  $$CURRSURO^XQALSURO(XQAUSER) - For the user with internal entry number
+  XQAUSER returns the internal entry number of the current surrogate or -1
+  if there is no surrogate specified.
+   
+   
+  ALERTDAT^XQALBUTL(XQAID,ROOT) - Returns information from ALERT TRACKING
+  file for alert with XQAID.  The data is returned descendent from the
+  closed root passed in ROOT.  If ROOT is not specified, the data is
+  returned in the array XQALERTD.  The array is subscripted by the field
+  number, the value is returned as the internal value (including NULL
+  values) and, if the internal and external values differ, followed by the
+  external value separated by '^'.  If the field names are desired, they
+  are also included as a second subscript to the array (with a null value).
+  If the alert is not present, the array root is returned with a NULL
+  value.
+   
+   
+  USERLIST^XQALBUTL(XQAID,ROOT) - Returns recipients of alert with ID of
+  XQAID from ALERT TRACKING file in an array descendent from the closed
+  array specified in ROOT.  If ROOT is not specified, then the data is
+  returned in XQALUSRS.  The data is returned subscripted by an integer,
+  and the value contains the internal entry number for the user in File 200
+  and the external value for the user's name (the .01 field in file 200)
+  separated by '^'.  If the specified alert is not present, the array root
+  is returned with a NULL value.
+   
+   
+  USERDATA^XQALBUTL(XQAID,XQAUSER,ROOT) - returns information from the
+  ALERT TRACKING file related to the alert with an ID of XQAID for the user
+  specified by the internal entry number in XQAUSER.  The data is returned
+  descendent from the closed root passed in ROOT.  If ROOT is not
+  specified, the data is returned in the array XQALUSER.  The array is
+  subscripted by the field number, the value is returned as the internal
+  value (including NULL values) and, if the internal and external values
+  differ, followed by the external value separated by '^'.  If the field
+  names are desired they are also included as a second subscript to the
+  array (with a NULL value). If the alert is not present, the array root
+  is returned with a NULL value.
+   
+   
+  Changes to Data Dictionaries:
+   
+  ALERT File (8992)
+   
+  Added field .02 (SURROGATE FOR ALERTS) Added field .03 (SURROGATE START
+  DATE/TIME) Added field .04 (SURROGATE END DATE/TIME)
+   
+  ALERT DATE/TIME subfile (8992.01)
+   
+  Added field .1 (CAN DELETE WITHOUT PROCESSING)
+   
+   
+  ALERT TRACKING file (8992.1)
+   
+  RECIPIENT subfile (8992.11)
+   
+  Added field .09 (DELETED BY USER)
+   
+   
+   
+  Changes to Options:
+   
+  Added 'XQALERT SURROGATE SET/REMOVE' as a new option. Added 'XQALERT
+  SURROGATE SET/REMOVE' as an item under the 'XQALERT MGR' option.
+   
+   
+  Routine Summary:
+  ================
+   
+  The following routines are included in this patch.  The second
+  line of each of these routines now looks like:
+   
+  <tab>;;8.0;KERNEL;[Patch List];Jul 10, 1995
+   
+   
+  Checksums:
+  ==========
+   
+  Checksums obtained using CHECK^XTSUMBLD
+   
+  Rtn Nm      Chksum Before     Chksum After       Patch List
+  ------      -------------     ------------       ----------
+  XQALBUTL          2035856          4734926       **114**
+  XQALDEL          12561210         14175555       **6,24,65,114**
+  XQALDOIT          9852030         10091815       **1,6,65,114**
+  XQALERT1         18178207         31077482       **20,65,114**
+  XQALFWD          10594990         10666938       **6,65,91,111,114**
+  XQALSET          12975662         14779633       **6,65,75,114**
+  XQALSURO              New          5607165       **114**
+   
+   
+  Installation:
+   
+  1.  DSM sites - Some of these routines may be mapped,
+  so you will need to disable mapping for the affected routines.
+   
+  2.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This
+  option will load the KIDS package onto your system.
+   
+  3.  The patch has now been loaded into a Transport global on your
+  system. You now need to use KIDS to install the Transport global.
+  On the KIDS menu, under the 'Installation' menu, use the following
+  options:
+   
+  Verify Checksums in Transport Global
+  Print Transport Global
+  Compare Transport Global to Current System
+  Backup a Transport Global
+   
+  4.  Users can remain on the system. This patch can be loaded any
+  non-peak time.
+   
+  This patch can be queued for install at non-peak hours.
+   
+  5.  On the KIDS menu, under the 'Installation' menu, use the following
+  option:
+  Select KIDS OPTION: Install
+  =======
+  Install Package(s)
+  Select INSTALL NAME: XU*8.0*114
+  ==========
+   
+  No Options or Protocols need to be placed out-of-order.
+  Want to DISABLE Scheduled Options, Menu Options, and Protocols? NO
+  ==
+   
+  6.  MSM-DOS Sites - Answer YES to the question 'Want to MOVE
+  routines to other CPUs?'. Enter the names of your Compute and
+  Print server(s).
+  AXP Sites - Answer NO to this question.
+   
+  7.  If the routines were unmapped as part of step 1, they should be
+  returned to the Mapped set once the installation has run to
+  completion.
+
+Routine Information:
+====================
+
+Routine Name:
+  - XQALERT1
+
+
+Routine Checksum:
+
+Routine Name:
+  - XQALSET
+
+
+Routine Checksum:
+
+Routine Name:
+  - XQALBUTL
+
+
+Routine Checksum:
+
+Routine Name:
+  - XQALDEL
+
+
+Routine Checksum:
+
+Routine Name:
+  - XQALSURO
+
+
+Routine Checksum:
+
+Routine Name:
+  - XQALDOIT
+
+  
+
+Routine Checksum:
+ 
+
+Routine Name:
+  - XQALFWD
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : IVEY,JOEL                      Date Entered : JAN 28, 1999
+Completed By: SCHRAM,JACK D                Date Completed: JUN 17, 1999
+Released By : GIBBONS,JOE                   Date Released : JUN 24, 1999
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

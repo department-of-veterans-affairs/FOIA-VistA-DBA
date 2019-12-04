@@ -1,0 +1,880 @@
+
+=============================================================================
+Run Date: AUG 31, 2005                     Designation: PX*1*124
+Package : PX - PCE PATIENT CARE ENCOUNTER     Priority: Mandatory
+Version : 1       SEQ #126                      Status: Released
+                  Compliance Date: OCT 01, 2005
+=============================================================================
+
+Associated patches: (v)PX*1*45     <<= must be installed BEFORE `PX*1*124'
+                    (v)PX*1*99     <<= must be installed BEFORE `PX*1*124'
+                    (v)OR*3*195    <<= must be installed BEFORE `PX*1*124'
+                    (v)PX*1*130    <<= must be installed BEFORE `PX*1*124'
+                    (v)PX*1*132    <<= must be installed BEFORE `PX*1*124'
+                    (v)IB*2*257    <<= must be installed BEFORE `PX*1*124'
+                    (v)PX*1*141    <<= must be installed BEFORE `PX*1*124'
+                    (v)PX*1*143    <<= must be installed BEFORE `PX*1*124'
+                    (v)PX*1*149    <<= must be installed BEFORE `PX*1*124'
+                    (v)PX*1*151    <<= must be installed BEFORE `PX*1*124'
+
+Subject: CLINICAL INDICATORS DATA CAPTURE(CIDC) - PCE
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Enhancement (Mandatory)
+  - Informational
+
+Description:
+============
+
+ This patch is the Patient Care Encounter(PCE) part of Clinical Indicator
+ Data Capture (CIDC) project.  There are no NOIS messages or E3Rs
+ associated with this patch.
+  
+ Overview
+ ========
+ Patient Care Encounter(PCE) has been identified by the Clinical
+ Indicators Data Capture(CIDC) Team as one of the systems that needs to
+ be modified in order to send the required data at the optimal time to
+ improve the billing process, and thus improve VHA's revenue collection
+ process.  The patch PX*1.0*124 represents the PCE portion of the CIDC
+ effort of Revenue Improvement.
+   
+  
+ Functional Description
+ ======================
+ Modifications to the VHA Information Systems and Technology Architecture
+ Patient Care Encounter (PCE) package have been made such that the
+ Integrated Billing(IB) package be able to distinguish billable from
+ non-billable patient care events.  The modifications include:
+  
+  
+ * All diagnoses entered into PCE shall be identified as being Service 
+   Connected or Non-service connected, and where appropriate, be 
+   classified with Combat Veteran, Environmental indicators, Military
+   Sexual Trauma, and Head and Neck Cancer.  The legacy requirement that
+   Environmental Indicator classification questions will not be asked
+   when the Service Connection is true, is in effect for diagnoses.
+  
+ * All procedure codes will be identified as having clinical indicators
+   which shall be selectable from the VISTA diagnosis list.  
+  
+ * The changes above will be made to both the interactive PCE 
+   functionality as well as the non-interactive Application Programmer 
+   Interface(API) driven functionality.
+  
+ * The Encounter level Service Connection Indicator together with the
+   other encounter classifications: Agent Orange exposure, Irradiation
+   exposure, Environmental Contaminants, Military Sexual Trauma, Head
+   and/or Neck Cancer, Combat Vet, known collectively as the
+   SC/EI classification, shall be auto-populated.
+   
+  
+ Technical Description
+ ======================
+ This patch PX*1.0*124 implements the following functionality: 
+  
+ 1) Enhances the PCE Procedure File to include diagnoses which are 
+  associated with the PCE procedures.   
+  
+ 2) Enhances the PCE Diagnosis File to include an Ordering/Resulting field.  
+    
+ 3) Enhances the PCE Immunization File to include diagnoses which are 
+  associated with the PCE immunizations.  
+  
+ 4) Enhances the PCE Skin Test File to include diagnoses which are 
+  associated with the PCE skin tests.  
+  
+ 5) Enhances the Visit File to include Classification Edit Flags
+  
+ 6) Makes changes to the data filing API's DATA2PCE(IA 1889) and PXCA
+  (IA 1899) to enable the use of the new CPT Diagnosis fields and the
+     new Diagnosis Classification fields.
+  
+ 7) The Encounter level SC/EI classifications will be auto-populated
+   according to the following rules:
+  
+   If the SC/EI for at least one ICD-9 is "Yes" the Encounter Level
+   SC/EI will automatically be set to "Yes" regardless of whether the
+   Encounter Level SC (or EI) was previously populated
+   ("Yes", "No" or Null).
+         
+   If the SC/EI for all ICD-9s are "No" the Encounter Level SC/EI will
+   automatically be set to "No" regardless of whether the Encounter
+   Level SC/EI was previously populated ("Yes", "No" or Null).
+         
+   If at least one ICD-9 is missing SC/EI determination and none of the
+   other ICD-9s SC/EI determination is "Yes" do not change the SC/EI
+   determination of the Encounter level.
+    
+ 8) An error in PXAIPL was corrected to treat the PL ADD parameter
+   correctly in the DATA2PCE call.  The error was that all diagnoses
+   were being sent to the problem list, and not only those with
+   PL ADD set to 1. Further, when the diagnosis was sent to the
+   problem list without a provider, the problem list was erroring
+   with a provider class error.
+   
+ 9) An error in the primary/secondary determination in PXAIPRV was
+   corrected.  The error incorrectly warned that a provider was identified
+   as primary.
+  
+ 10) Changes made to support the DATA2PCE API 
+   a)  The DATA2PCE API now accepts the seven additional Procedure
+   Clinical Indicators DIAGNOSIS 2, DIAGNOSIS 3, DIAGNOSIS 4,
+   DIAGNOSIS 5, DIAGNOSIS 6, DIAGNOSIS 7, and DIAGNOSIS 8. The results
+   are stored in the V CPT (#9000010.18) file for the encounter.  Support
+   for the Skin Test and Immunization files are supported through
+   the Code mapping file (#811).  The following routine was  modified to
+   support the additional functionality:  PXAICPT
+   b)  The DATA2PCE API now accepts "P" AND "S" for Primary and Secondary 
+   Diagnosis as well as 1 and 0.   The following routines were either 
+   modified or added to support the additional functionality: PXAIPOV 
+   c)  Typographical errors were corrected in routine PXAIPRV in the TMP 
+   subscript 812 and in routine PXAIVSTV for OUTSIDE LOCATION. Changes
+   were made to fix warning errors for primary/secondary designations.
+   d)  A change was made to PXAIPL to fix an error in the PL ADD
+   parameter.  The PL ADD parameter was being ignored.
+   e)  The following additions/modifications were made to the DATA2PCE
+   parameters: 
+  
+ "PROCEDURE" ,i, "DIAGNOSIS 2" )  ICD DIAGNOSIS File (#80)
+ "PROCEDURE" ,i, "DIAGNOSIS 3" )  ICD DIAGNOSIS File (#80)
+ "PROCEDURE" ,i, "DIAGNOSIS 4" )  ICD DIAGNOSIS File (#80)
+ "PROCEDURE" ,i, "DIAGNOSIS 5" )  ICD DIAGNOSIS File (#80)
+ "PROCEDURE" ,i, "DIAGNOSIS 6" )  ICD DIAGNOSIS File (#80)
+ "PROCEDURE" ,i, "DIAGNOSIS 7" )  ICD DIAGNOSIS File (#80)
+ "PROCEDURE" ,i, "DIAGNOSIS 8" )  ICD DIAGNOSIS File (#80)
+ "PROCEDURE" ,i, "ORD PROVIDER")
+  
+ "DX/PL",i,"PRIMARY" )   [P | 1 | S | 0 | null ]
+  
+ "DX/PL",i,"ORD/RES")    [O | R | OR | null ]
+                         
+ "SKIN TEST" ,i, "DIAGNOSIS" )    ICD DIAGNOSIS File (#80)
+ "SKIN TEST" ,i, "DIAGNOSIS 2" )  ICD DIAGNOSIS File (#80)
+ "SKIN TEST" ,i, "DIAGNOSIS 3" )  ICD DIAGNOSIS File (#80)
+ "SKIN TEST" ,i, "DIAGNOSIS 4" )  ICD DIAGNOSIS File (#80)
+ "SKIN TEST" ,i, "DIAGNOSIS 5" )  ICD DIAGNOSIS File (#80)
+ "SKIN TEST" ,i, "DIAGNOSIS 6" )  ICD DIAGNOSIS File (#80)
+ "SKIN TEST" ,i, "DIAGNOSIS 7" )  ICD DIAGNOSIS File (#80)
+ "SKIN TEST" ,i, "DIAGNOSIS 8" )  ICD DIAGNOSIS File (#80)
+  
+ "IMMUNIZATION" ,i, "DIAGNOSIS" )    ICD DIAGNOSIS File (#80)
+ "IMMUNIZATION" ,i, "DIAGNOSIS 2" )  ICD DIAGNOSIS File (#80)
+ "IMMUNIZATION" ,i, "DIAGNOSIS 3" )  ICD DIAGNOSIS File (#80)
+ "IMMUNIZATION" ,i, "DIAGNOSIS 4" )  ICD DIAGNOSIS File (#80)
+ "IMMUNIZATION" ,i, "DIAGNOSIS 5" )  ICD DIAGNOSIS File (#80)
+ "IMMUNIZATION" ,i, "DIAGNOSIS 6" )  ICD DIAGNOSIS File (#80)
+ "IMMUNIZATION" ,i, "DIAGNOSIS 7" )  ICD DIAGNOSIS File (#80)
+ "IMMUNIZATION" ,i, "DIAGNOSIS 8" )  ICD DIAGNOSIS File (#80)
+  
+ 11) Changes made to support the PCE Device Interface API
+   
+ LOCAL("PROCEDURE",<PROVIDER IEN>,i) = 1^2^3^4^5^6^7^8^9^10^11^12
+                ^13^14, where: 
+ Position Description
+  8   1st Secondary Diagnosis  ICD DIAGNOSIS File (#80)
+  9   2nd Secondary Diagnosis  ICD DIAGNOSIS File (#80)
+  10  3rd Secondary Diagnosis  ICD DIAGNOSIS File (#80)
+  11  4th Secondary Diagnosis  ICD DIAGNOSIS File (#80)
+  12  5th Secondary Diagnosis  ICD DIAGNOSIS File (#80)
+  13  6th Secondary Diagnosis  ICD DIAGNOSIS File (#80)
+  14  7th Secondary Diagnosis  ICD DIAGNOSIS File (#80)
+  
+ LOCAL("DIAGNOSIS/PROBLEM",<PROVIDER IEN>,i) = 1^2^3^4^5^6^7^8^9
+                ^10^11^12^13^14^15^16^17^18, where: 
+ Position Description
+  
+  18         Ordering/Resulting   [O | R | OR | null ]
+  
+ LOCAL("SKIN TEST",<PROVIDER IEN>,i) = 1^2^3^4^5^6^7^8^9^10^11^12
+             ^13, where: 
+ Position Description
+  6   Primary Associated Diagnosis ICD DIAGNOSIS File (#80)
+  7   1st Secondary Diagnosis 2    ICD DIAGNOSIS File (#80)
+  8   2nd Secondary Diagnosis 3    ICD DIAGNOSIS File (#80)
+  9   3rd Secondary Diagnosis 4    ICD DIAGNOSIS File (#80)
+  11  4th Secondary Diagnosis 5    ICD DIAGNOSIS File (#80)
+  12  5th Secondary Diagnosis 6    ICD DIAGNOSIS File (#80)
+  13  6th Secondary Diagnosis 7    ICD DIAGNOSIS File (#80)
+  14  7th Secondary Diagnosis 8    ICD DIAGNOSIS File (#80)
+  
+ LOCAL("IMMUNIZATION",<PROVIDER IEN>,i) = 1^2^3^4^5^6^7^8^9^10^11
+              ^12^13^14^15, where: 
+ Position Description
+  8   Primary Associated Diagnosis ICD DIAGNOSIS File (#80)
+  9   1st Secondary Diagnosis 2    ICD DIAGNOSIS File (#80)
+  10  2nd Secondary Diagnosis 3    ICD DIAGNOSIS File (#80)
+  11  3rd Secondary Diagnosis 4    ICD DIAGNOSIS File (#80)
+  12  4th Secondary Diagnosis 5    ICD DIAGNOSIS File (#80)
+  13  5th Secondary Diagnosis 6    ICD DIAGNOSIS File (#80)
+  14  6th Secondary Diagnosis 7    ICD DIAGNOSIS File (#80)
+  15  7th Secondary Diagnosis 8    ICD DIAGNOSIS File (#80)
+   
+ 12) The following Database Integration Agreements were affected by the 
+     changes made by PX*1.0*124 and were updated accordingly.  
+      8.1     DATA2PCE        - DBIA 1889-A            1889 
+      8.2     PXCA            - DBIA 1889-A            1899
+      8.3     PXUTLSCC        - SERVICE CONNECTED CONDITIONS
+                                                       2348
+ 13) The following routines were changed to support PCE Encounter
+     Data Entry 
+  a) Procedure associated diagnoses: PXCECPT, PXCEC800 
+       PXCEVFI4, PXKFCPT 
+  b) Diagnosis classification indicators: PXCEPOV, PXCEPOV1, PXKFPOV, 
+       PXCED800 
+  c) Support routines: PXCEVFI1, PXCEFIL, PXCEFI4 
+  d) Immunization: PXCESK, PXKFIMM 
+  e) Skin Test: PXCESK, PXKFSK 
+  
+ 14) The following routines were changed to support Appointment
+     Management 
+   a) Procedure associated diagnoses: 
+         PXBDCPT, PXBMCPT2, PXBPCPT, PXBPCPT2, PXBGCPT 
+   b) Diagnosis classification indicators: 
+         PXBDPOV, PXBMPOV, PXBPPOV, PXBGPOV 
+   c) Screen management, display management: PXBCC, PXBDREQ 
+   d) Help routines: PXBHLP2, PXBHLPR, PXBUTL0 
+   e) Support routines: PXBSTOR, PXBSTOR1, PXBPORD 
+  
+ 15) The following routines were changed to support PCE Device
+     Interface 
+   a) Procedure associated diagnoses: PXCA0, PXCAPCT, PXCACPT1 
+   b) Diagnosis classification indicators: PXCAPOV 
+   c) Immunization associated diagnoses: PXCAVIMM 
+   d) Skin Test associated diagnoses: PXCASK 
+  
+ 16) The following routines were added or modified to support the
+     auto-population of the Encounter level SC/EI classifications:
+          PXCECCLS, PXKMAIN
+  
+ 17)  Related Options 
+   APPOINTMENT MANAGEMENT
+   APPOINTMENT MENU
+   SUP  PCE Encounter Data Entry -Supervisor
+   PCE  PCE Encounter Data Entry
+   DEL  PCE Encounter Data Entry and Delete
+   NOD  PCE Encounter Data Entry without Delete 
+   
+  
+ 18)   Related Protocols 
+   PROCEDURE UPDATE
+   APPOINTMENT CHECK-IN/CHECK-OUT
+   SDCO INTERVIEW
+   PXCE SDAM
+   INTERVIEW
+   PXCE ADD/EDIT
+   INTERVIEW PXCE INTERVIEW PXCE ADD/EDIT PXCE CPT ADD 
+   PXCE EDIT V-FILE PXCE DELETE V-FILE PXCE DISPLAY DETAIL
+   SDAM CPT     Procedure Update
+  
+  
+  ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;1.0;PCE PATIENT CARE ENCOUNTER;**[patch list]**;Aug 12, 1996
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  PXAICPT                5821201              6521746      19,73,108,112,149
+                                                                  124
+  PXAIIMM                1978822              2400748           45,124
+  PXAIPL                 1563460              1575650           69,124
+  PXAIPOV                6162167              6323448      28,73,69,108,112
+                                                                130,124
+  PXAIPRV                5592599              5700915          5,108,124
+  PXAISK                 1864030              2285956           45,124
+  PXAIVST                5382765              5868353        5,9,15,74,111
+                                                              96,130,124
+  PXAIVSTV              29044768             29077558       9,15,19,74,111
+                                                              116,130,124
+  PXAPI                  8525873              8566521        14,15,27,28,124
+  PXBAPI1                8965151              9169888        1,9,23,56,104
+                                                          111,113,122,116,130
+                                                                147,151,124
+  PXBAPI21               5273789              8609388         130,147,124
+  PXBCC                  6296028              6304359        7,73,141,124
+  PXBDCPT                7589626              8755924      11,73,89,108,121
+                                                                  124
+  PXBDPOV                8212402              8519121             124
+  PXBDREQ                1920364              2136948           73,124
+  PXBGCPT                2270044              2803582         73,149,124
+  PXBGPOV                3374254              4780196       11,112,149,124
+  PXBGPOV2               8999898              9000627       1,5,11,136,149
+                                                                  124
+  PXBHLP2                6539318              8179559             124
+  PXBHLPR                 734674               913653             124
+  PXBMCPT2               3589622              4477933       11,73,88,89,108
+                                                                  124
+  PXBMPOV                2896537              3061834        11,14,108,124
+  PXBPCPT               10859136             11466293      11,73,89,112,121
+                                                              132,149,124
+  PXBPCPT1               6087155              7034684       7,73,88,89,108
+                                                              112,121,124
+  PXBPCPT2                   N/A              3261534             124
+  PXBPORD                    N/A              1117769             124
+  PXBPPOV                9549111              9323903      11,28,92,121,149
+                                                                  124
+  PXBPPOV1               5230066              6895247       11,112,121,124
+  PXBPPRV1               5680964              5703481       11,19,27,88,124
+  PXBSTOR                7612031              8956334        73,88,149,124
+  PXBSTOR1               1670721              3471352           88,124
+  PXBUTL0                8652920              9096009           108,124
+  PXCA0                  6269497              6295050         5,14,33,124
+  PXCACPT               11272075             22141152      27,33,73,121,124
+  PXCACPT1               3548373              5244291         73,121,124
+  PXCAPOV               14955427             17370369      24,27,33,121,130
+                                                                  124
+  PXCASK                 6158146              7480031           27,124
+  PXCAVIMM               9020591             10662139           27,124
+  PXCEAPPM               4521435              4615707      22,74,111,130,124
+  PXCEC800                   N/A              1342514             124
+  PXCECCLS                   N/A             11982570             124
+  PXCECPT                8612097             15066899       14,27,73,89,112
+                                                              121,136,124
+  PXCED800                   N/A              1214512             124
+  PXCEPOV                4867172             10953989         27,121,124
+  PXCEPOV1               5829184              5834557         134,149,124
+  PXCEPRV                8580655              8567491          7,27,124
+  PXCESIT                6053362              6148945      22,74,111,130,124
+  PXCESK                 6789131              8721742           27,124
+  PXCEVFI1               6148844              6639573      23,73,112,136,143
+                                                                  124
+  PXCEVFI2               9333893             11669591       22,73,95,96,124
+  PXCEVFI4               5368384              9878198             124
+  PXCEVFI5               2535124              2543093          14,99,124
+  PXCEVFIL              12681208             12681208        9,30,22,73,88
+                                                            89,104,147,124
+  PXCEVIMM               5784826             10549239           27,124
+  PXCEVST                4521720              4615992      22,74,111,130,124
+  PXKFCPT                 501773               576909        22,73,117,124
+  PXKFCPT1               6556330              8260104          11,73,124
+  PXKFIMM                 357523               434628           22,124
+  PXKFPOV                 631277               635058         22,130,124
+  PXKFSK                  346031               423463           22,124
+  PXKFVST                1810564              1723649      22,56,111,130,124
+  PXKMAIN               10854965             10876433       22,59,73,88,69
+                                                              117,130,124
+  PXKMAIN1               7231815              7609843          22,73,124
+  PXRRMDR                    N/A             19496035             124
+  VSITFLD                4330103              5302550      76,81,111,130,124
+  
+  
+ DATA DICTIONARY SUMMARY
+ ========================
+  
+ V CPT (#9000010.18) 
+   DIAGNOSIS 2                           .09 
+   DIAGNOSIS 3                           .1  
+   DIAGNOSIS 4                           .11
+   DIAGNOSIS 5                           .12
+   DIAGNOSIS 6                           .13
+   DIAGNOSIS 7                           .14
+   DIAGNOSIS 8                           .15
+  
+ V POV (#9000010.07)    
+   ORDERING/RESULTING                    .17
+  
+ V IMMUNIZATION (#9000010.11) 
+   DIAGNOSIS                             .08 
+   DIAGNOSIS 2                           .09 
+   DIAGNOSIS 3                           .1  
+   DIAGNOSIS 4                           .11
+   DIAGNOSIS 5                           .12
+   DIAGNOSIS 6                           .13
+   DIAGNOSIS 7                           .14
+   DIAGNOSIS 8                           .15
+  
+ V SKIN TEST (#9000010.12) 
+   DIAGNOSIS                             .08 
+   DIAGNOSIS 2                           .09 
+   DIAGNOSIS 3                           .1  
+   DIAGNOSIS 4                           .11
+   DIAGNOSIS 5                           .12
+   DIAGNOSIS 6                           .13
+   DIAGNOSIS 7                           .14
+   DIAGNOSIS 8                           .15
+  
+ VISIT (#9000010)
+   SERVICE CONNECTION EDIT FLAG          80011
+   AGENT ORGANGE EDIT FLAG               80012
+   IONIZING RADIATION EDIT FLAG          80013
+   ENVIRONMENTAL CONTAMINANT EDIT FLAG   80014
+   MILITARY SEXUAL TRAUMA EDIT FLAG      80015
+   HEAD AND NECK CANCER EDIT FLAG        80016
+   COMBAT VETERAN EDIT FLAG              80017
+  
+  
+ Test Sites:
+ ===========
+ Loma Linda, CA
+ Cleveland, OH
+ Dayton, OH
+ Boston, MA
+ Memphis, TN
+ Charleston, SC
+  
+  
+ SOFTWARE AND DOCUMENTATION RETRIEVAL
+ ====================================
+ The software for this patch is being distributed in host file 
+ PX_CLINICAL_INDICATOR_DATA_CAPTURE.KID.  The host file will contain nine
+ KIDS builds.  The builds contained in the CIDC multi-package distribution are:
+  
+       Package                         Patch
+       -------                          ---------
+       PCE PATIENT CARE ENCOUNTER      PX*1.0*124
+       INTEGRATED BILLING              IB*2.0*260
+       RADIOLOGY/NUCLEAR MEDICINE      RA*5.0*41
+       SURGERY                         SR*3.0*119
+       PROSTHETICS                     RMPR*3.0*78
+       OUTPATIENT PHARMACY             PSO*7.0*143
+   
+       Host file name: PX_CLINICAL_INDICATOR_DATA_CAPTURE.KID
+   
+    
+ File Name                                 Description         Format    FTP Protocol
+ --------------                            -------------       -------   ------
+ PX_CLINICAL_INDICATOR_DATA_CAPTURE.KID    Software Host File  KIDS      ASCII
+ PX_1_P124_RN.PDF                          Release Notes       PDF       Binary
+ PX_1_P124_TM_CP.PDF                       Technical Manual    PDF       Binary
+                                            Change Pages
+ PX_1_P124_UM_CP.PDF                       User Manual         PDF       Binary
+                                            Change Pages
+  
+  
+ Sites may retrieve the software and documentation directly using FTP from 
+  the ANONYMOUS.SOFTWARE directory at the following OI Field Offices:
+   
+  
+      The documentation for this patch and the install instructions can be
+      found in the following [ANONYMOUS.SOFTWARE] directories:
+    
+                                    Preferred Address
+                                    -------------------------
+       First available FTP server   download.vista.med.va.gov
+    
+       Specific Field Office        FTP Address
+       ---------------------        ------------------------
+       Albany                       ftp.fo-albany.med.va.gov
+       Hines                        ftp.fo-hines.med.va.gov
+       Salt Lake City               ftp.fo-slc.med.va.gov
+    
+    
+ INSTALLATION
+ ============
+ Please refer to the CIDC_INSTALLATION_GUIDE.PDF
+ Install Guide in the [ANONYMOUS.SOFTWARE]
+ directories for details of the installation procedure for this patch.
+
+Routine Information:
+====================
+
+Routine Name:
+  - PXAICPT
+
+  
+
+Routine Checksum:
+
+Routine Name:
+  - PXAIPOV
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXAIPRV
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXAIVST
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXAIVSTV
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBAPI1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBCC
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBDCPT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBDPOV
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBDREQ
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBGCPT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBGPOV
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBHLP2
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBHLPR
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBMCPT2
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBMPOV
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBPCPT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBPCPT2
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBPORD
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBPPOV
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBSTOR
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBSTOR1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBUTL0
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCA0
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCACPT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCACPT1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCAPOV
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCEC800
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCECPT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCED800
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCEPOV
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCEPOV1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCEVFI1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCEVFI4
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXKFCPT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXKFPOV
+
+  
+
+Routine Checksum:
+
+Routine Name:
+  - PXKFCPT1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCEVIMM
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCESK
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXKFSK
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXKFIMM
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCASK
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCAVIMM
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCEVFIL
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXAIPL
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBAPI21
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBPPOV1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCEAPPM
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCECCLS
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCEPRV
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCESIT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCEVFI2
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCEVFI5
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCEVST
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXKFVST
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXKMAIN
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXKMAIN1
+
+
+Routine Checksum:
+
+Routine Name:
+  - VSITFLD
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXAIIMM
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBGPOV2
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXAISK
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRRMDR
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBPPRV1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBPCPT1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXAPI
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                          Hold Date     : AUG 29, 2005
+Entered By  : SMITH,DEAN                    Date Entered  : MAY 20, 2003
+Completed By: LYNCH,MARY F.                 Date Completed: AUG 31, 2005
+Released By : FIELDS-BARNES,JANETTE         Date Released : AUG 31, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

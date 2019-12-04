@@ -1,0 +1,412 @@
+$TXT Created by ACKERMAN,NIEN-CHIN at DEV.DEV.FO-HINES.MED.VA.GOV  (KIDS) on Tuesday, 11/04/08 at 10:26
+=============================================================================
+Run Date: JUN 30, 2009                     Designation: MD*1*11
+Package : MD - CLINICAL PROCEDURES            Priority: Mandatory
+Version : 1        SEQ #13                      Status: Released
+                  Compliance Date: JUL 30, 2009
+=============================================================================
+
+Associated patches: (v)MD*1*6     <<= must be installed BEFORE `MD*1*11'
+                    (v)MD*1*14     <<= must be installed BEFORE `MD*1*11'
+
+Subject: Long HL7 Segments & Multi results
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Other
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ This patch contains the following:
+ 1) An update to the Clinical Procedures (CP) Health Level 7 (HL7) Interface
+    to support large message segments.  Dayton was having a problem receiving
+    large HL7 Messages from the MUSE server.  The large HL7 messages segments
+    would cause a "STORAGE Error".  This patch changes the way the HL7 Message
+    is processed within CP.  The routines MDHL7A and MDHL7U1 were updated
+    to support this function.  
+                          
+    RT# 68922
+                                          
+  
+ 2) Resolve the issue at Tampa with the Respironics device sending multiple
+    results at different periods of time to CP.  CP will be creating a new
+    CP study and Text Integration Utilities (TIU) note for each result sent.
+                                                                        
+    RT# 250602
+                                                                          
+ DATA DICTIONARY CHANGE 
+ ======================
+ A new field called PROCESSED RESULT was added to the CP DEFINITION file 
+ (#702.01).
+ 
+ 702.01,.12    PROCESSED RESULT       0;11 SET
+ 
+               Processed Result          
+                                 '0' FOR Final Result; 
+                                 '1' FOR Multiple Results; 
+                                 '2' FOR Cumulative Result; 
+               LAST EDITED:      FEB 14, 2005 
+               HELP-PROMPT:      Enter the processed result. 
+               DESCRIPTION:      This field is a flag which indicates 
+                                 whether a final result, multiple results, or 
+                                 cumulative result is associated with this
+                                 procedure.  
+ 
+ Note: If the site does not have a multiple result instrument, NO setup needs 
+ to be made.  CP automatically defaults to using '0' for Final Result.  If 
+ the site has a multiple result instrument, the site can select either '1' 
+ for Multiple Results which allows creation of a new TIU note for each result 
+ sent back or a '2' for Cumulative Result which allows the multiple result 
+ device to continuously send results back to the same TIU note.  If the site
+ needs to enter the PROCESSED RESULT field, the user will have to use File
+ Manager to edit the field in the CP DEFINITION File (#702.01).
+                                                                         
+ Screen Capture is shown below:
+ 
+ *********************
+ BEGIN SCREEN CAPTURE
+ *********************
+ 
+ >D P^DI
+ 
+ 
+ VA FileMan 22.0
+ 
+ 
+ Select OPTION: 1  ENTER OR EDIT FILE ENTRIES
+ 
+ 
+ 
+ INPUT TO WHAT FILE: CP TRANSACTION// 702.01  CP DEFINITION
+                                           (310 entries)
+ EDIT WHICH FIELD: ALL// PROCESS
+      1   PROCESSED RESULT  
+      2   PROCESSING APPLICATION  
+ CHOOSE 1-2: 1  PROCESSED RESULT
+ THEN EDIT FIELD: 
+ 
+ 
+ Select CP DEFINITION NAME: pul
+      1   PULMONARY ARTERY CATHETER
+      2   PULMONARY ENDOSCOPY
+      3   PULMONARY FUNCTION INTERPRET
+      4   PULMONARY FUNCTION TEST 
+      5   PULMONARY PROCEDURES     
+ Press <RETURN> to see more, '^' to exit this list, OR
+ CHOOSE 1-5: 5  PULMONARY PROCEDURES
+ PROCESSED RESULT: ?
+      Enter the processed result.
+      Choose from: 
+        0        Final Result
+        1        Multiple Results
+        2        Cumulative Result
+ PROCESSED RESULT: 1  Multiple Results
+ 
+ 
+ Select CP DEFINITION NAME: 
+ 
+ 
+ Select OPTION:
+ 
+ *******************
+ END SCREEN CAPTURE
+ *******************    
+ 
+ 3) If the site does not use appointments and uses the auto study check-in
+    functionality, the encounter date/time or visit date/time used is
+    the date/time when the study was checked-in.  This will be the date/time
+    of when the procedure was performed after the patch is installed.
+  
+    RT # 250082
+ 
+ 4) Tampa is using Olympus device version 7.2.  CP does not include the
+    hospital location for outpatients and the room-bed for the inpatients
+    in the HL7 message to the medical device.  Routine MDHL7BH was modified
+    to include the clinic name in the HL7 message and the room-bed.
+ 
+    RT # 242121
+    E3R 20200                         
+                                 
+                                                           
+ NEW PARAMETER DEFINITION:
+ ========================
+    MD CLINIC ASSOCIATION                      
+    MD OLYMPUS 7                                   
+    MD USE APPOINTMENT                             
+    
+ Parameter MD CLINIC ASSOCIATION will be used by option MD AUTO CHECK-IN SETUP.
+ This is to handle one clinic associated to multiple procedures.
+ 
+ If your site has a clinic that handles more than one procedure
+ in the MD AUTO CHECK-IN SETUP, you will need to remove them after
+ patch installation and re-enter them to activate them.  For example:
+ Endoscopic clinic that handles more than one procedure such as Colonoscopy,
+ and Endoscopic Retrograde Cholangiopancreatography (ERCP).
+ Echocardiogram (ECHO) clinic that handles Echo Stress and Echo
+ Doppler.
+ 
+ If your clinic only handles a single procedure, you DO NOT need
+ to do this.                  
+ 
+ The users can edit the MD OLYMPUS 7 and MD USE APPOINTMENT parameters using
+ the Edit Parameter Values option,[XPAR EDIT PARAMETER].
+  
+ The following is a screen capture of the parameter usage:
+  
+ =================
+ BEGIN EXAMPLE 1
+ =================
+                                                           
+ D ^XUP
+  
+ Setting up programmer environment
+ Terminal Type set to: C-VT100
+  
+ Select OPTION NAME: XPAR EDIT PARAMETER       Edit Parameter Values
+ Edit Parameter Values
+                          --- Edit Parameter Values ---
+  
+ Select PARAMETER DEFINITION NAME: MD USE APPOINTMENT     Use Appointment Locatio
+ n
+ 
+ ---- Setting MD USE APPOINTMENT  for System: DEV.DEV.FO-HINES.MED.VA.GOV ----
+ Use Appointment location: ??
+ 
+ Set this value to Yes to allow CPUser to use the location of the
+ appointment selected during CP study check-in for the workload.
+ Otherwise, the hospital location of the CP Definition will be used.
+ If no value is entered, the default value is No.
+ 
+ Use Appointment location: 
+                                                                     
+ -------------------------------------------------------------------------------
+ 
+ Select PARAMETER DEFINITION NAME:    MD OLYMPUS 7   MD OLYMPUS 7
+ 
+ ------- Setting MD OLYMPUS 7  for System: DEV.DEV.FO-HINES.MED.VA.GOV -------
+ Yes/No: ??
+ 
+ This parameter definition indicate whether the Olympus device
+ is version 7.3.7.  The value is Yes/No.  The default value
+ is "No".
+ 
+ Yes/No:
+ -------------------------------------------------------------------------------
+  
+ 
+ *************
+ END EXAMPLE 1
+ *************
+ 
+ 5) Palo Alto and Detroit reported that when the appointment is a "No Show"
+    or "Cancelled", the CP study checked-in needs to be manually cancelled.
+    A new option was added with patch 11 called MD PROCESS NOSHOW/CANCEL.
+    Routines MDPURGE and MDWCAN were added.  Option MD PROCESS NOSHOW/CANCEL
+    needs to be tasked to run daily to clean up studies that have appointments
+    that are either a "No Show" or "Cancelled".  It is recommended the
+    option be tasked to run at the end of each day such as 4pm or 5pm.
+ 
+    RT# 255795
+ 
+ The following is an example of scheduling option MD PROCESS NOSHOW/CANCEL in
+ TASKMAN Management:
+                                                                           
+ =================
+ BEGIN EXAMPLE 2
+ =================
+ D ^XUP
+ 
+ Select OPTION NAME: XUTM MGR     Taskman Management
+ 
+ Select Taskman Management Option: Schedule/Unschedule Options
+ 
+ Select OPTION to schedule or reschedule: MD PROCESS NOSHOW/CANCEL     Process 
+ No Show/Cancel Studies      (R)
+                           Edit Option Schedule
+     Option Name: MD PROCESS NOSHOW/CANCEL          
+     Menu Text: Process No Show/Cancel Studies             TASK ID: 3329284
+   _________________________________________________________________________
+  
+   QUEUED TO RUN AT WHAT TIME: JUNE 20,2008@16:00             
+  
+ DEVICE FOR QUEUED JOB OUTPUT:
+  
+  QUEUED TO RUN ON VOLUME SET: site volume                  
+  
+       RESCHEDULING FREQUENCY: 1D                            
+  
+              TASK PARAMETERS:
+  
+             SPECIAL QUEUEING: Startup Persistent
+  
+ _________________________________________________________________________
+  
+  
+  
+  
+  
+ COMMAND:                                       Press <PF1>H for help    Insert
+ ==============
+ END EXAMPLE 2
+ ==============
+                                                      
+    NOTE: It is recommended that sites enter Startup Persistent in the
+    SPECIAL QUEUEING field for all scheduled options of Clinical Procedures
+    so the option will re-start if it was stopped unexpectedly.
+ 
+ 
+ 6) Wilkes-Barre reported an undefined variable MDLAST in routine MDWSETUP
+    and an undefined variable VADM in routine MDRPCOP.  Variable MDLAST
+    was not initialized in the routine and the routine was modified to resolve
+    this error.  Variable VADM did not exist when entry point GETOBJ was
+    called.  Routine MDRPCOP was modified to quit if variable VADM did not
+    exist.
+                                                                          
+                                       
+ 508 Compliance
+ ==============
+ N/A - No Graphical User Interface (GUI) front end.
+                              
+ 
+ ASSOCIATED Remedy Tickets
+ =========================
+ RT# 68922                   
+ RT# 250082                   
+ RT# 250602                   
+ RT# 242121                   
+ RT# 255795
+ 
+ ASSOCIATED E3R 
+ ==============
+ 20200 
+ 
+  
+ DOCUMENTATION RETRIEVAL:
+ =======================
+ The supporting documentation can be retrieved in the
+ following steps:
+  
+  The following files can be retrieved in 
+  BINARY format by File Transfer Protocol (FTP):
+  MD_1_P11_IMPG.PDF  (Implementation Guide - change pages)
+  CLINPROC1_IMPG.PDF (Implementation Guide - whole manual)
+  MD_1_P11_TM.PDF    (Technical Manual - change pages)
+  CLINPROC1_TM.PDF   (Technical Manual- whole manual)
+  CLINPROC1_UM.PDF   (User Manual - whole manual)
+  MD_1_P11_UM.PDF    (User Manual - change pages)
+                                                                              
+                                                                    
+  The preferred method is to FTP the files from
+  
+     download.vista.med.va.gov    
+  
+  which will transmit the files from the first available FTP server.
+  
+  The files may also be downloaded directly from a particular FTP
+  location at the following locations.
+  
+         Albany                  ftp.fo-albany.med.va.gov
+         Hines                   ftp.fo-hines.med.va.gov
+         Salt Lake City          ftp.fo-slc.med.va.gov
+  
+  
+  Files are available in the ANONYMOUS.SOFTWARE directory. 
+                                                                       
+                                                                         
+ TEST SITES: 
+ ==========
+ Boston       (Large Integrated)
+ Loma Linda   (Large)
+ Tampa        (Large)
+ Detroit      (Large)
+ Wilkes-Barre (Large)    
+  
+  
+  INSTALLATION INSTRUCTIONS: 
+  =========================
+  Users may remain on the system but this patch should be installed at 
+  non-peak hours due to the high volume use of the routines included.  
+  Installation should take less than 3 minutes.  
+  
+     1. Use the INSTALL/CHECK MESSAGE option on the PackMan 
+        menu.  
+     2. From the Kernel Installation and Distribution System Menu, 
+        select the Installation menu.  
+     3. From this menu, you may elect to use the following options 
+         (when prompted for INSTALL NAME, enter MD*1.0*11): 
+              a.  Backup a Transport Global 
+              b.  Compare Transport Global to Current System 
+              c.  Verify Checksums in Transport Global 
+     4. Use the Install Package(s) option and select the patch MD*1.0*11.
+     5. When prompted "Want KIDS to Rebuild Menu Trees Upon Completion of
+        Install? NO//", respond NO. 
+     6. When prompted "Want KIDS to INHIBIT LOGONs during the 
+        install? NO//", respond NO.
+     7. When prompted "Want to DISABLE Scheduled Options, Menu 
+        Options, and Protocols? NO//", respond NO.  
+     8. When prompted 'DEVICE: HOME //', respond with <ENTER> or a 
+        device.  
+ 
+ POST-INSTALLATION INSTRUCTIONS
+ ==============================
+ 1) If you have a clinic entered in the MD AUTO CHECK-IN SETUP option 
+    that handles more than one procedure, you need to remove it and re-enter
+    it.  If your clinic only handles a single procedure, you DO NOT need
+    to do this.
+                                                               
+ 2) Schedule option MD PROCESS NOSHOW/CANCEL in TASKMAN Management.
+ 
+ 
+ 
+ 
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;1.0;CLINICAL PROCEDURES;**[Patch List]**;Apr 01, 2004;Build 67
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: MDHL7A
+    Before: B47556007   After: B47975378  **6,11**
+Routine Name: MDHL7BH
+    Before: B11540394   After: B17132013  **11**
+Routine Name: MDHL7U1
+    Before: B15807235   After: B15827833  **11**
+Routine Name: MDNCHK
+    Before:       n/a   After:  B2266513  **11**
+Routine Name: MDPURGE
+    Before:       n/a   After:  B4890082  **11**
+Routine Name: MDRPCOP
+    Before: B73541480   After: B75016189  **4,6,11**
+Routine Name: MDRPCOT
+    Before: B75811389   After: B79210353  **5,6,11**
+Routine Name: MDRPCOT1
+    Before: B27880896   After: B34134564  **5,11**
+Routine Name: MDWCAN
+    Before:       n/a   After: B16228241  **11**
+Routine Name: MDWOR
+    Before: B34141861   After: B40687442  **14,11**
+Routine Name: MDWORSR
+    Before: B40172880   After: B57396407  **14,11**
+Routine Name: MDWSETUP
+    Before: B67128950   After: B65119245  **14,11**
+ 
+Routine list of preceding patches: 6, 14
+
+=============================================================================
+User Information:
+Entered By  : ACKERMAN,WILLIAM              Date Entered  : MAR 02, 2005
+Completed By: REZNIK,CHARMAINE              Date Completed: FEB 26, 2009
+Released By : HOLZMANN,ROBERT               Date Released : JUN 30, 2009
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,1163 @@
+
+=============================================================================
+Run Date: MAR 28, 2005                     Designation: RMPR*3*61
+Package : RMPR - PROSTHETICS                  Priority: Mandatory
+Version : 3        SEQ #80                      Status: Released
+                  Compliance Date: APR 29, 2005
+=============================================================================
+
+Associated patches: (v)RMPR*3*51   <<= must be installed BEFORE `RMPR*3*61'
+                    (v)RMPR*3*52   <<= must be installed BEFORE `RMPR*3*61'
+                    (v)RMPR*3*53   <<= must be installed BEFORE `RMPR*3*61'
+                    (v)RMPR*3*62   <<= must be installed BEFORE `RMPR*3*61'
+                    (v)RMPR*3*74   <<= must be installed BEFORE `RMPR*3*61'
+                    (v)RMPR*3*81   <<= must be installed BEFORE `RMPR*3*61'
+                    (v)RMPR*3*84   <<= must be installed BEFORE `RMPR*3*61'
+
+Subject: PIP File Redesign and Bar Coding
+
+Category: 
+  - Data Dictionary
+  - Routine
+  - Enhancement (Mandatory)
+  - Other
+  - Informational
+
+Description:
+============
+
+           *** WARNING *** WARNING *** WARNING *** WARNING *** 
+  ========================================================================
+  =                                                                      =
+  =  Please Read and Follow all installation instructions carefully.     =
+  =  Failure to do so may cause data errors within Prosthetics Inventory =
+  =  and will require a complete re-entry of Inventory data.  Please     =
+  =  read and make use of supporting hard copy documentation for setup,  =
+  =  Installation, and lessons learned.  The Lessons Learned document    =
+  =  was created at the request of the Prosthetics and Sensory Aids      =
+  =  Service and has been made available to the Prosthetics staff.       =
+  =                                                                      =
+  ========================================================================
+  
+  
+ ************************************************************************
+ * THIS PATCH, RMPR*3.0*61, SHOULD NOT BE INSTALLED IF THE RECOMMENDED  *
+ * ZEBRA PRINTER IS NOT AVAILABLE AND OPERATIONAL.                      *
+ *                                                                      *
+ * DO NOT INSTALL THIS PATCH DURING THE FIRST WEEK OF THE MONTH.  THE   *
+ * POSSIBILITY OF PIP ROLL-UP RUNNING ON THE FIRST WEEK OF THE MONTH    *
+ * CAN CAUSE PROBLEMS IN THE MONTHLY PIP DATA.  INSTALLATION OF THIS    *
+ * PATCH MUST BE COORDINATED WITH THE PROSTHETICS USERS.                *
+ *                                                                      *
+ * PLEASE REFER TO THE IMPLEMENTATION MANUAL FOR DETAILS.               *
+ ************************************************************************
+  
+ Before installing this patch, be sure the following steps have been 
+ accomplished:
+  
+ 1. Scanner Configuration.
+ Any brand of scanner that can read code-128 is recommended.  Follow
+ the Scanner User manual instructions to set-up the scanner.  For
+ the basic configuration, the scanner should be set to:
+         CODE 128  - ENABLE
+         CARRIAGE RETURN - ENABLE
+  
+  
+ 2. Bar Code Printer Configuration.
+ Your Zebra barcode printer (Z4M) should come with a default set-up based
+ on the VA network configuration.  Below is the basic barcode printer 
+ configuration:
+         Baud rate    - 9600
+         Parity       - NONE
+         Data Bits    - 8
+         Stop bit     - 1
+  
+ Create a Terminal Type and a Device in the Terminal Type (#3.2) and Device (#3.5)
+ file.  Below is the example of a Terminal Type and Device:
+  
+ LAT CONNECTION:
+  
+  TERMINAL TYPE FOR LAT CONNECTION:
+  =================================
+  
+  A. For 300 DPI Zebra printer.
+     NAME: P-ZEBRA-01                        RIGHT MARGIN: 0
+     FORM FEED: #                            PAGE LENGTH: 9999
+     OPEN EXECUTE: S RMPRLRES=12 W $C(2),"^PON^LH0,0",$C(3)
+     CLOSE EXECUTE: K RMPRLRES S IONOFF=1
+     DESCRIPTION: Zebra Z4M 300 DPI barcode printer
+  
+  B. For 203 DPI Zebra printer.
+     NAME: P-ZEBRA-02                        RIGHT MARGIN: 0 
+     FORM FEED: #                            PAGE LENGTH: 9999
+     OPEN EXECUTE: S RMPRLRES=8 W $C(2),"^PON^LH0,0",$C(3)
+     CLOSE EXECUTE: K RMPRLRES S IONOFF=1    
+     DESCRIPTION: Zebra Z4M 203 DPI barcode printer
+  
+  
+ Note:  Terminal Type should be named with prefix 'P-ZEBRA'.  For example;
+  P-ZEBRA-xx, where 'xx' could be a number from '01' to '99'.  If the Zebra
+  printer is 203 DPI, variable RMPRLRES should be equal to 8.  If the Zebra
+  printer is 300 DPI, variable RMPRLRES should be equal to 12.
+  
+  
+  DEVICE FILE FOR LAT CONNECTION:
+  ===============================
+  
+  NAME: ZEBRA PROSTHETIC PRINTER          $I: _LTA4069:
+  LOCATION OF TERMINAL: TONY'S DESK     LOCAL SYNONYM: ZEBRA
+  MNEMONIC: ZBP
+  SUBTYPE: P-ZEBRA-01                   TYPE: TERMINAL
+  LAT SERVER NODE: ISC404               LAT SERVER PORT: 69
+  LAT PORT SPEED: 96
+  
+  
+ TELNET CONNECTION:
+  
+  Enter all necessary data for the telnet printer connection, similar to the
+  LAT printer configuration, and then ADD the VMS command below in the
+  TNA_LOAD.COM file.
+   $ TELNET /CREATE 10.26.*********** 1313 /TIME=(NOIDLE, 
+     RECONNECT=00:00:02)/PROTO=NVT
+   $ SET PROT=W:RWLP /DEV TNA1313:
+  
+  
+  TERMINAL TYPE FOR TELNET CONNECTION:
+  ====================================
+  
+  
+  NAME: P-ZEBRA                          RIGHT MARGIN: 132
+   FORM FEED: #                          PAGE LENGTH: 64
+   BACK SPACE: $C(8)                     BAR CODE ON: $C(29),"k"
+  
+  
+  
+  
+  DEVICE FILE FOR TELNET CONNECTION:
+  ==================================
+  
+  NAME: ZEB1$PRT                         $I: _TNA1313:
+   LOCATION OF TERMINAL: Prosthetics Cl  KEY OPERATOR: ZEBRA 109
+   MARGIN WIDTH: 80                      PAGE LENGTH: 64
+  MNEMONIC: Zebra 105se
+   SUBTYPE: P-ZEBRA                      TYPE: TERMINAL
+   LAT SERVER PORT: N/A
+   PRINT SERVER NAME OR ADDRESS: 10.6.208.21
+   TELNET PORT: 9100                     REMOTE PRINTER NAME: ZEB1$PRT
+  
+ -------------------------------------------------------------------------
+  
+  
+ NOIS:             Remedy:
+ -----             -------
+ STX-1201-72032    HD55267
+ NYH-1001-10380    HD55251
+ ISH-0901-41926    HD55249
+ HUN-0201-21319    HD55223
+  
+ Test Sites:
+ -----------
+ Milwaukee
+ New York
+ Madison
+ Augusta
+ Dublin
+ Central-Alabama
+ Columbia, SC
+ Atlanta
+ Tuscaloosa
+ Birmingham
+ Charlston, SC
+  
+ Patch RMPR*3.0*61 will convert all Prosthetics Inventory Programs (PIP) 
+ files to new files.  The conversion will take 2 to 4 hours, depending on 
+ the number of items the sites have in their PIP.
+  
+ OVERVIEW OF NOIS:
+ ----------------- 
+  Nois STX-1201-72032: There is a problem where the software does not
+  allow queuing of inventory  reports to 132 columns printer.  This patch
+  fixes the problem.
+  
+ Nois NYH-1001-10380, ISH-0901-41926 and HUN-0201-21319:  There is a
+  problem where the software does not correctly handle multiple orders
+  of items correctly.  The new file design included in this 
+  patch allows recording of multiple orders of inventory
+  items and error messages during the inventory nightly job and will 
+  display a message that an item or items have already been ordered.
+  
+  
+ MODIFIED OPTIONS:
+ -----------------
+ Please refer to the Implementation Guide or the Inventory (PIP) User
+ Manual for all the changes in the list of MODIFIED OPTIONS.
+  
+  Add Inventory LOCATION or ITEMS [RMPR INV ADD]
+  Edit Inventory Items [RMPR INV EDIT]
+  Order Item from Supply or Vendor [RMPR INV ORDER]
+  Receive Item from Supply, Vendor or Patient [RMPR INV RECEIVE]
+  Transfer Stock Between Locations [RMPR INV TRAN]
+  Reconcile Item Balance [RMPR INV RECONCILE]
+  Item Detail Report [RMPR INV ON HND ITEM]
+  HCPCS Summary Report [RMPR INV ON HND HCPCS]
+  NPPD Group/Line Report [RMPR INV ON HND GROUP/LINE]
+  NPPD Group Summary Report [RMPR INV ON HND SUM]
+  Print Current HCPCS Balance by HCPCS [RMPR INV STOCK BY HCPCS]
+  Print Current Item Balance by Location [RMPR INV STOCK BY LOCATION]
+  Print Transaction History [RMPR INV PRINT/CHECK BAL]
+  Issue From Stock [RMPR ADD 2319]
+  Edit/Delete Issue From Stock [RMPR EDT 2319]
+  Pros Inventory Main [RMPR INV MAIN]
+  Inventory Reports [RMPR INV REPORTS]
+  
+ DELETED OPTIONS:
+ ----------------
+  Deactivate Inventory Location [RMPR INV DELETE]
+  Remove Item from Inventory [RMPR INV REMOVE]
+  
+ NEW OPTIONS ADDED:
+ ------------------
+  Deactivate Inventory Location [RMPR INV DEACTIVATE]
+  Edit Inventory Location [RMPR INV EDIT LOCATION]
+  Print Order/Receive Item [RMPR INV PRINT ORDER/RECEIVE]         
+  Print Item Usage By Location [RMPR INV PRINT ITEM USAGE]         
+  Print Stock Work Sheet [RMPR INV PRINT WORK SHEET]         
+  Reprint Barcode Label [RMPR INV REPRINT BARCODE]         
+  Print Stock On Hand Over Date Range [RMPR INV PRINT OVER DATE]
+  Print Items Not Issued Within 30-Day [RMPR INV PRINT 30-DAY]
+  Print All Barcode in a Location [RMPR INV PRINT ALL BARCODE]
+  Print PIP/IFCAP Item Report [RMPR INV PIP/IFCAP ITEM REPORT]
+  Remove/Deactivate HCPCS/Item from Inventory [RMPR INV REMOVE HCPCS/ITEM]
+  
+ Deactivate Inventory Location [RMPR INV DEACTIVATE]
+ This option is only given to the holder of RMPRMANAGER key.  It requires
+ the electronic signatures of 2 users holding the RMPRMANAGER key to be
+ entered before a location can be deactivated.
+  
+ Edit Inventory Location [RMPR INV EDIT LOCATION]
+ This option is for editing an existing inventory location.
+  
+ Remove/Deactivate HCPCS/Item from Inventory [RMPR INV REMOVE HCPCS/ITEM] -
+ This option removes/deactivates inventory Healthcare Common Procedure
+ Coding System (HCPCS) item(s) from Prosthetics Inventory Program.  Once
+ an item has been removed/deactivated, that item is not accessible.  Only
+ users with RMPRMANAGER key can access this option.
+  
+ Print Order/Receive Item [RMPR INV PRINT ORDER/RECEIVE] -  This is an
+ option to record an Item that has been ordered.  This option will not
+ automatically order an item from Supply or Vendor.
+  
+ Print Item Usage By Location [RMPR INV PRINT ITEM USAGE] - This option
+ prints a report that shows the same information as in the PIP roll-up that
+ is activated by CO, if the date range this report runs is the same. It
+ displays Stock On Hand for certain date range, sorted by Location, HCPCS
+ and Item for either NEW or OLD items.
+  
+ Print Stock Work Sheet [RMPR INV PRINT WORK SHEET] - This option prints a
+ report that shows items for all or selected Location.  As the name
+ implies, it is a work sheet that can be used by sites to record the actual
+ stock in the last column, when user physically counting or reconciling the
+ items.  It works as a tally sheet, so user has a place to write or record
+ the actual quantity in the stock room, and then goes to the option to
+ Reconcile.
+  
+ Reprint Barcode Label [RMPR INV REPRINT BARCODE] - This option allows
+ inventory users to print barcode labels. Only HCPCS in PIP can be printed
+ using this option.
+  
+ Print Stock On Hand Over Date Range [RMPR INV PRINT OVER DATE] - This
+ option prints a report that shows the same information as in the Detail
+ Item Usage By Location, however only prints items that are over the number
+ of DATE RANGE this report runs.
+  
+ Print Items Not Issued Within 30-Day [RMPR INV PRINT 30-DAY] - This option
+ prints all items in a location that were not issued within 30-day 
+ period.  Items that are issued within 30 days will not be printed.
+  
+ Print All Barcode in a Location [RMPR INV PRINT ALL BARCODE] - This 
+ option prints barcode of all items for one station.  In order to run this 
+ option, the user must have an RMPRMANAGER key.
+  
+ Print PIP/IFCAP Item Report [RMPR INV PIP/IFCAP ITEM REPORT] - This option
+ prints all PIP items and the corresponding IFCAP items for a station 
+ selected.  Prosthetics users must edit the HCPCS/ITEM that has a blank
+ IFCAP ITEM.  This report is useful for checking if the IFCAP ITEM is
+ correctly link to the PIP Item.
+  
+  
+  
+ MODIFIED FILES AND DATA DICTIONARY:
+ -----------------------------------
+ Global: ^RMPR(660,
+ File Name: RECORD OF PROS APPLIANCE/REPAIR
+  Field Name:
+   (#4.6)  STOCK ISSUE  1;5 POINTER TO PROSTHETIC INVENTORY
+                            TRANSACTION FILE (#661.6)
+    Description of Change:  The STOCK ISSUE (#4.6) field was modified to
+    point to the PROSTHETIC INVENTORY TRANSACTION (#661.6) file.
+    Previously it pointed to the PROS STOCK ITEM RECORD (#661.2) file.
+  
+  Field Name:    
+   (#39)   DATE OF SERVICE 1;8 DATE AN ITEM ISSUED TO PATIENT
+    Description of Change:  The DATE OF SERVICE (#39) field is being added.
+  
+  
+ NEW FILES ADDED:
+ ----------------
+   The RMPR global should already be journaled.  Ensure that this
+ is correct.  There should be no significant increase in disk space over
+ the previous file structures.
+  
+ ^RMPR(661.11 -  PROSTHETICS HCPCS ITEM MASTER FILE
+ ^RMPR(661.4  -  HCPCS INVENTORY
+ ^RMPR(661.41 -  HCPCS INVENTORY ORDER AND REORDER
+ ^RMPR(661.5  -  PROSTHETIC STOCK LOCATION
+ ^RMPR(661.6  -  PROSTHETIC INVENTORY TRANSACTION
+ ^RMPR(661.63 -  PROSTHETIC TRANSACTION PATIENT ISSUE
+ ^RMPR(661.69 -  PROSTHETIC INVENTORY GAIN/LOSS
+ ^RMPR(661.7  -  PROSTHETIC CURRENT STOCK
+ ^RMPR(661.8  -  VENDOR PRODUCT HCPCS MAP
+ ^RMPR(661.9  -  PROSTHETICS HCPCS RUNNING BALANCE
+  
+  
+ Routine Summary:
+ ----------------
+  The following routines are included in this patch.  The second line of
+  each of these routine(s) will look like:
+  
+  <tab>;;3.0;PROSTHETICS;**[patch list]**;Feb 09, 1996
+  
+ Routines           Before Patch          After Patch       Patch List
+ --------           --------------        -----------       ----------
+ RMPR5HQ5           6810299               7842130             51,61
+ RMPR5HQC           9955059               9955688             51,61
+ RMPR5HQL           7677042               7677671             51,61
+ RMPR5NU            5655588               6965110           33,38,52,61
+ RMPRE29            11989197              12060746        36,41,51,57,62,
+                                                             74,81,61
+ RMPROP             3310495               3312684         41,45,53,62,61
+ RMPRPI01           NEW                   6636189               61
+ RMPRPI02           NEW                   7137918               61
+ RMPRPI03           NEW                   4414803               61
+ RMPRPI04           NEW                   8628380               61
+ RMPRPI05           NEW                   6019770               61
+ RMPRPI06           NEW                   6824768               61
+ RMPRPI07           NEW                   4914150               61
+ RMPRPI08           NEW                   7881373               61
+ RMPRPI09           NEW                   9549795               61
+ RMPRPI10           NEW                   7915253               61
+ RMPRPI11           NEW                   6496726               61
+ RMPRPI13           NEW                   3827711               61
+ RMPRPI14           NEW                   6264878               61
+ RMPRPI15           NEW                   5867466               61
+ RMPRPI16           NEW                   3581849               61
+ RMPRPIQ4           NEW                   11437303              61
+ RMPRPIQ5           NEW                   7575722               61
+ RMPRPIU0           NEW                   329422                61
+ RMPRPIU1           NEW                   2982759               61
+ RMPRPIU2           NEW                   8536127               61
+ RMPRPIU3           NEW                   5160350               61
+ RMPRPIU4           NEW                   1987973               61
+ RMPRPIU6           NEW                   3806079               61
+ RMPRPIU7           NEW                   2784053               61
+ RMPRPIU8           NEW                   5370595               61
+ RMPRPIU9           NEW                   5289347               61
+ RMPRPIUA           NEW                   4118767               61
+ RMPRPIUB           NEW                   3313236               61
+ RMPRPIUC           NEW                   5922598               61
+ RMPRPIUD           NEW                   5009956               61
+ RMPRPIUE           NEW                   2749637               61
+ RMPRPIUF           NEW                   4120862               61
+ RMPRPIUG           NEW                   8491358               61
+ RMPRPIUH           NEW                   7728617               61
+ RMPRPIUI           NEW                   2501441               61
+ RMPRPIUJ           NEW                   2603734               61
+ RMPRPIUK           NEW                   5136006               61
+ RMPRPIUT           NEW                   5003369               61
+ RMPRPIUV           NEW                   2715371               61
+ RMPRPIX1           NEW                   7166562               61
+ RMPRPIX2           NEW                   8498543               61
+ RMPRPIX3           NEW                   2358127               61
+ RMPRPIX4           NEW                   2298645               61
+ RMPRPIX5           NEW                   3276411               61
+ RMPRPIX6           NEW                   9052706               61
+ RMPRPIX7           NEW                   5778630               61
+ RMPRPIXA           NEW                   14121844              61
+ RMPRPIXB           NEW                   1670897               61
+ RMPRPIXC           NEW                   4000124               61
+ RMPRPIXD           NEW                   812105                61
+ RMPRPIXE           NEW                   15676879              61
+ RMPRPIXF           NEW                   5403346               61
+ RMPRPIXI           NEW                   731929                61
+ RMPRPIXJ           NEW                   4866177               61
+ RMPRPIXN           NEW                   5504246               61
+ RMPRPIXR           NEW                   7240685               61
+ RMPRPIXZ           NEW                   734414                61
+ RMPRPIY1           NEW                   4262077               61
+ RMPRPIY2           NEW                   7003249               61
+ RMPRPIY3           NEW                   2305001               61
+ RMPRPIY4           NEW                   475613                61
+ RMPRPIY5           NEW                   5787852               61
+ RMPRPIY6           NEW                   11082739              61
+ RMPRPIY7           NEW                   7941800               61
+ RMPRPIY8           NEW                   5890088               61
+ RMPRPIY9           NEW                   5680831               61
+ RMPRPIYA           NEW                   3258928               61
+ RMPRPIYB           NEW                   4484595               61
+ RMPRPIYC           NEW                   5065031               61
+ RMPRPIYD           NEW                   6950228               61
+ RMPRPIYE           NEW                   16864332              61
+ RMPRPIYF           NEW                   14933463              61
+ RMPRPIYG           NEW                   9195602               61
+ RMPRPIYH           NEW                   3622812               61
+ RMPRPIYI           NEW                   13058114              61
+ RMPRPIYJ           NEW                   5348592               61
+ RMPRPIYK           NEW                   3257714               61
+ RMPRPIYL           NEW                   7590715               61
+ RMPRPIYM           NEW                   1414187               61
+ RMPRPIYN           NEW                   2888417               61
+ RMPRPIYO           NEW                   7324407               61
+ RMPRPIYP           NEW                   3097461               61
+ RMPRPIYQ           NEW                   2542879               61
+ RMPRPIYR           NEW                   3306033               61
+ RMPRPIYS           NEW                   13524225              61
+ RMPRPIYT           NEW                   3952135               61
+ RMPRPIYU           NEW                   2436579               61
+ RMPRPIYV           NEW                   1467269               61
+ RMPRPIYW           NEW                   1405146               61
+ RMPRPIYX           NEW                   1182299               61
+ RMPRPIYY           NEW                   4457437               61
+ RMPRPIYZ           NEW                   3949662               61
+ RMPRST2            3245550               3256922       12,28,33,41,53,61
+                   
+ Documentation:
+ --------------
+    The Release Notes and kids build can be obtained from the
+    ANONYMOUS.SOFTWARE directory at one of the OI Field Offices.  The
+    preferred method is to FTP the file from DOWNLOAD.VISTA.MED.VA.GOV,  
+    which will transmit the file from the first available server.  
+    Alternatively, site may elect to retrieve the file from a specific OI
+    Field Office.
+     
+       IO FIELD OFFICE     FTP Address                DIRECTORY
+       ---------------     -----------                ---------
+       Hines               FTP.FO-HINES.MED.VA.GOV    [ANONYMOUS.SOFTWARE]
+       Albany              FTP.FO-ALBANY.MED.VA.GOV   [ANONYMOUS.SOFTWARE]
+       Salt Lake           FTP.FO-SLC.MED.VA.GOV      [ANONYMOUS.SOFTWARE]
+   
+   File Name                        Description         Format   FTP Protocol
+  --------------------------------------------------------------------------
+  rmpr_3_p61_ig.pdf             Implementation Guide    PDF      Binary
+  rmpr_3_p61_um.pdf             Inventory User Manual   PDF      Binary
+  RMPR_3_P61_SIUM.pdf         Stock Issues User Manual  PDF      Binary
+  RMPR_3_61.KID                      KIDS Build         KIDS     ASCII
+  
+  If you have further questions on obtaining the files, please contact the
+  CIO National Help desk at 1-888-596-4357, and ask for the Financial
+  Systems Team. 
+   
+  
+ Installation Instruction:
+ -------------------------
+        
+      *** Warning - Please read and follow all pre-installation instructions
+          included in the supporting hardcopy documentation.   There are
+          requirements that a supported bar code printer be available
+          and that the inventory data is correct before this patch is
+          installed.
+  
+  
+       This patch was created with Kernel V8 KIDS and should be installed
+       into your production UCI.  It can be installed anytime, but it is
+       recommended that all Prosthetics users should be off the system.
+       Complete installation will take more than 2 hours, depending on the
+       number of items in the Prosthetics Inventory Program (PIP).
+     
+        
+       1.  On the Kids menu, under the 'Installation' menu, Load a 
+           Distribution.  When prompted 'Enter A Host File:' enter 
+           RMPR_3_61.KID
+        
+       2.  Use the option 'Verify Checksum in Transport Global' and verify
+           that all routines have the correct checksums.
+        
+       3.  From the 'Installation' menu of KIDS, use the option 'Install
+           Package(s)'.  Select the package 'RMPR*3.0*61' and proceed with
+           the install.
+     
+       4.  It is recommended that you do not queue this patch for install.
+  
+       5.  When prompted 'Want KIDS to Rebuild Menu Trees Upon Completion 
+           of Install? YES//' (at your discretion)
+  
+       6.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+           YES//' answer NO.
+        
+       7.  When prompted 'Want to DISABLE Schedule Options, Menu Options 
+           and Protocols? YES//', respond YES.  When prompted to select the
+           option you would like to place out of order, enter the 
+           following:
+                                
+                      RMPR OFFICIAL    Prosthetic Official's Menu
+                      RMPR CLERK       Prosthetic Clerk's Menu
+  
+  
+ NOTE FOR IRM's:
+ ---------------
+  
+  ***********************************************************************
+  *  It is mandatory that the conversion (Step 10 below) be done before *
+  * the Prosthetics end users are allowed to use the changed software.  *
+  * If the users do use the software prior to the conversion then no    *
+  * conversion (step 10) should be done as this will result in invalid  *
+  * data.                                                               *
+  ***********************************************************************
+  
+  
+ MAKE SURE NO PROSTHETIC USERS ARE ON THE SYSTEM WHEN YOU COMPLETE STEPS
+ 8-11. 
+  
+ 8. If option [RMPR INV TRAN] Transfer Stock Between Locations is still 
+    out of order, edit and remove the Out of Order Message.
+  
+ 9. Backup globals: ^RMPR(660, ^RMPR(661.2 and ^RMPR(661.3
+  
+  
+ 10. At programmer mode, enter D CONV^RMPRPIUG.  Below is an example:
+  
+   >D CONV^RMPRPIUG
+  
+   PIP Old to New file conversion starting.
+   Creating Locations in file 661.5 ..
+   Creating HCPCS Items in file 661.11 - 1st pass 
+   .........................................................................
+   .........................................................................
+   .........................................................................
+   .........................................................................
+   .........................................................................
+   .....
+   Creating Current Inventory - file 661.7 ...................
+   Creating patient issue transactions - file 661.6 ....................
+   Creating balancing reconciliations 
+   Creating Running Balance file 661.9 .........
+   PIP Old to New file conversion complete.
+  
+  
+ If for some reason the conversion did not finish to completion, check 
+ the error or call the CIO National Help Desk at 1-888-596-4357 and ask
+ for the Financial Systems Team.  To restart the conversion, you must do
+ D KILL^RMPRPIXZ to clean-up all files created and then do D CONV^RMPRPIUG
+ to restart the conversion again.
+  
+  
+ 11. YOU CAN NOW LET PROSTHETIC USERS ON THE SYSTEM.
+
+Routine Information:
+====================
+
+Routine Name:
+  - RMPR5HQC
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPR5HQL
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPROP
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPI01
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPI02
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPI03
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPI04
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPI05
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPI06
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPI07
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPI08
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPI09
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPI10
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPI11
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPI13
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPI14
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPI15
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIQ4
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIQ5
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIU1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIU2
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIU3
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIU4
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIU6
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIU7
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIU8
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIU9
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIUA
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIUB
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIUC
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIUD
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIUE
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIUF
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIUG
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIUH
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIUI
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIUJ
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIUK
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIUT
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIUV
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIX1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIX2
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIX3
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIX4
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIX5
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIX6
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIX7
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIXA
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIXB
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIXC
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIXD
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIXE
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIXI
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIXJ
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIXN
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIXZ
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIY1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIY2
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIY3
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIY4
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIY5
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIY6
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIY7
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIY8
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIY9
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIYA
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIYB
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIYC
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIYD
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIYE
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIYF
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIYG
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIYH
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIYI
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIYJ
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIYK
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIYL
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIYM
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIYN
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIYO
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIYP
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIYQ
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIYR
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIYS
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIYT
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIYU
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIYV
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIYW
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIYX
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIYY
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPR5NU
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRST2
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIU0
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIYZ
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIXF
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPR5HQ5
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPI16
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRPIXR
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMPRE29
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : DAYON,RUFINO                  Date Entered  : MAY 08, 2001
+Completed By: GADDIE,MARLIE                 Date Completed: MAR 23, 2005
+Released By : DIETRICH,JON                  Date Released : MAR 28, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

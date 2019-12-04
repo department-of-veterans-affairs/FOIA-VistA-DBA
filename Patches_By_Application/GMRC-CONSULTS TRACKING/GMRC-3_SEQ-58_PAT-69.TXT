@@ -1,0 +1,182 @@
+$TXT Created by THOMPSON,TONY at EXPCUR.FO-SLC.MED.VA.GOV  (KIDS) on Thursday, 07/30/09 at 09:30
+=============================================================================
+Run Date: AUG 27, 2009                     Designation: GMRC*3*69
+Package : GMRC - CONSULT/REQUEST TRACKING     Priority: Mandatory
+Version : 3        SEQ #58                      Status: Released
+                  Compliance Date: SEP 27, 2009
+=============================================================================
+
+Associated patches: (v)OR*3*296    <<= must be installed BEFORE `GMRC*3*69'
+
+Subject: REFORMAT LONG COMMENTS
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ In the Consults/Request Tracking package an issue was reported while 
+ using the Edit/Resubmit action in CPRS GUI. Comments added during the
+ Edit/Resubmit action in CPRS GUI are not wrapping at 74 characters. As a
+ result, comments are being stored on a single node of the
+ Request/Processing Activity (123.02) multiple in file 123.
+  
+ Long comments are hard to read in CPRS GUI due to the need to scroll to 
+ the right to read the entire text.  Moreover, HL7 messages for 
+ Inter-Facility Consults will not transmit when those comments are
+ longer than 255 characters. In addition, those HL7 messages will put 
+ the HL7 link in an error condition thereby creating a backlog of
+ messages in the queue.
+  
+ This patch will address any long comments already stored in the
+ REQUEST/CONSULTATION file (#123). The patch queues a task that will search
+ through ^GMR(123 and reformat comments when the following conditions are
+ all true:
+  
+ Comment is a result of the Edit/Resubmit process, NOT just Add Comment.
+ AND
+   Comment is longer than 80 characters AND stored on a single global node
+    OR
+   Comment may be stored on more than one global node (i.e. user 
+   entered carriage returns) but has lines of text exceeding 80 characters
+  
+ The patch will create, in a temporary global array, a backup of comments
+ before reformatting. ^XTMP("GMRC_PRE69") will be set to expire 45 days
+ from the date the patch is installed and executed.
+  
+ ^XTMP("GMRC_PRE69") will have the following format:
+  
+  ^XTMP("GMRC_PRE69",0)
+  System date (DT) + 45 days^Current system date (DT)^Installer's DUZ
+  
+  ^XTMP("GMRC_PRE69",Consult IEN,40,Comment IEN,1,Line #,0)=
+  $NA of location in ^GMR(123^Text of comment BEFORE being reformatted in 
+  GMRC*3.0*69
+   Example:
+  ^XTMP("GMRC_PRE69",1990,40,3,1,1,0)= 
+  ^GMR(123,1990,40,3,1,1,0)^This is a long comment added via the 
+  Edit/Resubmit process from CPRS GUI. This comment is artificially long to
+ test the effect when reformatted to more than one global node.
+  
+ In addition to the temporary global, this patch will send a 
+ message via MailManager to the user installing the patch. This message
+ will contain the contents of the ^XTMP("GMRC_PRE69",) global. This serves
+ as an additional backup to the ^XTMP global on the system.
+  
+ When the task completes, if the patch has found any locked records it
+ will re-queue itself to run again in 5 minutes, checking only those 
+ records found that were locked. This process repeats until all records
+ have been examined.
+  
+ The routine in this patch, GMRCYP69, can be deleted from the system once
+ the site is satisfied that all comment entries have been properly
+ reformatted.
+  
+ In the event a system needs to be restored to a point before the
+ installation of GMRC*3.0*69:
+    If this event has occurred more than 45 days after the install of 
+     GMRC*3.0*69, then just re-install the patch.
+    If the restoration occurs during the window of patch install date+45
+     days you should first kill the XTMP global to ensure its accuracy
+     e.g. K ^XTMP("GMRC_PRE69").
+  
+  
+  
+ PATIENT SAFETY INFO
+ ===================
+ PSPO #1209
+  
+  
+ REMEDY TICKET INFO
+ ==================
+ 292869 - Text in Comments box isn't "word wrapping"
+ 293770 - Some HL7 message not transmitting from Spokane to Washington
+  
+  
+ TEST SITES
+ ==================
+ CLEVELAND
+ HEARTLAND-EAST
+ NORTHERN CALIFORNIA
+ PHILADELPHIA
+ SAN DIEGO
+  
+  
+ INSTALL INSTRUCTIONS
+ ====================
+ Suggested time to install: non-peak requirement hours; minimum number of 
+ users on the system.
+ Installation time is less than five minutes though the background job will
+ run for much longer. The time to run will vary according to the number of
+ entries in the ^GMR(123 global.
+  
+  1.  Choose the PackMan message containing this patch and invoke the
+      INSTALL/CHECK MESSAGE PackMan option.
+  
+  2.  Start up the Kernel Installation and Distribution System Menu
+      [XPD MAIN]: 
+  
+           Edits and Distribution ...  
+           Utilities ...  
+           Installation ...  
+  
+      Select Kernel Installation & Distribution System Option: Installation
+                                                               ---
+           1      Load a Distribution
+           2      Verify Checksums in Transport Global
+           3      Print Transport Global
+           4      Compare Transport Global to Current System
+           5      Backup a Transport Global
+           6      Install Package(s)
+                  Restart Install of Package(s)
+                  Unload a Distribution
+  
+  
+  3.  From this menu, you may elect to use the following options
+      (When prompted for the INSTALL NAME, enter GMRC*3.0*69
+      
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will
+          not backup any other changes such as DD's or templates.
+      b.  Compare Transport Global to Current System - This option
+          will allow you to view all changes that will be made when
+          this patch is installed.  It compares all components of this
+          patch (routines, DD's, templates, etc.).
+      c.  Verify Checksums in Transport Global - This option will
+          allow you to ensure the integrity of the routines that are
+          in the transport global.
+  
+  3.  Use the Install Package(s) option and select the package
+      GMRC*3.0*69
+  
+      a.  When prompted 'Want KIDS to Rebuild Menu Trees Upon Completion 
+          of Install? NO//', answer NO.
+      b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+          NO//', answer NO. 
+      c.  When prompted 'Want to DISABLE Scheduled Options and Menu Options
+          and Protocols? NO//', answer NO.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;3.0;CONSULT/REQUEST TRACKING;**[Patch List]**;DEC 27, 1997;Build 13
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: GMRCYP69
+    Before:       n/a   After: B30032201  **69**
+
+=============================================================================
+User Information:
+Entered By  : THOMPSON,WILLIAM ANTHONY      Date Entered  : JAN 13, 2009
+Completed By: OLSEN,JAMES                   Date Completed: AUG 27, 2009
+Released By : HINES,RICK                    Date Released : AUG 27, 2009
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

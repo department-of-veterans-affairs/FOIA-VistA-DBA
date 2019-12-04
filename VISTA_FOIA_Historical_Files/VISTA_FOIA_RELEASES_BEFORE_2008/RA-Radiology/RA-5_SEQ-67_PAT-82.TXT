@@ -1,0 +1,239 @@
+$TXT Created by BRODNIANSKY,PAVEL at DEV.DEV.FO-HINES.MED.VA.GOV  (KIDS) on Wednesday, 01/17/07 at 10:19
+=============================================================================
+Run Date: MAR 23, 2007                     Designation: RA*5*82
+Package : RA - RADIOLOGY/NUCLEAR MEDICINE     Priority: Mandatory
+Version : 5        SEQ #67                      Status: Released
+                  Compliance Date: APR 23, 2007
+=============================================================================
+
+Associated patches: (v)RA*5*32     <<= must be installed BEFORE `RA*5*82'
+                    (v)RA*5*41     <<= must be installed BEFORE `RA*5*82'
+                    (v)RA*5*43     <<= must be installed BEFORE `RA*5*82'
+                    (v)RA*5*57     <<= must be installed BEFORE `RA*5*82'
+                    (v)RA*5*71     <<= must be installed BEFORE `RA*5*82'
+
+Subject: Restrict broadcasting of HL7 message after editing exam
+
+Category: 
+  - Routine
+  - Input Template
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ The patch enhances the process of broadcasting ORM HL7 messages after an
+ exam has been edited. The previous patch, RA*5*71, allowed the
+ broadcasting of ORM HL7 messages whenever an exam has been edited, whether
+ or not the editing resulted in an exam status change or not.
+  
+ This enhancement will revert to the original rule for broadcasting HL7 
+ messages which is based on these two conditions:
+ 1) the Examined ORM message has not been broadcasted yet, and
+ 2) the exam status reached or exceeded the status level where the 
+    GENERATE EXAMINED HL7 MESSAGE field is set to "Y".  EXAMINATION STATUS
+    (file #72,),(field #8) GENERATE EXAMINED HL7 MESSAGE.
+  
+ An example of this rule would be:
+    For the Imaging Type of "General Radiology", only the exam status 
+    of TRANSCRIBED has the GENERATE EXAMINED HL7 MESSAGE field set to "Y".
+    Thus, the Examined ORM message will be broadcasted only when a General 
+    Radiology case has reached or exceeded the exam status of TRANSCRIBED.
+  
+ There is one exception to the two conditions.  The exception is that if 
+ any (one or more) of five essential fields have been changed, then an 
+ Examined ORM message will be broadcasted regardless of the two conditions 
+ above.  The five essential fields are:
+                 PROCEDURE
+                 PROCEDURE MODIFIER
+                 REQUESTING PHYSICIAN
+                 CPT MODIFIER
+                 TECHNOLOGIST COMMENT
+  
+ In a few sites, depending on the type of PACS (Picture archiving and 
+ communication systems) being used, this exception may cause exams to be
+ dropped from a PACS modality worklist when essential data are updated on
+ the PACS from Vista Radiology.  To restore the exam to the PACS modality
+ worklist, use the 'Resend Radiology HL7 Message' [RA HL7 MESSAGE RESEND]
+ option to re-broadcast the HL7 ORM message for that exam.  This option
+ requires the RA MGR key.
+  
+ When the previous patch RA*5*71 allowed the broadcasting of HL7 messages 
+ after each exam edit session, the following problems were noticed at 
+ sites that had COTS(Commercial off-the-shelf software ) PACS and Stentor
+ voice recognition systems.
+  
+ (1) On certain type of COTS PACS a subsequent broadcast of an HL7 "ORM"
+ message caused the exam to be removed from the modality work list.
+  
+ (2) On the Stentor system, a subsequent broadcast of an HL7 "ORM" message 
+     caused the report on the Stentor system to become invalidated.  This 
+     occurred when the report was verified via the Vista 'Report
+     Entry/Edit' [RA RPTENTRY] option instead of via a voice recognition
+     system.
+  
+ (3) The 'Examination Status Entry/Edit' [RA EXAMSTATUS] option wasn't 
+     prompting for "Generate Examined HL7 Message:" anymore.  This
+     prevented the Radiology ADPAC from editing this field.
+  
+ The revised routines and input template listed below will resolve these 
+ reported problems.
+  
+ REMEDY TICKETS
+ ==============
+ Ticket No.     Problem Type
+ 167608            (2)
+ 167889            (1)
+ 169048            (1),(3)
+  
+  
+  
+ TEMPLATES
+ =========
+  
+ The [RA STATUS ENTRY] input template, from the EXAMINATION STATUS (file 
+ #72), will have the field GENERATE EXAMINED HL7 MESSAGE restored.
+  
+            
+ DISTRIBUTION
+ =============
+ The KIDS build is linked to this message. 
+     
+  
+ DOCUMENTATION
+ =============
+ Release Notes (RA5_0RN_P82.DOC) have been created for this patch, and can 
+ be found in the following [ANONYMOUS.SOFTWARE] directories:
+  
+                                  PREFERRED ADDRESS
+                                  -------------------------
+     First available ftp server   download.vista.med.va.gov
+  
+     SPECIFIC FIELD OFFICE        FTP ADDRESS
+     ---------------------        ------------------------
+     Albany                       ftp.fo-albany.med.va.gov
+     Hines                        ftp.fo-hines.med.va.gov
+     Salt Lake City               ftp.fo-slc.med.va.gov
+  
+ The Release Notes may also be retrieved from the VISTA Documentation 
+ Library (VDL) on the Internet at the following address: 
+ http://www.va.gov/vdl
+  
+  
+ Test Sites
+ ==========                                   
+    1.Boston
+    2.Lexington
+    3.Palo Alto
+  
+  
+ The second line of the routine now looks like:
+ ;;5.0;Radiology/Nuclear Medicine;**[Patch List]**;Mar 16, 1998
+  
+ Integrity checking tools:
+  
+                       CHECK^XTSUMBLD
+ Name          Before Patch       After Patch       Patch List
+ ----------------------------------------------------------------
+ RAHLR           22076311          23409852         2,12,10,25,47,71,82
+ RAHLRPC          1539634           6544423         12,25,54,71,82
+ RAHLRS           3719369           3903760         25,54,60,71,82
+ RAO7UTL          6486609           7823876         18,45,57,82
+ RAO7XX          16127388          17216662         18,26,28,32,82
+ RART            10846051          10888052         2,5,15,18,43,82
+ RARTE4          13799009          13488419         15,27,41,82
+ RARTVER         24673159          24469237         8,23,26,82
+ RASTED          20947459          21168446         1,10,18,28,45,71,82
+ RAUTL1          16930241          17187236         5,9,18,71,82
+  
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+           
+ This patch must be installed when all Radiology users are off the system 
+ and the Radiology HL Logical Links have been shutdown.  Install time will 
+ be less than 2 minutes.
+      
+  1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu. [Note:
+     TEXT PRINT/DISPLAY option in the PackMan menu will display the
+     patch text only].
+      
+  2. From the Kernel Installation and Distribution System (KIDS)
+     menu, select the Installation menu.
+      
+  3. From this menu, you should use the following options.
+     (When prompted for INSTALL NAME, enter RA*5.0*82).  
+      
+     a. 'Print Transport Global' - this option will allow you to view
+         the components of the KIDS build.
+  
+     b.  'Verify Checksums in Transport Global' - this option will
+         allow you to ensure the integrity of the routines that are
+         in the transport global.
+  
+     c.  'Compare Transport Global to Current System'  - this option
+         will allow you to view all changes that will be made when
+         the patch is installed.  It compares all components of the
+         patch (routines, DDs, templates, etc.).
+  
+     d.  'Backup a Transport Global' - this option will create a backup
+         message of any routines exported with the patch.  It will
+         NOT backup any other changes such as DDs or templates.
+      
+  4. Shut down all Radiology HL logical links 'Start/Stop Links [HL START]'
+ .
+  
+  5. Use the 'Install Package(s)' option and select the package
+     RA*5.0*82.
+      
+  6. When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+     YES//', respond NO
+      
+  7. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+     Protocols? YES//', respond NO.
+  
+  8. Verify that the patch installation completed correctly by using the
+     KIDS Utilities '[XPD UTILITY]' option 'Install File Print' [XPD PRINT
+     INSTALL FILE] and selecting this patch (RA*5.0*82).
+  
+  9. Start up the Radiology HL logical links that were shutdown in step 
+ 4. 'Start/Stop Links [HL START]'.
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: RAHLR
+    Before: B43467962  After: B49413163  **2,12,10,25,47,71,82**
+Routine Name: RAHLRPC
+    Before:  B2725117  After: B16016942  **12,25,54,71,82**
+Routine Name: RAHLRS
+    Before: B11033463  After: B11498651  **25,54,60,71,82**
+Routine Name: RAO7UTL
+    Before: B26579249  After: B35860324  **18,45,57,82**
+Routine Name: RAO7XX
+    Before: B61404589  After: B61483197  **18,26,28,32,82**
+Routine Name: RART
+    Before: B21428021  After: B21656995  **2,5,15,18,43,82**
+Routine Name: RARTE4
+    Before: B24962657  After: B25247672  **15,27,41,82**
+Routine Name: RARTVER
+    Before: B42943472  After: B43178310  **8,23,26,82**
+Routine Name: RASTED
+    Before: B46056660  After: B47049414  **1,10,18,28,45,71,82**
+Routine Name: RAUTL1
+    Before: B42756218  After: B44121957  **5,9,18,71,82**
+
+=============================================================================
+User Information:
+Entered By  : BRODNIANSKY,PAVEL             Date Entered  : NOV 22, 2006
+Completed By: PATRICK,PAT                   Date Completed: MAR 22, 2007
+Released By : GENTRY,MELINDA                Date Released : MAR 23, 2007
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

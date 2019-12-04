@@ -1,0 +1,489 @@
+
+=============================================================================
+Run Date: JUN 19, 2001                     Designation: ONC*2.11*28
+Package : ONC - ONCOLOGY                       Priority: Mandatory
+Version : 2.11        SEQ #28                   Status: Released
+=============================================================================
+
+Associated patches: (v)ONC*2.11*27 <<= must be installed BEFORE `ONC*2.11*28'
+
+Subject: ICD-O-3 IMPLEMENTATION
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Input Template
+  - Print Template
+
+Description: 
+============
+
+ This patch is available via FTP in a KIDS distribution file.  The Host
+ File is named ONC211P28.KID and is located in the [ANONYMOUS.SOFTWARE]
+ directory of the following OI Field Offices.
+     
+  OIFO     FTP ADDRESS
+  ----     -----------
+  Albany   ftp.fo-albany.med.va.gov
+  Hines    ftp.fo-hines.med.va.gov
+  SLC      ftp.fo-slc.med.va.gov
+    
+ All data dictionary changes/additions have been reviewed and approved by
+ the Data Base Administrator.
+     
+ This patch will implement ICD-O-3 (International Classification of
+ Diseases for Oncology 3rd Edition) and fix the STATUS/CAUSE OF DEATH
+ internal field edit check.
+   
+ 1) ICD-O-3 IMPLEMENTATION
+  
+    There are four aspects to the VISTA implementation of ICD-O-3.
+   
+    a) Data conversion
+   
+       There are now two histology fields:
+   
+       HISTOLOGY (ICD-O-2) (165.5,22)   <---current HISTOLOGY field
+       HISTOLOGY (ICD-O-3) (165.5,22.3) <---new HISTOLOGY field
+    
+       Histology codes prior to 1/1/2001 will maintained in the HISTOLOGY
+       (ICD-O-2) field.  In addition, these codes will be converted to
+       ICD-O-3 values.  Most of the current ICD-O-2 values will be copied
+       as-is to the new HISTOLOGY (ICD-O-3) field.  Some codes however will
+       be converted to the appropriate ICD-O-3 value.
+   
+       The codes which require conversion fall into the following categories:
+  
+       a) Terms That Changed Morphology Code
+ 
+       e.g. ICD-O-2 code 8241/1 (CARCINOID TUMOR, ARGENTAFFIN) 
+ 
+            will be converted to
+  
+            ICD-O-3 code 8240/1 (CARCINOID TUMOR OF UNCERTAIN MALIG POTENTIAL)
+ 
+       b) Terms Changing from Borderline to Malignant
+ 
+       e.g. ICD-O-2 code 8931/1 (ENDOLYMPHATIC STROMAL MYOSIS) 
+ 
+            will be converted to
+ 
+            ICD-O-3 code 8931/3 (ENDOMETRIAL STROMAL SARCOMA, LOW GRADE)
+ 
+       c) Terms Changing from Malignant to Borderline
+  
+       e.g. ICD-O-2 code 8442/3 (CYSTADENOMA, SEROUS BORDERLINE MALIG) 
+ 
+            will be converted to
+ 
+            ICD-O-3 code 8442/1 (SEROUS CYSTADENOMA, BORDERLINE)
+ 
+       d) Terms Changing from Benign to Borderline
+ 
+       e.g. ICD-O-2 code 8120/0 (TRANSITIONAL CELL PAPILLOMA) 
+ 
+            will be converted to
+ 
+            ICD-O-3 code 8120/1 (UROTHELIAL PAPILLOMA, NOS)
+ 
+       e) Terms Changing from Borderline to Benign
+ 
+       e.g. ICD-O-2 code 8261/1 (VILLOUS ADENOMA) 
+  
+            will be converted to
+  
+            ICD-O-3 code 8261/0 (VILLOUS ADENOMA, NOS)
+ 
+    b) Data input
+ 
+       Pre-2001 abstracts
+ 
+       Abstracts with a DATE DX prior to 2001 will be prompted for both
+       HISTOLOGY (ICD-O-2) and HISTOLOGY (ICD-O-3) values.  The user will be
+       provided with an HISTOLOGY (ICD-O-3) default which they may either
+       accept or change.  If the HISTOLOGY (ICD-O-2) value is changed, the
+       HISTOLOGY (ICD-O-3) value will be deleted and a new default provided.
+ 
+       2001 or later abstracts
+ 
+       Abstracts with a DATE DX of 2001 or later will only be prompted for
+       HISTOLOGY (ICD-O-3) values.  The HISTOLOGY (ICD-O-2) value will be
+       left blank and will be uneditable.
+ 
+    c) Data display
+ 
+       Wherever histology values are displayed, either the ICD-O-2 or ICD-O-3
+       value will be displayed.  This display will be based on the DATE DX 
+       of the primary:
+ 
+       If the DATE DX is before 2001 the ICD-O-2 value will be displayed.
+       If the DATE DX is 2001 or after the ICD-O-3 value will be displayed.
+ 
+    d) Internal histology logic 
+ 
+       Throughout the ONCOLOGY package the histology value is interrogated and,
+       depending on the its value, certain actions are performed.
+ 
+       e.g. If the abstract is determined to be a LEUKEMIA, the message
+       "SYSTEMIC DISEASE - No AJCC coding" appears and the "Stage of
+       Disease at Diagnosis" fields are stuffed.
+ 
+       We have updated this internal logic to coincide with the ICD-O-3 
+       changes/additions.
+ 
+  2) STATUS           (165.5,.91)
+     CAUSE OF DEATH   (160,19)
+     STATE DEATH CERT (160,19.1)
+ 
+     If STATUS was "Dead" and CAUSE OF DEATH was blank, the following 
+     internal field edit check warning would appear:
+ 
+     WARNING: STATUS = Dead
+              CAUSE OF DEATH may not be blank
+ 
+     This warning should only appear if both CAUSE OF DEATH and STATE DEATH
+     CERT are blank.  This has been fixed.
+   
+  3) Required Field Edit Checks
+   
+     A problem was reported regarding the required field edit checks.
+     Several fields are date dependent and are not editable before 
+     a specific date.  Before an abstract can be completed, the required
+     field edit checks were requiring these fields to be filled in regardless
+     of the date.  Therefore, a situation could arise in which certain
+     fields are required to be filled in, but they could not be filled in
+     because they are not editable.  Because of this, the abstract would not
+     be able to be completed.  This discrepency has been fixed.
+   
+  4) [CC Create State Data Disk]
+ 
+     At the users' request the "Accession year" prompt has been removed from
+     the [CC Create State Data Disk] option.  The users may now select a
+     multi-year date range. 
+ 
+ Routine Summary: 
+ ================
+ The following routines are included in this patch.  The second line of 
+ these routines should look like: 
+    
+  <tab>;;2.11;ONCOLOGY;**[patch list]**;Mar 07, 1995
+    
+ CHECK^XTSUMBLD results:
+    
+ Routines     Pre Patch 28   Post Patch 28   Patch List
+ ==========   ============   =============   =============
+ ONCACD0      6287793        6207415         9,12,20,24,25,28
+ ONCACD1      7346187        8382548         9,12,14,18,20,22,24,25,26,28
+ ONCACDU1     5280910        5092152         12,14,16,20,21,22,24,26,27,28
+ ONCEDIT      7877071        7872867         27,28
+ ONCEDIT2     10620710       11726668        27,28
+ ONCFUNC      1185163        2460223         24,25,26,27,28
+ ONCOAI       9910084        10160211        6,15,17,18,19,25,26,27,28
+ ONCOAIF      7538647        7611279         11,15,16,24,25,26,27,28
+ ONCOAIP      16632902       15986596        1,5,6,7,11,13,15,16,18,19,22,24,27,
+                                                 28
+ ONCOAIP2     1038422        794977          19,24,28
+ ONCOCFL1     14449755       13755186        25,26,27,28
+ ONCOCFL2     14090778       13748858        5,22,25,26,27,28
+ ONCOCFP      10851130       11707784        22,23,25,26,27,28
+ ONCOCOF      6064785        6050126         13,25,28
+ ONCOCRC      7165050        7069149         1,6,11,13,15,28
+ ONCOCRF      4473694        4563429         6,11,16,22,25,26,28
+ ONCODEL      8937733        9003258         7,15,19,22,27,28
+ ONCODIS      924277         924341          6,7,9,10,11,12,13,14,15,16,17,18,19
+                                                 20,21,22,23,24,25,26,27,28
+ ONCOEDC1     14346234       14435068        27,28
+ ONCOHICD     635079         10964110        28
+ ONCOIT       1953407        5087029         18,19,28
+ ONCOMNI      13929731       13844258        1,11,13,22,25,28
+ ONCOPA1      12568672       12570742        13,15,16,18,28
+ ONCOPAR      6626924        6895193         1,5,22,25,28
+ ONCOSC       8307250        8509665         5,24,28
+ ONCOSCG      9261797        9372231         5,25,28
+ ONCOTM       3340613        3301439         15,24,28
+ ONCOTN       18684768       18566261        1,3,6,7,11,15,19,22,25,28
+ ONCOTN0 *    8172605        8187822         1,15,28
+ ONCOTNM      15326502       15298098        1,6,15,22,25,28
+ ONCOTNM1     12825679       12811477        6,15,22,25,28
+ ONCOTNS      6354910        6102143         6,7,11,13,28
+ ONCOU55      10357393       10235276        6,7,15,19,22,28
+ ONCOU55A     5422442        5364756         6,25,28
+ ONCPCI       3701309        3779446         15,19,24,26,27,28
+ ONCPRE28     N/A            ** DELETED AFTER INSTALL **
+ ONCPSD       2331460        2505288         15,19,22,28
+ ONCPST28     N/A            ** DELETED AFTER INSTALL **
+   
+   * - NOTE: The last character of this routine is the number '0'.
+   
+ ----------------------------------------------------------------------------
+    
+ Installation instructions:
+ ==========================
+    
+ 1) This patch is being distributed as a KIDS Host File:
+    
+    ONC211P28.KID
+    
+ 2) This patch should be installed when the ONCOLOGY users are off the 
+    system.
+    
+ 3) If the routines in this patch are mapped at your site, remember to 
+    disable mapping before installing the patch and to re-enable it when you
+    are finished.
+    
+ 4) The routines included in this patch should be installed in the
+    production UCI.
+    
+ 5) This patch will take approximately 5 minutes to install.  Only Oncology
+    users need to be off the system.  The ONCOLOGY options do not need to be
+    disabled during the installation of this patch.  Your customer support
+    representative will answer any questions regarding this patch.
+   
+ 6) Recommended responses to the following installation questions:
+    
+    Want KIDS to INHIBIT LOGONs during the install? YES// NO
+    Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// NO
+
+Routine Information:
+====================
+
+Routine Name:
+  - ONCACDU1
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCEDIT
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCEDIT2
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCFUNC
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCOAI
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCOAIF
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCOAIP
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCOAIP2
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCOCFP
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCOCOF
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCOCRC
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCOCRF
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCODEL
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCODIS
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCOEDC1
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCOHICD
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCOMNI
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCOPA1
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCOPAR
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCOSC
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCOSCG
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCOTM
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCOTN
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCOTN0
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCOTNM
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCOTNM1
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCOTNS
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCOU55
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCOU55A
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCPCI
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCPSD
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCPST28
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCPRE28
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCOIT
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCOCFL1
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCOCFL2
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCACD0
+
+
+Routine Checksum:
+
+Routine Name:
+  - ONCACD1
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : BIELO,GARY                     Date Entered : MAR 23, 2001
+Completed By: PATRICK,PAT                   Date Completed: JUN 18, 2001
+Released By : CONSENTINO,ALBERT             Date Released : JUN 19, 2001
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

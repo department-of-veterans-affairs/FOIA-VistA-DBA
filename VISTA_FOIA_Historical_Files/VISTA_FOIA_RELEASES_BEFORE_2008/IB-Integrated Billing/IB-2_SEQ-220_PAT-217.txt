@@ -1,0 +1,366 @@
+$TXT Created by HOLLOWAY,THOMAS J at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 06/10/03 at 15:41
+=============================================================================
+Run Date: DEC 12, 2003                     Designation: IB*2*217
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #220                      Status: Released
+                  Compliance Date: JAN 12, 2004
+=============================================================================
+
+Associated patches: (v)IB*2*133    <<= must be installed BEFORE `IB*2*217'
+                    (v)IB*2*159    <<= must be installed BEFORE `IB*2*217'
+                    (v)IB*2*199    <<= must be installed BEFORE `IB*2*217'
+                    (v)IB*2*206    <<= must be installed BEFORE `IB*2*217'
+
+Subject: MEANS TEST REMINDER LETTERS AND ERROR MESSAGE CLEANUP
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch corrects a problem with Means Test reminder letters, fixes
+ an <UNDEF> error which could occur in IBT OUTPUT MCCR/UR SUMMARY, modifies
+ the SUPRESS BULLETIN field of the IBCE MESSAGES SERVER option and fixes
+ an <UNDEF> error in the IBT SEND TEST UNBILLED MESS option.  
+    
+ ASSOCIATED E3R(s):
+ ==================
+    
+ N/A
+    
+ ASSOCIATED NOIS:
+ ================
+    
+ 1. SHE-0801-51284  Cat C reminder letters printing
+ 2. COA-0403-21056  <UNDEF> MAIN+2^IBTOSUM2 in MCCR/UR SUMMARY REPORT
+    Duplicate:      TUC-0103-60078     MAIN+2^IBTOSUM2:1
+    Duplicate:      WIM-0603-20929     MCCR/UR SUMMARY REPT ERRORS OUT
+ 3. SBY-0403-30897  Claims Waiting Austin Acknowledgement
+ 4. BRX-0403-12417  BULL1+4^IBTUBUL:1, %DSM-E-UNDEF, undefined variable
+    
+ NOIS OVERVIEW:
+ ==============
+    
+ 1. SHE-0801-51284     Cat C reminder letters printing 
+    
+    Problem:
+    --------
+    With DG*5.3*326, Category C veterans and those Pending Adjudication and 
+    having agreed to pay the deductible, and whose Means Test is more recent
+    than 10/05/99, will no longer be subject to an annual MT. However, if the
+    site has the Income Test Reminder Letters option turned on, these now
+    exempt patients are included in the output. Since they are no longer
+    subject to MT, their copay status will remain unchanged. As such, they
+    should no longer be included in those patients due for a reminder.  
+    
+    Resolution:
+    -----------
+    This patch corrects the issue by checking the veteran's status and 
+    removing them from the Means Test reminder list if they meet the
+    criteria mentioned above.
+    
+ 2. COA-0403-21056     <UNDEF> MAIN+2^IBTOSUM2 in MCCR/UR SUMMARY REPORT
+    
+    Problem:
+    --------
+    When running the IBT OUTPUT MCCR/UR SUMMARY option for a date range that
+    contains no Claims Tracking entry that is ACTIVE, INSURED and BILLABLE,
+    an undefined error would occur. The printing function expected to find
+    a value in the counter IBCNT(3,0) but if no records were selected 
+    during the search, the counter was never set.
+    
+    Resolution:
+    -----------
+    The counter array variable IBCNT(3,0) is initialized to zero prior
+    to the record search.
+    
+ 3. SBY-0403-30897     Claims Waiting Austin Acknowledgement
+    
+    Problem:
+    --------
+    When acknowledgment messages or status update messages are received
+    from Austin, they are delivered to the S.IBCE MESSAGES SERVER
+    option.  Because there is no specific SERVER MAIL GROUP defined for 
+    this option, and the SUPRESS BULLETIN field is NULL (the default is
+    to send), a message is sent to the default MAIL GROUP defined in the
+    XQSERVER Bulletin (file 3.6). This is GENERALLY a mail group called 
+    XQSERVER but it may have some other name.  If this MAIL GROUP 
+    specified in the XQSERVER Bulletin suddenly has NO active members (for 
+    whatever reason), the incoming messages will be RECEIVED, but the IBCE 
+    MESSAGES SERVER is not served. The server option is listed as a
+    recipient but server action was not processed due to a security
+    violation.
+    
+    Resolution:
+    -----------
+    The issue could be resolved on a local basis by making sure that there
+    is always a member of whichever mail group is specified by the XQSERVER
+    bulletin. However, to avoid the problem altogether, this patch will
+    set the SUPRESS BULLETIN field of the IBCE MESSAGES SERVER option
+    to YES. The bulletin only announces that there has been server
+    activity. It is not necessary for actual distribution of the incoming
+    reports so suppressing the bulletin will have no detrimental effect.
+    
+ 4. BRX-0403-12417     BULL1+4^IBTUBUL:1, %DSM-E-UNDEF, undefined variable
+    
+    Problem:
+    --------
+    When running the option IBT SEND TEST UNBILLED MESS, a software error
+    is logged because the TESTV subroutine fails to initialize the 
+    IBUNB("EPISM-A") variable. This problem only occurs for the TEST
+    messages and not for the real messages.
+    
+    Resolution:
+    -----------
+    The missing variable is initialized so that the TEST message
+    function can be utilized.
+    
+ TECHNICAL:
+ ==========
+    
+ 1.  SHE-0801-51284     Cat C reminder letters printing
+     Changes are made to routines: IBARXEL, IBARXEL1
+     The function $$BIL^DGMTUB(X,Y) is called and the veteran is
+     either sent a letter or not sent a letter based on the result.
+    
+ 2.  COA-0403-21056     <UNDEF> MAIN+2^IBTOSUM2 in MCCR/UR SUMMARY REPORT
+     The initialization of the IBCNT array is modified in the RPT section
+     of routine IBTOSUM.  The code S IBCNT(3,0)=0 is added.
+    
+ 3.  SBY-0403-30897     Claims Waiting Austin Acknowledgement
+     The SUPRESS BULLETIN field (#224) of the OPTION file (#19) for
+     option IBCE MESSAGES SERVER is set to the value Y.
+    
+ 4.  BRX-0403-12417     BULL1+4^IBTUBUL:1, %DSM-E-UNDEF, undefined variable
+     The TESTV subroutine of IBTUBUL is modified to contain the line:
+     S IBUNB("EPISM-A")=11111.     
+    
+ PARTICIPATING TEST SITES:
+ =========================
+ Wilmington, DE
+ Huntington, WV
+ Bedford, MA
+ Muskogee, OK
+    
+ ROUTINE SUMMARY 
+ ===============
+ The following is a list of the routines included in this patch.  
+ The second line of each of these routines now looks like: 
+    
+   <tab>;;2.0;INTEGRATED BILLING;**[PATCH LIST]**;21-MAR-94
+    
+                        CHECK^XTSUMBLD results
+ Routine name      Before Patch        After Patch       Patch List
+ ============      ============        ===========       ===========
+ IB20P217                   N/A            1138089       217
+ IBARXEL                5496758            5804553       34,139,206,217
+ IBARXEL1               7127873            7529363       34,199,217
+ IBTOSUM                8582961            8533958       118,133,217
+ IBTUBUL                6667983            6686239       19,123,159,217
+    
+ INSTALLATION INSTRUCTIONS
+ =========================
+    
+  This patch can be installed at any time, however, the IB MT NIGHT COMP
+  job should not be running.
+    
+  If installed during the normal workday it is recommended that the
+  following menu options be disabled to prevent possible conflicts while 
+  running the KIDS Install. Other VISTA users will not
+  be affected.
+    
+     Reprint Single Income Test Reminder Letter [IB RX REPRINT REMINDER]
+     MCCR/UR Summary Report [IBT OUTPUT MCCR/UR SUMMARY]
+     Send Test Unbilled Amounts Bulletin [IBT SEND TEST UNBILLED MESS]
+    
+  Install time - less than 2 minutes.
+    
+  1.  LOAD TRANSPORT GLOBAL 
+      ---------------------
+      Choose the PackMan message containing this patch and invoke the 
+      INSTALL/CHECK MESSAGE PackMan option.  
+    
+  2.  DISABLE ROUTINE MAPPING   (DSM for open VMS sites only)
+      -----------------------
+      Disable routine mapping on all systems for the routines listed in
+      the routine summary
+      NOTE:  If the routines included in this patch are not currently in
+      your mapped routine set, please skip this step.
+    
+  3.  START UP KIDS 
+      -------------
+      Start up the Kernel Installation and Distribution System Menu 
+      [XPD MAIN]: 
+    
+            Edits and Distribution ...  
+            Utilities ...
+            Installation ...  
+    
+      Select Kernel Installation & Distribution System Option: INStallation
+                                                               ---
+    
+      1      Load a Distribution
+      2      Verify Checksums in Transport Global
+      3      Print Transport Global
+      4      Compare Transport Global to Current System
+      5      Backup a Transport Global
+      6      Install Package(s)
+             Restart Install of Package(s)
+             Unload a Distribution
+    
+  4.  From this menu, you may elect to use the following options
+      (When prompted for the INSTALL NAME, enter IB*2.0*217):
+    
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will
+          not backup any other changes such as DD's or templates.
+      b.  Compare Transport Global to Current System - This option
+          will allow you to view all changes that will be made when
+          this patch is installed.  It compares all components of this
+          patch (routines, DD's, templates, etc.).
+      c.  Verify Checksums in Transport Global - This option will
+          allow you to ensure the integrity of the routines that are
+          in the transport global.
+    
+  5.  Use the Install Package(s) option and select the package IB*2.0*217.
+    
+      a.  When prompted 'Want KIDS to INHIBIT LOGONs during the
+          install? YES//', answer NO.
+      b.  When prompted 'Want to DISABLE Scheduled Options, Menu
+          Options, and Protocols? YES//' answer YES.
+      c.  When prompted 'Enter options you wish to mark as 'Out of
+          Order':' Enter the following:       
+            IB RX REPRINT REMINDER
+            IBT OUTPUT MCCR/UR SUMMARY
+            IBT SEND TEST UNBILLED MESS
+     
+      d.  When prompted 'Enter protocols you wish to mark as 'Out of
+          Order': Enter the following: (press return) 
+    
+  6.  REBUILD MAPPED ROUTINES(S)  (DSM for Open VMS sites only)
+      --------------------------
+      Optional - Include the routines distributed with this patch in the
+      mapped routine set.
+    
+      NOTE: This step is only necessary if you performed step 2 or if you 
+      wish to include the routines in your mapped set.
+    
+  7.  DELETE PRE-INIT ROUTINE
+      ------------------------
+      You may delete the IB20P217 routine from your system after successful
+      installation of this patch.
+    
+ INSTALLATION EXAMPLE:
+ ---------------------
+ Select INSTALL NAME: IB*2.0*217       Loaded from Distribution  6/10/03@09:22:03
+      => IB*2*217
+    
+ This Distribution was loaded on Jun 10, 2003@09:22:03 with header of 
+    IB*2*217
+    It consisted of the following Install(s):
+      IB*2.0*217
+ Checking Install for Package IB*2.0*217
+    
+ Install Questions for IB*2.0*217
+    
+ Want KIDS to INHIBIT LOGONs during the install? YES// NO
+ Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// 
+    
+ Enter options you wish to mark as 'Out Of Order': IB RX REPRINT REMINDER
+    Reprint Single Income Test Reminder Letter
+    
+ Enter options you wish to mark as 'Out Of Order': IBT OUTPUT MCCR/UR SUMMARY    
+    MCCR/UR Summary Report
+    
+ Enter options you wish to mark as 'Out Of Order': IBT SEND TEST UNBILLED MESS   
+     Send Test Unbilled Amounts Bulletin
+    
+ Enter options you wish to mark as 'Out Of Order': 
+    
+ Enter protocols you wish to mark as 'Out Of Order': 
+    
+ Delay Install (Minutes):  (0-60): 0// 
+    
+ Enter the Device you want to print the Install messages.
+ You can queue the install by enter a 'Q' at the device prompt.
+ Enter a '^' to abort the install.
+    
+ DEVICE: HOME//   IP network
+    
+  Install Started for IB*2.0*217 : 
+                Jun 10, 2003@09:51:02
+    
+ Build Distribution Date: Jun 09, 2003
+                                    IB*2.0*217                                   
+ --------------------------------------------------------------------------------
+    
+  Installing Routines:
+                Jun 10, 2003@09:51:02
+    
+  Running Pre-Install Routine: ^IB20P217
+    
+ Updating SUPRESS BULLETIN value for IBCE MESSAGES SERVER option.
+    
+ Pre-init completed successfully.
+    
+  Updating Routine file...
+    
+  Updating KIDS files...
+    
+  IB*2.0*217 Installed. 
+                Jun 10, 2003@09:51:03
+    
+  Install Message sent #1938
+ --------------------------------------------------------------------------------
+           +------------------------------------------------------------+
+   100%    |             25             50             75               |
+ Complete  +------------------------------------------------------------+
+    
+ Install Completed
+
+Routine Information:
+====================
+
+Routine Name:
+  - IBARXEL
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBARXEL1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBTOSUM
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBTUBUL
+
+
+Routine Checksum:
+
+Routine Name:
+  - IB20P217
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : DOWNING,TODD                  Date Entered  : MAY 08, 2003
+Completed By: DAWSON,TIM                    Date Completed: DEC 12, 2003
+Released By : BOTTINI,STEVE                 Date Released : DEC 12, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

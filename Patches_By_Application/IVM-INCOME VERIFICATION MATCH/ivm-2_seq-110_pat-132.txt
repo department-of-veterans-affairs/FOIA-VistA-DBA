@@ -1,0 +1,291 @@
+$TXT Created by FERRARESE,MARY ANNE at MNTVLL.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 09/09/08 at 10:40
+=============================================================================
+Run Date: OCT 30, 2008                     Designation: IVM*2*132
+Package : IVM - INCOME VERIFICATION MATCH     Priority: Mandatory
+Version : 2       SEQ #110                      Status: Released
+                  Compliance Date: NOV 07, 2008
+=============================================================================
+
+Associated patches: (v)IVM*2*105   <<= must be installed BEFORE `IVM*2*132'
+                    (v)IVM*2*127   <<= must be installed BEFORE `IVM*2*132'
+
+Subject: Z07 CONSISTENCY CHECKER MODIFICATION
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ ****************************************************************************
+  
+ NOTE:  The compliance date of this patch has been shortened to 
+ November 7, 2008 due to dependencies which exist with the
+ Enrollment VistA Changes (EVC) Release 2 project currently scheduled 
+ for release on November 15, 2008.  It is imperative that this patch 
+ be installed no later than the compliance date.  Your understanding
+ and support is appreciated.
+  
+ ****************************************************************************
+  
+ This patch fixes a problem with the Inconsistent Data Elements Report
+ [DG CONSISTENCY PRINT] option. The Inconsistent Data Elements Report
+ [DG CONSISTENCY PRINT] option lists and retains patients although the
+ Z07 Build Consistency Check [DG Z07 CONSISTENCY CHECK] option
+ indicates No Inconsistencies for the patients in question.
+ VHA Directive 2008-031, dated 6/10/2008, directed sites to change the
+ value of the CHECK/DON'T CHECK field (#5) of the INCONSISTENT DATA
+ ELEMENTS file (#38.6) for a number of the Z07 Consistency Checks (CC)
+ to a value of "DON'T CHECK". A copy of the directive can be found at
+ the following link:
+  
+ http://vaww1.va.gov/vhapublications/ViewPublication.asp?pub_ID=1701
+  
+ The CHECK/DON'T CHECK field (#5) is used in conjunction with the
+ USE FOR Z07 CHECK (#6) of the INCONSISTENT DATA ELEMENTS file (#38.6)
+ to determine if an HL7 Z07 (full data transmission) message should be sent
+ to the Health Eligibility Center (HEC). With the issuance of the
+ directive, some of the data elements had their values for the CHECK/DON'T
+ CHECK field (#5) reset from "CHECK" to "DON'T CHECK". This allowed Z07
+ messages to be transmitted without first checking for inconsistent data,
+ potentially resulting in "bad" data being shared with the Health
+ Eligibility Center and the Enrollment System Redesign (ESR).
+  
+ This patch will be released in conjunction with patch DG*5.3*789, UPDATE 
+ Z07 INCONSISTENT DATA ELEMENTS PER VHA DIRECTIVE 2008-031, to rectify
+ this situation. These patches have no hard dependencies and may be
+ installed separately.
+  
+  
+ FUNCTIONAL DESCRIPTION:
+  
+ The following will be fixed with this patch:
+   
+ 1. The following IVM routines will be modified to remove code which checks
+    the CHECK/DON'T CHECK (#5) field of the INCONSISTENT DATA ELEMENTS file
+    (#38.6) prior to generating an ORU/ORF~Z07 message.
+  
+                 IVMZ7CD
+                 IVMZ7CCD
+                 IVMZ7CE
+                 IVMZ7CR
+                 IVMZ7CS
+  
+    After installation of this patch, the Z07 consistency checker will only
+    use the USE FOR Z07 CHECK field (#6) to determine if a Z07 (full data
+    transmission) should be sent to the Health Eligibility Center (HEC) 
+    and the Enrollment System Redesign (ESR). Patch DG*5.3*789 does two 
+    things with respect to the consistency checker:  (1) modifies the 
+    definition of the USE FOR Z07 CHECK field (#6) so that it is not 
+    editable, and (2) resets the USE FOR Z07 CHECK field (#6) value for
+    each entry in the INCONSISTENT DATA ELEMENTS file (#38.6) to comply
+    with VHA Directive 2008-031.
+  
+ 2. If a data of death is entered with a time and it is the same date as 
+    the current date, Registration returns Inconsistency #16: DATE OF 
+    DEATH IN FUTURE. The patch modifies the routine, IVMZ7CR, to look at
+    the current time when making the comparison for future status. The
+    code currently uses a call to $$DT^XLFDT to determine the date to
+    compare to the date of death. The call is modified to use a call to
+    $$NOW^XLFDT. Both the DT and NOW functions of XLFDT are covered 
+    components under DBIA #10103. Additional information on the XLFDT 
+    functions can be found in the Kernel 8.0 Developer's Guide. The link to
+    that document is:
+  
+ http://www.va.gov/vdl/documents/Infrastructure/Kernel/krn8_0dg.pdf
+  
+  
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+ There is no NSR associated with this patch.
+   
+   
+ This patch addresses the following Remedy tickets:
+ ---------------------------------------------------------
+ Remedy tickets:
+ ---------------
+  
+ HD0000000260883 Z07 Build Consistency Check states no inconsistencies but
+                 Inconsistent Element Report still list patients:
+                 ( Original )
+  
+ HD0000000258258: Numerous Z07 CC for Person National ICN  ( duplicate )
+  
+ HD0000000237132: Z07 Messages Not Sent 
+  
+  
+ Problem:  
+ --------
+ Patients are listed on and remain on the Inconsistent Data Elements Report
+ for Z07 Messages but the Z07 Build Consistency Check states "NO 
+ INCONSISTENCIES FOUND..." Sites were directed to change the value of the
+ CHECK/DON'T CHECK field (#5) of the INCONSISTENT DATA ELEMENTS file
+ (#38.6) for a number of the Z07 Consistency Checks (CC) to a value of
+ "DON'T CHECK". The CHECK/DON'T CHECK field (#5) is checked when sending a
+ Z07 and if it is set to "DON'T CHECK", the field USE FOR Z07 CHECK (#6) of
+ the INCONSISTENT DATA ELEMENTS file (#38.6) is never used to activate the
+ consistency checks for Z07 transmissions.
+  
+ Solution: 
+ ---------
+ Changes have been made to routines IVMZ7CD, IVMZ7CCD, IVMZ7CE, IVMZ7CR and
+ IVMZ7CS where the code checking the CHECK/DON'T CHECK field (#5) in the
+ INCONSISTENT DATA ELEMENTS file (#38.6) has been taken out when checking
+ inconsistencies for Z07 transmissions.
+  
+  
+ HD0000000262276 Problem in IVMZ7CR code
+  
+ Problem:
+ --------
+ If a date of death is entered for a patient and it includes a time and if 
+ the HL7 Z07 message for that patient is attempted to be sent the same 
+ day, an erroneous inconsistency message results.
+  
+ Solution:
+ ---------
+ The code is checking the current date against the date of death with a 
+ time, so it appears the date of death is in the future. This is 
+ corrected by changing the code to compare the date of death to the current
+ time, not just the current date.
+  
+  
+ Test Sites:
+ -----------
+ MARYLAND HCS
+ TOGUS, ME
+ ATLANTA 
+  
+  
+        ================INSTALLATION INSTRUCTIONS =================
+  
+ If installed during the normal workday, it is recommended that the
+ following selection in the OPTION (#19) file be disabled to prevent
+ possible conflicts while running the KIDS Install.
+  
+ IVM BACKGROUND JOB     [IVM BACKGROUND JOB]
+  
+ Install Time - less than 5 minutes
+  
+ 1.  LOAD TRANSPORT GLOBAL 
+     ---------------------
+ Choose the PackMan message containing this patch and invoke the
+ INSTALL/CHECK MESSAGE PackMan option.
+              
+ 2.  START UP KIDS 
+     -------------
+ Start up the Kernel Installation and Distribution System Menu
+     [XPD MAIN]: 
+    
+          Edits and Distribution ...  
+          Utilities ...  
+          Installation ...  
+    
+ Select Kernel Installation & Distribution System Option: INStallation
+                                                          ---
+          Load a Distribution 
+          Print Transport Global 
+          Compare Transport Global to Current System 
+          Verify Checksums in Transport Global 
+          Install Package(s) 
+          Restart Install of Package(s) 
+          Unload a Distribution 
+          Backup a Transport Global 
+    
+ Select Installation Option: 
+    
+ 3.  Select Installation Option: 
+     ---------------------------
+ NOTE:  The following are OPTIONAL - (When prompted for the INSTALL NAME,
+ enter IVM*2.0*132):
+       
+ a.  Backup a Transport Global - This option will create a backup message
+     of any routines exported with this patch. It will not backup any other
+     changes such as DD's or templates. 
+ b.  Compare Transport Global to Current System - This option will allow
+     you to view all changes that will be made when this patch is
+     installed. It compares all components of this patch (routines, DD's,
+     templates, etc.)
+ c.  Verify Checksums in Transport Global - This option will allow you to
+     ensure the integrity of the routines that are in the transport global.
+  
+      
+ 4.  Select Installation Option: Install Package(s) 
+                                 ------------------
+ **This is the step to start the installation of this KIDS patch:
+    
+ a.  Choose the Install Package(s) option to start the patch install.
+ b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? YES//'
+     answer NO.
+ c.  When prompted 'Want to DISABLE Scheduled Options , Menu Options, and
+     Protocols? YES//' answer YES.
+ d.  When prompted 'Enter options you wish to mark as 'Out Of Order':'  
+     Enter the following option:
+  
+      IVM BACKGROUND JOB     [IVM BACKGROUND JOB]
+  
+ e.  When prompted 'Enter protocols you wish to mark as 'Out Of Order':'
+     press <Enter>.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;2.0;INCOME VERIFICATION MATCH;**[Patch List]**;JUL 8,1996;Build 1
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: IVMZ7CCD
+    Before: B26088689   After: B26024788  **105,132**
+ Description of Changes:
+  Changed: EN+49 
+     From: . I '$P(Y,"^",5),$P(Y,"^",6) D @RULE
+       To: . I $P(Y,"^",6) D @RULE
+
+Routine Name: IVMZ7CD
+    Before: B18262093   After: B18219024  **105,127,132**
+ Description of Changes:
+  Changed: EN+18
+     From: . I '$P(Y,"^",5),$P(Y,"^",6) D @RULE
+       To: . I $P(Y,"^",6) D @RULE
+
+Routine Name: IVMZ7CE
+    Before:  B3827377   After:  B3795353  **105,127,132**
+ Description of Changes:
+  Changed: EN+12 
+     From: . I '$P(Y,U,5),$P(Y,U,6) D @RULE
+       To: . I $P(Y,U,6) D @RULE
+
+Routine Name: IVMZ7CR
+    Before: B68810098   After: B68668453  **105,127,132**
+ Description of Changes:
+  Changed: 16+4
+     From: I X>$$DT^XLFDT S FILERR(RULE)=""
+       To: I X>$$NOW^XLFDT S FILERR(RULE)=""
+   
+  Changed: ON+4
+     From: I '$P(Y,U,5),$P(Y,U,6) S ON=1
+       To: I $P(Y,U,6) S ON=1
+
+Routine Name: IVMZ7CS
+    Before:  B9251423   After:  B9219399  **105,132**
+ Description of Changes:
+  Changed: EN+12
+     From: . I '$P(Y,U,5),$P(Y,U,6) D @RULE
+       To: . I $P(Y,U,6) D @RULE
+
+ 
+Routine list of preceding patches: 127
+
+=============================================================================
+User Information:
+Entered By  : FERRARESE,MARY ANN            Date Entered  : JUL 30, 2008
+Completed By: RUDINGER,NANCY L.             Date Completed: OCT 29, 2008
+Released By : GROOMS,ANTHONY E              Date Released : OCT 30, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

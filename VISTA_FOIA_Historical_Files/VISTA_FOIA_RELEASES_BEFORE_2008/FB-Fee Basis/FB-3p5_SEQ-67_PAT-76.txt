@@ -1,0 +1,305 @@
+$TXT Created by SHAMUKHAMEDOV,SHAVKAT at MNTDEM.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 04/01/04 at 20:46
+=============================================================================
+Run Date: APR 30, 2004                     Designation: FB*3.5*76
+Package : FB - FEE BASIS                      Priority: Mandatory
+Version : 3.5        SEQ #67                    Status: Released
+                  Compliance Date: MAY 31, 2004
+=============================================================================
+
+Associated patches: (v)IB*2*228    <<= must be installed BEFORE `FB*3.5*76'
+                    (v)FB*3.5*69   <<= must be installed BEFORE `FB*3.5*76'
+
+Subject: MODIFY POTENTIAL COST RECOVERY REPORT
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ ******************************** N O T E ********************************
+  CoreFLS sites must coordinate the installation of this patch with the 
+  FB-CoreFLS development team.
+ *************************************************************************
+  
+   The purpose of patch FB*3.5*76 is to replace the current IB API Call Fee
+ Basis invokes to determine if a patient has a billable insurance for the 
+ Potential Cost Recovery (PCR) report. The current IB API is being replaced
+ with a new IB API introduced with patches IB*2.0*228 and IB*2.0*256 (IB
+ Replacement project).  See Technical Description below for more
+ information.
+  
+   The new IB API operates slightly different then the old one. Under some
+ circumstances the new IB API may return the status "insurance data
+ unavailable". The updated PCR report needs to handle the situation when
+ insurance information for some or all patients in the report is
+ unavailable. 
+  
+   This patch also includes a fix for the Potential Cost Recovery Report 
+ problem reported in NOIS ISW-0304-21564.
+  
+ ASSOCIATED E3R(s):
+ ------------------
+ N/A
+       
+ ASSOCIATED NOIS:
+ ----------------
+ 1. ISW-0304-21564    UNITS NOT ON POTENTIAL COST RECOVERY
+  
+ PARTICIPATING TEST SITES:
+ -------------------------
+ Columbus, OH
+ Madison, WI
+ Lexington, KY
+ Tomah, WI
+ Butler, PA
+  
+ FUNCTIONAL DESCRIPTION
+ ======================
+ 1) The patch introduces a new prompt that will allow the user to make a 
+ decision on including in the report those patients whose insurance status 
+ is not available at the time of the report. 
+  
+ Do you want to include patients whose insurance status is unavailable? 
+ YES//
+  
+ This new prompt is only asked when the user has selected Insurance or 
+ Both on the "Include (P)atient Co-pays / (I)nsurance / (B)oth" prompt.
+  
+ 2) If the user decides to include those patients then they will be 
+ included in the report, and the following message will appear under their 
+ names:
+ >> Warning: accurate insurance information for the patient is unavailable
+  
+ 3) If the new IB API cannot get an insurance information about one or 
+ more patients then the following warning message will appear in the very 
+ beginning of the report:
+ -------------------------- !!! WARNING !!! ----------------------------
+ This report is incomplete due to problems with obtaining insurance 
+ information for those patients listed in a separate section in the end of
+ the report. You may want to rerun the report again to get more accurate
+ results.
+ ==========================================================================
+  
+ 4) If the user chose to include all those patients with unknown insurance 
+ status in the report, then the following message will be added to the 
+ warning message (see 3) above):
+ ==========================================================================
+ Note: You have chosen to include patients with unknown insurance status in
+ this report. Please be aware that these patients will be treated as if 
+ they have billable insurance and their treatment details will be marked
+ accordingly. The names of these patients will be accompanied with the
+ following message to order to identify them:
+ >> Warning: accurate insurance information for the patient is unavailable
+ ==========================================================================
+ 5) If the new IB API cannot get insurance information for one or more
+ patients then the report will list all such patients in a separate section
+ in the very end of the report:
+ Example:
+                     POTENTIAL COST RECOVERY REPORT
+    List of the patients whose insurance information is currently 
+ unavailable
+                                                                    Page: 3
+ Patient                                 Pat. ID               DOB
+ ==========================================================================
+ AAAAA,AAAAA                             000-00-0000           Apr 04, 1933
+ BBBBB,BBBBB                             000-00-0000           Feb 22, 1922
+ CCCCC,CCCCC                             000-00-0000           Jun 12, 1955
+     
+ NOIS OVERVIEW:
+ --------------
+ 1. ISW-0304-21564    UNITS NOT ON POTENTIAL COST RECOVERY
+     
+ Problem:
+ -------
+ Patch FB*3.5*69 modified a number of outputs to display additional data.
+ A column header for UNITS PAID was added to the outpatient and ancillary
+ sections of the Potential Cost Recovery report.  However, a fault in the
+ software prevents the actual value of units paid from being displayed.
+  
+ Resolution:
+ ----------
+ Routines FBPCR2 and FBPCR671 both have been modified. The line
+  W ?31,$J($P(FBADJ,U,14),10)
+ has been changed to
+  W ?31,$J($P(FBADJ,U,2),10)
+ in both routines.
+  
+ TECHNICAL DESCRIPTION
+ =====================
+ FBPCR
+ The new prompt has been added to the routine. Other modifications have 
+ been made to print the warning message, the list of the patients whose 
+ insurance status is unavailable and to mark those patients in the PCR 
+ report.
+  
+ FBPCR2
+ Modification has been made to fix the UNITS PAID problem. 
+  
+ FBPCR4
+ The old IB API $$INSURED^IBCNS1 has been replaced by the new IB API 
+ INSUR^IBBAPI. The code has been added to the routine to support printing 
+ the list of the patients whose insurance status is unavailable.
+  
+ FBPCR671
+ Modification has been made to fix the UNITS PAID problem. 
+  
+ ======================= INSTALLATION INSTRUCTIONS =======================
+  
+ ******************************** N O T E ********************************
+  CoreFLS sites must coordinate the installation of this patch with the 
+  FB-CoreFLS development team.
+ *************************************************************************
+  
+ It is recommended that the installation be performed after working hours 
+ when there is no Fee Basis users in the system. It is still recommended
+ that the following options be disabled to prevent possible conflicts while
+ running the KIDS Install:
+  
+     [FB PCR]   Potential Cost Recovery Report
+  
+ Install Time - less than 1 minute.
+  
+ 1.   LOAD TRANSPORT GLOBAL
+        ---------------------
+        Choose the PackMan message containing this patch and invoke the
+        INSTALL/CHECK MESSAGE PackMan option.
+  
+ 2.   DISABLE ROUTINE MAPPING   (DSM for Open VMS sites only)
+        -----------------------
+        Disable routine mapping on all systems for the routines listed
+        in step 3 below.
+        NOTE:  If the routines included in this patch are not currently
+        in your mapped routine set, please skip this step.
+  
+ 3.   ROUTINES SENT WITH PATCH
+        ------------------------
+       The following is a list of the routines included in this patch. The 
+       second line of each of these routines now looks like: 
+   
+      <tab>;;3.5;FEE BASIS;**[PATCH LIST]**;JAN 30 1995
+   
+                        CHECK^XTSUMBLD results
+   Routine name  Before Patch   After Patch   Patch List
+   ------------  ------------   -----------   ---------------
+   FBPCR         17716464       22752063      12,48,76
+   FBPCR2        16598692       16597193      4,48,55,69,76
+   FBPCR4        2242220        4068583       48,76
+   FBPCR671      11732695       11731298      4,48,55,69,76
+   FBXIP76E      n/a            3233207       76
+  
+           Total number of routines - 5
+           New routines - 1
+  
+  
+ 4.   START UP KIDS
+        -------------
+        Start up the Kernel Installation and Distribution System Menu
+        [XPD MAIN]:
+  
+                Edits and Distribution ...
+                Utilities ...
+                Installation ...
+  
+        Select Kernel Installation & Distribution System Option:INS
+        tallation                                               ---
+                                                          
+                Load a Distribution
+                Print Transport Global
+                Compare Transport Global to Current System
+                Verify Checksums in Transport Global
+                Install Package(s)
+                Restart Install of Package(s)
+                Unload a Distribution
+                Backup a Transport Global
+  
+        Select Installation Option:
+  
+ 5.   Select Installation Option:
+        --------------------------
+        NOTE:  The following are OPTIONAL - (When prompted for the 
+            INSTALL NAME, enter FB*3.5*76):
+  
+        a.  Backup a Transport Global - This option will create a backup
+            message of any routines exported with this patch. It will 
+            not backup any other changes such as DD's or templates.
+        b.  Compare Transport Global to Current System - This option 
+            will allow you to view all changes that will be made when
+            this patch is installed.  It compares all components of this
+            patch (routines, DD's, templates, etc.).
+        c.  Verify Checksums in Transport Global - This option will 
+            allow you to ensure the integrity of the routines that are
+            in the transport global.
+  
+ 6.   Select Installation Option: Install Package(s)
+  
+        ----------------------------------------------
+        **This is the step to start the installation of this KIDS patch:
+  
+            a.  Choose the Install Package(s) option to start the patch
+                install.
+            b.  When prompted "Want KIDS to INHIBIT LOGONs during the
+                install? YES//" answer NO
+            c.  When prompted "Want to DISABLE Scheduled Options, Menu
+                Options, and Protocols? YES//" answer YES
+            d.  When prompted 'Enter options you wish to mark as 'Out Of
+                Order':'  Enter the following options: 
+            [FB PCR]   Potential Cost Recovery Report
+            e.  When prompted 'Enter protocols you wish to mark as 'Out Of
+                Order':' press <return>.
+  
+ 7.   REBUILD MAPPED ROUTINE(S)  (DSM for Open VMS sites only)
+        -------------------------
+        Optional - Include the routines distributed with this patch in 
+        the mapped routine set.
+  
+        NOTE: This step is only necessary if you performed step 2 or if
+        you wish to include the routines in your mapped set.
+  
+ 8.     (Optional) Delete the FBXIP76E environmental check routine.
+
+Routine Information:
+====================
+
+Routine Name:
+  - FBPCR4
+
+
+Routine Checksum:
+
+Routine Name:
+  - FBPCR
+
+
+Routine Checksum:
+
+Routine Name:
+  - FBPCR2
+
+
+Routine Checksum:
+
+Routine Name:
+  - FBPCR671
+
+
+Routine Checksum:
+
+Routine Name:
+  - FBXIP76E
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : SHAMUKHAMEDOV,SHAVKAT         Date Entered  : FEB 23, 2004
+Completed By: TORRANCE,LORI                 Date Completed: APR 30, 2004
+Released By : JACKSON,SHERYL                Date Released : APR 30, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

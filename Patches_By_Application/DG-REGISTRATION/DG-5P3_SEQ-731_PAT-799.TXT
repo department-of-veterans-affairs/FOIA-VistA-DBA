@@ -1,0 +1,199 @@
+$TXT Created by KOPECKY,STEVE at MNTVLL.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 08/05/09 at 13:24
+=============================================================================
+Run Date: SEP 02, 2010                     Designation: DG*5.3*799
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #731                    Status: Released
+                  Compliance Date: OCT 03, 2010
+=============================================================================
+
+Associated patches: (v)DG*5.3*783  <<= must be installed BEFORE `DG*5.3*799'
+
+Subject: Registration Allowing Invalid Means Test Edit
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch fixes a problem that occurs in the Register A Patient [DG 
+ REGISTER PATIENT] option if it is used to register a new patient and the
+ following conditions are true:
+     -  The patient had been seen previously at another VistA site
+     -  The patient has a current financial assessment on file, 'owned' by 
+        a different VistA site from the one where the patient is currently
+        being registered
+  
+ At the end of Registration, the system will allow the user to edit the 
+ existing Means Test, even though it belongs to the other site. This 
+ should not be allowed.
+  
+ Remedy Ticket: HD0000000282863  Problem with Means Test prompt during 
+                                 Registration
+  
+    Problem: A Means Test can be edited by a site that does not own it.
+  
+   Solution: Change the code called by Registration so a Means Test
+             cannot be presented for editing if the site does not own the 
+             test.
+  
+ Please note:  
+ This patch, DG*5.3*799, implements checks in the registration logic to 
+ determine if a patient has a current financial assessment on file owned 
+ by another facility. If so, the user will no longer be prompted to edit
+ the existing financial assessment.  
+  
+ Messaging delays can occur for various reasons outside the application's
+ span of control. The user is likely to be presented with a differing
+ prompt to 'proceed with' (or enter) a new Mean Test under a certain set of
+ conditions, namely:  (1) the patient has a financial assessment on file
+ with ESR owned by another facility; (2) a financial query was sent to ESR
+ from the VistA facility registering the patient; and (3) messaging is
+ delayed and the registration process is completed prior to the upload
+ being received by VistA. As per this patch, once a financial assessment
+ owned by another facility is filed in the local VistA database, editing of
+ that test by a non-owning facility is not permissible.
+  
+  
+ Test Sites:
+ -----------
+ Indianapolis VAMC (Large) 
+ Martinsburg VAMC (Medium)
+ Palo Alto HCS (Integrated)
+  
+  
+        ================INSTALLATION INSTRUCTIONS =================
+  
+ This patch may be installed during normal working hours; however, it is
+ recommended that the following selection in the OPTION (#19) file be
+ disabled to minimize the chance of possible conflicts while running the
+ KIDS Install:
+  
+                   Register A Patient [DG REGISTER PATIENT]
+  
+ Install Time - less than 5 minutes
+  
+       
+ 1.  LOAD TRANSPORT GLOBAL 
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the 
+     INSTALL/CHECK MESSAGE PackMan option.  
+  
+ 2.  START UP KIDS  
+     -------------
+     Start up the Kernel Installation and Distribution System Menu 
+     [XPD MAIN]: 
+  
+          Edits and Distribution ...  
+          Utilities ...  
+          Installation ...  
+  
+   Select Kernel Installation & Distribution System Option: INStallation 
+                                                            --- 
+          Load a Distribution  
+          Print Transport Global 
+          Compare Transport Global to Current System 
+          Verify Checksums in Transport Global 
+          Install Package(s) 
+          Restart Install of Package(s) 
+          Unload a Distribution 
+          Backup a Transport Global 
+  
+  
+ 3.  Select Installation Option:  
+     ---------------------------
+     NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+            NAME, enter DG*5.3*799):
+       
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when this patch
+         is installed. It compares all components of this patch
+         (routines, DD's, templates, etc.).
+     c.  Verify Checksums in Transport Global - This option will allow
+         you to ensure the integrity of the routines that are in the
+         transport global.
+      
+  
+ 4. Select Installation Option: Install Package(s)
+                                ------------------
+     **This is the step to start the installation of this KIDS patch: 
+   
+     a.  Choose the Install Package(s) option to start the patch
+         install.
+     b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+         YES//' answer NO.
+     c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+         Options, and Protocols? YES//' answer YES.
+     d.  When prompted 'Enter options you wish to mark as 'Out Of Order':'
+         Enter the following option:
+            Register A Patient [DG REGISTER PATIENT]
+     e.  When prompted 'Enter protocols you wish to mark as 'Out Of 
+         Order':' press <Enter>.
+     g.  If prompted for 'Delay Install (Minutes):  (0-60): 0//' 
+         press <Enter>.
+  
+ Note:  In the Routine Information section below, where the second line of 
+ the routine in this patch is listed, please disregard the Build number, as
+ it has been generated by the National Patch Module and is irrelevant to
+ VistA sites' installations.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.3;Registration;**[Patch List]**;Aug 13, 1993;Build 1
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: DGMTU
+    Before: B54863290   After: B56504667  **4,33,182,277,290,374,358,420,
+                                           426,411,332,433,456,476,519,
+                                           451,630,783,799**
+ Description of Changes:
+  Before:
+  =======
+   
+   76        ; obtain lock used to synchronize local MT/CT options with income 
+              test upload
+   77        I $$LOCK^DGMTUTL(DFN)
+   78        ;
+   79        D DIS(DFN)
+   80        S DGMTI=+$$LST(DFN,DGDT) G EDTQ:'DGMTI!(DGMTI'=+$$LST^DGMTU(DFN))
+   81        S DGMT0=$G(^DGMT(408.31,DGMTI,0)),DGMTDT=+DGMT0,DGMTS=$P(DGMT0,
+              "^",3 )
+   
+   
+  After:
+  ======
+   
+   76        ; obtain lock used to synchronize local MT/CT options with income
+              test upload
+   77        N VSITE
+   78        I $$LOCK^DGMTUTL(DFN)
+   79        ;
+   80        D DIS(DFN)
+   81        S DGMTI=+$$LST(DFN,DGDT),VSITE=+$P($$SITE^VASITE(),U,3)
+   82        G EDTQ:'DGMTI!(DGMTI'=+$$LST^DGMTU(DFN))
+   83        I $P($G(^DGMT(408.31,DGMTI,2)),U,5)'=VSITE G EDTQ ; Test doesn't
+              belong to site
+   84        S DGMT0=$G(^DGMT(408.31,DGMTI,0)),DGMTDT=+DGMT0,DGMTS=$P(DGMT0,
+              "^",3)
+
+ 
+Routine list of preceding patches: 783
+
+=============================================================================
+User Information:
+Entered By  : KOPP,TERRY M                  Date Entered  : NOV 05, 2008
+Completed By: RUDINGER,NANCY L.             Date Completed: AUG 23, 2010
+Released By : GROOMS,ANTHONY E              Date Released : SEP 02, 2010
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,240 @@
+$TXT Created by DESMOND,LINDA at DEVVOO.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 03/30/09 at 20:52
+=============================================================================
+Run Date: APR 16, 2009                     Designation: EAS*1*94
+Package : EAS - ENROLLMENT APPLICATION SYSTEM Priority: EMERGENCY
+Version : 1        SEQ #75                      Status: Released
+                  Compliance Date: APR 17, 2009
+=============================================================================
+
+Associated patches: (v)EAS*1*71    <<= must be installed BEFORE `EAS*1*94'
+
+Subject: CORRECTION TO MSH SEGMENT IN ORF-Z07
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ Means Tests are not uploading correctly from ORF-Z07 messages sent to
+ Enrollment System Re-Design (ESR) from Veterans Health Information Systems
+ and Technology Architecture (VistA). The reason for this is that the
+ format of the message header (MSH) segment on the ORF-Z07 from VistA is
+ incorrect.  In addition, for some patients, an incomplete ORF-Z07 is being
+ returned causing an error to be logged in ESR.
+  
+ This patch corrects the routine used by the EAS ESR nnn QRY-Z07 SERVER and
+ EAS ESR nnn QRY-Z07 CLIENT protocols on VistA so that the format of the
+ MSH segment for ORF-Z07 messages sent to ESR are in the correct format. 
+ (NOTE: nnn = Site Number)
+  
+  
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+ There is no NSR associated with this patch.
+  
+  
+ This patch addresses the following Remedy Ticket(s):
+ ----------------------------------------------------
+ HD0000000312432 - ORF-Z07:  ESR not uploading the income test
+  
+ FUNCTIONAL DESCRIPTION
+ ======================
+  
+ Currently the MSH segment generated on VistA for ORF-Z07 messages
+ has the receiving site in the sending site field. The message type also
+ is displaying QRY-Z07 rather than ORF-Z07.
+  
+ The incomplete ORF-Z07 messages were returning only message header (MSH),
+ message acknowledgement (MSA), and query definition (QRD) segments.  This
+ occurred on queries for patients who should not have a Z07 sent because of
+ data inconsistencies or because the patient's primary eligibility is
+ Employee.  An application acknowledgment (AA) was returned instead of an
+ application error (AE).
+  
+  
+ TECHNICAL DESCRIPTION
+ =====================
+  
+ The fault is that the receiver routine for ESR was directing ORF-Z07
+ at the EAS ESR nnn QRY-Z07 CLIENT protocol rather than the EAS ESR nnn
+ ORF-Z07 CLIENT protocol. (NOTE: nnn = Site Number).
+  
+ This results in the sending and receiving applications being reversed
+ on the outbound message.
+  
+ In the case of the incomplete ORF-Z07 messages, the check for the error 
+ condition (data inconsistencies or employee) is in the wrong location.  It
+ was moved so that an application error (AE) would be generated and
+ transmitted to ESR.
+  
+  
+ Test Sites:
+ -----------
+ Clarksburg, WV 
+ Puget Sound HCS, WA
+  
+  
+        ================INSTALLATION INSTRUCTIONS =================
+  
+ This patch may be installed during normal working hours.
+ Users can be on the system during the installation.
+  
+ Install Time - less than 5 minutes
+  
+       
+ 1.  LOAD TRANSPORT GLOBAL 
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the 
+     INSTALL/CHECK MESSAGE PackMan option.  
+  
+ 2.  START UP KIDS  
+     -------------
+     Start up the Kernel Installation and Distribution System Menu 
+     [XPD MAIN]: 
+  
+          Edits and Distribution ...  
+          Utilities ...  
+          Installation ...  
+  
+   Select Kernel Installation & Distribution System Option: INStallation 
+                                                            --- 
+          Load a Distribution  
+          Print Transport Global 
+          Compare Transport Global to Current System 
+          Verify Checksums in Transport Global 
+          Install Package(s) 
+          Restart Install of Package(s) 
+          Unload a Distribution 
+          Backup a Transport Global 
+  
+  
+ 3.  Select Installation Option:  
+     ---------------------------
+     NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+            NAME, enter EAS*1.0*94):
+       
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when this patch
+         is installed.  It compares all components of this patch
+         (routines, DD's, templates, etc.).
+     c.  Verify Checksums in Transport Global - This option will allow
+         you to ensure the integrity of the routines that are in the
+         transport global.
+      
+  
+ 4.Select Installation Option: Install Package(s)
+                               ------------------
+     **This is the step to start the installation of this KIDS patch: 
+   
+     a.  Choose the Install Package(s) option to start the patch
+         install.
+     b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+         YES//' answer NO
+     c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+         Options, and Protocols? YES//' answer NO
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;1.0;ENROLLMENT APPLICATION SYSTEM;**[Patch List]**;15-MAR-01;Build 6
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: EASPREC4
+    Before: B25401092   After: B29684211  **71,94**
+ Description of Changes:
+  Before:
+   +1   EASPREC4 ;ALB/PJH - PROCESS INCOMING HL7 (QRY) MESSAGES ; 11/27/07 
+  3:04pm
+   +2         ;;1.0;ENROLLMENT APPLICATION SYSTEM;**71**;15-MAR-01
+  ...................
+  After:
+   +1   EASPREC4 ;ALB/PJH,TDM - PROCESS INCOMING HL7 (QRY) MESSAGES ; 
+  3/30/09 8:37pm
+   +2         ;;1.0;ENROLLMENT APPLICATION SYSTEM;**71,94**;15-MAR-01
+  ---------------------------------------
+  Before:
+   +26        S HLEID="EAS ESR "_$P($$SITE^VASITE,"^",3)_" QRY-Z07 SERVER"
+  ...................
+  After:
+   +26        S HLEID="VAMC "_$P($$SITE^VASITE,"^",3)_" ORF-Z07 SERVER"
+  ---------------------------------------
+  Before:
+   +29        S HLEIDS=$O(^ORD(101,HLEID,775,"B",0))
+         
+  ...................
+  After:
+   +29        S HLEIDS="EAS ESR "_$P($$SITE^VASITE,"^",3)_" ORF-Z07 CLIENT"
+   +30        S HLEIDS=$O(^ORD(101,"B",HLEIDS,0))
+   +31        I '$D(^ORD(101,HLEID,775,"B",+HLEIDS)) S HLEIDS=""
+  ---------------------------------------
+  Before:
+   +57        ..; - prepare (ACK) message
+   +58        ..D:'$D(HLERR) MSGHDR   ;header (MSH)
+   +59        ..D ACK     ;message (MSA)
+   +60        ..;
+   +61        ..; - set up local HL7 event type code in MSH
+   +62        ..S IVMCT=IVMCT+1,^TMP("HLS",$J,IVMCT)="QRD"_HLFS_IVMSEG ; 
+  copy of incoming QRD 
+  ...................
+  After:
+   +59        ..; - if Primary Eligibility = Employee generate error & quit
+   +60        ..N DGPRIM
+   +61        ..S DGPRIM=$$GET1^DIQ(2,DFN_",",.361)
+   +62        ..I $G(DGPRIM)]"" S DGPRIM=$O(^DIC(8,"B",DGPRIM,0))
+   +63        ..I $G(DGPRIM)]"" S DGPRIM=$P($G(^DIC(8,DGPRIM,0)),U,9)
+   +64        ..I $G(DGPRIM)=14 S HLERR="Message not sent.  Patient is an 
+  employee" D ACK Q
+  ---------------------------------------
+  Before:
+   
+  ...................
+  After:
+   +66        ..; Do Z07 Consistency checks and if fail generate error & 
+  quit
+   +67        ..I '$$EN^IVMZ07C(DFN) S HLERR="Message not sent.  
+  Inconsistencies in Record" D ACK K ^TMP($J,"CC") Q
+   +68        ..;
+   +69        ..; - prepare (ACK) message
+   +70        ..D:'$D(HLERR) MSGHDR   ;header (MSH)
+   +71        ..D ACK     ;message (MSA)
+   +72        ..;
+   +73        ..; - set up local HL7 event type code in MSH
+   +74        ..S IVMCT=IVMCT+1,^TMP("HLS",$J,IVMCT)="QRD"_HLFS_IVMSEG ; 
+  copy of incoming QRD
+   +75        ..;
+           
+  ---------------------------------------
+  Before:
+   +68        ; IVM*2.0*105 BAJ 11/02/2005
+   +69        ; send AE if inconsistencies found.
+   +70        I ^TMP($J,"CC",0) S HLERR="Message not sent.  Inconsistencies 
+  in Record" D ACK
+   +71        K ^TMP($J,"CC")
+   +72        ;
+  ...................
+  After:
+    
+    
+  **************************************************************************
+
+ 
+Routine list of preceding patches: 71
+
+=============================================================================
+User Information:
+Entered By  : HARTLEY,PETER                 Date Entered  : MAR 27, 2009
+Completed By: DESMOND,LINDA                 Date Completed: APR 16, 2009
+Released By : FRANCE,KATHI                  Date Released : APR 16, 2009
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

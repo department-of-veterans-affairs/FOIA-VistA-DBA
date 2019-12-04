@@ -1,0 +1,275 @@
+$TXT Created by LUNDEN,JOHN at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 02/12/04 at 13:55
+=============================================================================
+Run Date: MAY 13, 2004                     Designation: SD*5.3*336
+Package : SD - SCHEDULING                     Priority: Mandatory
+Version : 5.3       SEQ #292                    Status: Released
+                  Compliance Date: JUN 13, 2004
+=============================================================================
+
+Associated patches: (v)SD*3.6*8    <<= must be installed BEFORE `SD*5.3*336'
+                    (v)SD*5.3*144  <<= must be installed BEFORE `SD*5.3*336'
+                    (v)SD*5.3*155  <<= must be installed BEFORE `SD*5.3*336'
+                    (v)SD*5.3*161  <<= must be installed BEFORE `SD*5.3*336'
+
+Subject: DUPLICATE ENCOUNTERS AND ACTION REQUIRED REPORT MISLEADING FOR MST
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch resolves the problem of duplicate encounters created by the 
+ Action Required Report.  The Action Required Report will no longer run 
+ an appointment for the current day through the check out logic.  This 
+ patch also addresses a problem with incorrect identification of the MST 
+ classification type.
+  
+ ASSOCIATED ER3(S):
+ ==================
+ N/A
+  
+ ASSOCIATED NOIS:
+ ================
+ 1. MIN-1203-40439  duplicate encounters
+    Duplicate:
+      FAV-1203-70417  SCRPW Action Required Report creating Duplicate Visits
+ 2. V13-0202-N1621  Action Required Rpt misleading for MST
+     Duplicates:
+        BIR-0503-30922  action required error
+        ANC-0504-50111  Environmental Contaminants Classification required
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Minneapolis,MN
+ Fayetteville, AR
+ Birmingham, AL
+ Bronx, NY
+  
+ NOIS OVERVIEW:
+ ==============
+  
+ 1. MIN-1203-40439  duplicate encounters
+    
+ Problems:
+ --------- 
+ a. On Mulit-node Cache' sites two reports could be run at the same time 
+ and not acknowledge the current locking mechanism that is supposed to 
+ keep this from happening. To insure that two people can't run this report
+ simultaneously a variable is locked. The second instance of the report 
+ will not run if it cannot obtain a lock on this variable. However, locking 
+ a variable will not work in a mutli-node cache environment. In this 
+ situation a global must be locked. Locking a global is the mumps standard.  
+  
+ b. There are potential problems if the report is allowed to automatically 
+ attempt to check out today's encounters. If the user running the Action 
+ Required Report includes 'today' in the date range, the report will check 
+ to see if each appointment has been checked out. If not it will run that 
+ appointment through the check out logic AND create an encounter. However, 
+ it will not mark the appointment/encounter as being checked out. It does 
+ this only for the purpose of getting them on the Action Required List. 
+ Under certain conditions this can cause the creation of a duplicate  
+ encounter and visit. 
+  
+ Resolutions:
+ ------------
+  
+ a. Fix the locking mechanism to work on multi-node Cache
+ sites. This involves changing the lock from a variable to a global.
+  
+ b. Do not allow encounter for today to be checked out.
+  
+ 2. V13-0202-N1621  Action Required Rpt misleading for MST 
+  
+ Problem:
+ --------
+  
+ When running the Encounter Action Required Report, if a patient has a
+ classification type of Military Sexual Trauma (MST), it does not appear on
+ the report.  Instead, the report indicates Environmental Contaminants
+ classification required.  This would also be true of classification type -
+ Head and/or Neck Cancer - or, any new classification types that may be
+ subsequently added to the Outpatient Classification Type file (409.41).  
+ This is because the report is defaulting to Environmental Contaminants,
+ unless the classification type is:  Agent Orange, Ionizing Radiation or
+ Service Connected. 
+  
+ Resolution:
+ -----------
+  
+ A call is made to the Classification - Check Out routine, which returns 
+ array SDX, containing the internal pointers to file 409.41 for all 
+ applicable classification types for the patient.  A $Select is then used 
+ to print any required classifications for the patient, defaulting to 
+ Environmental Contaminants.  The logic will be modified to pull the 
+ classification type directly from file 409.41 using the internal 
+ pointer(s) being returned from the Classification - Check Out routine.
+  
+  
+ TECHNICAL:
+ ----------
+   
+  locking mechanism:
+    Currently the routine locks a local variable 'scrpw16' at line tag 
+ LOCK+1^SCRPW16 and unlocks it at line tag RUN+6^SCRPW16. The variable 
+ being locked will be change to a global reference of ^SCRWP16("ACTION 
+ REQUIRED REPORT"). This will work on the multi-node cache sites.
+  
+  BEFORE:
+     LOCK+1:
+       F SDI=1:1 L +SCRPW16:1 D  Q:SDI>600!SDOUT!SDLK
+     RUN+6
+       D EN^SDAMQ3(SDBEG,SDEND) K ^TMP("SDSTATS",$J) L -SCRPW16 Q
+  
+  Q
+  
+  AFTER:
+    LOCK+1;
+      F SDI=1:1 L +^SCRPW16("ACTION REQUIRED REPORT"):1 D  Q:SDI>600!...
+    RUN+6:
+      D EN^SDAMQ3(SDBEG,SDEND) K ^TMP("SDSTATS",$J) L -^SCRPW16("ACTION 
+           REQUIRED REPORT") Q
+  
+  
+  
+  Checking out today's encounters:
+    Line tag RUN+6^SCRPW16  will call EN^SDAMQ3 using the current 
+ date/time as the ending date (variable SDEND). To not allow today's
+ encounters to be checked out SDEND will be changed to today-1 with a time 
+ of .999999. This will allow previous encounters to be checked out but not 
+ today.
+  
+  BEFORE:
+  RUN     ;Print report
+         K ^TMP("SCRPW",$J),SDSEG,SDSTR,SDT S (SDOUT,SDLK)=0
+         ;If date range includes TODAY, update appointment status
+         I SD("BDT")'>DT,SD("EDT")'<DT D  G:SDOUT EXIT
+         .D LOCK Q:SDOUT!'SDLK
+         .N SDBEG,SDEND,X,%,%H,%I D NOW^%DTC S SDBEG=DT,SDEND=%
+         .D EN^SDAMQ3(SDBEG,SDEND)...
+  
+  
+  AFTER:
+  RUN     ;Print report
+         K ^TMP("SCRPW",$J),SDSEG,SDSTR,SDT S (SDOUT,SDLK)=0
+         ;If date range includes TODAY, update appointment status
+         I SD("BDT")'>DT,SD("EDT")'<DT D  G:SDOUT EXIT
+         .D LOCK Q:SDOUT!'SDLK
+         .N SDBEG,SDEND,X,%,%H,%I D NOW^%DTC S SDBEG=DT,SDEND=%
+         .S SDEND=($P(SDEND,".")-1)_"."_999999
+         .D EN^SDAMQ3(SDBEG,SDEND)
+  
+  
+  Defaulting to Environmental Contaminants:
+    Currently, at line EVAL+12 in routine SCRPW16, a call is made to 
+ routine SDCO2, which returns array SDX, containing the internal 
+ pointer(s) to file 409.41, when applicable.  When defined, the current 
+ logic then uses a $Select to print any required Classification Types, 
+ defaulting to Environmental Contaminants, if the internal pointer equals 
+ anything other than 1 through 3.  This logic will be modified as follows:
+  
+  BEFORE:
+    I $D(SDX) S SDI=0 F  S SDI=$O(SDX(SDI)) Q:'SDI  I $P(SDX(SDI),U,2)="" 
+ S SDX=$S(SDI=1:"Agent Orange",SDI=2:"Ionizing Radiation",SDI=3:"Service 
+ Connected",1:"Environmental Contaminants")_" classification required" D 
+ SET(SDX)
+  
+  
+  AFTER:
+    I $D(SDX) S SDI=0 F  S SDI=$O(SDX(SDI)) Q:'SDI I $P(SDX(SDI),U,2)="" D
+    . I '$D(^SD(409.41,SDI,0)) S SDX="Classification Required" D SET(SDX) Q
+    . S SDX=$P($G(^SD(409.41,SDI,0)),U,1)_" classification required"
+    . D SET(SDX)
+  
+  
+ DATA DICTIONARY CHANGES:
+ ------------------------
+ N/A
+  
+  
+ TEMPLATES:
+ ----------
+ N/A
+  
+  
+ ROUTINE SUMMARY:
+ ================
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+  
+     <tab>;;5.3;Scheduling;**[patch list]**;AUG 13, 1993
+  
+                            CHECK^XTSUMBLD results
+ Routine name      Before Patch          After Patch         Patch List
+ ============      ============          ===========         ==========
+ SCRPW16            23228999              21978231     139,144,155,161,336
+  
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ This patch can be installed during business hours, but because some 
+ options will be out of service during the installation process it is 
+ suggested that it be queued for non-peak hours. Users do not need to 
+ be off the system.  Installation will take less than 5 minutes.
+  
+ 1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu. [Note: TEXT 
+    PRINT/DISPLAY option in the PackMan menu sill display the patch text
+    only].
+  
+ 2. From the Kernel Installation and Distribution System (KIDS) menu,
+    select the Installation menu.
+  
+ 3. From this menu, you may elect to use the following options:
+    (when prompted for INSTALL NAME enter SD*5.3*336)
+    
+    a. Backup a Transport Global - this option will create a backup message
+       of any routines exported with the patch. It will NOT backup any 
+       other changes such as DDs or templates.
+    b. Compare Transport Global to Current System - this option will allow
+       you to view all changes that will be made when the patch is 
+       installed. It compares all components of the patch (routines, DDs, 
+       templates, etc.).
+    c. Verify Checksums in Transport Global - this option will allow you
+       to ensure the integrity of the routines that are in the Transport
+       Global.
+    d. Print Transport Global - this option will allow you to view the
+       components of the KIDS build.
+  
+ 4. Use the Install Package(s) option and select the package SD*5.3*336.
+  
+ 5. When prompted 'Want KIDS to INHIBIT LOGONs during the install?YES//', 
+    respond NO
+  
+ 6. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+    Protocols? YES//', respond YES.
+  
+    When prompted to select the options you would like to place out of
+    of order, enter the following:
+         SCRPW ACTION REQUIRED REPORT
+  
+ 7. If routines were unmapped as part of step 2 (DSM for Open VMS sites
+    only), they should be returned to the mapped set once the installation
+    has run to completion.
+
+Routine Information:
+====================
+
+Routine Name:
+  - SCRPW16
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : LUNDEN,JOHN                   Date Entered  : DEC 31, 2003
+Completed By: BAUMAN,HELENE                 Date Completed: MAY 06, 2004
+Released By : CANNEDY,JOELLEN               Date Released : MAY 13, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

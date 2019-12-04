@@ -1,0 +1,301 @@
+$TXT Created by DAVIS,PAULETTE T at DEVCRN.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 09/24/02 at 12:10
+=============================================================================
+Run Date: OCT 08, 2002                     Designation: RG*1*26
+Package : RG - CLINICAL INFO  NETWORKPriority: Mandatory
+Version : 1        SEQ #25                      Status: Released
+=============================================================================
+
+Associated patches: (v)RG*1*23     <<= must be installed BEFORE `RG*1*26'
+                    (v)DG*5.3*428  <<= must be installed BEFORE `RG*1*26'
+
+Subject: NEW MESSSAGE STRUCTURE - PHASE 1
+
+Category: 
+  - Enhancement (Mandatory)
+  - Routine
+
+Description: 
+============
+
+  IMPORTANT NOTE:
+  Although this patch is NOT being sent out as an EMERGENCY patch,
+  the Master Patient Index/Patient Demographics (MPI/PD) development
+  team and the Master Patient Index Data Quality Management team
+  request that you install the patch as soon as your schedule allows.
+  Additional development in progress, described below, is dependent
+  upon this patch being installed at all facilities.
+   
+  Also, the MPI/PD development team's facility access should
+  remain active until all phases in this process are completed.
+   
+  DG*5.3*428 and RG*1.0*23 are required builds for patch RG*1*26.
+   
+  NOTE:  RG* and MPIF* patches should NOT be installed on legacy
+  systems to avoid issues with the legacy systems ending up as
+  Coordinating Master of Records (CMORs), treating facilities,
+  or subscribers.
+   
+  This patch includes enhancements that are proposed in the Master
+  Patient Index/Patient Demographics, Phase III Enhancements, Software
+  Design Document.
+   
+  A series of patches will be distributed to implement a new messaging
+  structure for Master Patient Index/Patient Demographics (MPI/PD). 
+  Our current message scheme uses the Coordinating Master of Record
+  (CMOR) as the origination point for a number of update messages to
+  other treating facilities.  Overall, our objective is to reduce the
+  amount of facility to facility messaging.  This will be done by using
+  the Master Patient Index (MPI) as the source for update messages. 
+  For those message types that require CMOR action, the CMOR will update
+  the MPI, and the MPI will distribute updates to the appropriate
+  treating facilities.
+   
+  Changes to messaging will include using a new generic Health Level
+  Seven (HL7) 2.4 message builder for the ENV, PD1, and PID segments. 
+  Additionally, HL7 application acknowledgements will be incorporated
+  in all MPI/PD messages.
+   
+  These changes will take place in three phases.  Patches DG*5.3*428,
+  MPIF*1*22, and RG*1*26 constitute phase one.  These patches
+  contain the protocols and routines to execute those protocols for
+  the new messaging.  These patches must be installed at all facilities
+  before the second step in the process can begin.  The processing
+  routines included in these patches will be dormant until then.
+   
+  The second phase will update the necessary routines to call the new
+  trigger events using the updated messaging structure.  The trigger
+  events will include the following.
+  - Add new patient to the MPI
+  - Link to an existing patient on the MPI
+  - Update to non-key fields on an existing MPI entry
+  - Update to key fields on an existing MPI entry
+  - Update to date last treated
+  - Resolution of duplicates at the site where both entries
+    exist on the MPI
+  - Resolution of duplicates on the MPI
+  - Identification and resolution of a mismatched patient
+  - Inactivation of existing entry on the MPI
+   
+  Patches for the second phase must be installed at all facilities
+  before the subsequent step can begin.  Patches DG*5.3*474,
+  MPIF*1*24, and RG*1*27 constitute phase two.
+   
+  The next step is a data synchronization process to populate new
+  fields in the MPI FACILITY ASSOCIATION (#985.5) file on the MPI
+  for each facility associated with a national integration control
+  number.
+   
+  The third phase will contain additional messaging functionality
+  that can not be implemented until the synchronization process has
+  completed.  A final group of patches will clean up obsolete routines,
+  protocols, options, etc. that are no longer used.
+   
+  To summarize, patches DG*5.3*428, MPIF*1*22, and RG*1*26
+  contain the protocols and routines to execute those protocols for
+  the new messaging.  The processing routines are not invoked until
+  the second phase in the process.
+       
+  New Protocols:
+  ==============
+  Ten new protocols are included to support the new messaging structure.
+   
+  (1) MPI/PD ADT-A01 2.4 Client Protocol [RG ADT-A01 2.4 CLIENT]
+  This is the new MPI/PD ADT-A01 HL7 2.4 client protocol.  This new
+  version includes the new PID as well as the routing via the MPI.
+  This will be used to send admission data to the MPI to support the
+  synchronization of the patients date last treated and/or event reason.
+   
+  (2) MPI/PD ADT-A01 2.4 Server Protocol [RG ADT-A01 2.4 SERVER]
+  This is the new MPI/PD ADT-A01 HL7 2.4 server protocol.  This new
+  version includes the new PID as well as the routing via the MPI.
+   
+  (3) MPI/PD ADT-A03 2.4 Client Protocol [RG ADT-A03 2.4 CLIENT]
+  This is the new MPI/PD ADT-A03 HL7 2.4 client protocol.  This new
+  version includes the new PID as well as the routing via the MPI.
+  This will be used to send discharge and clinic checkout data to the
+  MPI to support the synchronization of the patients date last treated
+  and/or event reason.
+   
+  (4) MPI/PD ADT-A03 2.4 Server Protocol [RG ADT-A03 2.4 SERVER]
+  This is the new MPI/PD ADT-A03 HL7 2.4 server protocol.  This new
+  version includes the new PID as well as the routing via the MPI.
+   
+  (5) MPI/PD ADT-A04 2.4 Client Protocol [RG ADT-A04 2.4 CLIENT]
+  This is the new MPI/PD ADT-A04 HL7 2.4 client protocol.  This new
+  version includes the new PID as well as the routing via the MPI.
+  This will be used to send registration data to the MPI to support
+  the synchronization of the patient demographic data.
+   
+  (6) MPI/PD ADT-A04 2.4 Server Protocol [RG ADT-A04 2.4 SERVER]
+  This is the new MPI/PD ADT-A04 (Register a Patient) HL7 2.4 server
+  protocol.  This new version includes the new PID as well as the
+  routing via the MPI.
+   
+  (7) MPI/PD ADT-A04 Trigger Protocol [RG ADT-A04 TRIGGER]
+  This protocol is used as an internal process of the A04 messages.
+  The protocol will read in the message and reformat to the HL7 v2.4
+  standard with Application and Commit acknowledgements turned on.
+   
+  (8) MPI/PD ADT-A08 2.4 Client Protocol [RG ADT-A08 2.4 CLIENT]
+  This is the new MPI/PD ADT-A08 HL7 2.4 client protocol.  This new
+  version includes the new PID as well as the routing via the MPI.
+  This will be used to send updated patient data to the MPI to support
+  the synchronization of the patient demographic data.
+   
+  (9) MPI/PD ADT-A08 2.4 Server Protocol [RG ADT-A08 2.4 SERVER]
+  This is the new MPI/PD ADT-A08 (Patient Update) HL7 2.4 server
+  protocol.  This new version includes the new PID as well as the
+  routing via the MPI.
+   
+  (10) MPI/PD ADT-A08 Trigger Protocol [RG ADT-A08 TRIGGER]
+  This is the new MPI/PD ADT-A08 HL7 2.4 trigger client protocol.  This
+  protocol is used to process in messages generated by the VAFC ADT-A08
+  SERVER protocol that is in 2.3 format and update the message to the 2.4
+  standard and include full enhanced mode acknowledgements at both the
+  commit and application level.
+   
+  HL7 Application Parameter:
+  ==========================
+  RG ADT
+   
+  Device File Entry:
+  ==================
+  Entry RG QUEUE in the DEVICE (#3.5) file is created by the post-
+  installation routine, RGP26PST.  The device is used to limit the
+  number of background jobs running on the system at any given time.
+  The RG ADT-A08 TRIGGER and RG ADT-A04 TRIGGER HL7 client protocols
+  hang off of the VAFC ADT-A04/A08 SERVER HL7 server protocols and
+  are used to capture the patient event and queue up a subsequent
+  HL7 message.  This message contains the new Health Level Seven 
+  (HL7) Standard v2.4 message which also includes "commit" and
+  "application" level acknowledgements.  Since the potential exists for
+  an unlimited number of patient edits to be queued off at any given
+  time from a backlog in the ADT HL7 PIVOT (#391.71) file, the resource
+  device prevents more than 10 jobs from running at any given time.
+   
+  Test Sites:
+  ===========
+  Battle Creek, MI
+  Bay Pines, FL
+  Manchester, NH
+     
+  Routine Summary:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+   
+  <TAB>;;1.0;CLINICAL INFO RESOURCE NETWORK;**[Patch List]**;30 Apr 99
+  CHECK^XTSUMBLD results:
+   
+  Routine       Before Patch       After Patch       Patch List
+  --------      ------------       ------------      ----------
+  RGADTP             N/A             17407790             26
+  RGADTP1            N/A             12905370             26
+  RGADTPC            N/A               306945             26
+  RGP26PST           N/A                N/A               26
+  RGRSDYN          2371895            2287825        4,8,17,23,26
+   
+  Note: Routine RGP26PST is deleted by the installation.
+  The checksum prior to deletion is 649983.
+   
+  Post-Install Routine:
+  =====================
+  The purpose of the post installation routine, RGP26PST, is to add the
+  RG QUEUE entry to the DEVICE (#3.5) file.
+   
+  Installation Instructions:
+  ==========================
+  This patch may be loaded with users on the system.  You may wish
+  to install it during non-peak hours.  Installation will take less
+  than 5 minutes.
+   
+  1.  Using the TaskMan option Schedule/Unschedule Options [XUTM SCHEDULE],
+      unschedule the following option:
+        VAFC BATCH UPDATE          UPDATE BATCH JOB FOR HL7 v2.3
+   
+  2.  Use the INSTALL/CHECK MESSAGE option on the Packman menu.  [Note: 
+      TEXT PRINT/DISPLAY option in the PackMan menu will display the 
+      patch text only.]
+   
+  3.  None of the routines in the MPI/PD Patient Demographics package
+      have been recommended for routine mapping.
+   
+  4.  From the Kernel Installation and Distribution System Menu, select
+      the Installation menu.
+   
+  5.  From this menu, you may elect to use the following options (when
+      prompted for the INSTALL NAME, enter RG*1.0*26).
+   
+      (a)  Backup a Transport Global - this option will create a backup
+           message of any routines exported with the patch.  It will NOT
+           backup any other changes such as DDs or templates.
+   
+      (b)  Compare Transport Global to Current System - this option will
+           allow you to view all changes that will be made when the
+           patch is installed.  It compares all components of the patch
+           (routines, DDs, templates, etc.).
+   
+      (c)  Verify Checksums in Transport Global - this option will allow
+           you to ensure the integrity of the routines that are in the
+           transport global.
+   
+      (d)  Print Transport Global - this option will allow you to view the
+           components of the KIDS build.
+   
+  6.  Use the Install Package(s) option and select the package RG*1.0*26.
+     
+  7.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? YES//',
+      respond NO.
+   
+  8.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols? YES//', respond NO.
+   
+  9. Using the TaskMan option Schedule/Unschedule Options [XUTM SCHEDULE],
+      schedule the option VAFC BATCH UPDATE [UPDATE BATCH JOB FOR HL7 v2.3]
+      to run every 10 minutes.
+
+Routine Information:
+====================
+
+Routine Name:
+  - RGADTP
+
+
+Routine Checksum:
+
+Routine Name:
+  - RGADTP1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RGP26PST
+
+
+Routine Checksum:
+
+Routine Name:
+  - RGRSDYN
+
+
+Routine Checksum:
+
+Routine Name:
+  - RGADTPC
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : DAVIS,PAULETTE                 Date Entered : JUN 11, 2002
+Completed By: HERREN,CATHRYN                Date Completed: OCT 03, 2002
+Released By : SCOTT,JEAN M                 Date Released : OCT 08, 2002
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

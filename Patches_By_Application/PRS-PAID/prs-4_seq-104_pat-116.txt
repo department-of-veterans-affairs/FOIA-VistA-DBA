@@ -1,0 +1,453 @@
+$TXT Created by ANDERSON,DOUG at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Friday, 04/11/08 at 12:12
+=============================================================================
+Run Date: MAY 15, 2008                     Designation: PRS*4*116
+Package : PRS - PAID                          Priority: Mandatory
+Version : 4       SEQ #104                      Status: Released
+                  Compliance Date: JUN 15, 2008
+=============================================================================
+
+Associated patches: (v)PRS*4*93    <<= must be installed BEFORE `PRS*4*116'
+                    (v)PRS*4*112   <<= must be installed BEFORE `PRS*4*116'
+
+Subject: CTT/NESP
+
+Category: 
+  - Routine
+  - Other
+
+Description:
+============
+
+ This patch is the first of two patches to implement the functionality
+ changes that must be made to the VistA Personnel and Accounting 
+ Integrated Data/Enhanced Time and Attendance (PAID/ETA) software in
+ accordance with Compensatory Time for Travel and Nurse Executive Special
+ Pay.
+  
+ Full time and part time employees hired under 5 U.S.C 5542(b)(2)and 5 Code
+ of Federal Regulations (CFR) part 550, subpart N, may earn compensatory
+ time in a travel status effective January 28th, 2005. This travel time is
+ away from the official duty station and it is not compensable as hours of
+ work.
+  
+ 38 U.S.C 7452, amended by Public Law 108-445, dated December 3, 2004
+ authorizes special pay for registered nurses. 
+  
+ It is mandatory for the following: 
+  
+ 1. The Nurse Executive at a Complexity Level 1a VHA health care facility.
+ 2. The Deputy Chief Nursing Officer of the Office of Nursing Services in
+    VA Central Office.
+ 3. The Chief Nursing Officer of the Office of Nursing Services in VA 
+    Central Office.
+  
+ Special Pay is discretionary for VHA health care facilities with a
+ complexity level other than Complexity Level 1a. Special pay is authorized
+ to recruit and retain a highly qualified nurse executive. The new nurse
+ executive pay policy is effective April 2006. 
+  
+ This patch provides updates to accept new download data for Comp Time for
+ Travel and CT when the Corporate Finance Data Center (CFD) begins
+ transmitting that new data. 
+  
+ This patch is necessary to allow field testing of the full functionality
+ included in the second release (PRS*4.0*117). Since the CFD is not able to
+ send new records to selected sites, i.e., when CFD updates their
+ production system to send new records, they must send the new data to all
+ sites. This patch implements functionality so that sites can accept and
+ ignore any new data that the CFD will be sending during production testing
+ of the second patch (PRS*4.0*117).
+  
+  
+ The modifications made by this patch are briefly described below:
+ -----------------------------------------------------------------
+  
+ Download Processor:
+ -------------------
+ Updates to the download processor so all sites can handle current or new
+ message formats sent by the CFD for all download types. The updates allow
+ messages sent in the current format to be processed as usual and messages
+ sent in the new format to ignore any new data sent.  
+  
+  
+ Timecard Exceptions:
+ --------------------
+ A new "serious error" has been added to pay period exception reports and
+ the pay period certification option. The error will be generated when any
+ hourly employee has 8B Normal Hours that don't match the number of hours
+ in the employee's tour of duty. 
+  
+    The following options are affected.
+  
+      1.  Pay Period Certification [PRSA SUP REV]
+      2.  List Daily Exceptions [PRSA TPE ONE]
+      3.  List Daily Exceptions [PRSA TPE ONE-SUP]
+      4.  Display Pay Period Exceptions [PRSA TPE ALL]
+      5.  Display Pay Period Exceptions [PRSA TPE ALL-SUP]
+      6.  List Prior Pay Period Exceptions [PRSA SUP PPE]
+      7.  List Prior Pay Period Exceptions [PRSA TPE PPE]
+      8.  Pay Period Exceptions [PRSA PAY EXC]
+      9.  List Prior Pay Period Exceptions [PRSA PAY PPE]
+  
+  
+ Employee Reports:
+ -----------------
+ A new option has been added to assist sites in identifying employees with
+ 8B Normal Hours that do not match scheduled tour hours. This option
+ searches a pay period for employees with scheduled tour hours that don't
+ match the employee's 8B Normal Hours. In some cases hours that carry over
+ from a two day tour on the last Saturday of the pay period prior to the
+ one being searched can be the source of the mismatch. Timecards for
+ employees on this report cannot be certified until all scheduled hours
+ from midnight Saturday through midnight Saturday match the 8B Normal Hours.
+ Either the tour or 8B Normal Hours should be updated through established
+ processes for any employee appearing on this report for an uncertified pay
+ period.
+  
+ Optionally, Tours of Duty and Tour Hours can be displayed. The Tour Hours
+ column contains a total of any tour hours that fall on that day. So, two
+ day tours will contribute hours to both days on which they fall.
+  
+ The report is included as follows on the Employee Reports submenu in
+ both of the following main menus: 
+  
+ 1. Payroll Main Menu [PRSA PAY MENU] ...
+    --Employee Reports [PRSRFI-PAID SYSTEM REPORTS] ...
+      --Find Mismatched Normal and Tour Hours [PRSA FIND 8B-TOUR MISMATCH-FIS]
+  
+ 2. T&A Supervisor Menu [PRSA SUP MENU] ...
+    --Employee Reports [PRSRSU-PAID SYSTEM REPORTS] ...
+      --Find Mismatched Normal and Tour Hours [PRSA FIND 8B-TOUR MISMATCH-SUP]
+  
+ The report is also included as follows on the Employee Data submenu on
+ the timekeeper's menu:
+  
+    --TimeKeeper Main Menu  [PRSA TK MENU] ...
+      --Employee Data [PRSA TK MEN-EMP] ... 
+        --Find Mismatched Normal and Tour Hours [PRSA FIND 8B-TOUR MISMATCH-TK]
+  
+  
+ Routine PRSAPPH 2nd Line Update:
+ --------------------------------
+ The 2nd line in routine PRSAPPH is being updated to include patch
+ PRS*4*113 in the patch list. *113 was inadvertently dropped from the
+ second line patch list with the release of patch PRS*4*112.
+  
+ Decomposition:
+ --------------
+ During alpha testing, four San Francisco 8B strings from pay period 08-02
+ were reported by Robin Finesmith (VACO) as containing more night
+ differential than appeared possible based on the normal hours and the 8B
+ results. The associated time cards were reviewed and some existing faults
+ with ETA were discovered. This patch includes two fixes to resolve some of
+ the pre-existing faults. The two new fixes included in the test patch are
+ described below. 
+  
+ Problem 1: 
+ ----------
+ The following conditions must all be true to encounter the problem:
+  
+ 1. The employee has a tour that crosses midnight, 
+ 2. and that tour is considered a holiday tour for the employee, 
+ 3. and the employee works during the holiday tour, 
+ 4. and the entire tour is not posted as holiday worked (HW), 
+ 5. and an individual HW exception has a start time that is on 
+    or after midnight. 
+  
+ Example:
+     Date          Scheduled Tour           Tour Exceptions
+ -----------------------------------------------------------------------
+  Wed 23-Jan-08     07:30P-08:00A           07:30P-08:00P     HX HOL EX
+                                            08:00P-11:30P     HW HOL WK
+                                            MID-08:00A        HW HOL WK
+         11.5 hrs. Holiday worked + .5 hr. Hol. excused (came in late)
+  
+  
+ The MID-08:00A exception actually occurred during the portion of the tour
+ that occurs on the morning of the 24th. The ETA decomposition software has
+ some logic that makes sure exceptions such as annual leave are placed
+ during tour time. This logic was not being applied to HW exceptions and
+ the decomposition mistakenly believed that the MID-8A exception occurred
+ during the morning of the 23rd instead of the 24th. The tour hours that
+ fall on the morning of the 24th were thus treated as normal tour time
+ instead of holiday worked. This resulted in 8 hours of too much night
+ differential since both the HW that was misplaced and the normal tour time
+ received night differential. On one of the actual reviewed time cards, the
+ misplaced HW conflicted with some overtime and as a result the 8B string
+ did not reflect the overtime.
+  
+ This patch modifies the decomposition to treat HW exceptions in the same
+ manner as other types of time (e.g. annual leave) that should fall within
+ tour hours when it attempts to determine when the exception occurred.
+  
+  
+ Problem 2:
+ ----------
+ The following conditions must all be true to encounter the problem that
+ will be fixed:
+  
+ 1. The employee must have a tour that has a gap in the middle of the 
+    normal tour hours,
+ 2. and the tour must have meal time,
+ 3. and an exception to the normal tour must be posted,
+ 4. and all the normal tour hours must not be posted with the 
+    same type of time.
+  
+ Example:
+     Date          Scheduled Tour           Tour Exceptions
+ -------------------------------------------------------------------
+ Sun 20-Jan-08     MID-08:00A              MID-08:00A        CP COP
+                   07:30P-08:00A           07:30P-11:30P     CP COP
+                                           MID-08:00A        CP COP
+        20 hrs. COP (both shifts)
+  
+ In this example, the tour is a single 20 hour tour with two segments. The
+ timekeeper posted around 11:30pm-MID for the 30 minute meal. The
+ decomposition inappropriately places the meal for the above example in the
+ gap between the two shifts instead of during tour time. This results in 30
+ minutes extra night differential since the meal is not deducted from the
+ tour hours. This patch modifies the decomposition to place the meal during
+ the tour time. In the above example, the meal will now be placed during
+ 11:30P-MID where the timekeeper left 30 minutes of regular time for the
+ meal. 
+  
+  
+ This patch addresses the following New Service Request(s) NSR(s):
+ -----------------------------------------------------------------
+ 1. Compensatory Time Off for Travel (#20050308)
+ 2. Tour of Duty and Bi-Weekly Schedule must equal Normal Hours (#20071015)
+  
+  
+ This patch addresses the following Remedy Ticket(s):
+ ----------------------------------------------------
+ 1.  HD207437 SSN showing on corrected timecard display
+ 2.  HD208447 SSN Display in PAID 4.0
+ 3.  HD175710 Tour Problem
+  
+  
+ Overview of Remedy Ticket(s):
+ -----------------------------
+ 1.  HD207437 SSN showing on corrected timecard display
+  
+ Problem:
+ --------
+ Patch PRS*4*114 updated the ETA software to mask employee Social Security
+ Numbers (SSNs). However, for some options which display corrected time
+ card data, the SSN is still being displayed and this was not intended.
+  
+ Resolution:
+ -----------
+ The following options, which display corrected time card data have been 
+ updated to mask the SSN, as described in patch PRS*4*114:
+  
+  Display Pay Period [PRSA TPD PP-EMP]
+  Display Employee Pay Period [PRSA TPD PP] 
+  Display Employee Pay Period [PRSA TPD PP-SUP]
+  Display Employee Pay Period [PRSA PE DISP] 
+  
+  
+ 2.  HD208447 SSN Display in PAID 4.0
+  
+ Problem:
+ --------
+ Similar to the Help Desk ticket described in item #1 above, the option Pay
+ Period Certification [PRSA SUP REV] will display the full SSN if an
+ employee has more labor distribution changes in a single pay period than
+ will fit on one screen.
+  
+ Resolution:
+ -----------
+ The option Pay Period Certification [PRSA SUP REV] is updated to mask the
+ SSN, as described in patch PRS*4*114: 
+  
+  
+ 3.  HD175710 Tour Problem
+  
+ Problem:
+ --------
+ The ETA software has always allowed timekeepers to create tours of duty
+ that have scheduled hours that do not match the employee's 8B Normal 
+ Hours. Although, the software generates a warning that is displayed to the
+ timekeeper when they create a tour of duty that is inconsistent with the
+ 8B Normal hours, the timekeeper can ignore the warning. The reason that
+ only a warning is displayed is due to the fact that an employee's 8B
+ Normal Hours may be changing for the pay period in which the timekeeper is
+ editing the employee's tour of duty.  
+  
+ In order to change an employee's 8B Normal Hours, the site must make an
+ update in the employee's record in Austin. In some cases, the updated 8B
+ Normal hours are held in Austin and only transmitted to the site on the
+ first Thursday of the pay period, after all payroll processing is
+ complete. So, if the timekeeper needs to adjust the tour for the new 8B
+ Normal Hours, the VistA ETA system may not have the new hours yet. The
+ warning allows the timekeeper to enter a correct tour without having the
+ correct 8B Normal Hours. However, this also allows the timekeeper to enter
+ incorrect tours of duty. The result of having an incorrect tour of duty,
+ i.e. a tour with the wrong number of hours, has resulted in incorrect pay,
+ incorrect charges to leave and incorrect premium pays, such as night
+ differential.
+  
+ Resolution:
+ -----------
+ The software is being updated as described in the Timecard Exceptions 
+ section above. Basically, the pay period certification option will no 
+ longer allow certification of time cards when 8B Normal Hours don't match 
+ tour of duty hours. This is possible, because at the time of certification
+ the 8B Normal Hours should be updated by the Edit and Updated download
+ from Austin (for any employee who's 8B Normal Hours have changed) and the
+ timekeeper should have entered a correct tour by that time.
+  
+  
+ Components Sent With Patch
+ --------------------------
+  
+ Options
+ -------
+ PRSA FIND 8B-TOUR MISMATCH-FIS           SEND TO SITE
+ PRSA FIND 8B-TOUR MISMATCH-SUP           SEND TO SITE
+ PRSA FIND 8B-TOUR MISMATCH-TK            SEND TO SITE
+ PRSA TK MEN-EMP                          USE AS LINK FOR MENU ITEMS
+ PRSRFI-PAID SYSTEM REPORTS               USE AS LINK FOR MENU ITEMS
+ PRSRSU-PAID SYSTEM REPORTS               USE AS LINK FOR MENU ITEMS
+  
+  
+ **** NOTE: Patch 113 was inadvertently left off the second line of
+            routine PRSAPPH. The routine does contain the patch 113
+            modifications and the problem is only with the second line.
+            This patch restores 113 to the list of patches in the
+            second line of routine PRSAPPH.
+  
+  
+  
+ Test Sites:
+ -----------
+ Central Plains HCS
+ Heartland West HCS
+ Maryland HCS
+ San Diego
+ San Francisco
+  
+  
+  
+  ==================== INSTALLATION INSTRUCTIONS ======================
+  
+ This patch may be installed with users on the system, however, it should
+ be installed at a non-peak time to minimize disruption to the users. It
+ is strongly recommended that all the PAID ETA options in the OPTION
+ (#19) file be disabled to prevent possible conflicts while running the
+ KIDS install. All the ETA options can be selected by using the PAID ETA
+ namespace of PRS and the asterisk. As shown in step 4d. of the
+ installation instructions, type PRS*, to disable all PAID ETA options.
+ Other VISTA users will not be affected.
+  
+   
+ Install Time - Less than 5 minutes.
+  
+  
+ 1.  LOAD TRANSPORT GLOBAL
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the
+     INSTALL/CHECK MESSAGE PackMan option.
+  
+ 2.  START UP KIDS
+     -------------
+     Start up the Kernel Installation and Distribution System Menu
+     [XPD MAIN]:
+  
+          Edits and Distribution ...
+          Utilities ...
+          Installation ...
+  
+     Select Kernel Installation & Distribution System Option: INStallation
+                                                              ---
+          Load a Distribution
+          Print Transport Global
+          Compare Transport Global to Current System
+          Verify Checksums in Transport Global
+          Install Package(s)
+          Restart Install of Package(s)
+          Unload a Distribution
+          Backup a Transport Global
+  
+ 3.  Select Installation Option:
+     ---------------------------
+     NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+            NAME, enter PRS*4.0*116):
+  
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when this patch
+         is installed. It compares all components of this patch.
+  
+     NOTE:  Patch 113 was inadvertently left off the second line of
+            routine PRSAPPH. The routine does contain the patch 113
+            modifications and the problem is only with the second line.
+            This patch restores 113 to the list of patches in
+            the second line of routine PRSAPPH.
+  
+     c.  Verify Checksums in Transport Global - This option will allow
+         you to ensure the integrity of the routines that are in the
+         transport global.
+  
+ 4.  Select Installation Option: Install Package(s)
+                                 ------------------
+     **This is the step to start the installation of this KIDS patch:
+  
+     a.  Choose the Install Package(s) option to start the patch install.
+     b.  When prompted 'Want KIDS to Rebuild Menu Trees Upon Completion of
+         Install? YES//'  Answer YES, unless your system does this in a 
+         nightly TaskMan process.
+     c.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+         YES//' answer NO.
+     d.  When prompted 'Want to DISABLE Scheduled Options, Menu Options,
+         and Protocols? YES//' answer YES.
+     e.  When prompted 'Enter options you wish to mark as 'Out Of Order':'
+         Answer PRS*.
+     f.  When prompted 'Enter protocols you wish to mark as 'Out Of
+         Order':' Press Return.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;4.0;PAID;**[Patch List]**;Sep 21, 1995;Build 23
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PRS8MT
+    Before: B45103174   After: B44975495  **2,40,69,102,109,112,116**
+Routine Name: PRS8SU
+    Before: B23008538   After: B22986620  **112,116**
+Routine Name: PRSA8BNH
+    Before:       n/a   After: B56986678  **116**
+Routine Name: PRSA8BNI
+    Before:       n/a   After: B27323554  **116**
+Routine Name: PRSAPPH
+    Before: B20434653   After: B20434653  **33,66,113,112,116**
+Routine Name: PRSARC07
+    Before: B43840543   After: B48614564  **112,116**
+Routine Name: PRSASR1
+    Before: B49767232   After: B49700773  **6,21,82,93,116**
+Routine Name: PRSATPE
+    Before: B59425461   After: B68842972  **26,34,69,102,112,116**
+Routine Name: PRSAUDP
+    Before:  B8456640   After:  B9116588  **116**
+Routine Name: PRSDSERV
+    Before: B43800529   After: B45205157  **6,78,82,116**
+ 
+Routine list of preceding patches: 93, 112
+
+=============================================================================
+User Information:
+Entered By  : DILL,MATT                     Date Entered  : SEP 24, 2007
+Completed By: ROBBINS,BRADLEY               Date Completed: MAY 15, 2008
+Released By : MCCLARAN,PAM                  Date Released : MAY 15, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

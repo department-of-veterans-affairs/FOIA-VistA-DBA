@@ -1,0 +1,307 @@
+$TXT Created by ANDERSON,CURTIS at DEVCUR.FO-SLC.MED.VA.GOV  (KIDS) on TUESDAY, 07/30/02 at 11:39
+=============================================================================
+Run Date: OCT 03, 2002                     Designation: OR*3*139
+Package : OR - ORDER ENTRY/RESULTS REPORTING Priority: Mandatory
+Version : 3       SEQ #144                       Status: Released
+=============================================================================
+
+Associated patches: (v)OR*3*85     <<= must be installed BEFORE `OR*3*139'
+                    (v)XU*8*174    <<= must be installed BEFORE `OR*3*139'
+                    (v)OR*3*105    <<= must be installed BEFORE `OR*3*139'
+                    (v)OR*3*112    <<= must be installed BEFORE `OR*3*139'
+
+Subject: ADMISSIONS ALERT FIX
+
+Category: 
+  - Enhancement (Mandatory)
+
+Description: 
+============
+
+  
+ Issues and Problems:
+ ====================
+  
+ 1. [MAR-1201-21879, MIA-0900-30866, HVH-0202-12038] Fixes a problem where
+ Admission, Discharge and Death notifications/alerts were not sent in some
+ cases.
+  
+ 2. [MAC-0102-62706, PUG-0302-50159] Changed the screen on the Flagged 
+ Orderable Item - Results notifications so all types of imaging
+ orderable items can be flagged.
+  
+ 3. [DUB-0202-30018, WPB-0202-31950] Changes the method for determining
+ which recipients of a previous "one instance" alert are added as potential
+ recipients of a new instance of the alert.  "One instance" alerts are
+ those that an alert recipient can only have one instance of that alert per
+ patient at any one time.  "One instance" notifications/alerts include:
+         DC ORDER
+         DNR EXPIRING
+         FLAG ORDER FOR CLARIFICATION
+         MEDICATIONS EXPIRING
+         NEW ORDER
+         NPO DIET MORE THAN 72 HRS
+         ORDER REQUIRES ELEC SIGNATURE
+         UNVERIFIED MEDICATION ORDER
+         UNVERIFIED ORDER
+  
+ So at any point in time, an alert recipient can only have one instance of
+ each of these notifications/alerts for any given patient.  For example, 
+ Dr. Smith can only have one instance of the New Order alert for Patient 
+ Jones at any one time.  He can have a New Order alert for Patient Brown 
+ at the same time but only one New Order alert for each patient.  This 
+ prevents recipients from being over-loaded with common alerts like New
+ Order and Order Requires Electronic Signature. In the past, when one of
+ these alerts was triggered, the old alert was deleted and the recipients
+ of the earlier alert were added as potential recipients of the new
+ alert.  This caused problems because sometimes recipients of the earlier
+ alert were no longer associated with the patient.  (ASH-0301-30536,
+ MAC-0301-61079, MAR-0501-20171, CPH-0801-40144, AUG-0701-31735,
+ UNY-0600-11666, SHR-0901-71584.)  Patch OR*3*105 solved most of these
+ problems but exceptions were found where previous recipients should
+ have been kept (DUB-0202-30018.)
+  
+ To simplify the process and make it more logical to users, the method for
+ determining which earlier alert recipients should be added to the new
+ alert will be as follows:
+ - When a new instance of the alert is triggered, each of the new alert
+ recipients are checked to see if he/she has a previous, UNDELETED version
+ of the alert.  If so, the earlier alert is deleted for that user only.
+ - The earlier alert is not deleted for earlier recipients who are not
+ recipients of the new alert.
+  
+ This keeps only one version of the alert per recipient, per patient.  It
+ also prevents deleting the alert for individuals who still need to take
+ alert action but may no longer be linked to the patient (DUB-0202-30018.)
+  
+ 4. Adds the new parameter ORB FORWARD BACKUP REVIEWER.  This new parameter
+ supports Kernel Alert functionality that allows users to identify a user
+ (backup reviewer) to receive unattended alerts after x days.  The new 
+ parameter indicates how many days to wait before forwarding an alert to 
+ the backup reviewer.  (Specifying a user's backup reviewer is 
+ described in patch XU*8*174.)  This is similar to current functionality
+ which forwards alerts to a user's surrogate or supervisor.  The value
+ exported with this patch for each OE/RR notification/alert on your system
+ is 0 (zero.)  A zero indicates the notification/alert will never be
+ forwarded to the backup reviewer.  This new parameter does not affect TIU
+ and non-OE/RR alerts.
+  
+  *** You must change the parameter value for each notification/alert your
+ site intends to be forwarded to the backup reviewer ***
+  
+ Change the parameter value via the Notification Mgmt menu option as 
+ follows:
+  
+ Select OPTION NAME: ORMGR       CPRS Manager Menu     menu
+  
+  
+    CL     Clinician Menu ...
+    NM     Nurse Menu ...
+    WC     Ward Clerk Menu ...
+    PE     CPRS Configuration (Clin Coord) ...
+    IR     CPRS Configuration (IRM) ...
+  
+  
+ Select CPRS Manager Menu Option: PE  CPRS Configuration (Clin Coord)
+  
+  
+    ...
+    NO     Notification Mgmt Menu ...
+    ...
+  
+  
+ Select CPRS Configuration (Clin Coord) Option: NO  Notification Mgmt Menu
+  
+  
+    ...
+    10     Forward Notifications ...
+    ... 
+  
+  
+ Select Notification Mgmt Menu Option: 10  Forward Notifications
+  
+  
+    1      Forward Unprocessed Notification to Supervisor
+    2      Forward Unprocessed Notification to Surrogates
+    3      Forward Unprocessed Notification to Bkup Reviewer   <======
+  
+  
+ Select Forward Notifications Option: 3  Forward Unprocessed Notification 
+ to Bkup Reviewer
+  
+  
+  
+            Set FORWARD BACKUP REVIEWER Parameters for Notifications
+  
+ Holds Days before Forward to Backup may be set for the following:
+  
+      1   Division      DIV    [choose from INSTITUTION]
+      2   System        SYS    [DEVCUR.FO-SLC.MED.VA.GOV]
+  
+ Enter selection: 2  System   DEVCUR.FO-SLC.MED.VA.GOV
+  
+  Setting Holds Days before Forward to Backup  for System: 
+ DEVCUR.FO-SLC.MED.VA.GOV
+ Select Notification: ORDER REQUIRES ELEC SIGNATURE  
+ Are you adding ORDER REQUIRES ELEC SIGNATURE as a new Notification? 
+ Yes//   YES
+  
+ Notification: ORDER REQUIRES ELEC SIGNATURE//   ORDER REQUIRES ELEC 
+ SIGNATURE   
+ Value: ?
+  
+ Number of days to hold notif. before fwding to recipient's backup 
+ reviewer.
+  
+ Value: 7
+  
+ In this example, unread Order Requires Electronic Signature 
+ notification/alerts will be forwarded to an alert recipient's backup 
+ reviewer after seven days.  Specifying a user's backup reviewer is 
+ described in patch XU*8*174.
+  
+ 5. [AUG-0602-32806] Fixes a problem where the ^XTMP("ORBDUP") global grew 
+ abnormally large.  In addition to the fix, the patch pre-init runs a 
+ cleanup routine on ^XTMP("ORBDUP").  
+  
+ 6. [SHR-0100-72470] Allows entry of lower and mixed case text when
+ flagging orderable items to send an alert when resulted.
+  
+  
+ ROUTINE SUMMARY:
+  ================
+  The following is a list of the routines included in this patch.  The
+  second line of each of these routines will look like:
+  
+     <tab>;;3.0;ORDER ENTRY/RESULTS REPORTING;**[patch list]**;Dec 17, 1997
+  
+                             CHECK^XTSUMBLD results
+  Routine name         Before Patch          After Patch         Patch List
+  ============         ============          ===========         ==========
+  ORB3                     18831094             18197624   31,74,91,105,139
+  ORB31                     6611950              6955971    6,31,88,105,139
+  ORB3F1                    2102298              2137386           9,74,139
+  ORB3FUP1                  9642041              9543880    9,64,74,105,139
+  ORB3MGR1                 12083417             12539476   31,74,85,88,105,
+                                                           139
+  ORB3REG                  16335915              8928411   31,74,88,105,139
+  ORB3SPEC                      N/A              8341519                139
+  ORB3USER                 20015190             20770285      74,91,105,139
+  ORQPTQ1                   9784633             10407328  9,74,63,91,85,139
+  ORY139                        N/A              6485234                139
+  
+  
+ INSTALLATION INSTRUCTIONS:  
+ =========================
+ This patch should be loaded during non-peak hours to minimize disruption
+ to users.  Users may be on the system during installation. On most systems
+ installation will take less than 2 minutes.  Systems with heavy user loads
+ or performance problems may take longer.
+  
+ 1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+  
+ 2. Review your mapped set.  If any of the routines listed in the ROUTINE
+    SUMMARY section are mapped, they should be removed from the mapped set
+    at this time.
+  
+ 3. From the Kernel Installation and Distribution System Menu, select the
+    Installation menu.
+  
+ 4. From this menu, you may elect to use the following options (when 
+    prompted for INSTALL NAME, enter OR*3.0*139):
+      a.  Backup a Transport Global
+      b.  Compare Transport Global to Current System
+      c.  Verify Checksums in Transport Global
+  
+ 5. Use the Install Package(s) options and select the package OR*3.0*139.
+  
+ 6. When prompted 'Want KIDS to Rebuild Menu Trees Upon Completion of  
+    Install? YES//', respond "YES".
+  
+ 7. When prompted 'Want KIDS to INHIBIT LOGONS during install? YES//',
+    respond "NO".
+  
+ 8. When prompted 'Want to DISABLE Scheduled Options, Menu Options and 
+    Protocols? YES//', respond "NO".
+  
+ 9. If routines were unmapped as part of step 2, they should be returned
+    to the mapped set once the installation has run to completion.
+  
+ 10. Please note the KIDS installation process deletes the ORY139 routine
+     after successful installation.
+
+Routine Information:
+====================
+
+Routine Name:
+  - ORB3
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORB31
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORB3F1
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORB3FUP1
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORQPTQ1
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORB3REG
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORB3SPEC
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORB3USER
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORY139
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORB3MGR1
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : ANDERSON,CURTIS L             Date Entered : FEB 28, 2002
+Completed By: MERRILL,DAVID P              Date Completed: OCT 01, 2002
+Released By : FROMMATER,RANDY               Date Released : OCT 03, 2002
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

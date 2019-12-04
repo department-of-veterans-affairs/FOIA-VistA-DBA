@@ -1,0 +1,224 @@
+$TXT Created by MULLER,RICHARD at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Friday, 02/13/04 at 09:17
+=============================================================================
+Run Date: MAR 01, 2004                     Designation: IB*2*262
+Package : IB - INTEGRATED BILLING             Priority: EMERGENCY
+Version : 2       SEQ #230                      Status: Released
+                  Compliance Date: MAR 04, 2004
+=============================================================================
+
+
+Subject: FIX Print/Verify Patient Exemption Status
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ ***********************************************************************
+ **                       <<<  NOTE  >>>                              **
+ ** This patch is being released as EMERGENCY to prevent incorrect    **
+ ** Rx COPAY EXEMPTION calculations.  Compliance date is 03/04/2004   **
+ ** This patch has no dependencies on any previous patches and can    **
+ ** be installed out of sequence                                      **
+ ***********************************************************************
+  
+ Means Tests that have been converted by the EDB, are uploaded into the 
+ ANNUAL MEANS TEST (#408.31) File via a Z06 HL7 Transmission.  The EDB 
+ converted Means Test message does not contain Income information, and 
+ this is causing fields in the BILLING PATIENT (#354) and BILLING 
+ EXEMPTIONS (#354.1) files to be calculated incorrectly.
+  
+ The record in the ANNUAL MEANS TEST (#408.31) file is created with no 
+ dollar amounts because Z06 HL7 Transmissions for EDB converted Means 
+ Tests do not contain income information.  The four fields in the 
+ following files are being incorrectly calculated:
+  
+     In the BILLING EXEMPTIONS (#354.1) File:
+  
+     1) The STATUS (#.04) field is calculating to EXEMPT.
+  
+     2) The EXEMPTION REASON (#.05) field is calculating to INCOME<PENSION 
+           (Patients income below Copay Income Threshold).
+  
+     In the BILLING PATIENT (#354) File:
+  
+     1) The COPAY INCOME EXEMPTION STATUS (#.04) field is calculating to 
+           EXEMPT.
+  
+     2) The COPAY EXEMPTION REASON (#.05) field is calculating to 
+           INCOME<PENSION (Patients income below Copay Income Threshold).
+  
+ The process which checks if the current exemption status matches the 
+ calculated exemption status has been modified with this patch 
+ (IB*2.0*262). A check has been added to verify and skip tests that are
+ EDB converted Means Tests.
+  
+  
+ This patch addresses the following E3R(s):
+ ------------------------------------------
+ There are no E3Rs associated with this patch.
+  
+  
+ This patch addresses the following NOIS message(s):
+ ---------------------------------------------------
+ There are no NOIS associated with this patch. 
+  
+  
+ Overview of NOIS Message(s):
+ ---------------------------
+ None
+  
+  
+        ================INSTALLATION INSTRUCTIONS =================
+  
+ If installed during the normal workday, it is recommended that the
+ following menu options (File #19) and all of their descendants be
+ disabled to prevent possible conflicts while running the KIDS Install.
+ Other VISTA users will not be affected.
+  
+    [IB RX PRINT VERIFY EXEMP]  Print/Verify Patient Exemption Status
+  
+  
+ Install Time - 2 minutes
+  
+  
+   1.   LOAD TRANSPORT GLOBAL
+        ---------------------
+        Choose the PackMan message containing this patch and invoke the
+        INSTALL/CHECK MESSAGE PackMan option.
+  
+   2.   DISABLE ROUTINE MAPPING   (DSM for Open VMS sites only)
+        -----------------------
+        Disable routine mapping on all systems for the routines listed in
+        step 3 below.
+  
+ NOTE:  If the routines included in this patch are not currently in
+               your mapped routine set, please skip this step.
+  
+   3.   COMPONENTS SENT WITH PATCH
+        ------------------------
+        The following is a list of the routines included in this patch.
+        The second line of each of these routines now looks like:
+  
+                  ;;2.0;INTEGRATED BILLING;**[patch list]**; 21-MAR-94
+  
+                            CHECK^XTSUMBLD results
+  
+        Routine          Before Patch     After Patch    Patch List
+        -------          ------------     -----------    ----------
+        IBARXEPV         10609884         11336150       262
+  
+           Total number of routines - 1
+  
+   4.   START UP KIDS
+        -------------
+        Start up the Kernel Installation and Distribution System Menu
+        [XPD MAIN]:
+  
+             Edits and Distribution ...
+             Utilities ...
+             Installation ...
+  
+   Select Kernel Installation & Distribution System Option: INStallation
+                                                            ---
+             Load a Distribution
+             Print Transport Global
+             Compare Transport Global to Current System
+             Verify Checksums in Transport Global
+             Install Package(s)
+             Restart Install of Package(s)
+             Unload a Distribution
+             Backup a Transport Global
+  
+   Select Installation Option:
+  
+   5.   Select Installation Option:
+        --------------------------
+        NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+               NAME, enter IB*2.0*262):
+  
+        a.  Backup a Transport Global - This option will create a backup
+            message of any routines exported with this patch. It will not
+            backup any other changes such as DD's or templates.
+        b.  Compare Transport Global to Current System - This option will
+            allow you to view all changes that will be made when this patch
+            is installed.  It compares all components of this patch
+            (routines, DD's, templates, etc.).
+        c.  Verify Checksums in Transport Global - This option will allow
+            you to ensure the integrity of the routines that are in the
+            transport global.
+  
+   6.   Select Installation Option: Install Package(s)
+                                    ----------------
+        **This is the step to start the installation of this KIDS patch:
+  
+       a.  Choose the Install Package(s) option to start the patch install.
+       b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+           YES//' answer NO (unless otherwise indicated)
+       c.  When prompted 'Want to DISABLE Scheduled Options, Menu
+           Options, and Protocols? YES//' answer YES (unless otherwise
+           indicated)
+       d.  When prompted 'Enter options you wish to mark as 'Out Of
+           Order':'  Enter the following options:
+  
+  
+             Print/Verify Patient Exemption Status  
+                       [IB RX PRINT VERIFY EXEMP]
+  
+       e.  When prompted 'Enter protocols you wish to mark as 'Out Of
+           Order':' press <return>.
+  
+   7.   REBUILD MAPPED ROUTINE(S)  (DSM for Open VMS sites only)
+        -------------------------
+        Optional - Include the routines distributed with this patch
+        in the mapped routine set.
+  
+        NOTE: This step is only necessary if you performed step 2 or
+              if you wish to include the routines in your mapped set.
+
+Routine Information:
+====================
+
+Routine Name:
+  - IBARXEPV
+
+ Before:
+ CHK  ; -- check if current status = computed status
+   S IBOK=1,IBMESS="Nothing Updated",IBERR=""
+   S X=$G(^IBA(354.1,+IBDA,0)) G CHKQ:'$P(X,"^",10) ;not active skip
+   S DFN=$P(X,"^",2)
+   S Y=$G(^IBA(354,DFN,0)) I +X<$P(Y,"^",3) G CHKQ ;not current exemption
+   S IBPCNT=IBPCNT+1
+  
+ After:
+ CHK  ; -- check if current status = computed status
+   S IBOK=1,IBMESS="Nothing Updated",IBERR=""
+   S X=$G(^IBA(354.1,+IBDA,0)) G CHKQ:'$P(X,"^",10) ;not active skip
+   S DFN=$P(X,"^",2)
+   S Y=$G(^IBA(354,DFN,0)) I +X<$P(Y,"^",3) G CHKQ ;not current exemption
+   ;
+   N DGMT,CONV,CLN S (CLN,CONV)=0,DGMT=$$LST^DGMTU(DFN,+X,1)
+   I $P(DGMT,U,5)=2 D  G:CONV CHKQ           ; skip Edb conv. tests
+   .; Loop through the MT comments, Check for EDB converted test
+   .; No comments to check
+   .Q:'$D(^DGMT(408.31,+DGMT,"C",1,0))
+   .F  S CLN=$O(^DGMT(408.31,+DGMT,"C",CLN)) Q:'CLN!(CONV)  D
+   ..I ^DGMT(408.31,+DGMT,"C",CLN,0)["Z06 MT via Edb" S CONV=1
+   ;
+   S IBPCNT=IBPCNT+1
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : HUA,PATRICK                   Date Entered  : JAN 16, 2004
+Completed By: MULLER,RICHARD                Date Completed: MAR 01, 2004
+Released By : GANUS,MAUNETTE                Date Released : MAR 01, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

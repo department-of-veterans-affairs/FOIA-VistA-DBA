@@ -1,0 +1,543 @@
+$TXT Created by MULLER,RICHARD at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 08/25/03 at 11:30
+=============================================================================
+Run Date: AUG 28, 2003                     Designation: IVM*2*82
+Package : IVM - INCOME VERIFICATION MATCH     Priority: Mandatory
+Version : 2        SEQ #71                      Status: Released
+                  Compliance Date: SEP 28, 2003
+=============================================================================
+
+Associated patches: (v)IVM*2*71    <<= must be installed BEFORE `IVM*2*82'
+                    (v)IVM*2*72    <<= must be installed BEFORE `IVM*2*82'
+
+Subject: FIX MT INCONSISTENCY CK & HL7 ERRORS
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ Issue #1: INCOME TEST DATA (Z10) HL7 Message Upload
+ ======================================================
+  
+ During the upload of an INCOME TEST DATA (Z10) HL7 transmission, there 
+ are two conditions that will render all the data inconsistency checks 
+ unnecessary:
+  
+     1. If the patient does not agree to pay the deductible.  The
+        AGREED TO PAY DEDUCTIBLE (#.11) field in the ANNUAL MEANS TEST 
+        (#408.31) File will be set NO.
+  
+     2. If the patient refuses to give income information and agrees to 
+        pay the deductible.  The DECLINES TO GIVE INCOME INFO (#.14) field
+        and the AGREED TO PAY DEDUCTIBLE (#.11) field in the ANNUAL MEANS 
+        TEST (#408.31) File will both be set to YES.
+  
+ The Income Test data will be not be validated when either of the above 
+ two conditions exist.  All other conditions will still be checked that 
+ could possibly generate an Application Error (AE).
+  
+ The COMMENT sub-file (#408.311) in the ANNUAL MEANS TEST (#408.31) file 
+ may contain a message that there were data inconsistencies associated 
+ with the Income Test received in a previous INCOME TEST DATA (Z10) HL7 
+ transmission.  
+  
+ Each time the Income Test is transmitted from the HEC, and either the 
+ AGREED TO PAY DEDUCTIBLE is NO or the AGREED TO PAY DEDUCTIBLE and the 
+ DECLINES TO GIVE INCOME INFO are both YES, the COMMENT sub-file
+ (#408.311) for the test will be edited as follows:
+  
+     1.  The existing comments not relating to data inconsistencies 
+         will be maintained.
+  
+     2.  Any pre-existing data inconsistency messages associated with 
+         the Income Test are no longer valid and will be removed.
+  
+  
+ Issue #2: Include Site Number in MailMan Message
+ ================================================
+  
+ The subject of the MT INCONSISTENCIES Bulletin currently contains the 
+ first letter of the veteran's last name and the last four digits of their 
+ Social Security Number.  The subject will be modified with this patch 
+ (IVM*2.0*82) to include the number of the site conducting the test.
+  
+ Before:
+    Subj: MT INCONSISTENCIES - C0856  [#398189] 07/24/03@13:35 9 lines
+  
+ After:
+    Subj: MT INCONSISTENCIES - C0856/500A  [#398189] 01/24/03@13:35 9 lines
+  
+  
+ Issue #3: Inconsistency Checks on Spouse
+ ========================================
+  
+ 1.  When the AMOUNT CONTRIBUTED TO SPOUSE (#.07) field in the INCOME 
+ RELATION (#408.22) File is $0, the following inconsistency message is 
+ received: Need amount contributed to spouse if not living w/patient.
+  
+ The inconsistency check will be modified to allow a zero dollar amount to 
+ be a valid entry in the AMOUNT CONTRIBUTED TO SPOUSE field.
+  
+ 2. The inconsistency message NO SPOUSE TRANSMITTED, BUT MARRIED LAST 
+ CALENDAR YEAR IS YES is received when entering an Income Test.
+  
+ The inconsistency check will be modified to only perform this check 
+ during the upload of an INCOME TEST DATA (Z10) HL7 transmission.
+  
+  
+ Issue #4: Dependent Issue When Claiming Child Support
+ =====================================================
+  
+ When the veteran is paying child support and the LIVED WITH PATIENT 
+ (#.06) field in the INCOME RELATION (#408.22) File for dependent children 
+ is NO, the following inconsistency message is received: 
+  
+ Dependents must have Lived With Patient field.
+  
+ This patch (IVM*2.0*82) will modify the consistency check to allow the 
+ LIVED WITH PATIENT field to be NO when the veteran is paying child 
+ support.
+  
+  
+ Issue #5: HL7 ERROR CONDITION NOTIFICATION Bulletin
+ ===================================================
+  
+ The HL7 ERROR CONDITION NOTIFICATION Bulletin was added with patch 
+ IVM*2.0*72.  When a duplicate ACKnowledgement message is transmitted from 
+ the HEC the HL7 ERROR CONDITION NOTIFICATION Bulletin is generated.
+  
+ Patch IVM*2.0*72 corrected the issues with a missing cross-reference and 
+ an intermittent allocation error.  The receipt of the HL7 ERROR CONDITION 
+ NOTIFICATION Bulletin indicates that no action is required.  
+  
+ The HL7 ERROR CONDITION NOTIFICATION Bulletin is serving no useful 
+ purpose at the sites, and is being removed with this patch (IVM*2.0*82).
+  
+  
+ This patch addresses the following E3R(s):
+ ------------------------------------------
+ There are no E3Rs associated with this patch.
+  
+  
+ This patch addresses the following NOIS message(s):
+ ---------------------------------------------------
+  
+ MAC-0503-61805 - MT Inconsistencies Questions
+ WBP-0603-20273 - Inconsistency on Spouse
+ TAM-0703-30358 - CLAIMING CHILD SUPPORT
+ MAD-0603-42142 - HL7 ERROR MESSAGE
+ BIL-0803-31267 - UNDEF(ECODE) AE+23^IVMPREC1 
+  
+  
+ Overview of NOIS Message(s):
+ ---------------------------
+  
+ NOIS: MAC-0503-61805 - MT Inconsistencies Questions
+  
+ Problem: Could the bulletin subject include the Site Conducting Test?
+  
+ Resolution: The site number has been added at the end of the subject line.
+  
+  
+ NOIS: WBP-0603-20273 - Inconsistency on Spouse
+  
+ Problem: When the AMOUNT CONTRIBUTED TO SPOUSE field is $0, the following 
+ inconsistency message is received: Need amount contributed to spouse if 
+ not living w/patient.
+  
+ Resolution: Allow a zero dollar amount to be a valid entry in the AMOUNT 
+ CONTRIBUTED TO SPOUSE field.
+  
+  
+ NOIS: TAM-0703-30358 - CLAIMING CHILD SUPPORT
+  
+ Problem: When claiming child support the following inconsistency message 
+ is received: Dependents must have Lived With Patient field.
+  
+ Resolution: Modify the consistency check to allow the LIVED WITH PATIENT 
+ field to be NO when paying child support.
+  
+  
+ NOIS: MAD-0603-42142 - HL7 ERROR MESSAGE
+  
+ Problem: The HL7 ERROR CONDITION NOTIFICATION Bulletin serves no useful 
+ purpose at the sites, and should be removed.
+  
+ Resolution: The bulletin will be removed with this patch (IVM*2*82).
+  
+ NOIS: BIL-0803-31267 - UNDEF(ECODE) AE+23^IVMPREC1
+  
+ Problem: Receiving about 20,000 UNDEF(ECODE)>AE+23^IVMPREC1 errors.
+  
+ Resolution: Correctly check for duplicate ACKnowledgements.
+  
+  
+        ================INSTALLATION INSTRUCTIONS =================
+  
+ If installed during the normal workday, it is recommended that the 
+ following menu options (File #19) and all of their descendants be 
+ disabled to prevent possible conflicts while running the KIDS Install. 
+ Other VISTA users will not be affected.
+  
+     [DG MEANS TEST USER MENU]   Means Test User Menu
+     [DG MEANS TEST ADD]         Add a New Means Test
+     [DG MEANS TEST COMPLETE]    Complete a Required Means Test
+     [DG MEANS TEST EDIT]        Edit an Existing Means Test
+     [DG CO-PAY TEST USER MENU]  Copay Exemption Test User Menu
+     [DG CO-PAY TEST ADD]        Add a Copay Exemption Test
+     [DG CO-PAY TEST EDIT]       Edit an Existing Copay Exemption Test
+  
+ You may wish to stop the HL7 filers prior to the install to prevent 
+ possible 'No Source Errors' from occurring. No transmissions will be lost 
+ if the filers are not stopped first, they will be picked up once the 
+ filers are restarted.
+  
+ The patch should be installed during non-peak hours.
+  
+ Install Time - 10 minutes.
+  
+  
+   1.   LOAD TRANSPORT GLOBAL 
+        ---------------------
+        Choose the PackMan message containing this patch and invoke the 
+        INSTALL/CHECK MESSAGE PackMan option.  
+              
+   2.   DISABLE ROUTINE MAPPING   (DSM for Open VMS sites only) 
+        -----------------------
+        Disable routine mapping on all systems for the routines listed in 
+        step 3 below.  
+  
+        NOTE:  If the routines included in this patch are not currently in 
+               your mapped routine set, please skip this step.
+   
+   3.   COMPONENTS SENT WITH PATCH 
+        ------------------------
+        The following is a list of the routines included in this patch.  
+        The second line of each of these routines now looks like: 
+   
+            ;;Version;Package;**[patch list]**;Package Release Date 
+   
+                            CHECK^XTSUMBLD results
+  
+        Routine          Before Patch     After Patch    Patch List 
+        -------          ------------     -----------    ----------
+        IVMCMF           2691607          2925592        71,82
+        IVMCMF1          19293421         19564839       71,82
+        IVMCMFB          4100642          4149672        71,82
+        IVMPREC1         10220756         7114784        9,17,26,52,34
+                                                         72,82  
+  
+         Total number of routines - 4 
+  
+   4.   START UP KIDS 
+        -------------
+        Start up the Kernel Installation and Distribution System Menu 
+        [XPD MAIN]: 
+    
+             Edits and Distribution ...  
+             Utilities ...  
+             Installation ...  
+    
+      Select Kernel Installation & Distribution System Option: 
+ INStallation 
+                                                            ---
+             Load a Distribution 
+             Print Transport Global 
+             Compare Transport Global to Current System 
+             Verify Checksums in Transport Global 
+             Install Package(s) 
+             Restart Install of Package(s) 
+             Unload a Distribution 
+             Backup a Transport Global 
+    
+      Select Installation Option: 
+    
+   5.   Select Installation Option: 
+        --------------------------
+        NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+               NAME, enter IVM*2.0*82):
+       
+        a.  Backup a Transport Global - This option will create a backup
+            message of any routines exported with this patch. It will not
+            backup any other changes such as DD's or templates.
+        b.  Compare Transport Global to Current System - This option will
+            allow you to view all changes that will be made when this patch
+            is installed.  It compares all components of this patch
+            (routines, DD's, templates, etc.).
+        c.  Verify Checksums in Transport Global - This option will allow
+            you to ensure the integrity of the routines that are in the
+            transport global.
+      
+   6.   Select Installation Option: Install Package(s) 
+                                    ----------------
+        **This is the step to start the installation of this KIDS patch: 
+    
+        a.  Choose the Install Package(s) option to start the patch 
+            install.
+        b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+            YES//' answer NO (unless otherwise indicated)
+        c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+            Options, and Protocols? YES//' answer YES (unless otherwise 
+            indicated)
+        d.  When prompted 'Enter options you wish to mark as 'Out Of
+            Order':'  Enter the following options:
+   
+           [DG MEANS TEST USER MENU]  Means Test User Menu
+           [DG MEANS TEST ADD]        Add a New Means Test
+           [DG MEANS TEST COMPLETE]   Complete a Required Means Test
+           [DG MEANS TEST EDIT]       Edit an Existing Means Test
+           [DG CO-PAY TEST USER MENU] Copay Exemption Test User Menu
+           [DG CO-PAY TEST ADD]       Add a Copay Exemption Test
+           [DG CO-PAY TEST EDIT]      Edit an Existing Copay Exemption Test
+  
+        e.  When prompted 'Enter protocols you wish to mark as 'Out Of
+            Order':' press <return>.
+  
+   7.    REBUILD MAPPED ROUTINE(S)  (DSM for Open VMS sites only)
+        -------------------------
+        Optional - Include the routines distributed with this patch
+        in the mapped routine set.
+      
+        NOTE: This step is only necessary if you performed step 2 or 
+              if you wish to include the routines in your mapped set.
+  
+   8.   When the installation is complete, be sure to re-start the 
+        filers if you chose to stop them.
+
+Routine Information:
+====================
+
+Routine Name:
+  - IVMCMFB
+
+ Before:
+ BULL(DFN,DGMTDT,IVMERR)  ;
+   ; Send mail message notifying site of an income test that was completed
+   ; containing data inconsistencies.
+   ;
+   ;  Input array required:
+   ;    "IVMERR("  --  contains lists of inconsistencies from tests
+   ;                   which were uploaded (ORU~Z10 and ORF~Z10)
+   ;
+   N DIFROM,XMDUZ,XMTEXT,XMSTRIP,XMROU,XMY,XMZ,XMDF,IVMGRP,IVMPAT
+   S XMDF=""
+   S XMDUZ=""
+   S XMTEXT="IVMTXT("
+   S XMY(DUZ)=""
+   S IVMGRP="MT INCONSISTENCIES"
+   S XMY("G."_IVMGRP_"@"_^XMB("NETNAME"))=""
+   S IVMPAT=$$PT^IVMUFNC4(DFN)
+   S XMSUB="MT INCONSISTENCIES - "_$E($P(IVMPAT,"^"),1)_$P(IVMPAT,"^",3)
+   ;
+  
+ After:
+ BULL(DFN,DGMTDT,IVMERR,SCTST)  ;
+   ; Send mail message notifying site of an income test that was completed
+   ; containing data inconsistencies.
+   ;
+   ;  Input array required:
+   ;    "IVMERR("  --  contains lists of inconsistencies from tests
+   ;                   which were uploaded (ORU~Z10 and ORF~Z10)
+   ;
+   N DIFROM,XMDUZ,XMTEXT,XMSTRIP,XMROU,XMY,XMZ,XMDF,IVMGRP,IVMPAT
+   S XMDF=""
+   S XMDUZ=""
+   S XMTEXT="IVMTXT("
+   S XMY(DUZ)=""
+   S IVMGRP="MT INCONSISTENCIES"
+   S XMY("G."_IVMGRP_"@"_^XMB("NETNAME"))=""
+   S IVMPAT=$$PT^IVMUFNC4(DFN)
+   S XMSUB="MT INCONSISTENCIES - "_$E($P(IVMPAT,"^"),1)_$P(IVMPAT,"^",3)_"/
+ "_SCTST
+   ;
+  
+ Before:
+   ; If the test wasn't completed during data entry quit
+   N MTCOMP,DGMTI,TYPE
+   S TYPE=$S($D(IVMTYPE):IVMTYPE,$D(DGMTYPT):DGMTYPT,1:"")
+   S:'$D(DGMTI) DGMTI=+$$LST^DGMTU(DFN,,TYPE)
+   S MTCOMP=$P($G(^DGMT(408.31,+$G(DGMTI),0)),U,7)
+   I BULLRQ,MTCOMP'>0 Q
+   ;
+   ; If errors were found during data entry, send bulletin
+   I BULLRQ,$D(IVMERR(2)) D BULL(DFN,DGMTDT,.IVMERR)
+   ;
+  
+ After:
+   ;  BULLRQ - MT INCONSISTENCIES Bulletin Required? flag (Optional)
+   ;
+   ; If the test wasn't completed during data entry quit
+   N MTCOMP,DGMTI,TYPE,SCTST
+   S BULLRQ=+$G(BULLRQ)
+   S TYPE=$S($D(IVMTYPE):IVMTYPE,$D(DGMTYPT):DGMTYPT,1:"")
+   S:'$D(DGMTI) DGMTI=+$$LST^DGMTU(DFN,,TYPE)
+   S MTCOMP=$P($G(^DGMT(408.31,+$G(DGMTI),0)),U,7)
+   I BULLRQ,MTCOMP'>0 Q
+   ;
+   ; If errors were found during data entry, send bulletin
+   S SCTST=$P($G(^DGMT(408.31,+$G(DGMTI),2)),U,5)
+   I BULLRQ,$D(IVMERR(2)) D BULL(DFN,DGMTDT,.IVMERR,SCTST)
+   ;
+
+Routine Checksum:
+
+Routine Name:
+  - IVMCMF1
+
+ Before:
+ ZIR(STRING,DEPIEN)  ; Check validity of ZIR segment
+   ;
+   ; Input:  STRING as ZIR segment
+   ;         DEPIEN as the IEN of the dependent in the array, if applicable
+   ;
+  
+ After:
+ ZIR(STRING,DEPIEN,DGMTDE)  ; Check validity of ZIR segment
+   ;
+   ; Input:  STRING as ZIR segment
+   ;         DEPIEN as the IEN of the dependent in the array, if applicable
+   ;         DGMTDE MT Data Entry Flag (Optional)
+   ;
+  
+ Before:
+   I '$G(DEPIEN) D
+   . I $P(STRING,HLFS,2)']"" S CNT=CNT+1,IVMERR(CNT)="Must have Married 
+ Last Calendar Year for veteran"
+   . I SPOUSE,'$P(STRING,HLFS,2) S CNT=CNT+1,IVMERR(CNT)="Spouse 
+ transmitted, but Married Last Calendar Year is NO"
+   . I 'SPOUSE,$P(STRING,HLFS,2)=1 S CNT=CNT+1,IVMERR(CNT)="No spouse 
+ transmitted, but Married Last Calendar Year is YES"
+   . I '$P(STRING,HLFS,2),(+$P(STRING,HLFS,3)) S CNT=CNT+1,IVMERR(CNT)="
+ Can't have Lived with Patient if not Married"
+  
+  
+ After:
+   I '$G(DEPIEN) D
+   . I $P(STRING,HLFS,2)']"" S CNT=CNT+1,IVMERR(CNT)="Must have Married 
+ Last Calendar Year for veteran"
+   . I SPOUSE,'$P(STRING,HLFS,2) S CNT=CNT+1,IVMERR(CNT)="Spouse 
+ transmitted, but Married Last Calendar Year is NO"
+   . I 'DGMTDE,'SPOUSE,$P(STRING,HLFS,2)=1 S CNT=CNT+1,IVMERR(CNT)="No 
+ spouse transmitted, but Married Last Calendar Year is YES"
+   . I '$P(STRING,HLFS,2),(+$P(STRING,HLFS,3)) S CNT=CNT+1,IVMERR(CNT)="
+ Can't have Lived with Patient if not Married"
+  
+  
+ Before:
+   . I $P(STRING,HLFS,2)=1,('+$P(STRING,HLFS,3)) S CNT=CNT+1,IVMERR(CNT)=
+ "Must have Living with Patient if Married"
+   . I $P(STRING,HLFS,3)=1,(+$P(STRING,HLFS,4)>0) S 
+ CNT=CNT+1,IVMERR(CNT)="Should not have Amount contributed to spouse if 
+ living w/patient"
+   . I $P(STRING,HLFS,3)=0,(+$P(STRING,HLFS,4)'>0) S 
+ CNT=CNT+1,IVMERR(CNT)="Need amount contributed to spouse if not living 
+ w/patient"
+   . F I=6:1:9 I $P(STRING,HLFS,I)]"" S CNT=CNT+1,IVMERR(CNT)=$P($T(ZIRFLD+
+ I),";;",2)_" should not be filled in for veteran"
+  
+  
+ After:
+   . I $P(STRING,HLFS,2)=1,('+$P(STRING,HLFS,3)) S CNT=CNT+1,IVMERR(CNT)=
+ "Must have Living with Patient if Married"
+   . I $P(STRING,HLFS,3)=1,($P(STRING,HLFS,4)'="") S CNT=CNT+1,IVMERR(CNT)=
+ "Should not have Amount contributed to spouse if living w/patient"
+   . I $P(STRING,HLFS,3)=0,($P(STRING,HLFS,4)="") S CNT=CNT+1,IVMERR(CNT)="
+ Need amount contributed to spouse if not living w/patient"
+   . F I=6:1:9 I $P(STRING,HLFS,I)]"" S CNT=CNT+1,IVMERR(CNT)=$P($T(ZIRFLD+
+ I),";;",2)_" should not be filled in for veteran"
+  
+  
+ Before:
+   I $G(DEPIEN),(DEPIEN'=SPOUSE) D
+   . I $P(STRING,HLFS,3)'=1 S CNT=CNT+1,IVMERR(CNT)="Dependents must have 
+ Lived With Patient field"
+   . I '$P(STRING,HLFS,8),($P(STRING,HLFS,9)]"") S CNT=CNT+1,IVMERR(CNT)=
+ "Shouldn't have Income Available answered if Child had no income"
+  
+ After:
+   I $G(DEPIEN),(DEPIEN'=SPOUSE) D
+   . I $P(STRING,HLFS,3)'=1,$P(STRING,HLFS,7)'=1 S CNT=CNT+1,IVMERR(CNT)=
+ "Dependents must have Lived With Patient field"
+   . I '$P(STRING,HLFS,8),($P(STRING,HLFS,9)]"") S CNT=CNT+1,IVMERR(CNT)=
+ "Shouldn't have Income Available answered if Child had no income"
+
+Routine Checksum:
+
+Routine Name:
+  - IVMPREC1
+
+ Before:
+   ..I $D(Z07FLG) D  Q
+   ...S Z07RET=$$Z07BUL()
+   ...S:Z07RET IVMDA=$O(^IVM(301.6,"ADS",IVMMCI,""))
+   ..D OTH
+   .I $$SETSTAT^IVMTLOG(IVMDA,3,IVMEM)
+  
+ After:
+   ..I $D(Z07FLG) D  Q
+   ...S Z07RET=$$Z07CHK(IVMI,IVMMCI,IVMEM)
+   ...S:Z07RET IVMDA=$O(^IVM(301.6,"ADS",IVMMCI,""))
+   ..D OTH
+   .I $$SETSTAT^IVMTLOG(IVMDA,3,IVMEM)
+  
+ Before:
+   ; - update messages in batch with no error
+   F IVMDA=0:0 S IVMDA=$O(^IVM(301.6,"AE",+IVMMCI,IVMDA)) Q:'IVMDA  I 
+ $$SETSTAT^IVMTLOG(IVMDA,1)
+   Q
+  
+ After:
+   ; - update messages in batch with no error
+   F IVMDA=0:0 S IVMDA=$O(^IVM(301.6,"AE",+$G(IVMMCI),IVMDA)) Q:'IVMDA  I 
+ $$SETSTAT^IVMTLOG(IVMDA,1)
+   Q
+  
+ Removed Section:
+ Z07BUL()  ; Function ;
+
+Routine Checksum:
+
+Routine Name:
+  - IVMCMF
+
+ Before:
+   ; - build income test string and check for errors
+   S ARRAY("ZMT")=$$CLEAR($G(^TMP($J,"IVMCM","ZMT"_IVMTYPE)))
+   ;
+   I '$$UPLDOK() S IVMERR(2)="Income Test not Uploaded",OK2UPLD=0 Q
+   ;
+   D CHECK
+ ENQ  Q
+  
+ After:
+   ; - build income test string and check for errors
+   S ARRAY("ZMT")=$$CLEAR($G(^TMP($J,"IVMCM","ZMT"_IVMTYPE)))
+   ;
+   I '$$UPLDOK() S HLERR="Income Test not Uploaded",OK2UPLD=0 D ACK^
+ IVMPREC Q
+   ;
+   ; Check Income Test before applying consistency checks
+   ; - If AGREED TO PAY DEDUCTIBLE is NO
+   ; - or DECLINES TO GIVE INCOME INFO and AGREED TO PAY DEDUCTIBLE are YES
+   ; Quit, the consistency checks are unnecessary.
+   N APD,DTGII S APD=$P(ARRAY("ZMT"),U,11),DTGII=$P(ARRAY("ZMT"),U,14)
+   I APD=0!(APD=1&(DTGII=1)) Q
+   ;
+   D CHECK
+ ENQ  Q
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : MULLER,RICHARD                Date Entered  : JUN 04, 2003
+Completed By: LANDRY,DANNA                  Date Completed: AUG 27, 2003
+Released By : GANUS,MAUNETTE                Date Released : AUG 28, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

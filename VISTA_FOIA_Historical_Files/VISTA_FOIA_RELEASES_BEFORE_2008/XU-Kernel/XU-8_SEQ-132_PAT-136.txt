@@ -1,0 +1,282 @@
+$TXT Created by FORT,WALLY at NXT.KERNEL.ISC-SF.VA.GOV  (KIDS) on THURSDAY, 04/13/00 at 10:36
+=============================================================================
+Run Date: MAY 01, 2000                     Designation: XU*8*136
+Package : XU - KERNEL                          Priority: Mandatory
+Version : 8       SEQ #132                       Status: Released
+=============================================================================
+
+
+Subject: Taskman ORB RESOURCE speedup
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+  
+ This patch addresses some of the problems that taskman is having with
+ the ORB NOTIFICATION RESOURCE and the ORW THREAD RESOURCE.
+ Working with West LA and Seattle, a locking conflict was identified
+ when Taskman was trying to allocate resource devices.
+ With this change taskman skips the lock of ^%ZTSCH("DEV",IO) to prevent
+ two tasks from trying to open the same device at the same time.  The 
+ resource device has its own lock to control this.
+ This should fix a number of NOIS reports.
+ NJH-0100-20258, NTH-0100-70436, CLE-0100-40398, CTX-0100-70947,
+ CLE-0200-40051, BAY-0100-31168, TAM-0100-32225, JAC-0100-72572,
+ JAC-0200-70074, CTX-0300-70786
+ 
+ Three new fields were added to the TASKMAN SITE PARAMETERS file.
+ "Balance Interval" to control how offen the manager does the Balance code.
+ "Auto Delete Tasks" to control if the sub-manager will set ZTREQ to "@"
+  before the task starts.
+ "Manager Startup Delay" to control how long the manager waits when starting.
+  This field isn't used for a RESTART.
+ 
+ TAM-0100-32225
+ A problem in the use of ZTREQ to re-schedule a task was fixed with a
+ change to %ZTLOAD3.  
+ 
+ MAC-0300-61865
+ If there was an error in the loadbalance routine the variable ZTOVERLD would
+ be undefined, ZTM6.
+ 
+ Also fix is a incorrect label in the ShareLic code of ZOSVONT.
+ LIT-0300-71933, FGH-0300-32520
+  Routine %LICENSE not in DMS 7.2 as expected. ZOSVVXD.
+  The need for %ZOSV1 eleminated,  Routine ZOSV1VXD deleted by install.
+  ZTMGRSET updated to reflect this change.
+ 
+ CML-1299-4077 XUTMQ3 
+ Changed to adapt to the new Taskman "IO" list.
+ 
+ ALB-1299-50759 %ZIS2 
+ Problem with the HFS parameters in the device file not being used when
+ called from Taskman and ZTIO was used to setup the device.
+                      
+ ZIS6 was changed to consolidate the resource device checking.
+ 
+ Routine Summary
+ The following routines are included in this patch.  The second line of each
+ of these routines now looks like:
+  ;;8.0;KERNEL;<patchlist>;Jul 10, 1995
+ 
+                  Checksum
+ Routine         Old       New      2nd Line
+ XUTMQ         8141476   8186969    **20,136**
+ XUTMQ3        6060152   5747866    **136**
+ ZIS2         10170284  10178860    **69,104,112,118,136**
+ ZIS6          9115588  10232057    **24,49,69,118,127,136**
+ ZOSVONT       6757287   5179130    **34,94,107,118,136**
+ ZOSVVXD       6204470   7443216    **13,65,71,94,107,118,136**
+ ZTLOAD3       3910561   4046069    **67,127,136**
+ ZTM           8571416   9005201    **24,36,64,67,118,127,136**
+ ZTM0          6026624   6089712    **42,36,67,88,118,127,136**
+ ZTM5          4063072   4417939    **24,36,118,127,136**
+ ZTM6          2656166   2656180    **23,118,127,136**
+ ZTMGRSET     14239565  14179554    **34,36,69,94,121,127,136**
+ ZTMON         4458377   4675862    **118,127,136**
+ ZTMS          5576536   5488776    **2,18,24,36,67,94,118,127,136**
+ ZTMS1         8021013   8379658    **36,49,104,118,127,136**
+ ZTMS3         9841850   9642200    **1,18,36,49,64,67,94,118,127,136**
+ ZTMS4         4980927   5100103    **136**
+ ZTMS7         1828513   2052318    **1,118,127,136**
+ 
+ List of preceding patches: 20, 127
+ Sites should use CHECK^XTSUMBLD to verify checksums.
+ 
+ ========================================================================= 
+ Installation:
+ 
+ >>>Users may remain on the system.  STOP TASKMAN. <<<
+ 
+   1.  DSM sites - Some of these routines are usually mapped,
+       so you will need to disable mapping for the affected routines.
+       
+   2.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This
+       option will load the KIDS package onto your system.
+       
+   3.  The patch has now been loaded into a Transport global on your
+       system. You now need to use KIDS to install the Transport global.
+       On the KIDS menu, under the 'Installation' menu, use the following
+       options:
+       
+          Verify Checksums in Transport Global
+          Print Transport Global
+          Compare Transport Global to Current System
+          Backup a Transport Global
+          
+  4.  Users can remain on the system. This patch can be loaded any
+      non-peak time.
+      STOP TASKMAN. D STOP^ZTMKU
+       
+   5.  On the KIDS menu, under the 'Installation' menu, use the following
+       option:
+          Install Package(s)  'XU*8.0*136'
+                               ==========
+                               
+         No Options or Protocols need to be placed out-of-order.
+         Want to DISABLE Scheduled Options, Menu Options, and Protocols? NO
+                                                                         ==
+       
+   8.  After installing this patch,
+       Cache Sites - you don't need to move anything, skip this step. 
+       DSM/MSM sites - you need to move several routines from 
+       your production account to each manager account:
+       
+ ZIS2
+ ZIS6
+ ZOSVONT
+ ZOSVVXD
+ ZTLOAD3
+ ZTM
+ ZTM0
+ ZTM5
+ ZTM6
+ ZTMGRSET
+ ZTMON
+ ZTMS
+ ZTMS1
+ ZTMS3
+ ZTMS4
+ ZTMS7
+ 
+       
+   9.  And in the manager account,  (OpenM sites remain in VAH)
+       All sites:
+       DO RELOAD^ZTMGRSET
+       Select the System
+       Patch number to load: 136
+                             ===
+        
+  10.  DSM Sites, after patch has installed, rebuild your map set.
+  11.  Restart TASKMAN or remove TASKMAN from the wait state.
+ 
+ 
+ =========================================================================
+  
+
+Routine Information:
+====================
+
+Routine Name:
+  - ZIS6
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZOSVONT
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTM
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTMS1
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTMS7
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTMS4
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTLOAD3
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTMS3
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTM0
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTM5
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTMS
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZIS2
+
+
+Routine Checksum:
+
+Routine Name:
+  - XUTMQ
+
+
+Routine Checksum:
+
+Routine Name:
+  - XUTMQ3
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTMON
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZOSVVXD
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTM6
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTMGRSET
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : FORT,WALLY                     Date Entered : DEC 10, 1999
+Completed By: SCHRAM,JACK D                Date Completed: APR 28, 2000
+Released By : CHANNELL,DEBBIE               Date Released : MAY 01, 2000
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

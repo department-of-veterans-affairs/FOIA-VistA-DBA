@@ -1,0 +1,434 @@
+$TXT Created by THEROUX,JOHN at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 07/25/06 at 16:00
+=============================================================================
+Run Date: SEP 22, 2006                     Designation: DG*5.3*696
+Package : DG - REGISTRATION                   Priority: EMERGENCY
+Version : 5.3       SEQ #634                    Status: Released
+                  Compliance Date: SEP 29, 2006
+=============================================================================
+
+Associated patches: (v)DG*5.3*432  <<= must be installed BEFORE `DG*5.3*696'
+                    (v)DG*5.3*678  <<= must be installed BEFORE `DG*5.3*696'
+                    (v)DG*5.3*683  <<= must be installed BEFORE `DG*5.3*696'
+
+Subject: PROBLEMS WITH CENSUS AND PATIENT TREATMENT FILE
+
+Category: 
+  - Routine
+  - Input Template
+  - Data Dictionary
+
+Description:
+============
+
+ This patch fixes a problem with the combat vet field used in screen 801
+ in the PTF Load/Edit option, fixes the transmission date on retransmitted
+ transactions, permits closing a record when the patient has a single
+ legal name, and refines the handling of the PTF census date file.  
+  
+ ASSOCIATED Remedy Tickets:
+ =========================
+ 1) HD 122651  PTF Program Problem
+ 2) HD 111003  Retransmitted PTF doesn't update data
+ 3) HD 88984   PTF does not allow single legal name 
+ 4) HD 150355  Duplicate Census Date
+    duplicate:
+    HD 150465
+  
+ ASSOCIATED E3R(s):
+ ==================
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Cheyenne, WY
+ West LA, CA
+ Togus, ME
+  
+ DATA DICTIONARY CHANGES:
+ ========================
+  
+ File 45, field 7.4
+ ------------------
+ From:
+  
+ ^DD(45,7.4,0)=TRANSMISSION DATE^DCJ8,0X^^ ; ^S 
+ X=$S($D(^DGP(45.83,"C",D0)):$N(^D
+ GP(45.83,"C",D0,0)),1:""),X=$S($D(^DGP(45.83,+X,"P",D0,0)):$P(^(0),U,2),1:
+ "")
+  
+ To:
+  
+ ^DD(45,7.4,0)=TRANSMISSION DATE^DCJ8,0X^^ ; ^S 
+ X=$S($D(^DGP(45.83,"C",D0)):$O(^D
+ GP(45.83,"C",D0,0)),1:""),X=$S($D(^DGP(45.83,+X,"P",D0,0)):$P(^(0),U,2),1:
+ "")
+  
+ File 46.1, field .08
+ --------------------
+ From:
+  
+ ^DD(46.1,.08,0)=COMBAT VET^S^Y:YES;N:NO;^0;8^Q 
+  
+ To:
+  
+ ^DD(46.1,.08,0)=COMBAT VET^S^1:YES;0:NO;^0;8^Q
+  
+ COMPONENTS INCLUDED IN BUILD:
+ =============================
+  
+ Input Template:  DG801
+  
+  
+ REMEDY OVERVIEW:
+ ===============
+  
+ 1) HD 122651 - PTF Program Problem
+  
+ Problem:
+ ========
+ a) When entering a CPT code in Screen 801, this message can be received:
+      "No CPT record has been filed because no CPT codes were filed."
+ This occurs when there are fewer than 18 records in the INPATIENT CPT 
+ CODE file #46.  
+  
+ b) When the CPT record is sent to PCE, the response to the "Was 
+ treatment related to combat?" prompt is not sent properly. 
+  
+ Solution:
+ =========
+ a) Routine DGPTFM3 was modified to New the "I" variable.
+  
+ b) The input transform for the COMBAT VET field #.08 in the 
+ INPATIENT POV file #46.1 was changed from a YES/NO set to 
+ a 1/0 set.  Pre-init routine DG696PRE will effect the change.
+ Also post-init routine DG696PST will rewrite any record in 
+ file #46.1 that has a "Y" or "N" for field #.08 to have a
+ 1 or 0.  The input template DG801 was changed. Finally,
+ routine DGPTFM was modified so the display of the 801 screens
+ will not be affected by these changes.
+  
+ 2) HD 111003 - Retransmitted PTF doesn't update data
+  
+ Problem:
+ ========
+ When a PTF record is reopened, data is updated, and the 
+ record is retransmitted, the file still shows the original 
+ transmission date instead of the new transmission date. 
+  
+ Solution:
+ =========
+ In the input transform for the TRANSMISSION DATE field #7.4 in
+ the PATIENT TREATMENT FILE #45, the command $N has been replaced 
+ with $O.  Pre-init routine DG696PRE will effect the change.  
+  
+ 3) HD 88984 - PTF does not allow single legal name
+  
+ Problem:
+ ========
+ Users are unable to close a PTF record if the patient's legal name
+ is one word (no first or middle name in the system).
+  
+ Solution:
+ =========
+ If the patient's last name is followed by a comma and patient has no
+ first name, editing for the presence of a first name will be bypassed.
+ Routines DGPTR1 and DGPT101 were modified.
+  
+ 4) HD 150355  Duplicate Census Date
+  
+ Problem:
+ ========
+ Certain sites have reported problems with the PTF Census Date file
+ (#45.86) having duplicate records or a closeout date other than the 19th.
+  
+ Solution:
+ =========
+ Although we have not been able to reproduce the conditions that led to 
+ these problems, we have changed the software to lessen the chance of it
+ happening, or at least to become aware of it as it happens. 
+ Routine DGPTCO1 was modified. 
+  
+ INSTALLATION INSTRUCTIONS:
+ ===========================
+ This patch may be run with users on the system.
+  
+ Installation will take less than 10 minutes.
+  
+ 1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu to unload
+     the KIDS distribution included with this message.
+     NOTE:  If the required patches are not installed, the transport global
+            will be removed.  If the transport global is removed you will
+            need to repeat this step.
+  
+ 2.  From the Kernel Installation and Distribution System Menu, select
+     the Installation menu.
+  
+ 3.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter DG*5.3*696):
+     a.  Compare Transport Global to Current System  - this option will
+         allow you to view all changes that will be made when the patch
+         is installed.  It compares all components of the patch (routines,
+         DDs, templates, etc.).
+     b.  Verify Checksums in Transport Global - this option will
+         allow you to ensure the integrity of the routines that are in
+         the transport global.
+     c.  Print Transport Global - this option will allow you to view the
+         components of the KIDS build.
+     d.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+  
+ 4.  Use the Install Package(s) option and select the package DG*5.3*696.
+  
+ 5.  When prompted ' Want KIDS to INHIBIT LOGONs during the install?
+     YES//', respond NO.
+  
+ 6.  When prompted,' Want to DISABLE Scheduled Options, Menu Options, and 
+     Protocols? NO//', respond Yes.
+     When prompted,'Enter options you wish to mark as 'Out Of Order':',
+     enter:
+             PTF Menu  [DG PTF MENU] 
+     When prompted,'Enter protocols you wish to mark as 'Out Of Order':', 
+     press enter.
+  
+ ROUTINE SUMMARY:
+ ================
+  
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+  
+      <tab>;;5.3;Registration;**[patch list]**;Aug 13, 1993
+  
+ Using old logic:
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  DG696PRE               N/A               1610965                696
+  DG696PST               N/A                406265                696
+  DGPT101              6068045             6139225          8,164,180,247,
+                                                              415,678,696
+  DGPTCO1              7963296             7856987        136,383,432,696
+  DGPTFM              21965856            22029697        510,517,590,594,
+                                                          606,635,683,696 
+  DGPTFM3              8947315             8947891        517,590,594,635,
+                                                                  696
+  DGPTR1              17423869            17530075         58,247,338,342,
+                                                          423,415,565,678,
+                                                                  696
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: DG696PRE
+    Before:       n/a  After:  B1987231  **696*
+Routine Name: DG696PST
+    Before:       n/a  After:   B701411  **696*
+Routine Name: DGPT101
+    Before: B13150561  After: B13245456  **8,164,180,247,415,678,696**
+ Description of Changes:
+  DGPT101.INT.1                 |"PATVEE"|DGPT101.INT.1  
+  **************************************************************************
+  *****
+  DGPT101.INT.1
+   +2         ;;5.3;Registration;**8,164,180,247,415,678,696**;Aug 13, 1993
+  ...................
+  |"PATVEE"|DGPT101.INT.1
+   +2         ;;5.3;Registration;**8,164,180,247,415,678**;Aug 13, 1993
+  ---------------------------------------
+  DGPT101.INT.1
+   +31        I DGPTFI'?.U&(DGPTFI'=" ")!((DGPTMI'?1U)&(DGPTMI'=" ")) S 
+  DGPTERC=1
+  06 D ERR G:DGPTEDFL EXIT
+  ...................
+  |"PATVEE"|DGPT101.INT.1
+   +31        I DGPTFI'?.U!((DGPTMI'?1U)&(DGPTMI'=" ")) S DGPTERC=106 D ERR 
+  G:DGP
+  TEDFL EXIT
+  **************************************************************************
+  *****
+
+Routine Name: DGPTCO1
+    Before: B23976970  After: B25546385  **136,383,432,696**
+ Description of Changes:
+   
+  DGPTCO1.INT.1                 |"PATVEE"|DGPTCO1.INT.1  
+  **************************************************************************
+  *****
+  DGPTCO1.INT.1
+   +1   DGPTCO1 ;ALB/MJK - Census Status Report ; 5/2/05 2:41pm
+   +2         ;;5.3;Registration;**136,383,432,696**;Aug 13, 1993
+  ...................
+  |"PATVEE"|DGPTCO1.INT.1
+   +1   DGPTCO1 ;ALB/MJK - Census Status Report ; 5/30/01 11:26am
+   +2         ;;5.3;Registration;**136,383,432**;Aug 13, 1993
+  ---------------------------------------
+  DGPTCO1.INT.1
+   +107       N DGIEN,DGCLOSE,DGACT,ERR
+  ...................
+  |"PATVEE"|DGPTCO1.INT.1
+   +107       N DGIEN,DGCLOSE
+  ---------------------------------------
+  DGPTCO1.INT.1
+   +109       S DGIEN=$O(^DG(45.86,"B",+$G(DGIEN),0))
+   +110       S ERR=0
+   +111       I 'DGIEN S ERR=1 D ERR Q
+   
+            
+  ...................
+  |"PATVEE"|DGPTCO1.INT.1
+   +109       S DGIEN=$O(^DG(45.86,"B",+$G(DGIEN),0)) Q:'DGIEN
+  ---------------------------------------
+  DGPTCO1.INT.1
+   +113       S DGCLOSE=$P($G(^DG(45.86,DGIEN,0)),U,2)
+   +114       I 'DGCLOSE S ERR=1 D ERR Q
+   +115       I $E(DGCLOSE,6,7)'=19 S ERR=1
+   +116       S DGACT=$P($G(^DG(45.86,DGIEN,0)),U,4)
+   +117       I 'DGACT S ERR=1
+   +118       I ERR D ERR Q
+  ...................
+  |"PATVEE"|DGPTCO1.INT.1
+   +111       S DGCLOSE=$P($G(^DG(45.86,DGIEN,0)),U,2) Q:'DGCLOSE
+  ---------------------------------------
+  DGPTCO1.INT.1
+   +122       N DA,DIE,DR,DGYR,DGMONTH,DGSTRT,DGENDT,ERR,FDA,IEN696,ERR696
+  ...................
+  |"PATVEE"|DGPTCO1.INT.1
+   +115       N DA,DIE,DR,DGYR,DGMONTH,DGSTRT,DGENDT,DO,DIC,ERR,X,Y
+   
+            
+  ---------------------------------------
+  DGPTCO1.INT.1
+   +124       S DA=DGIEN,DIE="^DG(45.86,",DR=".04////0" D ^DIE
+  ...................
+  |"PATVEE"|DGPTCO1.INT.1
+   +117       S DA=DGIEN,DIE="^DG(45.86,",DR=".04////0" D ^DIE K DIE,DR,DA
+  ---------------------------------------
+  DGPTCO1.INT.1
+   +132       ;S DIC="^DG(45.86,",X=DGENDT,DIC(0)="" K DO D FILE^DICN K DIC
+   +133       ;I Y'>0 S ERR=1 D ERR Q
+   +134       ;S 
+  DIE="^DG(45.86,",DA=+Y,DR=".02////"_DGCLOSE_";.03////2970331;.04
+  ////1;.05////"_DGSTRT
+   +135       ;D ^DIE K DIE,DR,DA
+   +136       S FDA(696,45.86,"?+1,",.01)=DGENDT
+   +137       S FDA(696,45.86,"?+1,",.02)=DGCLOSE
+   +138       S FDA(696,45.86,"?+1,",.03)=2970331
+   +139       S FDA(696,45.86,"?+1,",.04)=1
+   +140       S FDA(696,45.86,"?+1,",.05)=DGSTRT
+   +141       D UPDATE^DIE("","FDA(696)","IEN696","ERR696")
+   +142       I $D(ERR696) S ERR=1 D ERR
+   
+            
+  ...................
+  |"PATVEE"|DGPTCO1.INT.1
+   +125       S DIC="^DG(45.86,",X=DGENDT,DIC(0)="" K DO D FILE^DICN K DIC
+   +126       I Y'>0 S ERR=1 D ERR Q
+   +127       S 
+  DIE="^DG(45.86,",DA=+Y,DR=".02////"_DGCLOSE_";.03////2970331;.04/
+  ///1;.05////"_DGSTRT
+   +128       D ^DIE K DIE,DR,DA
+  ---------------------------------------
+  DGPTCO1.INT.1
+   +145       D BMES^XPDUTL("Problem with PTF CENSUS DATE File (#45.86).")
+   +146       D BMES^XPDUTL("Please notify your Supervisor !!.")
+  ...................
+  |"PATVEE"|DGPTCO1.INT.1
+   +131       D BMES^XPDUTL("Problem with PTF CENSUS DATE File (#45.86) 
+  Update.")
+   +132       D BMES^XPDUTL("Please contact your ADP Coordinator.")
+  **************************************************************************
+  *****
+
+Routine Name: DGPTFM
+    Before: B44316891  After: B44706868  **510,517,590,594,606,635,683,696**
+ Description of Changes:
+  DGPTFM.INT.1                  |"PATVEE"|DGPTFM.INT.1  
+  **************************************************************************
+  *****
+  DGPTFM.INT.1
+   +2         ;;5.3;Registration;**510,517,590,594,606,635,683,696**;Aug 
+  13, 1993
+  ...................
+  |"PATVEE"|DGPTFM.INT.1
+   +2         ;;5.3;Registration;**510,517,590,594,606,635,683**;Aug 13, 
+  1993
+  ---------------------------------------
+  DGPTFM.INT.1
+   +69        .;I I'=7 W 
+  ":",$S($P(DGINFO,U,($S(I<3:I+2,I=3:2,1:I+1))):"YES",1:"N
+  O"),!
+   +70        .;I I=7 W ":",$S($P(DGINFO,U,8)="Y":"YES",1:"NO"),!
+   +71        .W ":",$S($P(DGINFO,U,8)="Y":"YES",1:"NO"),!
+  ...................
+  |"PATVEE"|DGPTFM.INT.1
+   +69        .I I'=7 W 
+  ":",$S($P(DGINFO,U,($S(I<3:I+2,I=3:2,1:I+1))):"YES",1:"NO
+  "),!
+   +70        .I I=7 W ":",$S($P(DGINFO,U,8)="Y":"YES",1:"NO"),!
+  **************************************************************************
+  *****
+
+Routine Name: DGPTFM3
+    Before: B16699199  After: B16822857  **517,590,594,635,696**
+ Description of Changes:
+  DGPTFM3.INT.1                 |"PATVEE"|DGPTFM3.INT.1  
+  **************************************************************************
+  *****
+  DGPTFM3.INT.1
+   +2         ;;5.3;Registration;**517,590,594,635,696**;Aug 13, 1993
+  ...................
+  |"PATVEE"|DGPTFM3.INT.1
+   +2         ;;5.3;Registration;**517,590,594,635**;Aug 13, 1993
+  ---------------------------------------
+  DGPTFM3.INT.1
+   +37        N I
+  ...................
+  |"PATVEE"|DGPTFM3.INT.1
+  **************************************************************************
+  *****
+
+Routine Name: DGPTR1
+    Before: B25729227  After: B25846829  **58,247,338,342,423,415,565,678,696**
+ Description of Changes:
+  DGPTR1.INT.1                  |"PATVEE"|DGPTR1.INT.1  
+  **************************************************************************
+  *****
+  DGPTR1.INT.1
+   +2         ;;5.3;Registration;**58,247,338,342,423,415,565,678,696**;Aug 
+  13, 1
+  993
+  ...................
+  |"PATVEE"|DGPTR1.INT.1
+   +2         ;;5.3;Registration;**58,247,338,342,423,415,565,678**;Aug 13, 
+  1993
+  ---------------------------------------
+  DGPTR1.INT.1
+   +28  LOGIC ;;X'?.N^X'?.A&(X'=" ")^X'=" "^X'?.N&(X'=" ")^X'?.A&(X'=" 
+  ")^0^X'?.N
+  &(X'="X")^X'=" "&(X'="P")^X="E"^X="Y"^X=" "^X'="A"&(X'=" ")^(X'?.A)&(X'?.
+  N)&(X'=" ")^(X'?.N)&('$P(DG0,U,4))^((T1)&(X'=" "))!(('T1)&(X'?.N)&('$P(DG
+  0,U,4)))
+  ...................
+  |"PATVEE"|DGPTR1.INT.1
+   +28  LOGIC ;;X'?.N^X'?.A^X'=" "^X'?.N&(X'=" ")^X'?.A&(X'=" 
+  ")^0^X'?.N&(X'="X")
+  ^X'=" "&(X'="P")^X="E"^X="Y"^X=" "^X'="A"&(X'=" ")^(X'?.A)&(X'?.N)&(X'=" 
+  ")^(X'?.N)&('$P(DG0,U,4))^((T1)&(X'=" "))!(('T1)&(X'?.N)&('$P(DG0,U,4)))
+  **************************************************************************
+  *****
+
+
+=============================================================================
+User Information:
+Entered By  : THEROUX,JOHN                  Date Entered  : JAN 03, 2006
+Completed By: BOWEN,MARY JANE               Date Completed: SEP 22, 2006
+Released By : FLANAGAN,PATTY                Date Released : SEP 22, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,258 @@
+$TXT Created by ANDREASSEN,LARRY J at NXT.KERNEL.FO-OAKLAND.MED.VA.GOV  (KIDS) on FRIDAY, 12/13/02 at 12:07
+=============================================================================
+Run Date: DEC 17, 2002                     Designation: HL*1.6*98
+Package : HL - HEALTH LEVEL SEVEN     Priority: Mandatory
+Version : 1.6        SEQ #85                    Status: Released
+                  Compliance Date: JAN 17, 2003
+=============================================================================
+
+
+Subject: Message Body Deletion
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+ Test site:     Louisville VAMC, Memphis VAMC, Wilmington VAMC
+  
+ NOIS calls(s): None
+  
+ All Health Level 7 (HL7) messages are composed of a MSH segment, and 
+ other optional segments.  The MSH segment is stored in the HL 
+ Administration file (#773), and the other segments are stored in the HL 
+ Message Text file (#772).  In addition to the MSH and other 
+ segments, these files hold other tracking and administrative data.
+  
+ Some messages handled by the VistA HL7 package are extremely large, and 
+ consume enough disk space as to cause storage problems. A new VistA HL7
+ application programmer interface (API) is being released in this patch to
+ allow applications to selectively delete the "other optional segments" of
+ a message. (The MSH segment is not deleted by this API.)  
+  
+ When this API is called the following actions occur:
+  
+ (1) All segments other than the MSH segment are deleted.  (No data is
+     removed from the HL Message Administration file (#773).  Only data
+     stored in the ^HL(772,IEN,"IN") nodes is killed; all other 
+     HL Message Text file (#772) file data is retained.)
+  
+ (2) A record is created in the ^XTMP global of the deletion action.  
+     The ^XTMP global data is stored for 7 days after which it is
+     deleted.  (More details are provided below.)
+  
+ The API syntax is shown next:
+  
+    D DELBODY^HLUOPT2(IEN772,APP,STORE)
+  
+ The three parameters of the DELBODY API are explained below.
+  
+ IEN772:    The internal entry number for the HL Message Text file (#772) 
+            entry containing the "optional segments" to be deleted.
+  
+            The passing of IEN772 is mandatory.
+  
+ APP:       Free-text information passed to the DELBODY API by the 
+            application identifying the calling process.  This information
+            is stored in the ^XTMP global as shown below.
+  
+            APP free-text information may be passed as a null value, or
+            may be any free-text information up to 60 characters in 
+            length.  (Up-arrows not allowed.)
+  
+            The passing of APP is optional.
+  
+ STORE:     Reference to data to be stored in the ^XTMP global.  The
+            reference must be in "closed reference" format , rather than
+            "open reference" format.  (Pass "TEXT" rather than "TEXT(", 
+            and pass "^TMP($J)" instead of "^TMP($J,". Additional examples
+            are provided below.)
+  
+ Example calls to the DELBODY API are provided next.
+  
+    D DELBODY(51321523)                    ... APP and STORE not passed ...
+    D DELBODY(51321523,"MUSE EKG")         ... STORE not passed ...
+    D DELBODY(51321523,"","TEXT")          ... APP not passed ...
+    D DELBODY(51321523,"MUSE EKG","TEXT")
+    D DELBODY(51321523,"MUSE EKG","^TMP($J)")
+    D DELBODY(51321523,"MUSE EKG","^TMP($J,""INFO"")")
+  
+ Here is an example entry in the HL Message Text file (#772) prior to 
+ calling the DELBODY API:
+  
+ ^HL(772,5696,0) = 3020830.122552^32^^O^^9985696^^5696^D^269^^^DG^M
+ ^HL(772,5696,"IN",0) = ^^12^12^3020830^
+ ^HL(772,5696,"IN",1,0) = PID^^^100~10~M11^^JONES~JOHN~J^^ 19421112
+                          ^M^^^^^^^^^^123456789
+ ^HL(772,5696,"IN",2,0) =
+ ^HL(772,5696,"IN",3,0) = OBR^^^^7089898.8543-1~043091-66~L^^^19910
+                          4301200^"^"^^^^^"^^3232~HARRIS~JACK^^^^ME
+                          DICINE^^199104301010
+ ^HL(772,5696,"IN",4,0) =
+ ^HL(772,5696,"IN",5,0) = OBX^^TX^I~IMPRESSION~L^^HEART NORMAL SIZE
+ ^HL(772,5696,"IN",6,0) =
+ ^HL(772,5696,"IN",7,0) = OBX^^ST^D~DIAGNOSTIC CODE~L^^NORMAL
+ ^HL(772,5696,"IN",8,0) =
+ ^HL(772,5696,"IN",9,0) = OBX^^TX^R~REPORT~L^^Heart appears to be o
+                          f normal size.
+ ^HL(772,5696,"IN",10,0) =
+ ^HL(772,5696,"IN",11,0) = OBX^^TX^R~REPORT~L^^No infiltrate or abn
+                           ormal mass noted.
+ ^HL(772,5696,"IN",12,0) =
+ ^HL(772,5696,"P") = 3^3020830.122553^^^^^600
+ ^HL(772,5696,"S") = 351^1
+  
+ The data remaining in the HL Message Text file (#772) remaining after the 
+ call to DELBODY is shown below.
+  
+  
+ ^HL(772,5696,0) = 3020830.122552^32^^O^^9985696^^5696^D^269^^^DG^M
+ ^HL(772,5696,"P") = 3^3020830.122553^^^^^600
+ ^HL(772,5696,"S") = 351^1
+  
+ When a call is made to the DELBODY API, the following information is 
+ stored in ^XTMP:
+  
+  - Time when "optional segments" were deleted.
+  - Value of APP parameter.
+  - Number lines deleted.
+  - Information stored in @STORE parameter location.
+  - Value of XQY0, if it exists.
+  - Value of ZTSK, if it exists.
+  
+ The ^XTMP data created when the DELBODY API is called is shown next.  The 
+ initial subscript for the ^XTMP data is "HLUOPT2 "_DT.  If TODAY is 
+ 8/25/2002, the ^XTMP subscript is "HLUOPT2 3020825".  Here is how ^XTMP 
+ data is stored, using "HLUOPT2 3020825" as the subscript:
+  
+   ^XTMP("HLUOPT2 3020825",0)=3020901^3020825.1238^HLUOPT2
+                              Message Body Deletion
+  
+ The vaporization date for the ^XTMP data created on 8/25/2002 is "T+7" or 
+ 3020901 in FileMan format.
+  
+ The value of "3020825.1238" is the FileMan-format date/time when
+ the first deletion occurred for the data.  After creation, this date/time 
+ is never overwritten when subsequent deletions of "optional segments" 
+ occur.
+  
+ The value of "HLUOPT2 Message Body Deletion" is always placed in piece 3 
+ of the zero node above.
+  
+ When the DELBODY API is called and the zero node above created, if not 
+ already created, additional information is stored in two additional ^XTMP 
+ global locations.  But, before this can be done a "storage occurrence 
+ number" must be calculated.  This number is just a sequential number; 1 
+ the first time a call is made to DELBODY, 2 the next time, etc.
+  
+ Assuming that the "storage occurrence number" calculated by the DELBODY 
+ API is 23, the following data is created:
+  
+   ^XTMP("HLUOPT2 3020825",23,0)=3020825.1532^MUSE EKG^25321^MUSE EKG
+                                 OPTION^1391341
+  
+ In the above example, the pieces of data are sequentially:
+  
+  - 3020825.1532 = Time when message body was deleted.
+  - MUSE EKG = Value passed in APP parameter.
+  - 25321 = Number lines of "optional segment" data removed.
+  - MUSE EKG OPTION = Value of XQY0 at time of call to DELBODY.
+  - 1391341 = Task number (i.e., ZTSK) of process calling DELBODY.
+  
+ In addition to the above information stored in ^XTMP, the data stored in 
+ the STORE storage location is also stored as shown next.  In this 
+ example, let's assume that the local TEXT array exists and has the 
+ following entries:
+  
+   TEXT(1)="This entry was just marked successfully completed."
+   TEXT(2)="Therefore, it's message body is no longer needed."
+   TEXT(3)="Since this message is extremely large, it's message"
+   TEXT(7)="body will be deleted."
+  
+ In this case, the TEXT array data will be stored in the ^XTMP global as 
+ shown below.
+  
+   ^XTMP("HLUOPT2 3020825",23,"S",1)="This entry was just marked 
+                                     successfully completed."
+   ^XTMP("HLUOPT2 3020825",23,"S",2)="Therefore, it's message body is no 
+                                     longer needed."
+   ^XTMP("HLUOPT2 3020825",23,"S",3)="Since this message is extremely 
+                                     large, it's message"
+   ^XTMP("HLUOPT2 3020825",23,"S",7)="body will be deleted."
+  
+ It is strongly recommended that the DELBODY API only be called after 
+ all related messages (i.e., initial message and all related 
+ acknowledgement messages) are successfully completed. 
+  
+ Safe use of this API is the responsibility of the client applications.
+  
+ --------------------------------------------------------------------------
+  
+ Routine Summary:
+  
+ The first and second lines of the HLUOPT2 routine included in this 
+ patch is shown below.
+  
+ HLUOPT2 ;CIOFO-O/LJA - Purging Entries in file #772 and #773 ;12/13/02 
+   14:03
+           ;;1.6;HEALTH LEVEL SEVEN;**98**;Oct 13, 1995
+  
+ Checksum:
+  
+ Routine Name   Checksum Before    Checksum After   Patch List
+ -------------  -----------------  ---------------  ----------
+ HLUOPT2             ----              1014956       *98**
+  
+ Sites should use CHECK^XTSUMBLD to verify checksums.
+  
+ Installation Instructions:
+ ==========================
+ Note:    Users are allowed to be on the system during the installation.
+  
+ Note:    All links and filers and the link manager and any VistA
+          HL7 background process may remain running during the installation
+          of this patch.
+  
+ Step 1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu to
+          load the KIDS package onto your system.
+  
+ Step 2.  Verify the checksums in the transport global using the 'Verify
+          Checksums in Transport Global [XPD PRINT CHECKSUM]' menu
+          option.
+  
+ Step 3.  The patch build is now present on your system.  To install
+          the patch use the 'Installation menu's 'Install Package(s)
+          [XPD INSTALL BUILD]' menu option.  When using this menu 
+          option to install the HL*1.6*98 build, you will be asked 
+          several questions.  The questions, and the answers you 
+          should supply, are shown below:
+  
+            INSTALL NAME: <HL*1.6*98>
+  
+            Want KIDS to INHIBIT LOGONS during the install?  <NO>
+  
+            Want to DISABLE Scheduled Options, Menu Options,
+            and Protocols?  <NO>
+
+Routine Information:
+====================
+
+Routine Name:
+  - HLUOPT2
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : ANDREASSEN,LARRY               Date Entered : AUG 30, 2002
+Completed By: SINGH,GURBIR                  Date Completed: DEC 17, 2002
+Released By : APOLONIO,AUGUSTO              Date Released : DEC 17, 2002
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

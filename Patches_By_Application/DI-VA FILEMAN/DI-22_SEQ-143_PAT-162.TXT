@@ -1,0 +1,518 @@
+$TXT Created by BEUSCHEL,GARY at FM22-PATCH.FO-OAKLAND.MED.VA.GOV  (KIDS) on Tuesday, 09/29/09 at 07:30
+=============================================================================
+Run Date: FEB 24, 2010                     Designation: DI*22*162
+Package : DI - VA FILEMAN                     Priority: Mandatory
+Version : 22       SEQ #143                     Status: Released
+                  Compliance Date: MAR 27, 2010
+=============================================================================
+
+Associated patches: (v)DI*22*35    <<= must be installed BEFORE `DI*22*162'
+                    (v)DI*22*48    <<= must be installed BEFORE `DI*22*162'
+                    (v)DI*22*147   <<= must be installed BEFORE `DI*22*162'
+                    (v)DI*22*149   <<= must be installed BEFORE `DI*22*162'
+
+Subject: API FIXES
+
+Category: 
+  - Routine
+
+Description:
+============
+
+                           ** Notice: **
+ ** See "Installation Instructions" section for Installation Warning **
+  
+ This patch addresses the following items:
+  
+ Remedy Ticket 321076
+ The Browser API, DOCLIST^DDBR, with FLAGS set to "R", prompts the user "Do 
+ you wish to select from the current list?" It shouldn't offer this prompt, 
+ because the "R" flag restricts users to the current list. And indeed, if the 
+ user replies NO, the API informs the user that "SWITCH Function Restricted to 
+ Current List". With this patch, if FLAGS is set to "R", the API will not ask
+ you if you wish to select from the current list.
+ (Routine ^DDBR2)
+  
+ To duplicate the problem, let's create three documents:
+ FMD>S MYDOC(1,1)="Doc 1, Line 1"
+ FMD>S MYDOC(1,2)="Doc 1, Line 2"
+ FMD>S MYDOC(2,1)="Doc 2, Line 1"
+ FMD>S MYDOC(2,2)="Doc 2, Line 2"
+ FMD>S MYDOC(3,1)="Doc 3, Line 1"
+ FMD>S MYDOC(3,2)="Doc 3, Line 2"
+  
+ Now, let's create a list of those documents:
+ FMD>S MYLIST("Document 1")="MYDOC(1)"
+ FMD>S MYLIST("Document 2")="MYDOC(2)"
+ FMD>S MYLIST("Document 3")="MYDOC(3)"
+  
+ Now, let's browse them:
+ FMD>D DOCLIST^DDBR("MYLIST","R")
+ Notice that the Browser shows you Document 1.
+ Now press <PF1>S to switch between documents.
+ Notice that it erroneously asks you "Do you wish to select from the current
+ list? ? YES//"
+ Answer NO.
+ Notice that it then chides you "<< SWITCH Function Restricted to Current List
+ >>".
+  
+ Remedy Ticket 342338
+ If a trigger sets a field to a CREATE VALUE of NOW, VA FileMan creates code 
+ that will set the field to an invalid date if the time is exactly midnight. 
+ The result will be the (internal) date with a zero concatenated to the end of 
+ it. There will be no time element. This patch fixes that. (VA FileMan 
+ represents midnight by backing up one day and appending .24 to the day.) 
+  
+ This is the current deficient NOW function code:
+ S %=$P($H,",",2),X=DT_(%\60#60/100+(%\3600)+(%#60/10000)/100)
+ At midnight (early morning) of 1 Sep 09, $H="61605,0", and % will be zero, 
+ which is the number of seconds past midnight. You can see the error yourself 
+ by doing this:
+ FMD>S %=0,X=DT_(%\60#60/100+(%\3600)+(%#60/10000)/100) W X
+ 30909010
+  
+ The new NOW function code will be:
+ N %I,%H,% D NOW^%DTC S X=%
+ At midnight (early morning) of 1 Sep 09, X would be set to 3090831.24
+  
+ To be consistent, the TODAY function code will change from "S X=DT"
+ to "N %I,%H,% D NOW^%DTC".
+  
+ The post-init, DIPR162, will go through all the existing DDs looking for
+ triggers whose CREATE VALUE or DELETE VALUE is NOW or TODAY. It will replace 
+ the old code with the new. It will NOT look for or correct bad dates in the 
+ globals resulting from the faulty midnight NOW function.
+ (Routine ^DINIT4, ^DIPR162)
+  
+ Remedy Ticket 345725
+ The date function, %DT, needs to validate its input better. With this patch, 
+ it does.
+ In this example, the time input has 7 digits. (6 is the maximum.) The result 
+ is unexpected and certainly incorrect. It ought to set Y=-1. 
+  
+ VAH>S %DT="RST",X="T@0000001" D ^%DT W Y
+  
+ 3090901.1201
+ (Routine ^DIDT)
+  
+ Remedy Ticket 352010
+ When UPDATE^DIE is called to add a record to a file, it LOCKs the potential 
+ record slot, then LOOKs to see if it is available. If the record slot is not 
+ available (that is, it is already taken by an existing record), it moves on 
+ to the next record and repeats the process. This is usually not a problem, 
+ even with many processes vying to add records to the same file, because 
+ records are usually added at the end of a file, and vacant slots are quickly 
+ found. It becomes a problem when one attempts to add records in the middle of 
+ a file, as MailMan sometimes does with the MESSAGE (#3.9) file, when it is 
+ recycling message numbers in order to keep message numbers from becoming 
+ unwieldy in size. In such situations, VA FileMan may have to lock and check 
+ many records before finding an available one.
+  
+ Such was the situation Muskogee recently experienced when almost 100 tasks 
+ were trying to send messages, and MailMan was recycling message numbers. The 
+ tasks were all waiting to grab locks and looking for vacant record slots in 
+ the middle of a MESSAGE (#3.9) file with few vacant slots. Understandably, 
+ with all the lock contention and the paucity of vacant slots, hardly any 
+ messages were being sent and the system slowed to a crawl.
+  
+ To remedy the situation, UPDATE^DIE now LOOKs first to see if a record slot 
+ is available, then LOCKs it if it is available, and then LOOKs again to make 
+ sure another task hasn't grabbed that slot in the interim. If the record slot 
+ is not available, it moves on to the next record and repeats the process. The 
+ difference is that we don't LOCK until we find an available slot. This speeds 
+ up the process and reduces contention for locks.
+  
+ To reproduce this problem, make sure your MESSAGE (#3.9) file has hundreds of 
+ thousands of consecutively numbered records beginning with record 100000, 
+ then set piece 3 of the zero node of the MESSAGE (#3.9) file to 99999 and 
+ queue up 100 tasks to simultaneously attempt to send messages. As you can 
+ appreciate, this is a difficult problem to reproduce, so you may just want to 
+ trust me on this.
+ (Routine ^DICA3)
+  
+ No Remedy Ticket
+ The data retrieval APIs $$GET1^DIQ and GETS^DIQ return confusing data for a 
+ broken pointer field. $$GET1^DIQ returns a null external value for a broken 
+ pointer field, which is correct, but it also sets an error message saying 
+ that the internal value of the field is not a valid pointer. The problem is 
+ that this is a data retrieval API, not a data validator API, and therefore 
+ should not set this error message. GETS^DIQ, when asked for external, or both 
+ internal and external, values of the broken pointer field, returns no data at 
+ all, not even the internal value, but it does set the error message, which it 
+ shouldn't. With this patch, $$GET1^DIQ and GETS^DIQ will no longer set the 
+ error message in this situation, and GETS^DIQ will return an external value 
+ of null if the external value is requested, and it will return the internal 
+ value, too, if both internal and external values are requested.
+ (Routines ^DIDU, ^DIQG)
+  
+ The following examples concern a file which contains car club records, with 
+ the member's name, and the car's make, color, and year. The color field 
+ points to a file of colors. Unfortunately, someone deleted the color Yellow 
+ from the file of colors, leaving the record containing Fred's yellow Chevy 
+ (record #2) with a broken (dangling) pointer.
+  
+ Example 1 (before patch):
+ The second parameter ("2,") denotes record #2, and the third parameter (2) 
+ denotes field 2, which contains the pointer to the color file.
+ ACT>W $$GET1^DIQ(90210,"2,",2)         External value is the default. We see 
+ that it's null.
+  
+ ACT>D ^%G                        
+  
+ Device:      Right margin: 80=>
+                        This error message is not proper.
+ Global ^TMP("DIERR",$J -- NOTE: translation in effect
+ ^TMP("DIERR",$J,1)=330
+ ^TMP("DIERR",$J,1,"PARAM",0)=2
+                                  1)=3
+                                  2)=pointer to File #90210.5
+ ^TMP("DIERR",$J,1,"TEXT",1)=The value '3' is not a valid pointer to File 
+ #90210.5.
+ ^TMP("DIERR",$J,"E",330,1)=
+  
+ Global ^
+                        Now we ask for the internal value. It's correct.
+ ACT>W $$GET1^DIQ(90210,"2,",2,"I")
+ 3
+ ACT>D ^%G                            
+  
+ Global ^TMP("DIERR",$J -- NOTE: translation in effect
+                        No error message. Correct.
+ Global ^
+  
+ Example 1 (after patch):
+                        Again, it returns a null value, which is correct.
+ FMD>W $$GET1^DIQ(90210,"2,",2)
+  
+ FMD>D ^%G
+  
+ Global ^TMP("DIERR",$J -- NOTE: translation in effect
+                        There's no error message. Correct. This is fixed!
+ Global ^
+                        Now we ask for the internal value. It's correct.
+ FMD>W $$GET1^DIQ(90210,"2,",2,"I")
+ 3
+ FMD>D ^%G
+  
+ Global ^TMP("DIERR",$J -- NOTE: translation in effect
+                         No error message. Correct.
+ Global ^
+  
+ Example 2 (before patch):
+ Here we ask for all fields (".01:3") and both internal and external values
+ ("IE").
+ ACT>D GETS^DIQ(90210,"2,",".01:3","IE","MYARRAY")
+                         Field 2 isn't returned at all. Not correct.
+ ACT>ZW MYARRAY
+ MYARRAY(90210,"2,",.01,"E")="FRED"
+ MYARRAY(90210,"2,",.01,"I")="FRED"
+ MYARRAY(90210,"2,",1,"E")="CHEVY"
+ MYARRAY(90210,"2,",1,"I")="CHEVY"
+ MYARRAY(90210,"2,",3,"E")=2005
+ MYARRAY(90210,"2,",3,"I")=2005
+  
+ ACT>D ^%G
+                         This error message is not proper.
+ Global ^TMP("DIERR",$J -- NOTE: translation in effect
+ ^TMP("DIERR",$J,1)=330
+ ^TMP("DIERR",$J,1,"PARAM",0)=2
+                                  1)=3
+                                  2)=pointer to File #90210.5
+ ^TMP("DIERR",$J,1,"TEXT",1)=The value '3' is not a valid pointer to
+ File #90210.5.
+ ^TMP("DIERR",$J,"E",330,1)=
+  
+ Global ^
+  
+ ACT>K MYARRAY
+ Now let's just ask for the internal values ("I").
+ ACT>D GETS^DIQ(90210,"2,",".01:3","I","MYARRAY")
+                         This is correct.
+ ACT>ZW MYARRAY
+ MYARRAY(90210,"2,",.01,"I")="FRED"
+ MYARRAY(90210,"2,",1,"I")="CHEVY"
+ MYARRAY(90210,"2,",2,"I")=3
+ MYARRAY(90210,"2,",3,"I")=2005
+  
+ ACT>D ^%G     
+  
+ Global ^TMP("DIERR",$J -- NOTE: translation in effect
+                         No error message. Correct.
+ Global ^
+  
+ ACT>K MYARRAY                                      
+ Now let's ask for just the external values ("E").
+ ACT>D GETS^DIQ(90210,"2,",".01:3","E","MYARRAY")
+                         Field 2 isn't returned at all. Not correct.
+ ACT>ZW MYARRAY
+ MYARRAY(90210,"2,",.01,"E")="FRED"
+ MYARRAY(90210,"2,",1,"E")="CHEVY"
+ MYARRAY(90210,"2,",3,"E")=2005
+  
+ ACT>D ^%G
+                         This error message is not proper.
+ Global ^TMP("DIERR",$J -- NOTE: translation in effect
+ ^TMP("DIERR",$J,1)=330
+ ^TMP("DIERR",$J,1,"PARAM",0)=2
+                                  1)=3
+                                  2)=pointer to File #90210.5
+ ^TMP("DIERR",$J,1,"TEXT",1)=The value '3' is not a valid pointer to
+ File #90210.5.
+ ^TMP("DIERR",$J,"E",330,1)=
+  
+ Global ^
+  
+ Example 2 (after patch):
+ Here we ask for all fields (".01:3") and both internal and external values
+ ("IE").
+ FMD>D GETS^DIQ(90210,"2,",".01:3","IE","MYARRAY")
+                         Field 2 is returned. This is fixed!
+ FMD>ZW MYARRAY
+ MYARRAY(90210,"2,",.01,"E")="FRED"
+ MYARRAY(90210,"2,",.01,"I")="FRED"
+ MYARRAY(90210,"2,",1,"E")="CHEVY"
+ MYARRAY(90210,"2,",1,"I")="CHEVY"
+ MYARRAY(90210,"2,",2,"E")=""
+ MYARRAY(90210,"2,",2,"I")=3
+ MYARRAY(90210,"2,",3,"E")=2005
+ MYARRAY(90210,"2,",3,"I")=2005
+  
+ FMD>D ^%G
+  
+ Global ^TMP("DIERR",$J -- NOTE: translation in effect
+                         No error message. This is fixed!
+ Global ^
+  
+ FMD>K MYARRAY
+ Now let's just ask for the internal values ("I").
+ FMD>D GETS^DIQ(90210,"2,",".01:3","I","MYARRAY") 
+                         This is correct. (as before)
+ FMD>ZW MYARRAY
+ MYARRAY(90210,"2,",.01,"I")="FRED"
+ MYARRAY(90210,"2,",1,"I")="CHEVY"
+ MYARRAY(90210,"2,",2,"I")=3
+ MYARRAY(90210,"2,",3,"I")=2005
+  
+ FMD>D ^%G
+  
+ Global ^TMP("DIERR",$J -- NOTE: translation in effect
+                         No error message. Correct. (as before)
+ Global ^
+  
+ FMD>K MYARRAY
+ Now let's ask for just the external values ("E").
+ FMD>D GETS^DIQ(90210,"2,",".01:3","E","MYARRAY")
+                         Field 2 is returned. This is fixed!
+ FMD>ZW MYARRAY
+ MYARRAY(90210,"2,",.01,"E")="FRED"
+ MYARRAY(90210,"2,",1,"E")="CHEVY"
+ MYARRAY(90210,"2,",2,"E")=""
+ MYARRAY(90210,"2,",3,"E")=2005
+  
+ FMD>D ^%G     
+  
+ Global ^TMP("DIERR",$J -- NOTE: translation in effect
+                         No error message. This is fixed!
+ Global ^
+  
+ Documentation
+ =============
+ No documentation changes were necessary for this patch.
+ The most up-to-date VA FileMan end-user documentation is available on the
+ VHA Software Document Library (VDL) at the following Internet Website:
+     http://www.va.gov/vdl/application.asp?appid=5
+  
+ NOTE: VistA documentation is made available online in Microsoft Word 
+ format (.DOC) and Adobe Acrobat Portable Document Format (.PDF).
+  
+ The VA FileMan documentation is also available in HTML format at the 
+ following Intranet Websites:
+  
+   * Getting Started Manual:
+     http://vaww.vista.med.va.gov/fileman/docs/u1/index.shtml
+  
+   * Advanced User Manual:
+     http://vaww.vista.med.va.gov/fileman/docs/u2/index.shtml
+  
+   * APIs/Programmer Manual:
+     http://vaww.vista.med.va.gov/fileman/docs/pm/index.shtml
+  
+   * ScreenMan Tutorial:
+     http://vaww.vista.med.va.gov/fileman/docs/scrnman/index.shtml
+  
+ Blood Bank Clearance
+ ====================
+ Clearance - 10/8/2009
+ EFFECT ON BLOOD BANK FUNCTIONAL REQUIREMENTS: Patch DI*22*162 contains
+ changes to a package referenced in VHA OI SEPG SOP 192-023 Review of
+ VISTA Patches for Effects on VISTA Blood Bank Software. This patch 
+ does not alter or modify any VistA Blood Bank software design 
+ safeguards or safety critical elements functions.
+  
+ RISK ANALYSIS: Changes made by patch DI*22*162 have no effect on Blood
+ Bank software functionality, therefore RISK is none.
+  
+ Remedy Tickets
+ ==============
+ 321076
+ 342338
+ 345725
+ 352010
+  
+ Thanks to Test Sites 
+ ====================
+ San Francisco VAMC
+ Milwaukee VAMC
+ Montana HCS
+  
+ Routine Summary: 
+ ================
+ Please see the "Routine Information" section. 
+ *Note: Routine: DIPR162 issues a warning during the installation of 
+ this patch if it appears that TaskMan is still running and/or logons 
+ have not been inhibited.
+  
+ Installation Instructions:
+ =========================
+ ** Although queuing of this patch is allowed, it is HIGHLY RECOMMENDED
+ that ALL Users be off the system and VISTA Background jobs be STOPPED
+ before this patch is installed. TaskMan should be stopped or placed in
+ a wait state. Failure to do so may result in 'source routine edited'
+ errors during a database update. Edits may be lost and records may be
+ left in an inconsistent state. An error that occurs before a cross-
+ reference is executed, for example, may lead to corrupted data or hard
+ errors in the future. **
+  
+ The following installation instructions are based upon the premise 
+ that the installer has heeded the above warning.
+  
+ Installation should take less than five minutes.
+  
+      1.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. 
+ This option will load the KIDS package onto your system.
+  
+      2.  The patch has now been loaded into a transport global on your 
+ system. You now need to use KIDS to install the transport global.
+  
+      3.  On the KIDS menu, under the 'Installation' menu, use the 
+ following options:
+  
+            Print Transport Global
+            Compare Transport Global to Current System
+            Verify Checksums in Transport Global
+            Backup a Transport Global
+  
+      4.  In accordance with the warning at the beginning of the 
+ installation instructions, make sure ALL interactive processes, and 
+ ALL non-interactive background jobs are stopped following your site 
+ specific procedures. TaskMan should be stopped or placed in a wait state.
+ All users should be off the system. NOT performing this step could result
+ in 'source routine edited' error during database updates, and records may
+ be left in an inconsistent state.
+  
+      5.  On the KIDS menu, under the 'Installation' menu, use the 
+ following option:
+  
+            Select Installation Option: Install Package(s)
+            Select INSTALL NAME: DI*22.0*162
+                                 ===========
+  
+ The Environment Check Routine DIPR162 runs automatically during this
+ step. DIPR162 issues a warning if it appears that TaskMan is still 
+ running or logons have not been inhibited. 
+  
+            Answer 'YES' to 'Want KIDS to INHIBIT LOGONs during the 
+ install?'
+            Answer 'NO' to 'Want to DISABLE Scheduled Options, Menu 
+ Options, and Protocols?'
+  
+ During the Post-Install process, you will see:
+ Beginning Post-Installation...
+  
+   I am saving routine DIDT as %DT.
+ Routine: DIDT         Loaded, Saved as %DT
+  
+   I am changing ^DD("FUNC",24,1) to correct the NOW function.
+  
+   I am changing ^DD("FUNC",25,1) to correct the TODAY function.
+  
+   I am finding and replacing all NOW and TODAY code in triggers.
+ << DIPR162 will tell you exactly what it is changing. Below are examples of >>
+ << the voluminous amounts of information which will display on your screen. >>
+   ...
+   For TRIGGER at ^DD(15,.03,1,5, change:
+   TODAY code in node 1)
+     from: X ^DD(15,.03,1,5,1.3) I X S X=DIV S Y(1)=$S($D(^VA(15,D0,0)):^(0),
+ 1:"") S X=$P(Y(1),U,7),X=X S DIU=X K Y S X=DIV S X=DT X ^DD(15,.03,1,5,1.4)
+       to: X ^DD(15,.03,1,5,1.3) I X S X=DIV S Y(1)=$S($D(^VA(15,D0,0)):^(0),
+ 1:"") S X=$P(Y(1),U,7),X=X S DIU=X K Y S X=DIV N %I,%H,% D NOW^%DTC
+ X ^DD(15,.03,1,5,1.4)
+   ... 
+   For TRIGGER at ^DD(44.003,303,1,2, change:
+   NOW code in node 1.1)
+     from: S X=DIV S %=$P($H,",",2),X=DT_(%\60#60/100+(%\3600)+(%#60/10000)/100)
+       to: S X=DIV N %I,%H,% D NOW^%DTC S X=%
+   ...
+   I have replaced the NOW and TODAY code in <NNNN> triggers.
+ Finished Post-Installation.
+  
+      6.  Re-enable all processes stopped in step 4 above.
+  
+ Post Installation
+ =================
+ Upon successful installation of this patch, routine DIPR162 may be 
+ deleted.
+  
+   Example
+   =======
+ >D ^ZTRDEL
+  
+ ROUTINE DELETE
+  
+ All Routines? No => No
+  
+ Routine: DIPR162
+ Routine: 
+ 1 routine
+  
+ 1 routines to DELETE, OK: NO// Y
+ DIPR162  
+ Done.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;22.0;VA FileMan;**[Patch List]**;Mar 30, 1999;Build 19
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: DDBR2
+    Before: B17246880   After: B18132393  **162**
+Routine Name: DICA3
+    Before:  B3603882   After:  B4698553  **147,162**
+Routine Name: DIDT
+    Before: B18472449   After: B19912051  **14,35,162**
+Routine Name: DIDU
+    Before: B37131988   After: B38421854  **31,48,162**
+Routine Name: DINIT4
+    Before: B12078667   After: B11956513  **162**
+Routine Name: DIPR162
+    Before:       n/a   After: B18238811  **162**
+Routine Name: DIQG
+    Before: B36192228   After: B36451220  **76,118,133,149,162**
+ 
+Routine list of preceding patches: 35, 48, 147, 149
+
+=============================================================================
+User Information:
+Entered By  : BEUSCHEL,GARY                 Date Entered  : AUG 26, 2009
+Completed By: SINGH,GURBIR                  Date Completed: FEB 22, 2010
+Released By : HARROD,PAUL                   Date Released : FEB 24, 2010
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

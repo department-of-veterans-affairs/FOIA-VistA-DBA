@@ -1,0 +1,309 @@
+$TXT Created by UNDERHILL,GARDNER at DAYT17.FO-BAYPINES.MED.VA.GOV  (KIDS) on Tuesday, 03/10/09 at 12:30
+=============================================================================
+Run Date: APR 06, 2009                     Designation: FH*5.5*17
+Package : FH - DIETETICS                      Priority: Mandatory
+Version : 5.5        SEQ #18                    Status: Released
+                  Compliance Date: MAY 07, 2009
+=============================================================================
+
+Associated patches: (v)FH*5.5*14   <<= must be installed BEFORE `FH*5.5*17'
+
+Subject:   CORRECT ISSUES WITH FOOD AND NUTRITION REPORTS
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch addresses the following issues:
+  
+ 1. The Diet Order List is not printing a complete list of patients when 
+ selected to print alphabetically and in some rare cases by room number.
+  
+ 2. The Standing Order Inquiry option [FHSP4] encounters a subscript error
+ on some patients and forces the user out of VistA.
+ Also, XINDEX found a SAC violation of a lock command without a timeout in 
+ routine FHSPED.
+  
+ 3. The statement in the Inpatient Nutritional Assessment of "No 
+ laboratory data available last XXX days" was not being saved to TIU.
+  
+ 4. The patient lookup for the Nutrition and Food Service package will 
+ first attempt to find a match in the PATIENT file, (#2). If no match is 
+ found or accepted by the user, the lookup will attempt to find a match in 
+ the NEW PERSON file, (#200).  It does this without alerting the user it
+ has switched files during the look up.
+  
+ ASOCIATED NSR:
+ ==============
+ N/A
+  
+ ASSOCIATED REMEDY TICKETS:
+ ==========================
+ 1. HD0000000216434 - Nutrition Location Diet Order List does not print all
+ patients
+ Duplicates:
+ HD0000000216696 - NUTRITION LOCATION DIET ORDER LIST PROBLEM
+ HD0000000219111 - Three patients not showing up for 3 SUR ward on
+                   "Nutrition
+ HD0000000219394 - Ward Diet list prints fine by Alpha but not by room/bed
+ HD0000000220143 - Nutrition Location Diet Order List
+ HD0000000228692 - Option [FHORD10] list patient alphabetically
+ HD0000000231617 - option [FHORD10]  different results when selecting R or
+                   A
+ HD0000000240198 - problem with ward list on one ward only
+ HD0000000261134 - Salt Lake City is experiencing the same problem reported
+                   in case 216434
+ HD0000000262498 - Problem with printing diet list option NUTRITION
+                   LOCATION DIET ORDER [FHORD10]
+ HD0000000272302 - problem building report Nutrition Location Diet Order
+                   List
+  
+ 2. HD0000000249013 - $ZE=<SUBSCRIPT>LIS+6^FHSP
+ 3. HD0000000252978 - Patch 8 Assessments to TIU (Labs)
+ 4. HD0000000254198 - Wrong patient coming up when trying to print meal
+ ticket
+  
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Danville, IL
+ Miami, FL
+ Puget Sound HCS
+  
+ REMEDY OVERVIEW:
+ ================ 
+ 1. HD0000000216434 - Nutrition Location Diet Order List does not print
+ all patients
+  
+    Problem:
+    --------
+    The NUTRITION LOCATION DIET ORDERS LIST [FHORD10] option does not 
+    always display a complete list of patients when the user selects to 
+    sort the list alphabetically. This has also happened when the report is
+    to be sorted by room number if the room number starts with a letter,
+    example of this format: F999-999. But is far more common an issue
+    when the list is sorted alphabetically.
+  
+    Resolution:
+    -----------
+    The NUTRITION LOCATION DIET ORDERS LIST [FHORD10] calls routine
+    FHORD8. In this routine the user selects the options for record
+    selection and sorting order. FHORD8 will then call routine FHORD81
+    which selects and sorts the records for printing. If the user has
+    selected to sort the report alphabetically, FHORD81 makes a temporary
+    file with the patient's name and IEN. It looks like this:
+    
+    ^TMP($J,PATIENT_NAME,IEN)=ADMISSION_DATE
+    
+    As each patient is processed, routine FHORD81 checks to see if the
+    patient has any allergies. If allergies are found for the patient, 
+    another temporary global is made. It looks like this:
+    
+    ^TMP($J,"FHGMRAL",ALLERGY_IEN)=""
+    
+    The routine FHORD81 would move to the next record in the temporary
+    patient sorting global and if it was the temporary allergy record it
+    would take the allergy IEN and attempt to find a matching patient.
+    This lookup would fail and the report would stop. The routine
+    FHORD81 was modified to add an extra subscript to the temporary
+    patient sorting global to separate it from the temporary allergies
+    global. Routine FHORD81 was also modified to continue to the
+    next record in the sorting global in case the patient lookup failed.
+  
+ 2. HD0000000249013 - $ZE=<SUBSCRIPT>LIS+6^FHSP
+  
+    Problem :
+    ---------
+    When the following steps occur, the Standing Order Inquiry option will
+    fail with a subscript error and force the user out of VistA. 
+    A recurring meal is ordered for an outpatient, then a standing order is
+    attached to the recurring meal order placed for this outpatient. The
+    outpatient is admitted to the hospital while the recurring meal order
+    is in effect. When the Standing Order Inquiry option [FHSP4] is
+    selected to check on the patient's standing orders, the option gives a
+    <SUBSCRIPT> error and force the user out of VistA.
+  
+    Resolution:
+    -----------
+    The Standing Order Inquiry option [FHSP4] calls routine FHSPED which
+    would first get the inpatient standing orders, determine if the
+    patient had any outpatient data for today or in the future. FHSPED
+    in turn would call routine FHSP to display any outpatient standing
+    orders that may have been found. When an outpatient has recurring
+    meals ordered with a standing order and then admitted while that
+    recurring meal order is still in effect, this recurring meal order
+    is cancelled along with the standing order for those recurring
+    meals. The Standing Order Inquiry option does note this, but then 
+    tries to list the now cancelled standing orders anyway and will 
+    crash. The routine FHSPED has been modified to only call routine
+    FHSP to display the outpatient standing orders only after it has
+    determined it actually has something to display.
+  
+    Problem :
+    ---------
+    XINDEX returned a SAC violation of a lock command without a timeout in
+    ADD+1^FHSPED.
+    
+    Resolution:
+    -----------
+    Modification of the code in ADD+1^FHSPED to add a timeout to the lock
+    command. This will correct the SAC violation.
+  
+  
+ 3. HD0000000252978 - Patch 8 Assessments to TIU (Labs)
+  
+    Problem:
+    --------
+    Patch FH*5.5*8 introduced functionality to save a TIU note for 
+    inpatients' nutritional assessments. Certain laboratory tests can be 
+    selected to display on assessment and screening forms by using the
+    Enter/Edit Clinical Site Parameters option [FHASC8]. Some inpatients
+    may not have had the selected laboratory tests performed in the time-
+    frame specified in the Enter/Edit Clinical Site Parameter option
+    [FHASC8]. This would automatically add the statement "No laboratory
+    data available last XXX days" to an inpatients' nutritional assessment.
+    This statement was not crossing over to the TIU note.
+  
+  
+  
+    Resolution:
+    -----------
+    When the user selects C to flag a nutritional assessment as complete
+    it is either saved as a new nutritional assessment or updates a work
+    in process assessment and then flags it as complete. The user is
+    then presented with a prompt to select the TIU document title to
+    save the completed nutritional assessment to. A temporary global of
+    ^TMP("TIUP",$J) is created to hold the copy of the nutritional
+    assessment to save to TIU. This is in routine FHASMR2. The line of
+    code that creates the text for "No laboratory data available last
+    XXX days" has a typo in it. Instead of being ^TMP("TIUP",$J,FHN,0),
+    it is ^TMP("TIYP",$J,FHN,0). This is what prevents the "No
+    laboratory" statement from crossing over to TIU. This typo has been
+    corrected.
+  
+ 4. HD0000000254198 - Wrong patient coming up when trying to print meal
+    ticket
+  
+    Problem:
+    --------
+    When the user enters the first letter of the last name with the last
+    four digits of the Social Security Number (SSN) to look up a patient
+    it is possible for the user to be presented with a list of possible
+    matches from the PATIENT file (#2). When the user selects a 
+    patient with same last name and last four digits as another patient
+    on file the user is alerted to this and is given the option to
+    continue using the selected patient. If the user answers "NO" to the
+    "Continue?" prompt, the patient look up for the Nutrition and Food
+    Service (N&FS) package will automatically try and find a match in the
+    NEW PERSON file (#200). The user is not alerted to the fact this
+    has happened and it can lead the user to believe the N&FS package has
+    selected the wrong patient.
+  
+    Resolution:
+    -----------
+    The patient look up is handled by the N&FS routine FHOMDPA. Modify the
+    FHOMDPA to print this message to the screen:
+  
+      LOOKING IN THE NEW PERSON FILE, FILE # 200
+  
+    This will alert the user that the routine FHOMPDA is going to perform
+    a look up in the NEW PERSON file, file # 200.
+  
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+ Suggested time to install: non-peak requirement hours.  Users are allowed 
+ on the system.
+  
+ There are no menu options to disable.
+  
+ Install Time - less than 5 minutes 
+  
+ 1.  LOAD TRANSPORT GLOBAL 
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the 
+     INSTALL/CHECK MESSAGE PackMan option.  
+              
+ 2.  START UP KIDS 
+     -------------
+     Start up the Kernel Installation and Distribution System Menu 
+     [XPD MAIN]: 
+    
+          Edits and Distribution ...  
+          Utilities ...  
+          Installation ...  
+    
+ Select Kernel Installation & Distribution System Option: INStallation 
+                                                          ---
+          Load a Distribution 
+          Print Transport Global 
+          Compare Transport Global to Current System 
+          Verify Checksums in Transport Global 
+          Install Package(s) 
+          Restart Install of Package(s) 
+          Unload a Distribution 
+          Backup a Transport Global 
+    
+ Select Installation Option: 
+    
+ 3.  Select Installation Option: 
+     ---------------------------
+     NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+            NAME, enter FH*5.5*17):
+       
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when this patch
+         is installed.  It compares all components of this patch
+         (routines, DD's, templates, etc.).
+     c.  Verify Checksums in Transport Global - This option will allow
+         you to ensure the integrity of the routines that are in the
+         transport global.
+      
+ 4.  Select Installation Option: Install Package(s) 
+                                 ------------------
+     **This is the step to start the installation of this KIDS patch: 
+    
+     a.  Choose the Install Package(s) option to start the patch
+         install.
+     b.  When prompted  Want KIDS to INHIBIT LOGONs during the install? 
+         NO//  answer NO (unless otherwise indicated)
+     c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+         Options, and Protocols? NO//' answer NO (unless otherwise
+         indicated)
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.5;DIETETICS;**[Patch List]**;Apr 27, 2007;Build 9
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: FHASMR2
+    Before: B67206175   After: B67205771  **8,14,17**
+Routine Name: FHOMDPA
+    Before:  B5382769   After:  B5596079  **5,17**
+Routine Name: FHORD81
+    Before: B69864656   After: B70343253  **1,5,17**
+Routine Name: FHSPED
+    Before: B71023432   After: B71384574  **5,8,17**
+ 
+Routine list of preceding patches: 14
+
+=============================================================================
+User Information:
+Entered By  : UNDERHILL,GARDNER D           Date Entered  : MAY 05, 2008
+Completed By: CRICHLOW,SHERRY               Date Completed: APR 06, 2009
+Released By : KREUZ,SHERI B                 Date Released : APR 06, 2009
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

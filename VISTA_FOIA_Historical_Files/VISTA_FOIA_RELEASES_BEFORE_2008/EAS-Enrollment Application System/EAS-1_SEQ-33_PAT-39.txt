@@ -1,0 +1,300 @@
+$TXT Created by KOPECKY,STEVE at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 08/21/03 at 08:31
+=============================================================================
+Run Date: OCT 02, 2003                     Designation: EAS*1*39
+Package : EAS - ENROLLMENT APPLICATION SYSTEM Priority: Mandatory
+Version : 1        SEQ #33                      Status: Released
+                  Compliance Date: NOV 02, 2003
+=============================================================================
+
+Associated patches: (v)EAS*1*29    <<= must be installed BEFORE `EAS*1*39'
+                    (v)EAS*1*34    <<= must be installed BEFORE `EAS*1*39'
+
+Subject: EAS VIEW PATIENT ADDRESS FIX
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ The View Patient Address [EAS VIEW PATIENT ADDRESS] menu option 
+ allows a user to display the Patient's address along with Address Change 
+ Date, Address Change Source, and Address Change Site  (if applicable) 
+ information.  This option's routine calls the standard device API (%ZIS) 
+ to open the selected output device to send the information to.  An error 
+ occurs when the user queues the output either directly or indirectly to a
+ print device.
+  
+ Under certain conditions, when the FEE BASIS Potential Cost Recovery 
+ Report [FB PCR] is run, an 'undefined variable M' occurs.  This error 
+ occurs when the report calls the API to calculate the LTC Copayment for a
+ patient and does the calculation for OP and IP services.
+  
+  
+ This patch addresses the following E3R(s):
+ ------------------------------------------
+ There are no E3Rs associated with this patch
+  
+  
+ This patch addresses the following NOIS message(s):
+ ---------------------------------------------------
+ HWH-0703-40956, EAS VIEW PATIENT ADDRESS OPTION ERRORS OUT
+ MIN-0703-40012, UNDEFINED VARIABLE M AT SET+13^FBPCR2
+ SDC-0703-60969, UNDEFINED VARIABLE M AT SET+13^FBPCR2
+  
+  
+ Overview of NOIS Message(s):
+ ---------------------------
+ HWH-0703-40956, EAS VIEW PATIENT ADDRESS OPTION ERRORS OUT
+ Problem:
+ When output from the View Patient Address menu option is sent to the
+ screen, it works correctly, however, in some cases it errors out with a
+ device or file not open error when sent to a printer.  This error occurs
+ when the user enters a "Q" at the device prompt, or the selected
+ device has the QUEUEING Field (#5.5) set to "FORCED" in the DEVICE File
+ (#3.5).  The cause for this error is that the routine invokes the USE
+ command immediately after calling the standard device API (%ZIS) and
+ begins writing to the device.  When queuing is invoked, the device is not
+ yet available and generates the error.
+  
+ Resolution:
+ When using the USE command in any routine, it's recommended to task the 
+ process through the task manager to ensure the device is available and 
+ open before sending any data to it.  In this case, the solution is to 
+ make use of the EN^XUTMDEVQ entry point to start the job.  This entry 
+ point encapsulates the logic for direct printing and queuing, calling the 
+ device API internally and handling the device opening.  The routine has 
+ been modified to use the XUTMDEVQ entry point for printing.
+  
+  
+ MIN-0703-40012, UNDEFINED VARIABLE M AT SET+13^FBPCR2
+ SDC-0703-60969, UNDEFINED VARIABLE M AT SET+13^FBPCR2
+ Problem:
+ The FEE BASIS Potential Cost Recovery Report [FB PCR] defines the 
+ variable "M" as part of the report setup in the Fee Basis routine. This
+ routine makes a call to the $$COPAY^EASECCAL API to calculate any
+ long term care copayments.  If a LTC copayment has been entered for the
+ patient and meets certain conditions, the COPAY API then calls a
+ subroutine to calculate the IP and OP services.  Within this subroutine,
+ the variable "M" is used as an internal variable without being newed, so
+ the original value of "M" is overwritten.  The subroutine then kills "M"
+ on exit. As a result, when control is passed back to the calling FEE BASIS
+ routine, the variable "M" no longer exists.
+  
+ Resolution:
+ The variable "M" is newed upon entry to the subroutine and is cleaned up 
+ through the normal process when the subroutine is exited.  This will 
+ retain the original value of "M" as set by the FEE BASIS routine.
+  
+  
+ Test Sites:
+ -----------
+ Minneapolis VAMC
+ Battle Creek VAMC 
+  
+  
+        ================INSTALLATION INSTRUCTIONS =================
+  
+ If installed during the normal workday, it is recommended that the 
+ following menu options (File #19) be disabled to prevent possible 
+ conflicts while running the KIDS Install. Other VISTA users will not be 
+ affected.
+  
+        View Patient Address
+        Potential Cost Recovery Report
+  
+  
+ Install Time - less than 5 minutes
+  
+  
+   1.   LOAD TRANSPORT GLOBAL 
+        ---------------------
+        Choose the PackMan message containing this patch and invoke the 
+        INSTALL/CHECK MESSAGE PackMan option.  
+              
+   2.   DISABLE ROUTINE MAPPING   (DSM for Open VMS sites only) 
+        -----------------------
+        Disable routine mapping on all systems for the routines listed in 
+        step 3 below.  
+       
+        NOTE:  If the routines included in this patch are not currently in 
+               your mapped routine set, please skip this step.
+   
+   3.   COMPONENTS SENT WITH PATCH 
+        ------------------------
+        The following is a list of the routines included in this patch.  
+        The second line of each of these routines now looks like: 
+   
+       <tab>;;1.0;ENROLLMENT APPLICATION SYSTEM;**[patch list]**;Mar 15, 2001
+  
+                              CHECK^XTSUMBLD results
+      Routine name      Before Patch          After Patch         Patch List
+      ============      ============          ===========         ==========
+      EASAILK1               3093414              3265441          13,29,39
+      EASECCAL               3957427              3948225        5,7,19,34,39
+  
+   
+         Total number of routines - 2 ****
+   
+   4.   START UP KIDS 
+        -------------
+        Start up the Kernel Installation and Distribution System Menu 
+        [XPD MAIN]: 
+    
+             Edits and Distribution ...  
+             Utilities ...  
+             Installation ...  
+    
+   Select Kernel Installation & Distribution System Option: INStallation 
+                                                            ---
+             Load a Distribution 
+             Print Transport Global 
+             Compare Transport Global to Current System 
+             Verify Checksums in Transport Global 
+             Install Package(s) 
+             Restart Install of Package(s) 
+             Unload a Distribution 
+             Backup a Transport Global 
+    
+   Select Installation Option: 
+    
+   5.   Select Installation Option: 
+        --------------------------
+        NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+               NAME, enter EAS*1.0*39):
+       
+        a.  Backup a Transport Global - This option will create a backup
+            message of any routines exported with this patch. It will not
+            backup any other changes such as DD's or templates.
+        b.  Compare Transport Global to Current System - This option will
+            allow you to view all changes that will be made when this patch
+            is installed.  It compares all components of this patch
+            (routines, DD's, templates, etc.).
+        c.  Verify Checksums in Transport Global - This option will allow
+            you to ensure the integrity of the routines that are in the
+            transport global.
+      
+   6.   Select Installation Option: Install Package(s) 
+                                    ----------------
+        **This is the step to start the installation of this KIDS patch: 
+    
+      a.  Choose the Install Package(s) option to start the patch install.
+      b  When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+         YES//' answer NO
+      c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+          Options, and Protocols? YES//' answer YES 
+      d.  When prompted 'Enter options you wish to mark as 'Out Of
+          Order':'  Enter the following options:
+   
+             View Patient Address [EAS VIEW PATIENT ADDRESS]
+             Potential Cost Recovery Report [FB PCR]
+  
+      e.  When prompted 'Enter protocols you wish to mark as 'Out Of 
+          Order':' press <return>.
+  
+   7.    REBUILD MAPPED ROUTINE(S)  (DSM for Open VMS sites only)
+        -------------------------
+        Optional - Include the routines distributed with this patch
+        in the mapped routine set.
+      
+        NOTE: This step is only necessary if you performed step 2 or 
+              if you wish to include the routines in your mapped set.
+
+Routine Information:
+====================
+
+Routine Name:
+  - EASAILK1
+
+ Before
+ ======
+  
+  2        ;;1.0;ENROLLMENT APPLICATION SYSTEM;**13,29**;Mar 15, 2001
+  3        ;
+  4 PATADDR ;view patient address
+  5        ;
+  6        N OK,PATNAM,POP,FLD,IENS,ARY,PATADDR,ERR,ARRAY
+  7        N DTOUT,DUOUT,DIRUT,DIROUT,%ZIS,DIC,DA,DIQ,DLAYGO,Y,X
+  8        ;
+  9        ; prompt user for patient name and device
+ 10        S DIC="^DPT(",DIC(0)="AEMQ" D ^DIC
+ 11        Q:($D(DTOUT)!$D(DUOUT)!$D(DIRUT)!$D(DIROUT)!(Y=-1))
+ 12        S %ZIS="Q" D ^%ZIS Q:POP
+ 13        S IENS=+Y_",",PATNAM=$P(Y,"^",2)
+ 14        D GETS^DIQ(2,IENS,".111:.121","E","PATADDR","ERR")
+ 15        U IO
+ 16        W !?11,"Patient Name: ",?26,PATNAM
+  
+  
+ After
+ =====
+  2        ;;1.0;ENROLLMENT APPLICATION SYSTEM;**13,29,39**;Mar 15, 2001
+  3        ;
+  4 PATADDR ;view patient address
+  5        ;
+  6        N PATNAM,IENS,ZTSAVE
+  7        N DTOUT,DUOUT,DIRUT,DIROUT,%ZIS,DIC,DA,DIQ,DLAYGO,Y,X
+  8        ;
+  9        ; prompt user for patient name and device
+ 10        S DIC="^DPT(",DIC(0)="AEMQ" D ^DIC
+ 11        Q:($D(DTOUT)!$D(DUOUT)!$D(DIRUT)!$D(DIROUT)!(Y=-1))
+ 12        S %ZIS="Q"
+ 13        S IENS=+Y_",",PATNAM=$P(Y,"^",2)
+ 14        S ZTSAVE("IENS")="",ZTSAVE("PATNAM")=""
+ 15        D EN^XUTMDEVQ("QUE^EASAILK1","PATIENT ADDRESS INQUIRY",.ZTSAVE,.%ZIS)
+ 16        Q
+ 17 QUE    ;
+ 18        N OK,FLD,ARY,PATADDR,ERR,ARRAY
+ 19        ;
+ 20        D GETS^DIQ(2,IENS,".111:.121","E","PATADDR","ERR")
+ 21        W !?11,"Patient Name: ",?26,PATNAM
+
+Routine Checksum:
+
+Routine Name:
+  - EASECCAL
+
+ Before:
+ =======
+  
+ 1 EASECCAL ;ALB/LBD - Calculate LTC copayment ;27 AUG 2001
+ 2        ;;1.0;ENROLLMENT APPLICATION SYSTEM;**5,7,19,34**;Mar 15, 2001
+ 3        ;
+  
+ 78 CALC   ; Calculate copayments
+ 79        ; Calculation for IP services up to 180 days and OP services:
+ 80        ;   Income-Allowance-Expenses
+ 81        S CCPY=INC-ALLOW-EXP
+  
+ 104        K CCPY,INC,ALLOW,EXP,AST,OPCPY,IPCPY1,IPCPY2,DGSP,M,SD,SRIC,SLIV,TEXP,TEXALL
+  
+ After:
+ ======
+  
+ 1 EASECCAL ;ALB/LBD - Calculate LTC copayment ;27 AUG 2001
+ 2        ;;1.0;ENROLLMENT APPLICATION SYSTEM;**5,7,19,34,39**;Mar 15, 2001
+ 3        ;
+  
+ 78 CALC   ; Calculate copayments
+ 79        ; Calculation for IP services up to 180 days and OP services:
+ 80        ;   Income-Allowance-Expenses
+ 81        N M
+ 82        ;
+ 83        S CCPY=INC-ALLOW-EXP
+  
+ 106        K CCPY,INC,ALLOW,EXP,AST,OPCPY,IPCPY1,IPCPY2,DGSP,SD,SRIC,SLIV,TEXP,TEXALL
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : KOPECKY,STEPHEN C.            Date Entered  : JUL 22, 2003
+Completed By: LANDRY,DANNA                  Date Completed: SEP 30, 2003
+Released By : WILLIAMS,ELIZABETH ANNE       Date Released : OCT 02, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

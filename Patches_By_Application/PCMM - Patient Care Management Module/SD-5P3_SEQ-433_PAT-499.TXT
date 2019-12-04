@@ -1,0 +1,666 @@
+$TXT Created by WOLF,ED at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 03/26/08 at 22:31
+=============================================================================
+Run Date: MAY 20, 2008                     Designation: SD*5.3*499
+Package : SD - SCHEDULING                     Priority: Mandatory
+Version : 5.3       SEQ #433                    Status: Released
+                  Compliance Date: JUN 20, 2008
+=============================================================================
+
+Associated patches: (v)SD*5.3*297  <<= must be installed BEFORE `SD*5.3*499'
+                    (v)SD*5.3*527  <<= must be installed BEFORE `SD*5.3*499'
+
+Subject: PCMM INACTIVATION MODIFICATIONS AND FIXES
+
+Category: 
+  - Enhancement (Mandatory)
+  - Routine
+
+Description:
+============
+
+ This patch addresses the following PCMM modifications to the patient
+ inactivation functionality:
+  
+  The original request for automatic unassignments (inactivation logic) used
+  the time frame described in VHA Directive 2003-063. New patients had to
+  be automatically unassigned if there was no encounter activity with
+  assigned PCP within 12 months of assignment; established patients had to
+  be un-assigned after 24 months of inactivity w/PCP.
+  
+   -  The inactivation logic put into effect by this patch now includes 11 
+      months for flagging new patients (23 months for established patients)
+      + 7 days, and respectively 12 months for inactivation for new patients
+      (24 months for established patients) +7 days. 
+      
+      Note: The current schedule for automatic inactivation processing on
+            the 15th and last day of each month will remain the same.
+            The inactivation date, calculated based on the flagging date
+            can therefore be either the 15th or the last day of the month but
+            the difference between the flagging date and the inactivation date
+            cannot be less than 30 days. 
+  
+   -  Existing inactivation code that included checking for the patch
+      SD*5.3*297 installation date will be removed.
+  
+   -  Currently patients are flagged only on the last day of a month if
+      the SCMC PCMM NIGHTLY TASK is running.
+  
+      After installing this patch, the flagging process will be executed each
+      time this process is running. If SCMC PCMM NIGHTLY TASK is scheduled
+      daily as required, the flagging for inactivation will be done daily.
+      The "Patient Scheduled for Inactivation from Primary Care Panel"
+      message will be sent to the PCMM PATIENT/PROVIDER INACTIVE Mail Group
+      each time if at least one patient is flagged on that run date.
+      
+   -  Currently the flagged patients are not un-flagged before the calculated
+      inactivation date if a valid encounter has been kept since the
+      flagging date.
+      
+      After installing this patch, flagged patients will be verified for
+      un-flagging and un-flagged with each run, if applicable, and not only
+      on the day when the inactivation process takes place.
+  
+   -  Currently patients assigned to a position with more than one
+      PCP assigned to it in the past are excluded from verification
+      for inactivation.
+  
+      After installing this patch, patient encounters will be verified
+      against all providers assigned to a position, if any, within the
+      identified range of dates the provider was assigned to the position.
+  
+   -  Determination if messages for the 15th and the last day of a month 
+      have to be sent, will be done on the day the SCMC PCMM NIGHTLY TASK
+      started and not on the current computer date which can go past
+      midnight to the next date. Option SCMC PCMM NIGHTLY TASK was modified
+      to include both ENTRY and EXIT actions to keep a temporary record of
+      starting and ending this process.
+   
+   -  Verification of previously flagged providers will be implemented by
+      replacing code references to a non existing "AFLG" cross-reference in
+      the Position Assignment History file (# 404.52) with references to
+      the correct "AFLAG" cross-reference.
+      Time-sensitive verification of the POSSIBLE PRIMARY PRACTITIONER? 
+      (#.04) field in file 404.57 will be included in the logic for
+      possible un-flagging of previously flagged providers for
+      inactivation.
+   
+   -  Inactivation routines will be modified to eliminate an error when
+      executing option SCMC INACTIVATED 30.
+  
+  
+ ASSOCIATED REMEDY TICKETS:
+ =========================
+  
+             1)  HD0000000188405 PRIMARY CARE STAFF SCHEDULED FOR
+                                 INACTIVATION Problem
+             2)  HD0000000189293 Not receiving all messages 
+             3)  HD0000000216693 Multiple providers on a PCMM position not
+                                 evaluated as expected.
+                 HD0000000218396 (d)  Auto Discharge not working correctly
+             4)  HD0000000216683 Patients with appointments are not un-flagged
+                                 from inactivation before the inactivation date.
+             5)  HD0000000174422 Error when running the SCMC INACTIVATED 30
+                                 option.
+             6)  HD0000000222257 Scheduled for inactivation report is a two
+                                 reams of paper.
+                 HD0000000222178 (d) Active patients appearing in VISTA
+                                 automated report for Patients Scheduled for
+                                 Inactivation.
+                 HD0000000222488 (d) PCMM report error.
+                 HD0000000222589 (d) PROBLEM WITH INACTIVATION REPORT
+                 HD0000000222647 (d) Pts incorrectly scheduled for
+                                 inactivation. Dup of 213040     
+             7)  HD0000000225100 Task inactivating patients that should be
+                                 active.
+                 HD0000000225942 (d) Experiencing inappropriate patients
+                                 showing up on the VistA e-mail:
+                                 "Patients with Extended PCMM Inactivation
+                                 Dates".
+ ASSOCIATED NSR's:
+ ================
+ N/A
+  
+ PARTICIAPATING TEST SITES:
+ ==========================
+ ASHEVILLE, NC
+ CENTRAL PLAINS HCS
+ GRAND JUNCTION, CO
+ PORTLAND, OR
+ SAN DIEGO, CA
+ SAN FRANCISCO, CA
+  
+  
+ REMEDY OVERVIEW:
+ ================
+  
+    1)  HD0000000188405 PRIMARY CARE STAFF SCHEDULED FOR INACTIVATION Problem
+  
+    Problem:
+    ========
+    After installation of patch SD*5.3*297 the SCMC PCMM NIGHTLY TASK started
+    flagging providers for inactivation if they did not match defined criteria.
+    After correction, the flagged providers were still listed as flagged for
+    inactivation. The problem was caused by coding in routine SCMCTSK3 where
+    flagged providers were identified for possible un-flagging by scanning
+    cross-reference "AFLG" of the POSITION ASSIGNMENT HISTORY FILE (# 404.52)
+    while that cross-reference should have been "AFLAG" instead.
+    Cross-reference "AFLG" does not exist in file 404.52. Additionally that
+    verification code does not check for the current status of the POSSIBLE
+    PRIMARY PRACTITIONER? field (# .04) of the TEAM POSITION file (# 404.57)
+    to determine if it might have changed since the provider was flagged.
+    
+    Solution:
+    =========
+  
+    Routine SCMCTSK3 was modified by:
+    - implementing correct "AFLAG" cross-reference
+    - including code for time sensitive verification of the POSSIBLE PRIMARY
+      PRACTITIONER? field
+    The indicated changes allow for correct un-flagging of already flagged
+    providers for inactivation, if any. 
+                              
+    2)  HD0000000189293 Not receiving all messages
+  
+    Problem:
+    ========
+  
+    Many sites reported that they were not receiving inactivation messages
+    generated by the SCMC PCMM NIGHTLY TASK as expected, e.g. on the 15th and
+    the last day of each month. Those messages were occasionally missing,
+    mostly on the last day of a month. This was caused by determining whether
+    to send messages based on current computer date rather than the start
+    date of the task. If the task was scheduled late in the night, and
+    continued past midnight, the current system date at the time the decision
+    was made did not match criteria for sending messages, and the users
+    did not receive them.
+  
+    Solution:
+    =========
+  
+    Routines SCMCTSK1 and SCMCTSK2 were modified to execute activities
+    to be performed on the 15th and on the last day of a month based on the
+    the date when the task started running, and not on current computer date.
+    Therefore, after this patch is installed, even if this job runs through
+    midnight to the following day, the task start day will determine what
+    action has to be taken.
+    Option SCMC PCMM NIGHTLY TASK was modified to include both an ENTRY
+    and EXIT Action to keep a temporary record of starting and ending this
+    process. The result of those actions can be seen in the example below:
+  
+    ^XTMP global has the standard structure with the third piece of the top
+    level ^XTMP("SCMCTSK2-3080212",0) representing the job number ($J)
+    of the last run of the SCMC PCMM NIGHTLY TASK that started on
+    Feb. 12th 2008 (3080212).
+  
+    Both "START" and "STOP" nodes apply to the same $J showing respectively
+    date and time of starting and ending the process. The last process
+    ($J=541175997) was scheduled before midnight, and finished on the next day.
+  
+ ^XTMP("SCMCTSK2-3080212",0)=3080219^3080212^541175997
+  
+ ^XTMP("SCMCTSK2-3080212",541161730,"START")=Feb 12, 2008@14:15:14
+                                     "STOP")=Feb 12, 2008@14:21:37
+ ^XTMP("SCMCTSK2-3080212",541162563,"START")=Feb 12, 2008@12:40:03
+                                     "STOP")=Feb 12, 2008@12:47:17
+  
+ ^XTMP("SCMCTSK2-3080212",541175997,"START")=Feb 12, 2008@23:58:02
+                                     "STOP")=Feb 13, 2008@00:05:02  
+  
+    3)  HD0000000216693 Multiple providers on a PCMM position not
+                        evaluated as expected.
+    Problem:
+    ========
+    The existing logic to identify all providers assigned to the Primary
+    Care Position for evaluation of encounters within a given period of time
+    does not work correctly, and only the latest provider is evaluated.
+    Only providers who were on a team for entire date range are evaluated.
+  
+    Solution:
+    =========
+    Subroutine SEEN^SCMCTSK1 was modified to properly identify all
+    providers assigned to a particular position. In this way any encounter
+    kept for any of those providers, within their activity on the position,
+    would count.
+    The following rules apply:
+    - The same provider can be assigned, unassigned, assigned again etc. and
+    several segments of a local array are created for the same provider,
+    if assigned more than once.
+    - If a patient is assigned to PC position, and a provider assigned to
+    that position has a preceptor then all encounters for that patient
+    have to be matched with both the provider (preceptee) from the PC
+    position the patient is assigned to, and with the preceptor provider as
+    well. The range of days to be evaluated for the preceptor, if any, will
+    be the same as identified for the PC provider.
+   - If a patient is assigned to the PC preceptor position then only the
+   provider(s) assigned to that position is(are) evaluated. The preceptor
+   can have multiple preceptees assigned to the related positions but it is
+   not realistic to evaluate all of them, and there has never been
+   intention to do so.
+  
+    4)  HD0000000216683 Patients with appointments are not un-flagged
+                        from inactivation before the inactivation date.
+     Problem:
+    =========
+     Patients flagged for inactivation have 30 days to be inactivated and if 
+     messages are generated on the 15th or on the last day of a month they
+     include all flagged patients even if the flagged patient had an
+     encounter since the flagging date.  
+  
+    Solution:
+   ==========
+    The existing condition not to look for encounters in flagged patients 
+    until the inactivation date occurs was modified to eliminate those
+    patients from being included into messages, and those entries will be 
+    immediately un-flagged.
+  
+    5)  HD0000000174422 Error when running the SCMC INACTIVATED 30 option
+  
+    Problem:
+   =========
+    Getting the error <UNDEFINED>IN30+5^SCMCTSK2 when running the SCMC 
+    INACTIVATED 30 option. This error is caused by "Newing" or resetting
+    the DIPA variable making it undefined when it's time to be used.
+  
+    Select OPTION NAME:  SCMC INACTIVATED 30  Patients Inactivated from
+    PCP Panels in past month
+    Start with Institution: FIRST// 
+    
+    S FLDS="[SCMC INACTIVATED]",FR="T-31,,"_$TR(DIPA("SI"),",","
+    "),TO="T,,"_$TR(DI^PA("EI")_"z",","," ")
+    <UNDEFINED>IN30+5^SCMCTSK2
+   
+    Solution:
+   ==========
+    Two routines SCMCTSK1 and SCMCTSK2 were modified to call the required
+    parameters for integrity of data. Subroutine IN30^SCMCTSK2 was modified
+    to call SORT^SCMCTSK1(.DIPA,.SDD).
+     
+    6)  HD0000000222257 Scheduled for inactivation report is a two
+                                 reams of paper.
+    Problem:
+   =========
+    On the last day of a month the inactivation software calculates the
+    number of days since installation of patch SD*5.3*297. If that number
+    is greater than 330 then a patient's encounters are checked only for
+    the last 11 months. Nov 30 2007 was the first time that number was
+    greater than 330. Based on this condition entries in the Patient Team
+    Position Assignment file (# 404.43) were flagged if there was no
+    encounter for the last 11 months. At the same time a temporary global
+    was created for the flagged entry. This process continues by scanning
+    all flagged entries, including those that have just been flagged.
+    This time a different condition determines if the flagged patient was
+    seen or not, and incorrectly flagged patients are un-flagged but
+    without removing the accompanying temporary global created before.
+    At the end of this process messages are generated from the indicated
+    temporary Globals, listing some patients that have already been
+    un-flagged, and creating 'False' and longer reports.
+  
+    Solution:
+   ==========
+    The flagging for inactivation logic is corrected as follows:
+  
+    Step 1: Determine if the patient is new or established based on the
+    length of time the patient has been assigned to the PCP position. If
+    assigned to the position 12 months or less then NEW. If assigned to the
+    position more than 12 months then ESTABLISHED.
+  
+    Step 2: If patient is NEW and it is the 11th month since being assigned
+    to the position check to see if the patient has any prior encounters
+    with the PCP/APs in the preceding 11 months + 7 days and if no
+    encounters then flag for inactivation. Note that the look back should
+    be for an encounter with any person that occupied the PCP/AP positions
+    in the past 11 months + 7 days.
+    On month 12, if still no encounters with PCP/AP in the preceding
+    12 months + 7  days then inactivate. The 7 days time period will take
+    into account that many times the provider sees the patient and then a
+    day or two later assigns them to their panel.
+  
+    Step 3: If patient is ESTABLISHED then check to see if the patient has
+    had any prior encounters with the PCP/AP in the preceding 23 months +  
+    7 days and if no encounters flag for inactivation.  On month 24, if
+    still no encounters with PCP/AP in the preceding 24 months + 7 days
+    then inactivate. Again, check for encounters with any persons that
+    occupied the PCP/AP positions in the last 24 months + 7 days.
+  
+ Note: Inactivation will take place either on the 15th or last day of the month
+       immediately after the calculated inactivation.
+      
+      Flagging and un-flagging patients for inactivation will take place each 
+      time SCMC PCMM NIGHTLY TASK is running, and if any patients are
+      flagged then in addition to the current email messaging
+      functionality, a message with the Subject line "Patient Scheduled for
+      Inactivation from Primary Care Panel" will be sent to the PCMM
+      PATIENT/PROVIDER INACTIVE Mail Group.
+  
+    7)  HD0000000225100 Task inactivating patients that should be
+                                 active.
+  
+   Problem:
+   ========
+   Portland reported that many patients were inactivated incorrectly on their
+   last PCMM NIGHTLY job of Dec 15th 2007. It has been determined that the
+   SCMC PCMM NIGHTLY TASK not only flags incorrectly but also does not
+   remove entries from being incorrectly flagged. That situation did not
+   happen before because only recently the un-flag evaluation logic took
+   into consideration the date of installation of patch SD*5.3*297. If
+   that date is older than 365 days since the run date of the task, the
+   current logic forces all flagged entries, including established
+   patients, to be checked for encounters in the last 12 months.
+  
+   In the following code in routine SCMCTSK2:
+  
+          ..S SC297=$$PDAT^SCMCGU("SD*5.3*297")
+          ..N NEW S NEW=$S($P(ZERO,U,3)<SC297:0,1:1)   ;D D^%DTC S NEW=$S(X>330:0
+             ,1:1)
+          ..S X1=DT,X2=SC297 D D^%DTC S SC297=X
+          ..S X="T-"_$S(SC297>365:"11M",NEW:"11M",1:"23M") D ^%DT S TYDT=+Y D SEE
+             N^SCMCTSK1 I $G(SEEN) D UNFLG Q 
+          ..S X="T-"_$S(SC297>365:"12M",NEW:"12M",1:"24M") D ^%DT S TYDT=+Y D SEE
+             N^SCMCTSK1 I $G(SEEN) D:(DATE>ENDDT) UNFLG Q
+  
+   $S function determines either 11M or 12M to be a valid result if SC297
+   is greater than 365.
+  
+   In Portland patch SD*5.3*297 was installed on 3061006.082157, which
+   explains why Portland experienced this problem before other sites that
+   installed that patch later, usually in January 2007.
+  
+  Solution:
+  =========
+  The inactivation logic will not include evaluation based on patch SD*5.3*297 
+  installation date. It will follow steps listed in problem/solution 6.
+  
+  
+ DOCUMENTATION RETRIEVAL:
+ ======================== 
+ The updated PCMM User Manual will be posted to the VDL immediately after 
+ the release of this patch.
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ Users can be on the system during the installation of this patch but 
+ because some options will be out of order, it is recommended that it be 
+ installed in off-peak hours.   
+  
+ It is required that the installation be monitored for possible actions 
+ to be performed thereafter, (see below). Installation should not be queued
+ and the post-install messages must be reviewed and followed up.
+  
+ Once the patch is installed, the currently flagged patient list will be
+ scrubbed to allow for new logic to be applied.
+   
+ The patch post-install will then flag patients following a new logic and
+ the following message will be sent to the PCMM PATIENT/PROVIDER INACTIVE
+ Mail Group and to the installer:
+  
+ Example:
+  
+ Subj: PATCH SD*5.3*499 POST-INSTALL: Update Entries in File 404.43  [#657924]
+ 02/12/08@18:26  6 lines
+ From: INSTALLER,ED X  In 'IN' basket.   Page 1
+ -------------------------------------------------------------------------------
+  PATIENT TEAM POSITION ASSIGNMENT file has been updated 
+  by un-flagging all entries from inactivation 
+  and then flagging them again following new functionality
+  provided with patch SD*5.3*499.
+  Use option: SCHD   Patients Scheduled for Inactivation from PC Panels
+  to print a current list of patients flagged for inactivation.
+  
+ Installation could take up to an hour due to un-flagging a large number of 
+ incorrectly flagged patients.   
+   
+ 1.  LOAD TRANSPORT GLOBAL
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the
+     INSTALL/CHECK MESSAGE PackMan option.
+  
+ 2.  START UP KIDS
+     [XPD MAIN]
+           Edits and Distribution ...
+           Utilities ...
+           Installation ...
+     Select Kernel Installation & Distribution System Option:  INStallation
+                                                          --- 
+     1     Load a Distribution
+     2     Verify Checksums in Transport Global
+     3     Print Transport Global
+     4     Compare Transport Global to Current System
+     5     Backup a Transport Global
+     6     Install Package(s)
+           Restart Install of Package(s)
+           Unload a Distribution
+  
+ 3.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter SD*5.3*499):
+  
+     a.  Backup a Transport Global - This option creates a MailMan 
+         message that will backup all current routines on your system 
+         that would be replaced by the packages in this Transport Global.
+         Those components that are not routines must be backed up
+         separately if they need to be preserved.
+  
+     b.  Compare Transport Global to Current System - This option lets you 
+         compare the components of a Transports Global, that is currently
+         loaded in the XTMP global, to your current system.
+  
+     c.  Verify Checksums in Transport Global - This option will verify 
+         checksums for the components of a Transport Global and will report
+         any checksums that are incorrect.
+  
+     d.  Print Transport Global - This option lets you print the contents 
+         of a Transport Global that is currently loaded in the ^XTMP
+         global.
+  
+  
+ 4.  Use the Install Package(s) option and select the package SD*5.3*499.
+     
+     a.  When prompted "Want KIDS to Rebuild Menu Trees Upon Completion of
+         Install? NO//" respond NO
+  
+     b.  When prompted "Want KIDS to INHIBIT LOGONS during the
+         install? NO//" respond NO.
+  
+     c.  When prompted "Want to DISABLE Scheduled Options, Menu Options,
+         and Protocols? YES//" respond YES.
+  
+         1) When prompted "Enter options you wish to mark as "Out of
+            Order":" enter the following options:
+  
+            SCMC PCMM NIGHTLY TASK [PCMM NIGHTLY TASK]
+            SC PCMM REPORTS MENU [PCMM Reports]
+                   
+         2) When prompted "Enter protocols you wish to mark as "Out of
+            Order":" press 'Enter' to skip this option.
+  
+ 5. After the installation is complete, run the Patients Scheduled for
+    Inactivation from PC Panels report with patients flagged for
+    inactivation by patch SD*5.3*499 installation.
+  
+ 6. Enable the SCMC PCMM NIGHTLY TASK option in FileMan by removing
+    the OUT OF ORDER MESSAGE text.
+  
+ >D P^DI
+  
+ VA FileMan 22.0
+  
+ Select OPTION: 1  ENTER OR EDIT FILE ENTRIES
+  
+ INPUT TO WHAT FILE: OPTION// 
+ EDIT WHICH FIELD: ALL// OUT OF ORDER MESSAGE  
+ THEN EDIT FIELD:
+  
+ Select OPTION NAME:  SCMC PCMM NIGHTLY TASK     PCMM NIGHTLY TASK
+ OUT OF ORDER MESSAGE: TEMPORARILY OUT OF ORDER  Replace TEMP... With 
+   Replace 
+    
+    SURE YOU WANT TO DELETE? Y  (Yes)
+  
+ 7. Schedule the SCMC PCMM NIGHTLY TASK under SCHEDULE/UNSCHEDULE Options
+    to run daily, as required, by adding the QUEUED TO RUN AT WHAT TIME as
+    needed and RESCHEDULING FREQUENCY as "1D", and SAVE it.
+  
+    Scheduling and/or executing this option directly requires as before the
+    -----------------------------------------------------------------------
+    following key to be assigned to the user: SC PCMM SETUP.
+    --------------------------------------------------------
+  
+   Option Name: SCMC PCMM NIGHTLY TASK        
+     Menu Text: PCMM NIGHTLY TASK                         TASK ID:
+   __________________________________________________________________________
+  
+   QUEUED TO RUN AT WHAT TIME:           <----Populate this field
+  
+ DEVICE FOR QUEUED JOB OUTPUT: NULL DEVICE;P-OTHER;0;65500   
+  
+  QUEUED TO RUN ON VOLUME SET:
+  
+       RESCHEDULING FREQUENCY:           <-----Populate this field
+  
+              TASK PARAMETERS:
+  
+             SPECIAL QUEUEING: Persistent    
+  
+ 8. Routine SD53P499 can be deleted after installation of this patch.
+  
+ Installation example:
+ ====================
+  
+ Select INSTALL NAME: SD*5.3*499    Loaded from Distribution 2/12/08@17:36:
+        => SD*5.3*499 TEST v1
+  
+ This Distribution was loaded on Feb 12, 2008@17:36:13 with header of 
+    SD*5.3*499 TEST v1
+    It consisted of the following Install(s):
+      SD*5.3*499
+ Checking Install for Package SD*5.3*499
+  
+ Install Questions for SD*5.3*499
+  
+ Want KIDS to Rebuild Menu Trees Upon Completion of Install? NO// 
+  
+ Want KIDS to INHIBIT LOGONs during the install? NO// 
+ Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES//
+  
+ Enter options you wish to mark as "Out of Order:"
+  
+            SCMC PCMM NIGHTLY TASK [PCMM NIGHTLY TASK]
+            SC PCMM REPORTS MENU [PCMM Reports]
+  
+                   
+ Enter protocols you wish to mark as "Out of Order":
+  
+ Enter the Device you want to print the Install messages.
+ You can queue the install by enter a 'Q' at the device prompt.
+ Enter a '^' to abort the install.
+  
+ DEVICE: HOME//   TCP
+  
+  Install Started for SD*5.3*499 : 
+                Feb 12, 2008@17:37:29
+  
+ Build Distribution Date: Feb 12, 2008
+  
+  Installing Routines:
+                Feb 12, 2008@17:37:29
+  
+  Installing PACKAGE COMPONENTS: 
+  
+  Installing OPTION
+                Feb 12, 2008@17:37:30
+  
+                                    SD*5.3*499                                   
+  Running Post-Install Routine: POST^SD53P499
+  
+     SD*5.3*499 Post-Install started.....
+  
+  
+  Un-flagging the current entries in the Patient Team Position Assignment
+  file (# 404.43)
+  
+  
+  Patients un-flagging process has been finished.
+  
+  
+  Flagging patients for inactivation following new functionality started.
+  
+  
+  Flagging Patients for Inactivation has been finished. 
+  Use option: SCHD Patients Scheduled for Inactivation from PC Panels
+  to print the current list of patients flagged for inactivation.
+  
+  
+  Updating Routine file...
+  
+  Updating KIDS files...
+  
+  SD*5.3*499 Installed. 
+                Feb 12, 2008@17:45:41
+  
+  Install Message sent #657903
+  
+ Install Completed
+  
+  
+ Additional component:
+ ====================
+  
+ OPTION:
+    SCMC PCMM NIGHTLY TASK                         SEND TO SITE
+  
+  NAME: SCMC PCMM NIGHTLY TASK
+   MENU TEXT: PCMM NIGHTLY TASK          TYPE: run routine
+   CREATOR: RYAN,DOLORES G               E ACTION PRESENT: YES
+   X ACTION PRESENT: YES                 LOCK: SC PCMM SETUP
+  
+  DESCRIPTION:   This option should be scheduled once a day. It reviews Patient
+  team assignments and flags them for inactivation if their assignment is NEW
+  and they have not been seen in the last year. It also flags ESTABLISHED
+  patients if they have not been seen more than two years. If there are not 
+  appointments within 30 days since flagging the related patients are 
+  inactivated on the closest 15th or the end of month process. Messages are 
+  generated both on the 15th and on the last day of a month.
+   
+   EXIT ACTION: N DTT S DTT=+$D(^XTMP("SCMCTSK2-"_$$HTFM^XLFDT($H,1),$J,"START"))
+  N DT1 S DT1=$S(DTT>0:$$HTFM^XLFDT($H,1),1:$$HTFM^XLFDT($H-1,1)) S ^XTMP("SCMCTS
+  K2-"_DT1,$J,"STOP")=$$HTE^XLFDT($H)
+  
+   ENTRY ACTION: S ^XTMP("SCMCTSK2-"_$$HTFM^XLFDT($H,1),0)=$$HTFM^XLFDT($H+7,1)_U
+  _$$HTFM^XLFDT($H,1)_U_$J,^XTMP("SCMCTSK2-"_$$HTFM^XLFDT($H,1),$J,"START")
+  =$$HTE^ XLFDT($H)
+         
+   ROUTINE: NIGHT^SCMCTSK2
+  
+   UPPERCASE MENU TEXT: PCMM NIGHTLY TASK
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.3;Scheduling;**[Patch List]**;AUG 13, 1993;Build 21
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: SCMCTSK1
+    Before: B77403484   After: B79722253  **297,498,527,499**
+Routine Name: SCMCTSK2
+    Before: B89984359   After: B91467456  **297,498,527,499**
+Routine Name: SCMCTSK3
+    Before: B78524925   After: B82723614  **297,499**
+Routine Name: SD53P499
+    Before:       n/a   After:  B8539155  **499**
+ 
+Routine list of preceding patches: 527
+
+=============================================================================
+User Information:
+Entered By  : WOLF,ED                       Date Entered  : NOV 09, 2006
+Completed By: SESSLER,APRIL                 Date Completed: MAY 20, 2008
+Released By : SCHMITT,MARSHA                Date Released : MAY 20, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

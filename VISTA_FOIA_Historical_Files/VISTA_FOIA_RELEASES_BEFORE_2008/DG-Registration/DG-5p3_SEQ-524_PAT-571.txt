@@ -1,0 +1,647 @@
+
+=============================================================================
+Run Date: AUG 10, 2004                     Designation: DG*5.3*571
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #524                    Status: Released
+                  Compliance Date: SEP 10, 2004
+=============================================================================
+
+Associated patches: (v)XU*8*205    <<= must be installed BEFORE `DG*5.3*571'
+                    (v)OR*3*187    <<= must be installed BEFORE `DG*5.3*571'
+
+Subject: VETERAN ID CARD (VIC) REPLACEMENT
+
+Category: 
+  - Data Dictionary
+  - Routine
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ I. OVERVIEW
+  
+ This patch introduces changes and enhancements to the Registration V. 5.3 
+ package in support of the Veteran Identification Card (VIC) Replacement
+ project.
+  
+ The VIC Replacement project changes VIC production from a local activity 
+ to a centralized activity.  Local sites will use a Windows workstation with
+ installed Picture Image Capture Software (PICS) to identify and retrieve a
+ veteran's demographic information from the VistA Registration database.
+ In addition to providing the veteran demographic data, the VIC software on
+ VistA will determine the veteran's eligibility for a VIC and include that
+ information with the demographics. The PICS workstation will be used to
+ capture a color photograph of the veteran.  The PICS workstation will
+ forward the veteran's demographics and photograph to the National Card
+ Management Directory (NCMD).  If the veteran is eligible for a VIC,
+ the NCMD will forward the photo and demographics to a central production
+ facility that will create the VIC and mail it to the veteran.
+  
+  
+  
+ II. FUNCTIONAL OVERVIEW
+  
+ The functionality delivered in this patch can be divided into four main 
+ areas.
+  
+ 1. VISTA TO PICS INTERFACE
+  
+  a. Veteran Demographic Data Retrieval
+     The PICS workstation requires patient demographic data from the VistA
+     Registration database in order to process a VIC request.  While
+     retrieving and validating the demographic data, VIC server software
+     determines the veteran's eligibility for a VIC and returns an indicator,
+     called the Card Print Release Status, with the demographics to the PICS
+     workstation.  The Card Print Release Status can have a value of "P"rint,
+     "C"ancel, "I"neligible or "H"old.  The values have the following
+     interpretations:
+          
+      "P"rint      - all demographic data is present and the veteran is eligible
+                     for a VIC.
+  
+      "C"ancel     - either an invalid demographic data element exists or a 
+                     required data element is missing.
+  
+      "I"neligible - the veteran is not eligible for a VIC.
+  
+      "H"old       - either the veteran does not have a nationally assigned 
+                     Integration Control Number or information needed to
+                     determine the veteran's VIC eligibility is pending.
+  
+  b. PICS Callback
+     PICS notifies the VIC server software that a VIC request has been 
+     successfully submitted to the NCMD.  At this time the VIC server
+     software only acts on the callback when the Card Print Release Status
+     is "H"old, creating an entry in the VistA Registration database.
+  
+  
+ 2. MONITORING "H"OLD CARD PRINT RELEASE STATUS VIC REQUESTS
+  
+    There is a new VIC Background Processing [DGQE BACKGROUND PROCESSING] 
+    option that re-evaluates VIC requests that have a "H"old Card Print
+    Release Status to determine if the Card Print Release Status can be
+    changed to "P"rint, "I"neligible, or "C"ancel.  VIC requests that have
+    a "H"old Card Print Release Status for 90 days will automatically
+    have their status switched to "C"ancel.
+  
+  
+ 3. VISTA TO NCMD HL7 INTERFACE
+  
+    When a VIC request with a "H"old Card Print Release Status is changed to 
+    either "P"rint, "I"neligible, or "C"ancel, the updated Card Print Release
+    Status and nationally-assigned ICN will be communicated to the NCMD using
+    VistA HL7 messaging.  The NCMD will reply with an acknowledgment message
+    for each received message.  VIC request data in the VistA Registration
+    database will be purged within 7 days of the receipt of a message
+    acknowledgment from the NCMD.
+  
+  
+ 4. PATIENT LABEL PRINTING
+  
+    There is a new Print Patient Label [DG PRINT PATIENT LABEL] option.  This 
+    option produces a plain text demographics label that contains the 
+    patient's name, social security number, and date of birth.  An optional 
+    fourth line contains the patient's inpatient location (Ward Room#).
+  
+  
+  
+ III. TECHNICAL COMPONENTS
+  
+ The following section describes the technical components of this patch.
+  
+ 1. The following new OPTION(s) will be added.
+   a.        NAME: DGQE BACKGROUND PROCESSING
+        MENU TEXT: VIC Background Processing
+      DESCRIPTION: This option calls the background processing driver for the 
+                   VIC Redesign project.  The option should be scheduled to
+                   run daily using TaskMan.
+  
+   b.        NAME: DGQE VIC RPCS
+        MENU TEXT: VIC RPC Menu
+      DESCRIPTION: This option contains all of the RPC broker calls utilized
+                   by the PICS workstation to retrieve data from VistA to
+                   create a VIC card.
+  
+   c.        NAME: DG PRINT PATIENT LABEL
+        MENU TEXT: Print Patient Label
+      DESCRIPTION: This option prints patient labels that contain the Patient
+                   Name, Social Security Number, and Date of Birth.  An
+                   optional fourth line contains the Inpatient Location of
+                   the patient.
+  
+ 2. The following OPTION(s) will be modified.
+   a.        NAME: DG OUTPUTS MENU
+        MENU TEXT: ADT Outputs Menu
+      DESCRIPTION: The new Print Patient Label [DG PRINT PATIENT LABEL] 
+                   option will be added to this menu.
+  
+ 3. The following new PROTOCOL(s) will be added.
+   a.        NAME: DGQE VIC ORM/O01 EVENT
+             TYPE: event driver
+      DESCRIPTION: This protocol is the event driver protocol for the VistA
+                   to NCMD HL7 General Orders (ORM~O01) interface.
+  
+   b.        NAME: DGQE VIC ORR/O02 SUBSC
+             TYPE: subscriber
+      DESCRIPTION: This protocol is the subscriber protocol for the VistA to
+                   NCMD HL7 General Orders interface.
+  
+ 4. The following new MAIL GROUP(s) will be added.
+   a.        NAME: DGQE HL7 TRANSMISSION ERRORS
+             TYPE: public  ALLOW SELF ENROLLMENT?: NO
+      DESCRIPTION: This mailgroup receives a bulletin when a General Orders 
+                   (ORM~O01) message is rejected by the NCMD.
+  
+ 5. The following new BULLETIN(s) will be added.
+   a.        NAME: DGQE HL7ERR
+       MAIL GROUP: DGQE HL7 TRANSMISSION ERRORS
+      DESCRIPTION: This bulletin is used to notify staff that a VIC General 
+                   Order (ORM~O01) HL7 message has been rejected by the NCMD.
+          MESSAGE:
+   
+     * * * *  V I C  H L 7  E R R O R  E N C O U N T E R E D  * * * * 
+   
+     A VIC General Order (ORM~O01) HL7 message has been rejected by the 
+     National Card Management Directory (NCMD) on |1|.  
+   
+                         Patient Name:  |2| 
+                         NCMD Card ID:  |3| 
+   
+                  Action sent to NCMD:  |4| 
+   
+                       HL7 Message ID:  |5| 
+       Initial transmission date/time:  |6|
+  
+ 6. The following new HL7 APPLICATION PARAMETER(s) will be added.
+   a.        NAME: VIC NCMD SEND
+  
+   b.        NAME: VIC NCMD RECV
+  
+ 7. The following new HL7 LOGICAL LINK(s) will be added.
+   a.                NODE: VIC NCMD
+                 LLP TYPE: TCP
+      TCP/IP SERVICE TYPE: CLIENT (SENDER)
+           TCP/IP ADDRESS: 10.2.48.48
+              TCP/IP PORT: 5000
+  
+ 8. The following new REMOTE PROCEDURE(s) will be added.
+   a.        NAME: DGQE GET PATIENT DEMO
+              TAG: GETDEMO
+          ROUTINE: DGQERPC
+      DESCRIPTION: This remote procedure retrieves demographic data for a
+                   given patient needed to create a Veteran ID Card.  As
+                   part of the demographic retrieval process, the veteran's
+                   VIC mailing address is algorithmically selected from the
+                   following addresses in priority order:
+   
+                            1. HIPAA Confidential address
+                            2. Temporary address
+                            3. Permanent address
+                            4. Facility address
+   
+                         A status value, called the Card Print Release Status,
+                         and a single remarks text line is returned with the
+                         veteran's demographics.  The Card Print Release Status
+                         can have a value of "P", "H", "I", or "C" for Print, 
+                         Hold, Ineligible, or Cancel.
+  
+   b.        NAME: DGQE SET CARD ID
+              TAG: SETID
+          ROUTINE: DGQERPC
+      DESCRIPTION: This RPC acts as a callback from the VIC PICS workstation.
+                   The callback occurs when the workstation has successfully
+                   submitted the veteran's photograph and demographic data to
+                   the National Card Management Directory (NCMD). The callback
+                   provides the CARD_CardID value from the PICS workstation,
+                   which is needed for the VistA to NCMD interface.
+  
+ 9. The following new FILES/FIELDS will be added.
+   a. VIC REQUEST (#39.6) file
+  
+      This is a new file.  The data for this file is stored in a
+      new global, ^DGQE(.
+  
+      Description: This file contains records of Veteran ID Card requests 
+                   that have a Card Print Release Status of "H"old due to
+                   a missing national ICN or pending Enrollment Status.
+  
+      Field #  Field Name
+      -------  ----------
+      .01      NCMD CARD ID
+      .02      PATIENT
+      .03      CARD PRINT RELEASE STATUS
+      .04      REQUEST DATE/TIME
+      .05      TRANSMISSION REQUIRED?
+  
+   b. VIC HL7 TRANSMISSION LOG (#39.7) file
+  
+      This is a new file.  The data for this file is stored in a
+      new global, ^DGQE(.
+  
+      Description: This file contains a list of General Order (ORM~O01) 
+                   HL7 transmissions that have been sent to the National
+                   Card Management Directory (NCMD) by the Veteran ID Card
+                   software module.  Entries in this file are created/edited
+                   automatically by the VistA to NCMD HL7 interface.
+  
+      Field #  Field Name
+      -------  ----------
+      .01      MESSAGE CONTROL ID
+      .02      VIC REQUEST
+      .03      TRANSMITTED DATE/TIME
+      .04      STATUS
+      .05      ACK RECEIVED DATE/TIME
+  
+ 10. The following PARAMETER DEFINITION(s) will be added
+    a.        NAME: DGQE VIC REQUEST EXPIRATION
+       DESCRIPTION: This parameter defines the number of days that a VIC 
+                    Request with a Card Print Release Status of "H"old is
+                    allowed to remain pending before being cancelled.
+        PRECEDENCE: 1        ENTITY FILE: PACKAGE
+  
+    b.        NAME: DGQE VIC REQUEST PURGE
+       DESCRIPTION: This value is used by the VIC Background Processing 
+                    [DGQE BACKGROUND PROCESSING] option to determine how
+                    many days to retain completed VIC request transactions
+                    in the VIC REQUEST (#39.6) and VIC HL7 TRANSMISSION
+                    LOG (#39.7) files.
+        PRECEDENCE: 1        ENTITY FILE: PACKAGE
+  
+ 11. The following DATABASE INTEGRATION AGREEMENT(s) (DBIA) have been modified.
+    a.      NUMBER: 3435
+              NAME: CONTROL CODES SUBFILE
+       DESCRIPTION: The REGISTRATION package has been added to this existing
+                    DBIA to allow access to the CONTROL CODES subfile (#3.2055)
+                    for use by the new Print Patient Label [DG PRINT PATIENT
+                    LABEL] option.
+  
+    b.      NUMBER: 1791
+              NAME: ORWU USERINFO
+       DESCRIPTION: The REGISTRATION package has been added to this existing
+                    DBIA to allow the VistA to PICS interface to use the
+                    ORWU USERINFO RPC.
+  
+ 12. The following ROUTINE(s) will be added/modified.
+  
+  ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+           
+         <tab>;;5.3;Registration;**[patch list]**;Aug 13, 1993
+           
+                           CHECK^XTSUMBLD results
+      Routine name   Before Patch       After Patch         Patch List
+      ============   ============       ===========         ==========
+      DG53P571                N/A           1082481             571
+      DGPLBL                  N/A           6884058             571
+      DGPLBL1                 N/A           1754914             571
+      DGQEBGR                 N/A           3681915             571
+      DGQEDD                  N/A            159905             571
+      DGQEDEMO                N/A           3717891             571
+      DGQEHLL                 N/A           1722376             571
+      DGQEHLOR                N/A           1764182             571
+      DGQEHLR                 N/A           3915594             571
+      DGQEHLRQ                N/A           1272232             571
+      DGQEHLS                 N/A           2982383             571
+      DGQEHLUT                N/A           2475341             571
+      DGQEREQ                 N/A           2257688             571
+      DGQERPC                 N/A           1678543             571
+      DGQEUT1                 N/A           2160115             571
+      DGQEUT2                 N/A           8782845             571
+      DGQEUT3                 N/A           2313037             571
+           
+      Number of Routines = 17
+  
+  
+  
+ IV. SOFTWARE AND DOCUMENTATION RETRIEVAL
+  
+ The software for this patch is not being distributed through the National 
+ Patch Module.  This patch is being distributed as a host file.  The host 
+ file will contain a single KIDS build.
+  
+    Host file name: DG_53_P571.KID
+             Build: DG*5.3*571
+  
+  Sites may retrieve the software and documentation directly using FTP from 
+  the following Office of Information Field Offices (OIFOs):
+  
+   OIFO               FTP ADDRESS                  DIRECTORY
+   ------------       ------------------------     ------------------
+   Albany             ftp.fo-albany.med.va.gov     anonymous.software
+   Hines              ftp.fo-hines.med.va.gov      anonymous.software
+   Salt Lake City     ftp.fo-slc.med.va.gov        anonymous.software  
+  
+   The following files will be available:
+  
+   FILE NAME               DESCRIPTION
+   --------------------    -----------------------------------------------
+   DG_53_P571.KID          Host file containing KIDS software distribution
+   DG_53_571_TM.PDF        Changes to the PIMS V. 5.3 Technical Manual
+   DG_53_571_UM.PDF        Changes to the PIMS V. 5.3 User Manual
+   DG_53_571_PICIS.PDF     PICS Interface Specification
+  
+   * Note:  Use ASCII mode when transferring the .KID file.
+            Use binary mode when transferring the .PDF files.
+  
+  
+   The VistA Documentation Library [VDL] web site will contain the
+   updated 'User Manual-ADT Outputs Menu' manual and 'PIMS Technical 
+   Manual'.  This web site is usually updated within 1-3 days of the
+   patch release date.
+  
+   The VDL address is http://www.va.gov/vdl/Clinical.asp?appID=55.
+  
+  
+  
+ V. INSTALLATION INSTRUCTIONS
+  
+  Pre-Installation Items:
+  =======================
+  
+  * Environment Check:
+  
+     Programmer access is required to install this patch. Prior to
+     installation, the installer must ensure the DUZ(0) node of the DUZ
+     array is set to the "@" symbol.
+  
+  * Users on the System:
+  
+     This patch may be installed with users on the system.
+  
+  * Software Installation Time:
+     
+     The estimated installation time for this patch is less than 3 minutes
+     during non-peak hours.
+  
+  * Namespace:
+   
+     The namespace for the VETERAN ID (VIC) REPLACEMENT patch 
+     is: DG (Registration).
+  
+  * Required Patches
+    
+     Application                     Patch      Build
+     -----------------------------   --------   ----------
+     Kernel                          XU*8*205   XU*8.0*205
+     Order Entry/Results Reporting   OR*3*187   OR*3.0*187
+  
+  * File and Global Information:
+  
+     There is one new global, ^DGQE.  The ^DGQE global contains the 
+     following (2) new files.
+                                                           Journaling 
+      File #   File Name                   Global Root     Recommended
+      ------   ------------------------    ------------    -----------
+      39.6     VIC REQUEST                 ^DGQE(39.6,     YES
+      39.7     VIC HL7 TRANSMISSION LOG    ^DGQE(39.7,     YES
+  
+      The ^DGQE global must be placed with the appropriate Read/Write Global  
+      Access protection prior to installing this patch.  Note:  This should be 
+      done even if global translations are in effect.    
+  
+  
+  Installation Steps:
+  ===================
+  
+   1. Download the KIDS file DG_53_P571.KID from the ANONYMOUS.SOFTWARE
+      directory of Albany, Hines, or Salt Lake City OIFO to the appropriate
+      directory on your system.
+  
+   2. Use LOAD A DISTRIBUTION option on the KIDS INSTALLATION menu, and
+      enter: DG_53_P571.KID
+  
+   3. From the 'Kernel Installation & Distribution System' menu, select the
+      Installation menu.
+  
+   4. From this menu, you may now elect to use the following options (when
+      prompted for INSTALL NAME, enter DG*5.3*571).
+  
+      a. Backup a Transport Global - This option will create a backup
+         message of any routines exported with the patch.  It will NOT
+         backup any changes such as DDs or templates.
+  
+      b. Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when the patch is
+         installed.  It compares all components of the patch (routines,
+         DDs, templates, etc.).
+  
+      c. Verify Checksums in Transport Global - This option will allow you
+         to ensure the integrity of the routines that are in the transport
+         global.
+  
+      d. Print Transport Global - this option will allow you to view the
+         components of the KIDS build.
+    
+   5. Use the Install Package(s) option and select package DG*5.3*571.
+  
+   6. When prompted "Enter the Coordinator for Mail Group 'DGQE HL7
+      TRANSMISSION ERRORS':", please enter the name of the individual
+      that will be responsible for maintaining the new mail group.  This
+      mail group receives notifications when a General Orders (ORM~O01)
+      HL7 transmission has been rejected by the National Card Management
+      Directory.
+  
+   7. When prompted 'Want KIDS to Rebuild Menu Trees Upon Completion of
+      Install? YES//', respond NO.
+  
+   8. When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+      YES//', it is recommended you answer NO.
+  
+   9. When prompted to 'Want to DISABLE Scheduled Options, Menu Options,
+      and Protocols? YES//', respond YES.  When prompted to select the
+      options you would like to place out of order, enter the following:
+  
+       DG OUTPUTS MENU        ADT Outputs Menu
+  
+  10. The ENV/PRE/POST Installation routine DG53P571 may be deleted from
+      your system after successful patch installation.
+  
+  
+  
+ VI. IMPLEMENTATION STEPS
+  
+ This section contains the procedures required to implement the Veteran
+ Identification Card Replacement Project software module.
+  
+  1. Menu Option assignment
+  
+    a. All users of the Veteran ID Card PICS workstation must have the 
+       VIC RPC Menu [DGQE VIC RPCS] added to their secondary menu to allow
+       access to the VIC Remote Procedures.
+  
+    b. The intent of the Print Patient Label [DG PRINT PATIENT LABEL]
+       option is to provide a functional replacement for the embossing
+       feature of the original VIC and is being added to the ADT Outputs
+       Menu [DG OUTPUTS MENU] by this patch. The Print Patient Label option
+       may be assigned as a standalone option to staff that previously used
+       the VIC embossing feature.
+     
+  2. Mail Group members
+  
+     The appropriate personnel should be added to the DGQE HL7 TRANSMISSION 
+     ERRORS mail group.
+  
+  3. Background Option (Scheduling):
+  
+     Schedule the new VIC Background Processing [DGQE BACKGROUND
+     PROCESSING] option.  Using the SCHEDULE/UNSCHEDULE OPTIONS [XUTM
+     SCHEDULE] option, schedule the option to run daily (i.e. RESCHEDULING
+     FREQUENCY: D@2AM).  The DEVICE FOR QUEUED JOB OUTPUT, TASK PARAMETERS,
+     and SPECIAL QUEUEING prompts should remain unanswered.
+     The following functions are processed by this background option:
+      1. Evaluate VIC eligibility for all VIC requests that have a pending 
+         enrollment status and/or National ICN.
+      2. Cancel any VIC requests that are still pending after 90 days.
+      3. Transmit HL7 messages to the NCMD with any updated VIC requests.
+      4. Purge all VIC requests that been acknowledged by the NCMD after 7  
+         days.
+  
+  4. HL7 Logical Link configuration
+     The AUTOSTART field of the VIC NCMD logical link should be set to 
+     Enabled, so that the logical link will restart after a system reboot.
+     Since the IP address of the NCMD HL7 server is exported with the VIC NCMD
+     logical link, the IP address should be removed from the logical link
+     in the Test environment to prevent unintentional HL7 messages from being
+     transmitted.
+  
+  
+ VII. NATIONAL TRAINING & EDUCATION
+  
+ For information about Veteran Identification Card (VIC) training 
+ initiatives, please refer to the VistA University online training and 
+ documentation web site at http://vaww.vistau.med.va.gov/vistau/VIC/.  
+  
+  
+  
+ VIII. TEST SITES
+  
+ The following sites participated in the testing of the DG*5.3*571 
+ software.
+  
+   Test Site                             Alpha        Beta
+   --------------------------------      -----        ----
+   Milwaukee VAMC                          X            X
+   Central Alabama HCS                                  X
+   Montana HCS                                          X
+   Puget Sound HCS                                      X
+
+Routine Information:
+====================
+
+Routine Name:
+  - DG53P571
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGPLBL
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGPLBL1
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGQEBGR
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGQEDD
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGQEDEMO
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGQEHLL
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGQEHLOR
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGQEHLR
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGQEHLRQ
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGQEHLS
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGQEHLUT
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGQEREQ
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGQERPC
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGQEUT1
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGQEUT2
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGQEUT3
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : MCGINNIS,RONALD P             Date Entered  : NOV 25, 2003
+Completed By: LOUCK,KEVIN                   Date Completed: AUG 09, 2004
+Released By : FITCH,DONNA                   Date Released : AUG 10, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

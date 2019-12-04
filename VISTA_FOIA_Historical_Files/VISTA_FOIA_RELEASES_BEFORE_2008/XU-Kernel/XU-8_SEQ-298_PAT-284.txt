@@ -1,0 +1,233 @@
+$TXT Created by FORT,WALLY at NXT.KERNEL.FO-OAKLAND.MED.VA.GOV  (KIDS) on Wednesday, 09/22/04 at 16:27
+=============================================================================
+Run Date: NOV 03, 2004                     Designation: XU*8*284
+Package : XU - KERNEL                         Priority: Mandatory
+Version : 8       SEQ #298                      Status: Released
+                  Compliance Date: DEC 04, 2004
+=============================================================================
+
+Associated patches: (v)XU*8*258    <<= must be installed BEFORE `XU*8*284'
+                    (v)XU*8*293    <<= must be installed BEFORE `XU*8*284'
+
+Subject: API for Production account check.
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+  
+ Patch Tracking #: 37387952
+ Test Sites: FORUM, NORTHERN CALIFORNIA HCS, Boston Healthcare System
+             CPRS v25 t12 test sites.
+ Blood Bank Clearance: 3/18/2004
+  
+ This patch adds two parameters to XUP with SYS or USR values that can be 
+ set to control XUP. The first is "XUS-XUP SET ERROR TRAP".  If set this 
+ will set an error trap to return to XUP and ask if the error should be 
+ recorded. The other is "XUS-XUP VPE" for users that like to work in the VPE 
+ environment, setting this parameter will cause XUP, if the Select OPTION 
+ NAME: is skipped, to branch to the VPE environment.
+  
+ NOIS: IHS-0904-51165
+ Problem: For developers working in a multi-division site, the programmer 
+ setup routine XUP would reset DUZ(2) to the first entry in the users file.
+ Fix: Make the setting of several DUZ parts conditional. DUZ(0) is reset if 
+ not ="@", DUZ(2) is not set if it has a positive value, DUZ("LANG") is not 
+ set if it has a value. 
+  
+ NOIS: ISL-0103-52332
+ This Patch adds a new API in a new routine for applications to use to check 
+ and see if they are running in a PRODUCTION account or a TEST account.
+ Integration #: 4440
+  
+ A call to this new API has been added to XUP so that now it will report
+ if the current account is PRODUCTION or TEST.
+  
+ The new API is:
+  $$PROD^XUPROD([force])
+   It returns 1 if the current account is a production account.
+   It returns 0 if it is a TEST account.
+   
+   The parameter value of 1, allows an application to force a full test.
+  
+ These is a new Menu item under the "Kernel Management Menu",
+ "Ask if Production Account" (XU SID ASK) this option will ask if the current
+ account is the Production account.  If the answer is "Yes" then
+ the current SID is set as the production SID so checks will return 1.
+ If account is not the production account then a fake value is stored
+ so that the check will return 0.
+ The first check each day will force a full test.
+  
+ The option "Startup PROD check" (XU SID STARTUP) should be added to the 
+ TaskMan scheduling file and scheduled for startup so that when TaskMan 
+ start the SID is also checked.
+  
+ Other required patches:
+ For GT.M sites, XU*8*275 has the needed change to ZOSVGTM.
+  
+ New fields in the KERNEL SYSTEM PARAMETERS file (8989.3).
+ STANDARD DATA DICTIONARY #8989.3 -- KERNEL SYSTEM PARAMETERS FILE   
+ STORED IN ^XTV(8989.3,  (1 ENTRY)   SITE: SF CIOFO, KERNEL PATCH ACCOUNT
+  
+ DATA          NAME                  GLOBAL        DATA
+ ELEMENT       TITLE                 LOCATION      TYPE
+ -------------------------------------------------------------------------------
+  
+ 8989.3,501    PRODUCTION             SID;1 SET (Required)
+  
+               Production                
+                                 '0' FOR No; 
+                                 '1' FOR Yes; 
+               LAST EDITED:      OCT 22, 2003 
+               DESCRIPTION:      This field holds a flag to indicate if this is
+                                 a Production account.  It is a Yes/No flag
+                                 with internal values of 1 = Yes, 0 = No.  
+                                 It is set by the system after comparing
+                                 the System ID with the current System ID,
+                                 at some point in the future will be
+                                 checked against a master system.
+                                                                      
+ 8989.3,502    System ID              SID;2 FREE TEXT
+  
+               INPUT TRANSFORM:  K:$L(X)>100!($L(X)<8) X
+               LAST EDITED:      OCT 22, 2003 
+               HELP-PROMPT:      Answer must be 8-100 characters in length 
+               DESCRIPTION:      This field holds the SYSTEM ID, if this is a
+                                 production system.  This value is compared
+                                 with the current system value and at 
+                                 some point in the future will be
+                                 checked against a master system.
+  
+  
+ 8989.3,503    SID LAST CHECKED       SID;3 DATE
+  
+               INPUT TRANSFORM:  S %DT="ETX" D ^%DT S X=Y K:Y<1 X
+               LAST EDITED:      JUN 30, 2003 
+               DESCRIPTION:      This field holds the date/time that the SID
+                                 was last checked.  If the SID has not been
+                                 compared with the stored one today a full
+                                 check will be done, otherwise the PROD api
+                                 will just return the current value.  
+  
+  
+ Routine Summary
+ The following routines are included in this patch.  The second line of each
+ of these routines now looks like:
+  ;;8.0;KERNEL;**[Patch List]**;Jul 10, 1995
+  
+                  Checksum
+ Routine         Old       New      Patch List
+ XUP           4983304   4923364    **208,258,284**
+ XUPROD            n/a   1670496    **284**
+ ZOSVONT       6784414   6893792    **34,94,107,118,136,215,293,284**
+ ZOSVVXD       7675098   8031174    **13,65,71,94,107,118,136,215,284**
+  
+ List of preceding patches: 258, 293
+ Sites should use CHECK^XTSUMBLD to verify checksums.
+  
+ =========================================================================
+ Installation:
+  
+ >>>Allow KIDS to Inhibit logon's during the install.
+ >>>TaskMan does *not* need to be stopped.
+  
+   1.  DSM sites - If any of these routines are mapped,
+       you will need to disable mapping for the affected routines.
+  
+   2.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This
+       option will load the KIDS package onto your system.
+  
+   3.  The patch has now been loaded into a Transport global on your
+       system. You now need to use KIDS to install the Transport global.
+       On the KIDS menu, under the 'Installation' menu, use the following
+       options:
+  
+          Verify Checksums in Transport Global
+          Print Transport Global
+          Compare Transport Global to Current System
+          Backup a Transport Global
+  
+  4.   Allow KIDS to Inhibit logon's during the install. (There is a small
+       chance that a few users could get CLOBER errors.)
+       TaskMan does not need to be stopped.
+  
+   5.  Installation will take less than 2 minutes.
+       In Programmer mode:
+       Use "D ^XPDKRN" then
+          Install Package(s)  'XU*8.0*284'
+                               ==========
+  
+       Want KIDS to Rebuild Menu Trees Upon Completion of Install? YES// YES
+         
+       Want KIDS to INHIBIT LOGONs during the install? YES// YES
+  
+       Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// NO
+       
+   8.  After installing this patch,
+       Cache/GTM Sites - you don't need to move anything, skip this step.
+       DSM sites - you need to move one routine from
+       your production account to each manager account:
+  
+       ZOSVVXD
+  
+   9.  DSM in the manager account,  (Cache/GTM sites remain in VAH)
+       All sites:
+       DO RELOAD^ZTMGRSET
+       Select the System
+       Patch number to load: 284
+                             ===
+  
+  10.  DSM Sites, after patch has installed, rebuild your map set.
+  
+  11.  In the VAH account:
+       Please run the Menu option "Ask if  Production Account" (XU SID
+       ASK). This will ask if the current account is the Production
+       account.  Please answer accordingly.
+  
+       The Option "Startup PROD check" (XU SID STARTUP) should be scheduled 
+       for startup so that when TaskMan starts the SID is checked.      
+ =========================================================================
+
+Routine Information:
+====================
+
+Routine Name:
+  - XUP
+
+
+Routine Checksum:
+
+Routine Name:
+  - XUPROD
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZOSVVXD
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZOSVONT
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : FORT,WALLY                    Date Entered  : JAN 30, 2003
+Completed By: SINGH,GURBIR                  Date Completed: OCT 21, 2004
+Released By : TILLIS,LEWIS                  Date Released : NOV 03, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

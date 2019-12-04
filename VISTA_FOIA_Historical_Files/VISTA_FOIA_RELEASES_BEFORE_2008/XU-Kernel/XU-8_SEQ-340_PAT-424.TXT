@@ -1,0 +1,230 @@
+$TXT Created by ORMSBY,SKIP at NXT.KERNEL.FO-OAKLAND.MED.VA.GOV  (KIDS) on Monday, 06/19/06 at 05:32
+=============================================================================
+Run Date: JUN 19, 2006                     Designation: XU*8*424
+Package : XU - KERNEL                         Priority: EMERGENCY
+Version : 8       SEQ #340                      Status: Released
+                  Compliance Date: JUN 26, 2006
+=============================================================================
+
+
+Subject: XUSEC ISO USER REPORT
+
+Category: 
+  - Print Template
+  - Sort Template
+  - Other
+
+Description:
+============
+
+ Description:
+ A Data Access Inventory for Veterans Affairs VistA systems has 
+ been directed by the Secretary for Department of Veteran's Affairs.  The 
+ facility Information Security Officer (ISO) has been tasked to forward 
+ data to VA OI&T no later than June 28, 2006.  This patch includes 1 sort 
+ template, 1 print template, 3 functions and an option to facilitate the 
+ collection of a portion of the data required for the report.   Please
+ coordinate with your ISO.
+  
+ This patch is an aid to completing the VHA Data Access Inventory
+ Spreadsheet. It will not be able to fully populate all fields for all
+ staff at your facility, but can be used to help.  The patch extracts data
+ for population in the spreadsheet located at:
+  
+  http://vaww.vhaco.va.gov/vadatarisk/docs/DataAccessInventory.XLS
+  
+ which is the official data submission form.
+  
+ If your facility has already developed processes for gathering this 
+ information, use of this option is not required.  Output will need to be 
+ captured and placed in a MS Excel spreadsheet.  Output will pull
+ information on active users who have VA Kernel access to the VistA system.
+ *Important note:
+ ================
+ If the "User Last Name" entry has an asterisk"*" in front of the name, 
+ that indicates the user's Social Security Number(SSN) starts with five(5)
+ leading zeros(0).
+  
+ New FUNCTIONS
+ =============
+ NAME: XUSEC ISO ARTIFICIAL
+   MUMPS CODE: S X=$S($E($P($G(^VA(200,D0,1)),"^",9),1,5)["00000":1,1:0)
+   DATE-VALUED: NO                       NUMBER OF ARGUMENTS: 0
+   EXPLANATION: WILL BRING A 1 BACK IF THIS PERSON HAS 5 LEADING ZEROS IN 
+ THEIR SSN OR A 0 IF NOT
+  
+ NAME: XUSEC ISO VISITED
+   MUMPS CODE: S X=+$$ACTIVE^XUSER(D0)
+   DATE-VALUED: NO                       NUMBER OF ARGUMENTS: 0
+   EXPLANATION: Will bring back a 1 if this person is an active user on 
+ the system.
+  
+ NAME: XUSEC ISO ZZD OUT
+   MUMPS CODE: S 
+ X=$E($P($G(^VA(200,D0,0)),"^",1),1,2),X=$S(X["ZZ":1,X["zz":1,X["
+ XX":1,X["xx":1,1:0)                     DATE-VALUED: NO
+   NUMBER OF ARGUMENTS: 0
+   EXPLANATION: BRINGS BACK A 1 IF NAME STARTS WILL ZZ OR zz OR XX OR xx.
+  
+ New SORT TEMPLATE
+ =================
+ NAME: XUSEC ISO ACTIVE USER SORT
+ SORT BY: @NUMBER// (NUMBER not null)
+   WITHIN NUMBER, SORT BY: @XUSEC ISO VISITED=1;L1// (XUSEC ISO VISITED=1
+ )
+     WITHIN XUSEC ISO VISITED=1, SORT BY: @PRIMARY MENU OPTION]"";L1// (P
+ RIMARY MENU OPTION]"""")
+  
+ New PRINT TEMPLATE
+ ==================
+ NAME: XUSEC ISO ACTIVE USER PRINT
+ FIRST PRINT FIELD: W $P($P($G(^DIC(4,+$P($G(^XTV(8989.3,1,"XUS")),"^",17
+ ),0)),"^",1)," VAM",1)_" LEGACY"//
+ THEN PRINT FIELD: ";";X//
+ THEN PRINT FIELD: ";";X//
+ THEN PRINT FIELD: "VHA";X//
+ THEN PRINT FIELD: ";";X//
+ THEN PRINT FIELD: SETPARAM(XUSEC ISO ARTIFICIAL,"ZZ");X//
+   THEN PRINT NAME COMPONENTS FIELD: 10.1://
+   THEN PRINT NAME COMPONENTS FIELD: SETPARAM((#1),"ZZZ")//
+   THEN PRINT NAME COMPONENTS FIELD: S X=$S(DIPA("ZZ")=0:DIPA("ZZZ"),1:"*
+ "_DIPA("ZZZ")) W X;X//
+   THEN PRINT NAME COMPONENTS FIELD: ";";X//
+   THEN PRINT NAME COMPONENTS FIELD: GIVEN (FIRST) NAME;X//
+   THEN PRINT NAME COMPONENTS FIELD: ";";X//
+   THEN PRINT NAME COMPONENTS FIELD: MIDDLE NAME;X//
+   THEN PRINT NAME COMPONENTS FIELD: ";";X//
+   THEN PRINT NAME COMPONENTS FIELD: SUFFIX;X//
+   THEN PRINT NAME COMPONENTS FIELD: ";";X//
+   THEN PRINT NAME COMPONENTS FIELD: //
+ THEN PRINT FIELD: ";";X//
+   THEN PRINT PAID EMPLOYEE FIELD: PAID EMPLOYEE://
+   THEN PRINT PAID EMPLOYEE FIELD: OCCUPATION SERIES CODE;X//
+   THEN PRINT PAID EMPLOYEE FIELD: //
+ THEN PRINT FIELD: ";";X//
+ THEN PRINT FIELD: ";";X//
+ THEN PRINT FIELD: ";";X//
+ THEN PRINT FIELD: ";";X//
+ THEN PRINT FIELD: ";";X//
+ THEN PRINT FIELD: S X="" N ZX S ZX=0 F  S ZX=$O(^VA(200,D0,2,ZX)) Q:'ZX 
+  N ZXX S ZXX=+$P(^VA(200,D0,2,ZX,0),U) S:+ZXX>0 X=X_$P($G(^DIC(4,+ZXX,0)
+ ),U)_","//
+ THEN PRINT FIELD: N Z S Z=$L(X,",") W $P(X,",",1,(Z-1));X//
+ THEN PRINT FIELD: ";";X//
+ THEN PRINT FIELD: ";";X//
+  
+ New OPTION
+ ==========
+ NAME: XUSEC ISO ACTIVE USER EXTRACT
+   MENU TEXT: Special Active User Excel output
+   TYPE: print
+  DESCRIPTION:   This option will produce a special excel formated 
+ output.  
+   DIC {DIP}: VA(200,                    L.: 0
+   FLDS: [XUSEC ISO ACTIVE USER PRINT]   BY: [XUSEC ISO ACTIVE USER SORT]
+   TIMESTAMP OF PRIMARY MENU: 60430,57352
+   UPPERCASE MENU TEXT: SPECIAL ACTIVE USER EXCEL OUTP
+  
+ Example:
+ ========
+ Select OPTION NAME: XUSEC ISO ACTIVE USER EXTRACT       Special 
+ Active User Excel output
+ Special Active User Excel output
+ DEVICE: 0;132;99999  TELNET
+ [your report will show up here]
+  
+ Post Install Instructions
+  
+ 1.      Assign the menu option, XUSEC ISO ACTIVE USER EXTRACT[Special 
+         Active User Excel output], to facility ISO or designee.
+ 2.      Have the ISO run the output to the screen and capture the output
+         data to a file per the terminal emulator software at your site.
+ 3.      End data capture.
+ 4.      Open MS Excel.  Click on Data, choose Import External Data, 
+         Import Data.
+ 5.      Enter the file name data was collected to in Step 3.
+ 6.      Text Import Wizard will open.  Choose Delimited, Next; Choose 
+         Semicolon, Next;  Click on Finish. 
+  
+  
+ Documentation Changes
+ =====================
+  -None-
+  
+ Blood Bank Clearance
+ ====================
+ Clearance - JUN 15, 2006
+  
+ EFFECT ON BLOOD BANK FUNCTIONAL REQUIREMENTS: Patch XU*8*424 contains 
+ changes to a package referenced in VHA OI SEPG SOP 192-023 Review of 
+ VISTA Patches for Effects on VISTA Blood Bank Software. This patch does 
+ not alter or modify any VistA Blood Bank software design safeguards or 
+ safety critical elements functions.
+  
+ RISK ANALYSIS: Changes made by patch XU*8*424 have no effect on Blood 
+ Bank software functionality, therefore RISK is none.
+  
+  
+ Remedy Ticket
+ =============
+  None.
+  
+ Thanks to Test Sites 
+ ====================
+  MANCHESTER, NH
+  PROVIDENCE, RI
+  SALISBURY, NC
+  
+ Routine Summary: 
+ ================
+  See the "Routine Information" section for details.  The "B" in front of 
+ the checksum denotes that the value was derived by using CHECK1^XTSUMBLD.
+  
+ Installation Instructions: 
+ ==========================
+ This patch can be installed with VISTA users online.  However, it is 
+ recommended that it be Queued for a time of generally least activity.  
+  
+ TaskMan does not need to be STOPPED or placed in a WAIT state and 
+ installation should take less than a minute.
+  
+      1.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu.  
+          This option will load the KIDS package onto your system.  
+  
+      2.  The patch has now been loaded into a transport global on your 
+          system. You now need to use KIDS to install the transport global.
+   
+      3.  On the KIDS menu, under the 'Installation' menu, use the 
+          following options: 
+             Print Transport Global 
+             Compare Transport Global to Current System 
+             Verify Checksums in Transport Global 
+             Backup a Transport Global 
+  
+      4.  On the KIDS menu, under the 'Installation' menu, use the 
+          following option: 
+             Select Installation Option: Install Package(s) 
+             Select INSTALL NAME: XU*8.0*424
+                                  ==========
+         Answer 'NO' to ' Want KIDS to Rebuild Menu Trees Upon Completion
+         of Install?' 
+         Answer 'NO' to 'Want KIDS to INHIBIT LOGONs during the install?
+         Answer 'NO' to 'Want to DISABLE Scheduled Options, Menu Options,
+         and Protocols?
+
+Routine Information:
+====================
+No routines included.
+
+=============================================================================
+User Information:
+Entered By  : FOLLENSBEE,DENNIS             Date Entered  : JUN 15, 2006
+Completed By: SINGH,GURBIR                  Date Completed: JUN 19, 2006
+Released By : TILLIS,LEWIS                  Date Released : JUN 19, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

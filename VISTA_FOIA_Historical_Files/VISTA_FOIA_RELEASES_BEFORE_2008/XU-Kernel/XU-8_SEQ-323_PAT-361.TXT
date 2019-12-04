@@ -1,0 +1,251 @@
+$TXT Created by FORT,WALLY at NXT.KERNEL.FO-OAKLAND.MED.VA.GOV  (KIDS) on Thursday, 11/03/05 at 12:39
+=============================================================================
+Run Date: JAN 31, 2006                     Designation: XU*8*361
+Package : XU - KERNEL                         Priority: Mandatory
+Version : 8       SEQ #323                      Status: Released
+                  Compliance Date: MAR 03, 2006
+=============================================================================
+
+Associated patches: (v)XU*8*337    <<= must be installed BEFORE `XU*8*361'
+
+Subject: Proxy Application User for Re-hosting effort
+
+Category: 
+  - Data Dictionary
+  - Routine
+
+Description:
+============
+
+ Patch Tracking #: 40635714
+ Test Sites: VistLink 1.5 developers and users, Blind Rehab testers.
+ Blood Bank Clearance: 5/5/2005
+  
+ This patch is in support of VistALink 1.5 and the use of Application 
+ Servers.
+  
+  Routine XUSAP provides several entry points, most are for VistaLink.
+  There is one to create an application proxy user. IA #: 4677
+   $$CREATE^XUSAP(<proxyusername>,<FileManAccesscode>,<option[s]>)
+     proxyusername is the name of the Application proxy.
+     FileManAccesscode is the FM access code (Can not be "@"),
+     option can be the name of an option like "XMUSER" or
+     it can be an array of options XUOPT("XMUSER")=1,
+     XUOPT("XWB RPC TEST")=1
+     The Application proxy and Connector proxy can not be the same.
+   
+  
+  1. This patch adds a new field to the REMOTE PROCEDURES file (#8994).
+  STANDARD DATA DICTIONARY #8994 -- REMOTE PROCEDURE FILE
+  
+  DATA          NAME                  GLOBAL        DATA
+  ELEMENT       TITLE                 LOCATION      TYPE
+ ----------------------------------------------------------------------------
+  
+  8994,.11      APP PROXY ALLOWED      0;11 SET
+  
+                                  '0' FOR No; 
+                                  '1' FOR Yes; 
+                LAST EDITED:      MAR 01, 2005 
+                DESCRIPTION:      This field must be set to Allowed if this RPC
+                                  is to be run by an APPLICATION PROXY user.
+                                  The default is to NOT allow access.  
+  
+  
+    
+  2. New field USER CLASS (#9.5) into NEW PERSON file (#200):
+   -------------------------------------------------------
+  
+    DATA          NAME                  GLOBAL        DATA
+    ELEMENT       TITLE                 LOCATION      TYPE
+    ---------------------------------------------------------------------
+  
+    200,9.5       USER CLASS             USC3;0 POINTER Multiple #200.07
+  
+                  LAST EDITED:      NOV 04, 2004 
+   
+    200.07,.01      User Class             0;1 POINTER TO USER CLASS FILE 
+                                               (#201)
+  
+                  LAST EDITED:      NOV 05, 2004 
+                  CROSS-REFERENCE:  200.07^B 
+                          1)= S ^VA(200,DA(1),"USC3","B",$E(X,1,30),DA)=""
+                          2)= K ^VA(200,DA(1),"USC3","B",$E(X,1,30),DA)
+  
+  
+       FILES POINTED TO                      FIELDS
+  
+    USER CLASS (#201)                 USER CLASS:User Class (#.01)
+                          
+  
+  3. New file USER CLASS (#201):  
+   ---------------------------
+  
+    DATA          NAME                  GLOBAL        DATA
+    ELEMENT       TITLE                 LOCATION      TYPE
+    -----------------------------------------------------------------
+  
+    USER CLASS is to be used for identifying the kinds of all other entries
+    in the NEW PERSON file #200 that are not providers identified with
+    PERSON CLASS.
+  
+               DD ACCESS: @
+               RD ACCESS: @
+               WR ACCESS: @
+              DEL ACCESS: @
+            LAYGO ACCESS: @
+            AUDIT ACCESS: @
+  
+    POINTED TO BY: User Class field (#.01) of the USER CLASS sub-field 
+    (#200.07) of the NEW PERSON File (#200)
+  
+    CROSS REFERENCED BY: NAME(B), EFFECTIVE DATE(C)
+  
+    CREATED ON: OCT 5,2004 by TRAN,BA
+  
+    201,.01       NAME                   0;1 FREE TEXT (Required)
+  
+               INPUT TRANSFORM:  K:$L(X)>30!($L(X)<3)!'(X'?1P.E) X
+               LAST EDITED:      OCT 05, 2004 
+               HELP-PROMPT:      Answer must be 3-30 characters in length. 
+               DESCRIPTION:      This field is User Class that is to be 
+                                 used for identifying users.
+  
+               CROSS-REFERENCE:  201^B 
+                                 1)= S ^VA(201,"B",$E(X,1,30),DA)=""
+                                 2)= K ^VA(201,"B",$E(X,1,30),DA)
+  
+   
+    201,1         DESCRIPTION            0;2 FREE TEXT
+  
+               INPUT TRANSFORM:  K:$L(X)>75!($L(X)<3) X
+               LAST EDITED:      NOV 08, 2004 
+               HELP-PROMPT:      Answer must be 3-75 characters in length. 
+  
+    201,99.99     VUID                   0;3 FREE TEXT
+  
+               INPUT TRANSFORM:  K:$L(X)>18!($L(X)<18)!(X'?.N) X
+               LAST EDITED:      NOV 08, 2004 
+               HELP-PROMPT:      Answer must be 18 numeric digit VUID 
+                                 value. 
+               NOTES:            XXXX--CAN'T BE ALTERED EXCEPT BY 
+                                 PROGRAMMER
+  
+    201,99.991    STATUS                 1;0 SET Multiple #201.01
+                                  (Add New Entry without Asking)
+  
+  
+    201.01,.01      STATUS                 0;1 SET (Multiply asked)
+  
+                                   '0' FOR INACTIVE; 
+                                   '1' FOR ACTIVE; 
+                 LAST EDITED:      NOV 08, 2004 
+                 CROSS-REFERENCE:  201.01^B 
+                               1)= S ^VA(201,DA(1),1,"B",$E(X,1,30),DA)=""
+                               2)= K ^VA(201,DA(1),1,"B",$E(X,1,30),DA)
+  
+    201.01,1        EFFECTIVE DATE         0;2 DATE
+  
+                 INPUT TRANSFORM:  S %DT="E" D ^%DT S X=Y K:Y<1 X
+                 LAST EDITED:      NOV 08, 2004 
+                 DESCRIPTION:      This field is the effective date the 
+                                   entry was activated or inactivated.
+  
+                 CROSS-REFERENCE:  201^C 
+                               1)= S ^VA(201,"C",$E(X,1,30),DA(1),DA)=""
+                               2)= K ^VA(201,"C",$E(X,1,30),DA(1),DA)
+                               This x-ref is the effective date of the
+                               entry.
+  
+   
+  
+  Routine Summary
+  ===============
+  The following routines are included in this patch.  The second line of each
+  of these routines now looks like:
+   ;;8.0;KERNEL;**[Patch List]**;Jul 10, 1995
+  
+  Sites should use CHECK1^XTSUMBLD to verify checksums listed in Routine 
+ Summary section.
+  
+ Blood Bank Team Coordination:
+  =============================
+ Blood Bank Clearance - 5/5/2005
+  
+ EFFECT ON BLOOD BANK FUNCTIONAL REQUIREMENTS: Patch XU*8*361 contains 
+ changes to a package referenced in VHA OI SEPG SOP 192-023 Review of 
+ VISTA Patches for Effects on VISTA Blood Bank Software. This patch does 
+ not alter or modify any VistA Blood Bank software design safeguards or 
+ safety critical elements functions.
+  
+ RISK ANALYSIS: Changes made by patch XU*8*361 have no effect on Blood 
+ Bank software functionality, therefore RISK is none.
+  
+  
+ Installation Instructions:
+ ==========================
+ 1. Users ARE allowed to be on the system during the installation. 
+    However, it is recommended that the patch be installed during
+    non-peak time. It will take about one minute to install the
+    patch, but you may queue the installation if you wish.
+  
+ 2. You DO NOT need to stop TaskMan or the background filers.
+  
+ 3. Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This      
+    option will load the KIDS package onto your system.
+  
+ 4. The patch has now been loaded into a Transport global on your system. 
+    You now need to use KIDS to install the Transport global. On the KIDS
+    menu, under the 'Installation' menu, use the following options:
+  
+                 Verify Checksums in Transport Global
+                 Print Transport Global
+                 Compare Transport Global to Current System
+                 Backup a Transport Global
+  
+    On the KIDS menu, under the 'Installation' menu, use the following
+    option:
+                 Install Package(s)  
+                 Select INSTALL NAME:XU*8.0*361
+                                     ==========
+ Incoming Files:
+ 
+ 
+    200       NEW PERSON  (Partial Definition)
+ Note:  You already have the 'NEW PERSON' File.
+ 
+ 
+    201       USER CLASS  (including data)
+ 
+ 
+    8994      REMOTE PROCEDURE  (Partial Definition)
+ Note:  You already have the 'REMOTE PROCEDURE' File.
+ 
+ 
+ Want KIDS to Rebuild Menu Trees Upon Completion of Install? YES// NO
+ Want KIDS to INHIBIT LOGONs during the install? YES// YES
+ Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// NO
+ 
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: XUSAP
+    Before:            After: B10492122  **361**
+Routine Name: XUSRB5
+    Before:            After: B33074245  **361**
+
+=============================================================================
+User Information:
+Entered By  : TRAN,BA D                     Date Entered  : SEP 09, 2004
+Completed By: SINGH,GURBIR                  Date Completed: JAN 20, 2006
+Released By : TILLIS,LEWIS                  Date Released : JAN 31, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

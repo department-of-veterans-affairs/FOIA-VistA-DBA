@@ -1,0 +1,542 @@
+$TXT Created by MOORE,JIM at NXT.KERNEL.FO-OAKLAND.MED.VA.GOV  (KIDS) on Wednesday, 04/19/06 at 09:37
+=============================================================================
+Run Date: JUN 01, 2006                     Designation: HL*1.6*131
+Package : HL - HEALTH LEVEL SEVEN             Priority: Mandatory
+Version : 1.6       SEQ #104                    Status: Released
+                  Compliance Date: JUL 02, 2006
+=============================================================================
+
+Associated patches: (v)HL*1.6*130  <<= must be installed BEFORE `HL*1.6*131'
+
+Subject: NEW MESSAGE BUILDING/PARSING API'S FOR HLO
+
+Category: 
+  - Routine
+
+Description:
+============
+
+  This patch provides additional developer API's for the new HLO software for
+  building and parsing messages.  These new features affect only HLO software,
+  which was released as patch HL*1.6*126. It does NOT affect messages produced
+  by the 'old' HL7 1.6 software, which still accounts for the vast majority of
+  VistA's HL7 messaging activity.  
+  
+  In addition to the new API's, small changes are made to the HLO client/server
+  algorithms used to exchange HL7 messages.  With these changes, the client and
+  server now check the TCP/IP connection status before attempting to write or 
+  read a message via TCP/IP. Again, these changes only affect the new HLO
+  software released in patch HL*1.6*126, not the older HL7 software.
+   
+  
+  New Developer Message Parsing APIs:
+  ===================================
+  
+ Time Stamp: GETTS^HLOPRS2(SEG,VALUE,FIELD,COMP,REP)
+     Description:
+          Gets a segment value that is a time stamp in HL7 format and
+          converts it to FileMan format. IF the data type value includes the
+          timezone then the time is converted to local time. The degree of
+          precision is optionally returned.  IF the component is specified,
+          then the component is parsed for data type rather than at the
+          higher field level.
+     Input:
+         SEG - (required, pass by reference) The array returned by a call to 
+                $$NEXTSEG^HLOPRS.
+         FIELD - The sequence # of the field.
+         COMP (optional) If specified, the data type is parsed as a component
+                value.
+         REP - The occurrence # (optional, defaults to 1).  For non-repeating
+                fields, this parameter is not necessary.
+     Output:
+         VALUE  (required, pass-by-reference IF subscripts are used) The 
+                 date/time in FileMan format. The PRECISION subscript is
+                 optional, if provided the time stamp's precision will be
+                 determined.
+              "PRECISION" -  (optional)  Expected values are:
+                   "S" - second
+                   "M" - minute
+                   "H" - hour
+                   "D" - day
+                   "L" - month
+                   "Y" - year
+                   "" - precision not specified
+             Note:  FM does not allow greater precision than seconds, so
+             greater precision will be rounded down to the second.
+        
+        
+ Date: GETDT^HLOPRS2(SEG,VALUE,FIELD,COMP,REP)
+    Description:
+       Gets a segment value that is a date in HL7 format and converts
+       it to FileMan format. The degree of precision is optionally returned.
+       IF the component is specified, then the component is parsed for data
+       type rather than at the higher field level.
+    Input:
+       SEG (required, pass by reference) The array returned by a call to
+             $$NEXTSEG^HLOPRS.
+       FIELD - The sequence # of the field.
+       COMP (optional) If specified, the data type is parsed as a component
+             value.
+       REP (optional, defaults to 1) The occurrence #. For non-repeating
+           fields, this parameter is not necessary.
+   Output:
+       VALUE  (required, pass-by-reference if the precision is needed) The
+           date/time in FileMan format. The "PRECISION" subscript is also
+           returned:
+         "PRECISION" Expected values are:
+                "S" - second (not valid for DT)
+                "M" - minute (not valid for DT)
+                "H" - hour (not valid for DT)
+                "D" - day
+                "L" - month
+                "Y" - year
+                ""  - precision not specified
+  
+  
+ Coded Element: GETCE^HLOPRS2(SEG,VALUE,FIELD,COMP,REP)
+     Description:
+        Gets an CE data type(Coded Element, HL7 Section Reference 2.9.8)from
+        the specified field.  IF the component is specified, then the
+        component is parsed for data type rather than at the higher field
+        level.
+     Input:
+         SEG (required, pass-by-reference) The array returned by a call to 
+              NEXTSEG^HLOPRS.
+         FIELD (required) The sequence # of the field.
+         COMP (optional) If specified, the data type is parsed as a component 
+              value.
+         REP - The occurrence # (optional, defaults to 1).  For a non-repeating
+              fields, this parameter is not necessary.
+     Output:
+         VALUE  (required, pass-by-reference) These subscripts are returned:
+            "ID" - the identifier
+            "TEXT" - 
+            "SYSTEM" - name of the code system
+            "ALTERNATE ID" - alternate identifier
+            "ALTERNATE TEXT"
+            "ALTERNATE SYSTEM" - name of the alternate coding system
+        
+       
+ Hierarchic Designator:  GETHD^HLOPRS2(SEG,VALUE,FIELD,COMP,REP)
+     Description:
+        Gets an HD data type (Hierarchic Designator, HL7 Section Reference
+        2.9.21) from the specified field.  IF the component is specified, then
+        the component is parsed for data type rather than at the higher field
+        level.
+     Input:
+        SEG (required, pass-by-reference) The array returned by a call to
+            NEXTSEG^HLOPRS.
+        FIELD (required) The sequence # of the field.
+        COMP (optional) If specified, the data type is parsed as a component 
+            value.
+        REP (optional, defaults to 1) The occurrence #.  For non-repeating
+            fields, this parameter is not necessary.
+     Output:
+        VALUE  (required, pass-by-reference) These subscripts are returned:
+          "NAMESPACE ID"
+          "UNIVERSAL ID"
+          "UNIVERSAL ID TYPE"
+        
+  
+ Coded With No Exceptions:  GETCNE HLOPRS2(SEG,VALUE,FIELD,COMP,REP)
+     Description:
+        Gets an CNE data type (Coded With No Exceptions, HL7 Section
+        Reference 2.9.8) from the specified field.  IF the component is
+        specified, then the component is parsed for data type rather than
+        at the higher field level.
+     Input:
+        SEG (required, pass-by-reference) The array returned by a call to
+              NEXTSEG^HLOPRS.
+        FIELD (required) The sequence # of the field.
+        COMP (optional) If specified, the data type is parsed as a component 
+             value.
+        REP (optional, defaults to 1) The occurrence #.  For non-repeating
+             fields, this parameter is not necessary.
+     Output:
+        VALUE  (required, pass-by-reference) These subscripts are returned:
+           "ID" - the identifier
+           "TEXT" - 
+           "SYSTEM" - name of the code system
+           "ALTERNATE ID" - alternate identifier
+           "ALTERNATE TEXT"
+           "ALTERNATE SYSTEM" - name of the alternate coding system
+           "SYSTEM VERSION" - version ID of the coding system
+           "ALTERNATE SYSTEM VERSION" - version ID of the alternate 
+                coding system
+           "ORIGINAL TEXT"
+  
+  
+ Coded With Exceptions: GETCWE^HLOPRS2(SEG,VALUE,FIELD,COMP,REP) --
+    Description:
+        Gets an CWE data type (Coded With Exceptions, HL7 Section
+        Reference 2.9.11) from the specified field. IF the component is
+        specified, then the component is parsed for data type rather than
+        at the higher field level.
+    Input:
+        SEG (required, pass-by-reference) The array returned by a call to
+              NEXTSEG^HLOPRS.
+        FIELD (required) The sequence # of the field.
+        COMP (optional) If specified, the data type is parsed as a component 
+             value.
+        REP (optional, defaults to 1) The occurrence #.  For a non-repeating
+             fields, this parameter is not necessary.
+     Output:
+        VALUE  (required, pass-by-reference) These subscripts are returned:
+           "ID" - the identifier
+           "TEXT" - 
+           "SYSTEM" - name of the code system
+           "ALTERNATE ID" - alternate identifier
+           "ALTERNATE TEXT"
+           "ALTERNATE SYSTEM" - name of the alternate coding system
+           "SYSTEM VERSION" - version ID of the coding system
+           "ALTERNATE SYSTEM VERSION" - version ID of the alternate 
+                coding system
+           "ORIGINAL TEXT"
+  
+    
+ Address: GETAD^HLOPRS2(SEG,VALUE,FIELD,COMP,REP)
+    Description: 
+        Gets an AD data type (Address, HL7 Section Reference 2.9.1) from the
+        specified field. It can also be used to get the 1st 8 components of the
+        XAD (Extended Address) data type.  IF the component is specified, then 
+        the component is parsed for the address rather than at the higher field
+        level.
+    Input:
+        SEG (required, pass-by-reference) The array returned by a call to
+            NEXTSEG^HLOPRS.
+        FIELD (required) The sequence # of the field.
+        COMP (optional) If specified, the data type is parsed as a component 
+            value.
+        REP (optional, defaults to 1) The occurrence #.  For non-repeating 
+            fields, this parameter is not necessary.
+    Output:
+        VALUE  (required, pass-by-reference) These subscripts are returned:
+          "STREET1" -street address
+          "STREET2" - other designation
+          "CITY"
+          "STATE" - state or province
+          "ZIP" - zip or postal code
+          "COUNTRY"
+          "TYPE"  - address type
+          "OTHER" - other geographic designation
+       
+  New Developer Message Building APIs:
+  ==============================+=====
+  
+ Time Stamp:  SETTS^HLOAPI4(SEG,VALUE,FIELD,COMP,REP)
+     Description: 
+        Sets a value that is a time stamp in FM format into the segment in HL7
+        format. The degree of precision may be optionally specified. The 
+        inserted value will include the timezone if the input included
+        the time. IF the component is specified, then the data type is
+        'demoted' to a component, and its components are 'demoted' to
+        subcomponents.
+     Input:
+        SEG (required, pass by reference) The segment that is being built.
+        VALUE  (required, pass-by-reference to also pass the "PRECISION"
+                subscript) The date/time in FileMan format.  You can optionally 
+                specify that the value is to be rounded down to a particular
+                precision by specifying this subscript:
+  
+            "PRECISION" -  Allowed values are:
+                   "S" - second
+                   "M" - minute
+                   "H" - hour
+                   "D" - day
+                   "L" - month
+                   "Y" - year
+                   "" - precision not specified
+   
+        FIELD (required) The sequence # of the field.
+        COMP (optional) If specified, the data type is 'demoted' to a component
+               value.
+        REP (optional, defaults to 1) The occurrence #.  For non-repeating
+             fields, this parameter is not necessary.
+     Output: 
+        SEG - The segment being built.
+         
+  
+  
+ Date:  SETDT^HLOAPI4(SEG,VALUE,FIELD,COMP,REP)
+     Description:
+        Sets a value that is a date in FM format into the segment in HL7
+        format. The degree of precision may be optionally specified.  IF
+        the component is specified, then the data type is 'demoted' to a
+        component, and its components are 'demoted' to subcomponents.
+     Input:
+        SEG (required, pass by reference) The segment that is being built.
+        VALUE  (required) The date to be set into the segment.  Optionally,
+                you may specify that the value should be rounded down to a
+                particular precision by specifying this subscript:
+           "PRECISION" (If needed, VALUE must be passed by reference.)
+                        Allowed values are:
+                  "D" - day (default value)
+                  "L" - month
+                  "Y" - year
+        FIELD (required) The sequence # of the field.
+        COMP (optional) If specified, the data type is 'demoted' to a component
+              value.
+        REP (optional, defaults to 1) The occurrence #.  For non-repeating
+             fields, this parameter is not necessary.
+     Output:
+        SEG (required, pass-by-reference) The segment that is being built.
+  
+  
+         
+ Coded Element: SETCE^HLOAPI4(SEG,VALUE,FIELD,COMP,REP)
+    Description:
+       Sets a value that is an HL7 Coded Element data type (HL7 Section
+       Reference 2.9.3) into the segment in the specified field.  IF the
+       component is specified, then the data type is 'demoted' to a component,
+       and its components are 'demoted' to subcomponents.
+    Input:
+        SEG (required, pass-by-reference) The segment that is being built.
+        VALUE  (required, pass-by-reference) These subscripts may be passed:
+            "ID" - the identifier
+            "TEXT" - 
+            "SYSTEM" - name of the code system
+            "ALTERNATE ID" - alternate identifier
+            "ALTERNATE TEXT"
+            "ALTERNATE SYSTEM" - name of the alternate coding system
+        FIELD (required) The sequence # of the field.
+        COMP (optional) If specified, the data type is 'demoted' to a component
+              value.
+        REP (optional, defaults to 1) The occurrence #.  For non-repeating
+             fields, this parameter is not necessary.
+     Output:
+        SEG (required, pass-by-reference) The segment that is being built.
+  
+  
+  
+ Hierarchic Designator:  SETHD^HLOAPI4(SEG,VALUE,FIELD,COMP,REP)
+     Description:
+        Sets a value that is an HL7 Hierarchic Designator data type (HL7
+        Section Reference 2.9.21) into the segment in the specified field.
+        IF the component is specified, then the data type is 'demoted' to
+        a component, and its components are 'demoted' to subcomponents.
+  
+    Input:
+        SEG (required, pass-by-reference) The array where the segment is being
+             built.
+        VALUE  (required, pass-by-reference) These subscripts may be passed:
+           "NAMESPACE ID"
+           "UNIVERSAL ID"
+           "UNIVERSAL ID TYPE"
+        FIELD (required) The sequence # of the field.
+        COMP (optional) If specified, the data type is 'demoted' to a component
+              value.
+        REP (optional, defaults to 1) The occurrence #.  For non-repeating
+             fields, this parameter is not necessary.
+     Output:
+        SEG (required, pass-by-reference) The segment that is being built.
+  
+  
+  
+ Coded With No Exceptions:  SETCNE^HLOAPI4(SEG,VALUE,FIELD,COMP,REP)
+    Description:
+       Sets a value that is an HL7 Coded With No Exceptions  data type (HL7 
+       Section Reference 2.9.8) into the segment in the specified field.
+       IF the component is specified, then the data type is 'demoted' to a
+       component, and its components are 'demoted' to subcomponents.
+    Input:
+        SEG (required, pass-by-reference) The array where the segment is being
+             built.
+        VALUE  (required, pass-by-reference) These subscripts may be passed:
+           "ID" - the identifier
+           "TEXT" - 
+           "SYSTEM" - name of the code system
+           "ALTERNATE ID" - alternate identifier
+           "ALTERNATE TEXT"
+           "ALTERNATE SYSTEM" - name of the alternate coding system
+           "SYSTEM VERSION" - version ID of the coding system
+           "ALTERNATE SYSTEM VERSION" - version ID of the alternate coding
+                                        system
+           "ORIGINAL TEXT"
+        FIELD (required) The sequence # of the field.
+        COMP (optional) If specified, the data type is 'demoted' to a component
+              value.
+        REP (optional, defaults to 1) The occurrence #.  For non-repeating
+             fields, this parameter is not necessary.
+    Output:
+        SEG (required, pass-by-reference) The segment that is being built.
+          
+  
+   
+ Coded With Exceptions:  SETCWE^HLOAPI4(SEG,VALUE,FIELD,COMP,REP) ;
+    Description: 
+       Sets a value that is an HL7 Coded With Exceptions  data type (HL7
+       Section Reference 2.9.11) into the segment in the specified field.
+       IF the component is specified, then the data type is 'demoted'
+       a component, and its components are 'demoted' to subcomponents.
+    Input:
+        SEG (required, pass-by-reference) The array where the segment is being
+             built.
+        VALUE  (required, pass-by-reference) These subscripts may be passed:
+           "ID" - the identifier
+           "TEXT" - 
+           "SYSTEM" - name of the code system
+           "ALTERNATE ID" - alternate identifier
+           "ALTERNATE TEXT"
+           "ALTERNATE SYSTEM" - name of the alternate coding system
+           "SYSTEM VERSION" - version ID of the coding system
+           "ALTERNATE SYSTEM VERSION" - version ID of the alternate coding
+                                        system
+           "ORIGINAL TEXT"
+        FIELD (required) The sequence # of the field.
+        COMP (optional) If specified, the data type is 'demoted' to a component
+              value.
+        REP (optional, defaults to 1) The occurrence #.  For non-repeating
+             fields, this parameter is not necessary.
+    Output:
+        SEG (required, pass-by-reference) The segment that is being built.
+          
+  
+  
+ Address:  SETAD^HLOAPI4(SEG,VALUE,FIELD,COMP,REP)
+    Description:
+       Sets an AD data type (Address, HL7 Section Reference 2.9.1) into the
+       segment in the specified field. It can also be used to set the 1st 8
+       components of the XAD (Extended Address) data type.  IF the component is
+       specified, then the data type is 'demoted' to a component, and its
+       components are 'demoted' to subcomponents.
+    Input:
+       SEG (required, pass-by-reference) The array where the segment is being
+                                         built.
+       VALUE  (required, pass-by-reference) These subscripts may be passed:
+           "STREET1" -street address
+           "STREET2" - other designation
+           "CITY"
+           "STATE" - state or province
+           "ZIP" - zip or postal code
+           "COUNTRY"
+           "TYPE"  - address type
+           "OTHER" - other geographic designation
+       FIELD (required) the sequence # of the field
+       COMP (optional) If specified, the data type is 'demoted' to a component
+             value.
+       REP (optional, defaults to 1) The occurrence #.  For non-repeating
+             fields, this parameter is not necessary.
+    Output: 
+       SEG (required, pass-by-reference)  The segment that is being built.
+  
+  
+  
+  Test Sites:
+  ===========
+  CMOP-NAT
+  Montana HCS
+  West Palm Beach
+  Shreveport
+  
+  
+  REMEDY:  none
+  =====
+   
+  
+ ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+     
+      <tab>;;1.6;HEALTH LEVEL SEVEN;**[patch list]**;Oct 13, 1995;Build 8
+     
+                           CHECK^XTSUMBLD results
+  Routine name    Before Patch        After Patch         Patch List
+  ============    ============        ===========         ==========
+  HLOAPI2              8788183           10130956           126,131
+  HLOAPI4                  N/A            3107754             131
+  HLOCLNT             17315711           17524826         126,130,131
+  HLOCLNT1             7474141            7549395         126,130,131
+  HLOCLNT2             7656358            9216283         126,130,131
+  HLOFILER             7170474            8406035           126,131
+  HLOPRS1              5778426            7271475           118,131
+  HLOPRS2                  N/A            3792205             131
+  HLOSRVR             18454241           16342424         126,130,131
+  HLOSRVR1            18207361           15627547         126,130,131
+  HLOSRVR2                 N/A            5344305             131
+  HLOSTAT             13784615           13790242           130,131
+  HLOT                 1038794            1124779           126,131
+  HLOTCP               9157020           10339454           126,131
+  HLOTLNK              4085432            4435101         126,130,131
+  
+  
+ INSTALLATION INSTRUCTIONS
+  =========================
+    1.  Users are allowed to be on the system during the installation.
+    
+    2.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This
+        option will load the KIDS package onto your system.
+  
+    3.  Use the STOP HLO action of the HLO System Monitor option to
+        temporarily stop the transmission of HLO messages. 
+  
+    4.  The next step is to use KIDS to install the Transport global.  On
+        the KIDS menu, under the 'Installation' menu, use the following
+        options:
+  
+           Verify Checksums in Transport Global
+           Print Transport Global 
+           Compare Transport Global to Current System 
+           Backup a Transport Global
+           Install Package(s) 
+  
+        When using the Install Package(s) menu option to install the 
+        patch build, you will be asked several questions.  The questions,
+        and the answers you should supply, are shown below.
+  
+        INSTALL NAME: <HL*1.6*131>
+        Want KIDS to INHIBIT LOGONS during the install?  <NO>
+        Want to DISABLE Scheduled Options, Menu Options,
+          and Protocols?  <NO>
+  
+    5.  Use the START HLO action of the HLO System Monitor option to 
+        resume transmission of HLO messages.
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: HLOAPI2
+    Before: B27708015  After: B36169512  **126,131**
+Routine Name: HLOAPI4
+    Before:       n/a  After: B22068040  **131**
+Routine Name: HLOCLNT
+    Before: B55768085  After: B57442573  **126,130,131**
+Routine Name: HLOCLNT1
+    Before: B27548481  After: B28062817  **126,130,131**
+Routine Name: HLOCLNT2
+    Before: B23345410  After: B30513205  **126,130,131**
+Routine Name: HLOFILER
+    Before: B18562276  After: B25709739  **126,131**
+Routine Name: HLOPRS1
+    Before: B13347617  After: B19358044  **118,131**
+Routine Name: HLOPRS2
+    Before:       n/a  After: B25178316  **131**
+Routine Name: HLOSRVR
+    Before: B70554107  After: B62293420  **126,130,131**
+Routine Name: HLOSRVR1
+    Before: B65124218  After: B63396021  **126,130,131**
+Routine Name: HLOSRVR2
+    Before:       n/a  After: B13997562  **131**
+Routine Name: HLOSTAT
+    Before: B55434883  After: B55442954  **130,131**
+Routine Name: HLOT
+    Before:  B2539193  After:  B2729395  **126,131**
+Routine Name: HLOTCP
+    Before: B43009690  After: B45043587  **126,131**
+Routine Name: HLOTLNK
+    Before: B20724359  After: B23891993  **126,130,131**
+
+=============================================================================
+User Information:
+Entered By  : MOORE,CHARLES J               Date Entered  : MAR 29, 2006
+Completed By: SINGH,GURBIR                  Date Completed: JUN 01, 2006
+Released By : GAYFIELD,LISA                 Date Released : JUN 01, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

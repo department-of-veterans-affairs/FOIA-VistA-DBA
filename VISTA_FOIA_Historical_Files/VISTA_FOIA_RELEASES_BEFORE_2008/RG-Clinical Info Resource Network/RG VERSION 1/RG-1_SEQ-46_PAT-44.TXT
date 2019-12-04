@@ -1,0 +1,267 @@
+$TXT Created by DAVIS,PAULETTE T at DEVCRN.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 03/01/07 at 15:25
+=============================================================================
+Run Date: MAR 21, 2007                     Designation: RG*1*44
+Package : RG - CLINICAL INFO RESOURCE NETWORK Priority: EMERGENCY
+Version : 1        SEQ #46                      Status: Released
+                  Compliance Date: MAR 23, 2007
+=============================================================================
+
+Associated patches: (v)RG*1*43     <<= must be installed BEFORE `RG*1*44'
+                    (v)RG*1*45     <<= must be installed BEFORE `RG*1*44'
+
+Subject: PROCESSING PRIMARY REVIEW REJECT EXCEPTIONS
+
+Category: 
+  - Routine
+  - Enhancement ()
+
+Description:
+============
+
+  PLEASE NOTE:
+  ============
+  Austin Master Patient Index patch MPI*1*40 constitutes a change in
+  the business process that updates the patient identity fields across
+  VA facilities.  That patch will phase out the use of the facility
+  Coordinating Master of Record (CMOR) concept, and introduce the 
+  Primary View methodology.  Primary View is an enterprise view of
+  the most current data for a patient based on authority scoring and
+  the latest data rules.
+   
+  Austin patch MPI*1*40 is scheduled for installation on the Master
+  Patient Index on Saturday, March 24, 2007.  Patch RG*1*44 must be
+  installed at all facilities prior to that, to enable the
+  installation of MPI*1*40 on schedule.
+   
+  NOTE:  RG* and MPIF* patches should NOT be installed on legacy
+  systems to avoid issues with the legacy systems ending up as
+  Treating Facilities.
+   
+  RG*1.0*43 and RG*1.0*45 are required builds for patch RG*1*44.
+   
+  Background Information:
+  Patch RG*1.0*45 exported a new exception type in the CIRN HL7 EXCEPTION
+  TYPE (#991.11) file.  The entry was "Primary View Reject."  When the
+  Master Patient Index (MPI) patch MPI*1.0*40 is activated on the MPI,
+  "Primary View Reject" exceptions could be generated on VistA in the
+  MPI/PD Exception Handling [RG EXCEPTION HANDLING] option.  The
+  exception occurs when VistA updates to identity data is rejected on
+  the MPI either because the Authority Score was not high enough, or the
+  data failed a business rule.
+   
+  Issue #1
+  Functionality has been incorporated into the MPI/PD Exception Handling
+  [RG EXCEPTION HANDLING] option to provide a way to process the "Primary
+  View Reject" exceptions.  After selecting an entry in the exception
+  handler with an exception type of "Primary View Reject," a new action is
+  available - "PVR View PV Rej Detail." When the "PVR View PV Rej Detail"
+  action is selected, a remote query is sent to the MPI, via a Remote
+  Procedure Call (RPC).  When the RPC returns, the data from the MPI
+  Primary View Reject Report can be reviewed.
+   
+  The MPI Primary View Reject Report displays each element that was
+  rejected on the MPI either because the Authority Score was not high
+  enough or if it failed a Business Rule.  Review the data to determine
+  the cause of the reject.
+   
+  If you believe that an edit is valid, contact the IMDQ Team for
+  assistance via the G.MPIF EXCEPTIONS mailgroup in VistA or the
+  VHA OI IA MPI DQ TEAM mailgroup in Outlook.  The transmission of
+  patient sensitive data requires PKI encryption.
+   
+  When the report information has been reviewed, and is no longer needed,
+  mark the exception as finished by using the "UPD Update to Processed"
+  action.
+   
+  Issue #2
+  The "Do you want to run the MPI/PD Exception Purge process now? NO//"
+  prompt, is displayed upon entering the MPI/PD Exception Handling [RG
+  EXCEPTION HANDLING] option.  It is recommended that FREQUENTLY, the
+  answer to this prompt should be YES.  One thing that the purge process
+  does is to eliminate duplicate exceptions for the same patient/
+  exception type.  For all exception types, excluding the new Primary
+  View Reject exception, the purge will eliminate the duplicate exceptions
+  for patient and exception type, keeping only the most recent occurrence.
+  Code has been added to routine RGEVPRG to address the Primary View
+  Reject exception types.  For every date that this exception occurs for
+  a patient, Identity Management Data Quality (IMDQ) wants the exception
+  to occur in the Exception Handler for review.  However, if more than
+  one Primary View Reject exception occurs during the same day for the
+  same patient, and all are active (NOT PROCESSED), the purge will remove
+  the duplicate occurrences, leaving only one Primary View Reject entry
+  for the day for that patient.
+  
+  Issue #3
+  With the implementation of Primary View, the MPI will include alias
+  social security numbers in the ADT-A31 update message.  The alias social
+  security numbers are not updated at this point, but need to be handled
+  appropriately to know the difference between the current social security
+  number and the alias social security number.  This is supported by a
+  change to routine RGADTP1, which prevents the last alias social security
+  number from being updated as the current social security number from the
+  ADT-A31 update message.
+  
+  Issue #4
+  With the implementation of Primary View, it was possible for an update to
+  primary view to come in to a site and override a pending update that has
+  yet to be sent to the MPI, but is waiting in the ADT/HL7 PIVOT (#391.71)
+  file to be sent (via the VAFC BATCH UPDATE job).  To avoid the loss 
+  of data, a check will be made to ensure that the pending update is not
+  overwritten when processing an update from the MPI.  If there is a
+  pending update, the update from the MPI will not be processed.  An
+  exception will be logged on the MPI side to notify the IMDQ team of the
+  failed update which should be synchronized when the pending update is
+  sent to the MPI.  Routine RGADTP2 has been changed to address this issue.
+   
+  New Protocols:
+  ==============
+  The following new protocols are included to support MPI/PD Exception
+  Handling.
+      RG EXCPT PV REJECT           Primary View Reject
+      RG EXCPT BLANK1              (placeholder)
+   
+  New List Templates:
+  ===================
+  One list template is distributed with RG*1*44 to support remote
+  data query.
+      RG EXCPT PV REJECT RDISPLAY
+   
+  New Remote Procedure:
+  =====================
+      RG PRIMARY VIEW REJECT
+   
+  Documentation Update:
+  =====================
+  The following MASTER PATIENT INDEX/PATIENT DEMOGRAPHICS (MPI/PD)
+  VISTA documentation is available, updated for patches RG*1.0*44
+  and MPIF*1.0*46.  Facilities should download the revised
+  documentation listed as follows:
+  
+      User Manual                         RG1_0_UM.PDF
+      Release Notes                       RG1_0_RN.PDF
+      Technical Manual                    RG1_0_TM.PDF
+      Programmer Manual                   RG1_0_PM.PDF
+      Exception Handling                  RG1_0_EH.PDF
+  
+  The preferred retrieval method is to FTP from the ANONYMOUS.SOFTWARE
+  directory at: DOWNLOAD.VISTA.MED.VA.GOV
+  This transmits the file from the first available FTP server.
+  Sites may also elect to retrieve software directly from one
+  of the following servers.
+  
+  OI Field Office         FTP Address                  Directory
+  ------------------------------------------------------------------
+  Albany             ftp.fo-albany.med.va.gov     ANONYMOUS.SOFTWARE
+  Hines              ftp.fo-hines.med.va.gov      ANONYMOUS.SOFTWARE
+  Salt Lake City     ftp.fo-slc.med.va.gov        ANONYMOUS.SOFTWARE
+  
+  Note:  These files must be transferred in binary or IMAGE,
+         not ASCII, mode.
+   
+  The documents can also be downloaded from the VistA Documentation
+  Library (VDL) Web page in both Acrobat PDF and MS-Word DOC formats:
+  
+      http://www.va.gov/vdl/application.asp?appid=16
+    
+  Test Sites:
+  ===========
+  Bay Pines HCS
+  Milwaukee, WI
+  Montana HCS
+   
+  Routine Summary:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+   
+  <TAB>;;1.0;CLINICAL INFO RESOURCE NETWORK;**[Patch List]**;30 Apr 99
+   
+  Using old logic: CHECK^XTSUMBLD results
+  Routine       Before Patch       After Patch       Patch List
+  --------      ------------       ------------      ----------
+  RGADTP          21462518           20373944        26,27,20,34,35,
+                                                     40,45,44
+  RGADTP1         13649877           13959974        26,27,42,45,44
+  RGADTP2         13147471           16485645        27,20,45,44
+  RGEVPRG          9699124           12565396        3,12,19,32,35,
+                                                     43,44
+  RGEX03          17804937           17274213        3,12,19,23,27,
+                                                     30,38,39,43,44
+  RGEX07             N/A              2826148        44
+  RGPVREJ            N/A              7114638        44
+     
+  PLEASE NOTE:
+  ============
+  Routine VAFCSB will be released in a future patch - DG*5.3*707.
+  Routine RGADTP references routine VAFCSB.  XINDEX may display:
+  "Reference to routine '^VAFCSB'. That isn't in this UCI."
+   
+  The references to VAFCSB from within routine RGADTP contain conditional
+  %ZOSF("TEST") checks for the existence of the routine and quit if it is
+  not there.  So, the code is not dependent on DG*5.3*707 and will work
+  with or without that patch being present.
+    
+  Installation Instructions:
+  ==========================
+  This patch may be loaded with users on the system.  It should be
+  installed during non-peak hours to minimize disruption to the
+  users.  Installation will take less than 2 minutes.
+   
+  1.  Users are allowed on the system during patch installation.
+     
+  2.  Use the INSTALL/CHECK MESSAGE option on the Packman menu.
+      Note:  TEXT PRINT/DISPLAY option in the PackMan menu will
+      display the patch text only.
+     
+  3.  From the Kernel Installation and Distribution System Menu, select
+      the Installation menu.
+   
+  4.  From this menu, you may elect to use the following options:
+      (a)  Backup a Transport Global.
+      (b)  Compare Transport Global to Current System.
+      (c)  Verify Checksums in Transport Global.
+      (d)  Print Transport Global.
+   
+  5.  Use the Install Package(s) option and select the package RG*1.0*44.
+   
+  6.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? YES//',
+      respond NO.
+   
+  7.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols? YES//', respond YES.  The following OPTION should be
+      disabled during the installation.
+           MPI/PD Exception Handling [RG EXCEPTION HANDLING]
+           MPI/PD Exception Purge    [RG EXCEPTION PURGE]
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: RGADTP
+    Before: B80561867  After: B77946765  **26,27,20,34,35,40,45,44**
+Routine Name: RGADTP1
+    Before: B30537639  After: B31035462  **26,27,42,45,44**
+Routine Name: RGADTP2
+    Before: B33963226  After: B42653247  **27,20,45,44**
+Routine Name: RGEVPRG
+    Before: B41034951  After: B65012676  **3,12,19,32,35,43,44**
+Routine Name: RGEX03
+    Before: B68295667  After: B64947419  **3,12,19,23,27,30,38,39,43,44**
+Routine Name: RGEX07
+    Before:       n/a  After:  B4853896  **44**
+Routine Name: RGPVREJ
+    Before:       n/a  After: B14664495  **44**
+
+=============================================================================
+User Information:
+Entered By  : DAVIS,PAULETTE                Date Entered  : FEB 01, 2006
+Completed By: ALDERMAN,MATT S               Date Completed: MAR 20, 2007
+Released By : FITCH,DONNA                   Date Released : MAR 21, 2007
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

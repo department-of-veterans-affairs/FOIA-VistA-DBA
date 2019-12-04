@@ -1,0 +1,399 @@
+$TXT Created by HSU,RAYMOND at NXT.FO-OAKLAND.MED.VA.GOV  (KIDS) on Monday, 03/23/09 at 17:23
+=============================================================================
+Run Date: JUN 29, 2009                     Designation: HL*1.6*142
+Package : HL - HEALTH LEVEL SEVEN             Priority: Mandatory
+Version : 1.6       SEQ #114                    Status: Released
+                  Compliance Date: JUL 30, 2009
+=============================================================================
+
+Associated patches: (v)HL*1.6*140  <<= must be installed BEFORE `HL*1.6*142'
+                    (v)XM*DBA*172  <<= must be installed BEFORE `HL*1.6*142'
+
+Subject: Listener with writing commit ACK error, VA-VIE link and others
+
+Category: 
+  - Data Dictionary
+  - Routine
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ This patch fixes an Acknowledgment incomplete problem, in addition to 
+ other modifications and enhancements as follows:
+  
+ 1. Fixes the Acknowledgment incomplete problem, when the listener is
+    abnormally disconnected by the COTS client during the writing.
+   
+ 2. Adds new cross-reference to 'MESSAGE ID' field (#2) in HL7 MESSAGE 
+    ADMINISTRATION file (#773):
+  
+    773,2         MESSAGE ID             0;2 FREE TEXT
+  
+               LAST EDITED:      MAY 15, 2008 
+               FIELD INDEX:      AHNEW (#121)    MUMPS    IR    ACTION
+                   Short Descr:  This x-ref is used to look up the original
+                                 message to check duplicate
+                     Set Logic:  N HDR,FLD S HDR=$G(^HLMA(DA,"MSH",1,0)) 
+                                 Q:HDR']""  S:$G(^HLMA(DA,"MSH",2,0))]""
+                                 HDR=HDR_$G(^HL MA(DA,"MSH",2,0)) S
+                                 FLD=$E(HDR,4) Q:FLD']""  S
+                                 HDR=$P(HDR,FLD,3,6) S:HDR]"" 
+                                 ^HLMA("AH-NEW",HDR,X,DA)=""
+                    Kill Logic:  N HDR,FLD S HDR=$G(^HLMA(DA,"MSH",1,0)) 
+                                 Q:HDR'] ""  S:$G(^HLMA(DA,"MSH",2,0))]""
+                                 HDR=HDR_$G(^HL MA(DA,"MSH",2,0)) S
+                                 FLD=$E(HDR,4) Q:FLD']""  S
+                                 HDR=$P(HDR,FLD,3,6) K:HDR]"" 
+                                 ^HLMA("AH-NEW",HDR,X,DA)
+                    Whole Kill:  K ^HLMA("AH-NEW")
+                          X(1):  MESSAGE ID  (773,2)  (Subscr 1)  (Len 60)
+                                 (forwards)
+  
+ 3. Modifies LAST DATE/TIME UPDATED field (#100) in HL7 MESSAGE 
+    ADMINISTRATION file (#773) for the field name as follows:
+  
+      773,100       LAST DATE/TIME UPDATED S;1 DATE
+  
+               INPUT TRANSFORM:  S %DT="ESTXR" D ^%DT S X=Y K:Y<1 X
+               LAST EDITED:      FEB 24, 2009 
+               HELP-PROMPT:      The date and time this transmission was 
+                                 processed. 
+               DESCRIPTION:      For outgoing message: 
+                                   1. Date/time of its commit ACK received.
+                                   2. Date/time of its application ACK 
+                                      message received (overwriting #1).
+                                 And for incoming message: 
+                                   1. Date/time of the message received.  
+                                   2. Date/time of the message has been
+                                      processed by the application 
+                                      (overwriting #1).  
+  
+ 4. Adds the following new fields in HL7 MESSAGE ADMINISTRATION file
+    (#773):
+  
+      773,102       TIME START TO SEND     S;2 DATE
+  
+               INPUT TRANSFORM:  S %DT="ESTR" D ^%DT S X=Y K:X<1 X
+               LAST EDITED:      FEB 23, 2009 
+               HELP-PROMPT:      (No range limit on date) 
+               DESCRIPTION:      This is the date/time the transmission of 
+                                 this outgoing message began.
+  
+      773,103       TIME SENT              S;3 DATE
+  
+               INPUT TRANSFORM:  S %DT="ESTR" D ^%DT S X=Y K:X<1 X
+               LAST EDITED:      FEB 23, 2009 
+               HELP-PROMPT:      (No range limit on date) 
+               DESCRIPTION:      This is the date/time the transmission of 
+                                 this outgoing message finished.
+  
+      773,104       TIME OF COMMIT/APP ACK S;4 DATE
+  
+               INPUT TRANSFORM:  S %DT="ESTR" D ^%DT S X=Y K:X<1 X
+               LAST EDITED:      FEB 23, 2009 
+               HELP-PROMPT:      (No range limit on date) 
+               DESCRIPTION:      This is the date/time this message 
+                                 received the commit ACK, or application
+                                 ACK of original mode or direct connect
+                                 transmission (API: DIRECT^HLMA).
+  
+      773,105       TIME OF APPLICATION ACK S;5 DATE
+  
+               INPUT TRANSFORM:  S %DT="ESTR" D ^%DT S X=Y K:X<1 X
+               LAST EDITED:      FEB 23, 2009 
+               HELP-PROMPT:      (No range limit on date) 
+               DESCRIPTION:      This is the date/time this message 
+                                 received the application ACK.
+  
+      773,106       TIME START PROCESSING  S;6 DATE
+  
+               INPUT TRANSFORM:  S %DT="ESTR" D ^%DT S X=Y K:X<1 X
+               LAST EDITED:      FEB 23, 2009 
+               HELP-PROMPT:      (No range limit on date) 
+               DESCRIPTION:      This is the date/time the application 
+                                 began processing this message.
+  
+      773,107       TIME PROCESSED         S;7 DATE
+  
+               INPUT TRANSFORM:  S %DT="ESTR" D ^%DT S X=Y K:X<1 X
+               LAST EDITED:      FEB 23, 2009 
+               HELP-PROMPT:      (No range limit on date) 
+               DESCRIPTION:      This is the date/time the application 
+                                 finished processing this message.
+  
+ 5. Adds the VA-VIE entry to the HL LOGICAL LINK (#870) file.  This logical
+    link represents a TCP connection to the local interface engine (Vitria
+    BusinessWare).
+  
+    The VA-VIE node is distributed with data in the following fields:
+     NODE: VA-VIE
+     LLP TYPE: TCP
+     AUTOSTART: Enabled
+     DNS DOMAIN: <populated during installation>
+     EXCEED RE-TRANSMIT ACTION: restart
+     TCP/IP ADDRESS: <populated during installation>
+     TCP/IP PORT: 8090
+     TCP/IP SERVICE TYPE: CLIENT (SENDER)
+     PERSISTENT: NO
+  
+     Note: AUTOSTART, DNS DOMAIN and TCP/IP ADDRESS fields will only be
+           updated in production account. If 'DNS DOMAIN' is not defined,
+           site may enter a Remedy ticket to request a domain for its local
+           interface engine.
+  
+ 6. Changes the "SYNONYM" from "FM" to "FL" for item, HL FILER MONITOR, in
+    option, Filer and Link Management Options [HL MENU FILER LINK MGT] to 
+    fix the problem in Remedy Ticket #63571.
+  
+ 7. Creates API, PROC^HLUTIL4, to restore the reprocessing function of HLLP
+    and MailMan messages. Below extracts part of the API, PROC^HLUTIL4,
+    with parameters and result comment:
+  
+      PROC(IEN,RTN) ; reprocessing HLLP or MailMan message
+          ; IEN- either the parent message IEN or the child message IEN
+          ;  of file #772
+          ; RTN- the routine, to be Xecuted for processing the message
+          ;
+          ; return value:
+          ; "0^reprocessing is successful" for success.
+          ; "-1^<error text>" for failure.
+  
+ 8. Creates APIs, NOPURG^HLUTIL4 and PURG^HLUTIL4, to restore the "set no
+    purge" (set "DON'T PURGE" field (#15) of the HL7 MESSAGE TEXT file
+    (#772) to '1' for "DON'T PURGE") and "clear no purge" (set "DON'T
+    PURGE" field (#15) to '0' for "TO PURGE") functions of HLLP and MailMan
+    messages.
+    Below extracts part of the APIs, NOPURG^HLUTIL4 and PURG^HLUTIL4, with
+    parameters and result comment:
+  
+      NOPURG() ; for HLLP and MailMan messages only
+          ; set the DON'T PURGE field to 1 in order to prevent the message
+          ; from purging.
+          ; at least one of the variables, HLMTIEN and HLMTIENS, must be 
+          ; defined
+          ; HLMTIEN- parent message IEN of file #772
+          ; HLMTIENS- child message IEN of file #772
+          ; return value :  1 for successfully set the field
+          ;                -1 for failure
+  
+      PURG()   ; for HLLP and MailMan messages only
+          ; clear the DON'T PURGE field to allow the message to be purged.
+          ; at least one of the variables, HLMTIEN and HLMTIENS, must be 
+          ; defined
+          ; HLMTIEN- parent message IEN of file #772
+          ; HLMTIENS- child message IEN of file #772
+          ; return value :  0 for successfully clear the field
+          ;                -1 for failure
+  
+ 9. Calls API, STAT^%%ZTLOAD, for each display when the "Systems Link 
+     Monitor" option is invoked. (restores the function as Kernel patch 
+     XU*8*446 changes its behavior, see patch HL*1.6*122 and Remedy 230918)
+  
+ 10. Enhances the code for the MPI Cache v5.2 client/server processing
+     model to prevent from missing global during the retrieving of it. 
+  
+ 11. Updates the 'SENDING APPLICATION' (#13), 'RECEIVING APPLICATION' (#14)
+     and 'SUBSCRIBER PROTOCOL' (#8) fields of the HL7 MESSAGE ADMINSTRATION
+     file (#773) for commit ACK.
+  
+ 12. Displays "<device type>/I-off" in the "DEVICE TYPE" column of the HL7
+     "System Link Monitor" screen to show that the 'link' incoming queue
+     has been stopped, when the logical link's 'STOP PROCESSING IN-QUEUE' 
+     field (#4.9), of HL LOGICAL LINK file (#870) is set to YES.  This will
+     prevent the incoming filer from processing the incoming messages
+     queued in this link.
+  
+ 13. Fixes a bug in Ping(TCP) Only [HL PING] option with "No response," 
+     which is introduced by patch HL*1.6*140 where the flush character is
+     not set correctly to flush the response back to the remote client
+     side.
+  
+ 14. Enhances the code to prevent data contention of end-user process from 
+     competing with the associated link processes, which send data to BCBU
+     backup PCs.
+  
+ 15. Enhances the code to fix a problem with duplicate message where the 
+     original message and its corresponding commit ACK were deleted.  This
+     problem occurred between MPI and VIE transmissions.  With this patch, 
+     a new commit ACK will be created for the duplicate and the application
+     routine will be called to process the duplicate message.
+  
+ 16. Fixes the problem in Remedy ticket  #281767 with the length of the 
+     segment line greater than 510.
+  
+ 17. Adds the VAORL entry to the HL LOGICAL LINK (#870) file.
+     The VAORL node is distributed with data in the following fields:
+     
+       NODE: VAORL
+       INSTITUTION: ORLANDO VAMC
+       LLP TYPE: TCP
+       AUTOSTART: Enabled
+       MAILMAN DOMAIN: ORLANDO.MED.VA.GOV
+       DNS DOMAIN: HL7.ORLANDO.MED.VA.GOV
+       EXCEED RE-TRANSMIT ACTION: restart
+       TCP/IP ADDRESS: 10.71.39.120
+       TCP/IP PORT: 5000
+       TCP/IP SERVICE TYPE: CLIENT (SENDER)
+       PERSISTENT: NO
+       TCP/IP PORT (OPTIMIZED): 5001
+  
+     Note: AUTOSTART, MAILMAN DOMAIN, DNS DOMAIN and TCP/IP ADDRESS fields
+           will only be updated in production account.
+           At 'ORLANDO VAMC' site, VAORL node is a multi-listener.
+  
+  
+ Test Sites:
+ ===========
+ Bay Pines HCS
+ Miami HCS
+ Muskogee VAMC
+ Central Texas HCS
+ Spokane VAMC 
+ AUSTIN-MPI
+  
+  
+ Remedy:
+ =======
+ HD 247702: ACKNOWLEDGEMENTS NOT COMPLETE problem.
+ HD 63571: Synonym on HL FILER MONITOR conflicts with DIUSER's.
+ HD 230918: Incoming/Outgoing filers on System Link Monitor function. 
+ HD 63077: IND-0899-42787  REPROC^HLUTIL and REPROC^HLCIRN no longer work.
+ HD 281767: HL7 error messages caused by big Consult comment.
+  
+  
+ INSTALLATION INSTRUCTIONS (takes fewer than 5 minutes):
+ ========================================================
+ Note: only experienced installer should attempt the install.
+  
+   1.  Users are allowed to be on the system during the installation. It 
+       is highly recommended to install the patch during off-hours.
+  
+   2.  Disable the HL7 TCPIP services for the multi-listeners running on 
+       all nodes in the cluster, for example, at the VMS prompt:
+  
+         ISC6A1> TCPIP
+         TCPIP> DISABLE SERVICE BAY_HLSP
+         Note: BAY is the 3 letter site designation for Bay Pines.
+          
+   3.  Shutdown all Logical Links, incoming and outgoing filers using
+       the Filer and Link Management options listed below:
+  
+         Stop All Messaging Background Processes [HL STOP ALL]
+  
+   4.  Shutdown the Link Manager using the Filer and Link Management
+       option listed below:
+  
+         TCP Link Manager Start/Stop [HL START/STOP LINK MANAGER]
+  
+   5.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This
+       option will load the KIDS package onto your system.
+  
+   6.  This patch is now loaded into a transport global on your system.
+       The next step is to use KIDS to install the Transport global.  On
+       the KIDS menu, under the 'Installation' menu, use the following
+       options:
+  
+          Verify Checksums in Transport Global
+          Print Transport Global 
+          Compare Transport Global to Current System 
+          Backup a Transport Global
+          Install Package(s) 
+  
+       When using the Install Package(s) menu option to install the 
+       patch build, you will be asked several questions.  The questions,
+       and the answers you should supply, are shown below.
+  
+        INSTALL NAME: <HL*1.6*142>
+   
+        Want KIDS to INHIBIT LOGONS during the install? NO// <NO>
+        Want to DISABLE Scheduled Options, Menu Options,
+          and Protocols? NO// <NO>
+  
+   7.  Start up all Logical Links and incoming and outgoing filers using
+       the Filer and Link Management Option's 'Restart/Start All Links
+       and Filers [HL TASK RESTART]' menu option.
+       (Note those links that do not have "autostart" enabled will need
+       to be restarted manually.)
+   
+   8.  Restart the Link Manager, that was shutdown in step 4, using the
+       Filer and Link Management option listed below:
+  
+         TCP Link Manager Start/Stop [HL START/STOP LINK MANAGER]
+  
+   9. Enable the HL7 TCPIP services for the multi-listeners, for example, 
+      at the VMS prompt:
+  
+         ISC6A1> TCPIP
+         TCPIP> ENABLE SERVICE BAY_HLSP
+         Note: BAY is the 3 letter site designation for Bay Pines.
+  
+  
+ Checksums Note:
+ ===============
+   Routine HLP142 will be automatically deleted after installation and
+   you will not be able to verify the checksum after the install.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;1.6;HEALTH LEVEL SEVEN;**[Patch List]**;Oct 13, 1995;Build 17
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: HLCSMON
+    Before: B54162059   After: B55215393  **34,40,48,49,65,66,73,109,122,142**
+Routine Name: HLCSMON1
+    Before: B10975872   After: B13446685  **15,40,49,65,109,122,142**
+Routine Name: HLCSTCP1
+    Before: B73767277   After: B73827538  **19,43,57,64,71,133,132,122,
+                                           140,142**
+Routine Name: HLCSTCP2
+    Before: B70352129   After: B83786254  **19,43,49,57,63,64,66,67,76,
+                                           77,87,109,133,122,140,142**
+Routine Name: HLCSUTL
+    Before: B42003607   After: B46767214  **2,19,58,64,65,142**
+Routine Name: HLDIE
+    Before: B47013227   After: B70092394  **109,122,142**
+Routine Name: HLMA
+    Before: B52398960   After: B53088927  **19,43,58,63,66,82,91,109,115,
+                                           133,132,122,140,142**
+Routine Name: HLMA3
+    Before: B26373063   After: B51960807  **126,142**
+Routine Name: HLP142
+    Before:       n/a   After: B63471190  **142**
+Routine Name: HLTF
+    Before: B22809391   After: B24387774  **1,19,43,55,109,120,122,142**
+Routine Name: HLTP3
+    Before: B75311331   After:B126319348  **19,43,57,58,59,66,69,109,115,
+                                           108,116,117,125,120,133,122,
+                                           140,142**
+Routine Name: HLTP3A
+    Before:  B2301375   After:  B2797877  **109,142**
+Routine Name: HLTP4
+    Before: B45154182   After: B46055553  **19,57,59,91,109,116,117,125,
+                                           120,142**
+Routine Name: HLTPCK2A
+    Before: B28058257   After: B29587641  **19,57,59,66,108,120,133,142**
+Routine Name: HLUOPT3
+    Before:  B5260875   After:  B6856566  **109,142**
+Routine Name: HLUTIL
+    Before: B15417895   After: B15676217  **36,19,57,64,66,109,142**
+Routine Name: HLUTIL4
+    Before:       n/a   After: B24031445  **142**
+ 
+Routine list of preceding patches: 126, 140
+
+=============================================================================
+User Information:
+Entered By  : HSU,RAYMOND JL                Date Entered  : MAY 01, 2008
+Completed By: BEST,LISA                     Date Completed: JUN 19, 2009
+Released By : WHELAN,ROBERT E               Date Released : JUN 29, 2009
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

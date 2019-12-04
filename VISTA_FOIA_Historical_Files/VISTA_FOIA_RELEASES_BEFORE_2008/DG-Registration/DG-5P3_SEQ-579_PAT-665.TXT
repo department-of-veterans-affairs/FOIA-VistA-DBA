@@ -1,0 +1,559 @@
+$TXT Created by MULLER,RICHARD at MNTVLL.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 07/05/05 at 10:19
+=============================================================================
+Run Date: AUG 01, 2005                     Designation: DG*5.3*665
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #579                    Status: Released
+                  Compliance Date: SEP 01, 2005
+=============================================================================
+
+
+Subject: ADD/IMPLEMENT NEW DATE/TIME LAST UPDATED FIELDS
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+  
+ This patch addresses the two issues detailed below.
+  
+ Issue #1: Identify records for veterans claiming AO Exposure in Korean DMZ
+ ==========================================================================
+  
+ The Health Eligibility Center (HEC) has requested for all VistA sites to 
+ transmit to HEC Legacy all veteran records who claim Agent Orange 
+ Exposure in Korean DMZ.  
+  
+ The pre-install background job will be queued from this patch 
+ (DG*5.3*665), and will trigger a Full Data (ORU~Z07) HL7 Transmission for 
+ the veterans that meet all of the following criteria: 
+  
+     o Veterans who are not deceased
+     o Veterans who are claiming Agent Orange exposure 
+     o Veterans whose Agent Orange Exposure Location is Korean DMZ
+  
+ Upon successful completion of the background job, a summary MailMan 
+ message will be sent to the person installing the patch containing the 
+ process details and record counts.
+  
+ EXAMPLE OF PRE-INSTALL MAILMAN MESSAGE:
+ =======================================
+  
+ Subj: AO-KOREAN DMZ TRANSMISSION JOB - 500 [TEST]  [#37002] 06/08/05@11:24
+ From: AO-KOREAN DMZ TRANSMISSION JOB  In 'IN' basket.   Page 1
+ --------------------------------------------------------------------------
+ The Agent Orange Korean DMZ transmission process has completed 
+ successfully.
+ This process searched for patient records with an Agent Orange Exposure
+ Location of Korean DMZ, and queued the record for a Z07 transmission to
+ the Health Eligibility Center.
+  
+ Task: 3445670
+ Site Station Number: 500
+ Site Name: ALBANY.VA.GOV
+  
+ Process started   : Jun 08, 2005@11:24:35
+ Process completed : Jun 08, 2005@11:24:39
+  
+ Total Patients processed                   : 3295
+ AO Korean DMZ rec. queued for transmission : 17
+  
+ For identification of the patients for whom the AO Korean DMZ job
+  sent a record to HEC, you can review the following global:
+     ^XTMP("DG53665O","DATA",DFN)
+  DFN = internal entry number in the Patient file (#2).
+  
+ Enter message action (in IN basket): Ignore//
+  
+  
+ Issue #2: Add/Implement new Date/Time Last Updated Fields
+ =========================================================
+  
+ In support of the Enrollment VistA Changes (EVC) and Enrollment System 
+ Redesign (ESR) Projects, the following two sets of new fields are being
+ added to the PATIENT File (#2):
+  
+     Fields containing Date/Timestamps:
+     ----------------------------------------------------------------
+     TEMPORARY ADDRESS CHANGE DT/TM    (field #.12113)
+     CONFIDENTIAL ADDRESS CHANGE DT/TM (field #.14112)
+     PRIMARY NOK CHANGE DATE/TIME      (field #.21012)
+     SECONDARY NOK CHANGE DATE/TIME    (field #.211012)
+     E-CONTACT CHANGE DATE/TIME        (field #.33012) 
+     E2-CONTACT CHANGE DATE/TIME       (field #.33112) 
+     DESIGNEE CHANGE DATE/TIME         (field #.3412)  
+  
+     The seven Date/Time fields will be populated by seven record index
+     triggers (ADTTM1 - ADTTM7) documented below with the data fields (9 -
+     10 fields each) that will trigger the update.  The data fields when 
+     updated will trigger the date/timestamp on these fields to be set with
+     the date and time of the update.
+  
+     Fields containing pointers to the INSTITUTION File (#4):
+     ---------------------------------------------------------------
+     TEMPORARY ADDRESS CHANGE SITE     (field #.12114)
+     CONFIDENTIAL ADDR CHANGE SITE     (field #.14113)
+  
+     These two fields will be populated/utilized with the modifications 
+     that are being implemented with the EVC Project in support of the
+     ESR Project. This patch (DG*5.3*665) is adding the fields only.
+  
+ The post-install background job in this patch (DG*5.3*665) will build the 
+ seven record index triggers ADTTM1 - ADTTM7 and link them to the fields 
+ as documented below.
+  
+  
+ TEMPORARY ADDRESS NEW FIELDS AND CROSS-REFERENCE TRIGGER 
+ ========================================================
+  
+ 2,.12113    TEMPORARY ADDRESS CHANGE DT/TM .121;13 DATE
+  
+             INPUT TRANSFORM:  S %DT="ESTX" D ^%DT S X=Y K:X<1 X
+             LAST EDITED:      MAY 19, 2005
+             HELP-PROMPT:      (No range limit on date)
+             DESCRIPTION:      This field will hold the date and time of 
+                               the last Temporary Address Update.
+  
+             NOTES:            XXXX--CAN'T BE ALTERED EXCEPT BY PROGRAMMER
+  
+  
+ 2,.12114 TEMPORARY ADDRESS CHANGE SITE .121;14 POINTER TO INSTITUTION FILE
+                                (#4)
+  
+             LAST EDITED:      MAY 19, 2005
+             DESCRIPTION:      This field will hold the Site that last 
+                               changed this patient's temporary address.
+  
+  
+   ADTTM1 (#550)    RECORD    MUMPS        ACTION
+       Short Descr:  TEMPORARY ADDRESS Cross-Reference
+       Description:  This cross-reference will update the TEMPORARY ADDRESS
+                     CHANGE DT/TM field when the Temporary Address data 
+                     changes for a patient.
+         Set Logic:  D TEMP^DGDDDTTM
+        Kill Logic:  D TEMP^DGDDDTTM
+              X(1):  TEMPORARY STREET [LINE 1]  (2,.1211)  (forwards)
+              X(2):  TEMPORARY STREET [LINE 2]  (2,.1212)  (forwards)
+              X(3):  TEMPORARY STREET [LINE 3]  (2,.1213)  (forwards)
+              X(4):  TEMPORARY CITY  (2,.1214)  (forwards)
+              X(5):  TEMPORARY STATE  (2,.1215)  (forwards)
+              X(6):  TEMPORARY ZIP CODE  (2,.1216)  (forwards)
+              X(7):  TEMPORARY ADDRESS START DATE  (2,.1217)  (forwards)
+              X(8):  TEMPORARY ADDRESS END DATE  (2,.1218)  (forwards)
+              X(9):  TEMPORARY ADDRESS ACTIVE?  (2,.12105)  (forwards)
+             X(10):  TEMPORARY ZIP+4  (2,.12112)  (forwards)
+  
+  
+ CONFIDENTIAL ADDRESS NEW FIELDS AND CROSS-REFERENCE TRIGGER 
+ ===========================================================
+  
+ 2,.14112    CONFIDENTIAL ADDR CHANGE DT/TM .141;12 DATE
+  
+             INPUT TRANSFORM:  S %DT="ESTX" D ^%DT S X=Y K:X<1 X
+             LAST EDITED:      MAY 19, 2005
+             DESCRIPTION:      This field will hold the date and time of 
+                               the last Confidential Address Update.
+  
+             NOTES:            XXXX--CAN'T BE ALTERED EXCEPT BY PROGRAMMER
+  
+  
+ 2,.14113 CONFIDENTIAL ADDR CHANGE SITE .141;13 POINTER TO INSTITUTION FILE
+                                (#4)
+  
+             LAST EDITED:      MAY 19, 2005
+             DESCRIPTION:      This field will hold the Site that last 
+                               changed this patient's confidential address.
+  
+  
+   ADTTM2 (#551)    RECORD    MUMPS        ACTION
+       Short Descr:  CONFIDENTIAL ADDRESS Cross-Reference
+       Description:  This cross-reference will update the CONFIDENTIAL ADDR
+                     CHANGE DT/TM field when the confidential address data
+                     changes for a patient.
+         Set Logic:  D CONF^DGDDDTTM
+        Kill Logic:  D CONF^DGDDDTTM
+              X(1):  CONFIDENTIAL STREET [LINE 1]  (2,.1411)  (forwards)
+              X(2):  CONFIDENTIAL STREET [LINE 2]  (2,.1412)  (forwards)
+              X(3):  CONFIDENTIAL STREET [LINE 3]  (2,.1413)  (forwards)
+              X(4):  CONFIDENTIAL ADDRESS CITY  (2,.1414)  (forwards)
+              X(5):  CONFIDENTIAL ADDRESS STATE  (2,.1415)  (forwards)
+              X(6):  CONFIDENTIAL ADDRESS ZIP CODE  (2,.1416)  (forwards)
+              X(7):  CONFIDENTIAL START DATE  (2,.1417)  (forwards)
+              X(8):  CONFIDENTIAL END DATE  (2,.1418)  (forwards)
+              X(9):  CONFIDENTIAL ADDRESS ACTIVE?  (2,.14105)  (forwards)
+  
+  
+ PRIMARY NEXT OF KIN NEW FIELDS AND CROSS-REFERENCE TRIGGER 
+ ==========================================================
+  
+ 2,.21012      PRIMARY NOK CHANGE DATE/TIME .212;1 DATE
+  
+               INPUT TRANSFORM:  S %DT="ESTX" D ^%DT S X=Y K:X<1 X
+               LAST EDITED:      MAY 19, 2005
+               DESCRIPTION:      This field will hold the date and time of 
+                                 the last Primary Next of Kin Update.
+  
+               NOTES:            XXXX--CAN'T BE ALTERED EXCEPT BY PROGRAMMER
+  
+  
+  ADTTM3 (#552)    RECORD    MUMPS        ACTION
+       Short Descr:  PRIMARY NOK Cross-Reference
+       Description:  This cross-reference will update the PRIMARY NOK CHANGE
+                     DATE/TIME field when the Primary Next of Kin data 
+                     changes for a patient.
+         Set Logic:  D PNOK^DGDDDTTM
+        Kill Logic:  D PNOK^DGDDDTTM
+              X(1):  K-NAME OF PRIMARY NOK  (2,.211)  (forwards)
+              X(2):  K-RELATIONSHIP TO PATIENT  (2,.212)  (forwards)
+              X(3):  K-STREET ADDRESS [LINE 1]  (2,.213)  (forwards)
+              X(4):  K-STREET ADDRESS [LINE 2]  (2,.214)  (forwards)
+              X(5):  K-STREET ADDRESS [LINE 3]  (2,.215)  (forwards)
+              X(6):  K-CITY  (2,.216)  (forwards)
+              X(7):  K-STATE  (2,.217)  (forwards)
+              X(8):  K-ZIP CODE  (2,.218)  (forwards)
+              X(9):  K-ADDRESS SAME AS PATIENT'S?  (2,.2125)  (forwards)
+             X(10):  K-ZIP+4  (2,.2207)  (forwards)
+  
+  
+ SECONDARY NEXT OF KIN NEW FIELDS AND CROSS-REFERENCE TRIGGER 
+ ============================================================
+  
+ 2,.211012     SECONDARY NOK CHANGE DATE/TIME .212;2 DATE
+  
+               INPUT TRANSFORM:  S %DT="ESTX" D ^%DT S X=Y K:X<1 X
+               LAST EDITED:      MAY 20, 2005
+               DESCRIPTION:      This field will hold the date and time of 
+                                 the last Secondary Next of Kin Update.
+  
+               NOTES:            XXXX--CAN'T BE ALTERED EXCEPT BY PROGRAMMER
+  
+  
+   ADTTM4 (#553)    RECORD    MUMPS        ACTION
+       Short Descr:  SECONDARY NOK Cross-Reference
+       Description:  This cross-reference will update the SECONDARY NOK CHANGE
+                     DATE/TIME field when the Secondary Next of Kin data 
+                     changes for a patient.
+         Set Logic:  D SNOK^DGDDDTTM
+        Kill Logic:  D SNOK^DGDDDTTM
+              X(1):  K2-NAME OF SECONDARY NOK  (2,.2191)  (forwards)
+              X(2):  K2-RELATIONSHIP TO PATIENT  (2,.2192)  (forwards)
+              X(3):  K2-STREET ADDRESS [LINE 1]  (2,.2193)  (forwards)
+              X(4):  K2-STREET ADDRESS [LINE 2]  (2,.2194)  (forwards)
+              X(5):  K2-STREET ADDRESS [LINE 3]  (2,.2195)  (forwards)
+              X(6):  K2-CITY  (2,.2196)  (forwards)
+              X(7):  K2-STATE  (2,.2197)  (forwards)
+              X(8):  K2-ZIP CODE  (2,.2198)  (forwards)
+              X(9):  K2-ADDRESS SAME AS PATIENT'S?  (2,.21925)  (forwards)
+             X(10):  K2-ZIP+4  (2,.2203)  (forwards)
+  
+  
+ EMERGENCY CONTACT NEW FIELDS AND CROSS-REFERENCE TRIGGER 
+ ========================================================
+  
+ 2,.33012      E-CONTACT CHANGE DATE/TIME .332;1 DATE
+  
+               INPUT TRANSFORM:  S %DT="ESTX" D ^%DT S X=Y K:X<1 X
+               LAST EDITED:      MAY 20, 2005
+               DESCRIPTION:      This field will hold the date and time of 
+                                 the last Emergency Contact Update.
+  
+               NOTES:            XXXX--CAN'T BE ALTERED EXCEPT BY PROGRAMMER
+  
+  
+   ADTTM5 (#554)    RECORD    MUMPS        ACTION
+       Short Descr:  E-CONTACT Cross-Reference
+       Description:  This cross-reference will update the E-CONTACT CHANGE
+                     DATE/TIME field when the Emergency Contact data 
+                     changes for a patient.
+         Set Logic:  D ECON^DGDDDTTM
+        Kill Logic:  D ECON^DGDDDTTM
+              X(1):  E-NAME  (2,.331)  (forwards)
+              X(2):  E-RELATIONSHIP TO PATIENT  (2,.332)  (forwards)
+              X(3):  E-STREET ADDRESS [LINE 1]  (2,.333)  (forwards)
+              X(4):  E-STREET ADDRESS [LINE 2]  (2,.334)  (forwards)
+              X(5):  E-STREET ADDRESS [LINE 3]  (2,.335)  (forwards)
+              X(6):  E-CITY  (2,.336)  (forwards)
+              X(7):  E-STATE  (2,.337)  (forwards)
+              X(8):  E-ZIP CODE  (2,.338)  (forwards)
+              X(9):  E-EMER. CONTACT SAME AS NOK?  (2,.3305)  (forwards)
+             X(10):  E-ZIP+4  (2,.2201)  (forwards)
+  
+  
+ SECONDARY EMERGENCY CONTACT NEW FIELDS AND CROSS-REFERENCE TRIGGER 
+ ==================================================================
+  
+ 2,.33112      E2-CONTACT CHANGE DATE/TIME .332;2 DATE
+  
+               INPUT TRANSFORM:  S %DT="ESTX" D ^%DT S X=Y K:X<1 X
+               LAST EDITED:      MAY 20, 2005
+               DESCRIPTION:      This field will hold the date and time of 
+                                 the last Secondary Emergency Contact Update.
+  
+               NOTES:            XXXX--CAN'T BE ALTERED EXCEPT BY PROGRAMMER
+  
+  
+   ADTTM6 (#555)    RECORD    MUMPS        ACTION
+       Short Descr:  E2-CONTACT Cross-Reference
+       Description:  This cross-reference will update the E2-CONTACT CHANGE
+                     DATE/TIME field when the Secondary Emergency Contact 
+                     data changes for a patient.
+         Set Logic:  D ECON2^DGDDDTTM
+        Kill Logic:  D ECON2^DGDDDTTM
+              X(1):  E2-NAME OF SECONDARY CONTACT  (2,.3311)  (forwards)
+              X(2):  E2-RELATIONSHIP TO PATIENT  (2,.3312)  (forwards)
+              X(3):  E2-STREET ADDRESS [LINE 1]  (2,.3313)  (forwards)
+              X(4):  E2-STREET ADDRESS [LINE 2]  (2,.3314)  (forwards)
+              X(5):  E2-STREET ADDRESS [LINE 3]  (2,.3315)  (forwards)
+              X(6):  E2-CITY  (2,.3316)  (forwards)
+              X(7):  E2-STATE  (2,.3317)  (forwards)
+              X(8):  E2-ZIP CODE  (2,.3318)  (forwards)
+              X(9):  E2-ZIP+4  (2,.2204)  (forwards)
+  
+  
+ DESIGNEE NEW FIELDS AND CROSS-REFERENCE TRIGGER 
+ ===============================================
+  
+ 2,.3412       DESIGNEE CHANGE DATE/TIME .332;3 DATE
+  
+               INPUT TRANSFORM:  S %DT="ESTX" D ^%DT S X=Y K:X<1 X
+               LAST EDITED:      MAY 20, 2005
+               DESCRIPTION:      This field will hold the date and time of 
+                                 the last Designee Update.
+  
+               NOTES:            XXXX--CAN'T BE ALTERED EXCEPT BY PROGRAMMER
+  
+  
+   ADTTM7 (#556)    RECORD    MUMPS        ACTION
+       Short Descr:  DESIGNEE Cross-Reference
+       Description:  This cross-reference will update the DESIGNEE CHANGE
+                     DATE/TIME field when the Designee data changes for a 
+                     patient.
+         Set Logic:  D DESIG^DGDDDTTM
+        Kill Logic:  D DESIG^DGDDDTTM
+              X(1):  D-NAME OF DESIGNEE  (2,.341)  (forwards)
+              X(2):  D-RELATIONSHIP TO PATIENT  (2,.342)  (forwards)
+              X(3):  D-STREET ADDRESS [LINE 1]  (2,.343)  (forwards)
+              X(4):  D-STREET ADDRESS [LINE 2]  (2,.344)  (forwards)
+              X(5):  D-STREET ADDRESS [LINE 3]  (2,.345)  (forwards)
+              X(6):  D-CITY  (2,.346)  (forwards)
+              X(7):  D-STATE  (2,.347)  (forwards)
+              X(8):  D-ZIP CODE  (2,.348)  (forwards)
+              X(9):  D-DESIGNEE SAME AS NOK?  (2,.3405)  (forwards)
+             X(10):  D-ZIP+4  (2,.2202)  (forwards)
+  
+  
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+ There is no NSR associated with this patch.
+  
+  
+ This patch addresses the following NOIS/Remedy Ticket(s):
+ ---------------------------------------------------------
+ There are no NOIS/Remedy tickets associated with this patch.
+  
+  
+ COMPONENTS SENT WITH PATCH
+ --------------------------
+  
+ Routines:
+ =========
+  
+ The following is a list of the routines included in this patch.  
+ The second line of each of these routines now looks like: 
+   
+      ;;5.3;Registration;**[patch list]**;Aug 13,1993
+   
+                        CHECK^XTSUMBLD results
+  
+ Routine         Before Patch     After Patch     Patch List 
+ -------         ------------     -----------     ----------
+ DG53665O        N/A              5927598             665
+ DG53665P        N/A              1811237             665
+ DGADTTM1        N/A              1587055             665
+ DGADTTM2        N/A              1563084             665
+ DGADTTM3        N/A              1541088             665
+ DGADTTM4        N/A              1589723             665
+ DGADTTM5        N/A              1516873             665
+ DGADTTM6        N/A              1552025             665
+ DGADTTM7        N/A              1454904             665
+ DGDDDTTM        N/A               832264             665
+   
+ Total number of routines - 10
+  
+ Total number of routines modified:  0
+ Total number of new routines:      10
+ Total number of deleted routines:   0
+  
+  
+ The following is a list of files included in this patch:
+  
+                                      UP    SEND  DATA                
+                                      DATE  SEC.  COMES  SITE   RSLV  
+ FILE #  NAME                         DD    CODE  W/FILE DATA   PTS 
+ --------------------------------------------------------------------
+ 2       PATIENT                      YES   NO    NO     N/A    NO    
+  
+  
+ The following is a list of fields included in this patch:
+  
+ Field Name (Number)                           File Name (Number)
+ -------------------------------------------   ------------------
+ TEMPORARY ADDRESS CHANGE DT/TM    (#.12113)   PATIENT (#2)
+ TEMPORARY ADDRESS CHANGE SITE     (#.12114)   PATIENT (#2)
+ CONFIDENTIAL ADDRESS CHANGE DT/TM (#.14112)   PATIENT (#2)
+ CONFIDENTIAL ADDR CHANGE SITE     (#.14113)   PATIENT (#2)
+ PRIMARY NOK CHANGE DATE/TIME      (#.21012)   PATIENT (#2)
+ SECONDARY NOK CHANGE DATE/TIME    (#.211012)  PATIENT (#2)
+ E-CONTACT CHANGE DATE/TIME        (#.33012)   PATIENT (#2)
+ E2-CONTACT CHANGE DATE/TIME       (#.33112)   PATIENT (#2)
+ DESIGNEE CHANGE DATE/TIME         (#.3412)    PATIENT (#2)
+  
+  
+ Test Sites:
+ -----------
+ Augusta VAMC (Large)
+ West LA VAMC (Integrated)
+ Puget Sound HCS (Integrated)
+ Madison (Medium)
+  
+  
+ ===============INSTALLATION INSTRUCTIONS =================
+  
+ The patch should be installed during non-peak hours, and can be loaded 
+ with users on the system.
+  
+  
+ Install Time - less than 5 minutes
+  
+  
+ 1.  LOAD TRANSPORT GLOBAL 
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the 
+     INSTALL/CHECK MESSAGE PackMan option.  
+              
+ 2.  START UP KIDS 
+     -------------
+     Start up the Kernel Installation and Distribution System Menu 
+     [XPD MAIN]: 
+    
+          Edits and Distribution ...  
+          Utilities ...  
+          Installation ...  
+    
+ Select Kernel Installation & Distribution System Option: INStallation 
+                                                          ---
+          Load a Distribution 
+          Print Transport Global 
+          Compare Transport Global to Current System 
+          Verify Checksums in Transport Global 
+          Install Package(s) 
+          Restart Install of Package(s) 
+          Unload a Distribution 
+          Backup a Transport Global 
+    
+ Select Installation Option: 
+    
+ 3.  Select Installation Option: 
+     ---------------------------
+     NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+            NAME, enter DG*5.3*665):
+       
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when this patch
+         is installed.  It compares all components of this patch
+         (routines, DD's, templates, etc.).
+     c.  Verify Checksums in Transport Global - This option will allow
+         you to ensure the integrity of the routines that are in the
+         transport global.
+      
+ 4.  Select Installation Option: Install Package(s) 
+                                 ------------------
+     **This is the step to start the installation of this KIDS patch: 
+    
+     a.  Choose the Install Package(s) option to start the patch
+         install.
+     b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+         YES//' answer NO (unless otherwise indicated).
+     c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+         Options, and Protocols? YES//' answer NO. 
+
+Routine Information:
+====================
+
+Routine Name:
+  - DG53665O
+
+
+Routine Checksum:
+
+Routine Name:
+  - DG53665P
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGADTTM1
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGADTTM2
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGADTTM3
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGADTTM4
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGADTTM5
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGADTTM6
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGADTTM7
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGDDDTTM
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : MULLER,RICHARD                Date Entered  : MAY 16, 2005
+Completed By: RUDINGER,NANCY L.             Date Completed: JUL 27, 2005
+Released By : HEUER,CINDY                   Date Released : AUG 01, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

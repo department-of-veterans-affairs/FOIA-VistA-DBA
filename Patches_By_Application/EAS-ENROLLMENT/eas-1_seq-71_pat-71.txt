@@ -1,0 +1,460 @@
+$TXT Created by MORGAN,BRIAN at DEVVOO.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 11/27/07 at 15:09
+=============================================================================
+Run Date: JAN 09, 2008                     Designation: EAS*1*71
+Package : EAS - ENROLLMENT APPLICATION SYSTEM Priority: Mandatory
+Version : 1        SEQ #71                      Status: Released
+                  Compliance Date: FEB 09, 2008
+=============================================================================
+
+
+Subject: ESR PROJECT - VISTA DATA EXCHANGE
+
+Category: 
+  - Routine
+  - Other
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ SPECIAL NOTE:
+ ============= 
+ 
+ The following is a known ^XINDEX issue with this patch:
+ 
+   --- Routine Detail ---
+ 
+   *****   ERRORS & WARNINGS IN EASCM   *****
+ 
+                F - Call to this MISSING LABEL $$UPDMTSIG^IVMCMF
+ 
+ 
+   MT+12       .Q:$$UPDMTSIG^IVMCMF(+IVMLAST,TMSTAMP,MTSIG,MTSIGDT)
+ 
+ The above mentioned ^XINDEX "error" should not cause any problems
+ on your system as the missing label is only executed through 
+ protocols being released as disabled.  These protocols will not be enabled
+ until after the release of IVM*2*115, which contains the missing label and
+ will resolve this issue.
+ 
+ PATCH DESCRIPTION:
+ ==================
+ 
+ It is recommended that this patch not be installed on Legacy Systems.
+ 
+ The Enrollment System Redesign (ESR) is being implemented to replace 
+ the existing Health Eligibility Center (HEC) Legacy System. To allow 
+ data exchange between the Veterans Health Information Systems and 
+ Technology Architecture (VistA) and the new ESR system, this patch creates 
+ a new logical link (LLESROUT) and its associated new messaging protocols.
+  
+ This patch creates the new logical link, LLESROUT, in an Inactive status.
+ All VistA sites MUST install this patch by the compliance date in order to
+ allow initialization of the data exchange to the ESR system.  Once all
+ sites install this patch and it is validated the ESR system is ready to
+ process inbound messaging, the appropriate protocols will be activated on
+ the VistA sites via the EAS ESR MESSAGING remote procedure introduced by 
+ this patch.  Further action(s) by the VistA sites is not anticipated.  
+ 
+ Initially, communications from the VistA systems to the ESR will be 
+ unidirectional (inbound to ESR only).  ESR will receive and process the data;
+ however, it will not send data back to sites.  This method allows the HEC 
+ Legacy database and the ESR database to remain synchronized during the 
+ transitional period prior to activation of ESR as the authoritative system of
+ record.  HEC Legacy will remain the authoritative system of record during 
+ this transitional period and the VistA systems will retain bi-directional 
+ communications with that system until the cutover to ESR. 
+ 
+ **************************************************************************** 
+ *                                                                          *
+ *  DO NOT MANUALLY CHANGE THE STATUS OF THESE PROTOCOLS AND/OR LOGICAL     *
+ *  LINKS UNLESS SPECIFICALLY DIRECTED BY EPS OR A REPRSENTATIVE OF THE     *
+ *  ESR DEPLOYMENT TEAM.                                                    *
+ *                                                                          *
+ * Doing this could cause your data to become out of sync with ESR and HEC. *
+ *                                                                          *
+ ****************************************************************************
+ 
+ 
+ Activation of the ESR protocols will occur in two stages, as follows:
+ 
+    (1) The HEC Legacy system will remain the authoritative system 
+        of record for a time yet to be determined.  During this timeframe,
+        VistA sites will continue to query the HEC Legacy system for income
+        test data (QRY~Z10 message type) and enrollment / eligibility data 
+        (QRY~Z11 message type).  Data will continue to be sent to/received 
+        by the VistA sites via the current methods utilized today.
+ 
+    (2) Once a determination is made for the ESR system to become the 
+        authoritative system of record, the QRY~Z10 and QRY~Z11 protocols
+        will be re-pointed to interrogate the ESR system via the remote 
+        procedure, EAS ESR MESSAGING, introduced by this patch.  VistA sites
+        should not have to take any action(s) concerning the re-pointing
+        operation.
+  
+ Technical Summary:
+ ------------------
+  
+ This patch  will allow the data exchange between Vista and ESR
+ of all message types currently exchanged between HEC and Vista.
+ 
+ Z04        INSURANCE TRANSMISSIONS
+ Z05        DEMOGRAPHIC TRANSMISSIONS
+ Z07        FULL DATA TRANSMISSIONS
+ Z09        BILLING/COLLECTION TRANSMISSIONS
+ Z10        INCOME TEST TRANSMISSIONS
+ Z11        ENROLLMENT/ELIGIBILTY 
+  
+  
+     
+ 1.  HL LOGICAL LINK File (#870) - A new entry is added to support the
+     transmission of data between the Vista sites and ESR: 
+         LLESROUT - this is the Client (Sender) logical link
+  
+ 2.  PROTOCOL File (#101)   
+ 
+      New ORU (Unsolicited transmission type) protocols are added for
+      inbound messages:
+   
+        (where nnn is the Vista site number)
+   
+         EAS ESR nnn ORU~Z04 CLIENT H
+         EAS ESR nnn ORU~Z04 SERVER H
+         EAS ESR nnn ORU~Z05 CLIENT
+         EAS ESR nnn ORU~Z05 SERVER
+         EAS ESR nnn ORU~Z10 CLIENT
+         EAS ESR nnn ORU~Z10 SERVER
+         EAS ESR nnn ORU~Z11 CLIENT
+         EAS ESR nnn ORU~Z11 SERVER
+ 
+      New ORU protocols are added for outbound messages:
+   
+         EAS ESR nnn ORU~Z07 CLIENT
+         EAS ESR nnn ORU~Z09 CLIENT
+   
+      New ORF (Solicited transmission type) protocols are added: 
+ 
+         EAS ESR nnn ORF~Z07 CLIENT
+         EAS ESR nnn ORF~Z10 CLIENT
+         EAS ESR nnn ORF~Z10 SERVER
+         EAS ESR nnn ORF~Z11 CLIENT
+         EAS ESR nnn ORF~Z11 SERVER
+ 
+     New QRY (Query transmission type) protocols are added:
+ 
+         EAS ESR nnn QRY-Z07 CLIENT
+         EAS ESR nnn QRY-Z07 SERVER
+         EAS ESR nnn QRY-Z10 CLIENT 
+         EAS ESR nnn QRY-Z11 CLIENT
+ 
+     New Protocol ENROLLMENT GROUP THRESHOLD/Unsolicited ESR to VAMC 
+ 
+         EAS ESR nnn MFN-ZEG CLIENT         
+         EAS ESR nnn MFN-ZEG SERVER       
+  
+ 3.  HL7 APPLICATION PARAMETER File (#771) - a new entry is added:
+         
+         ESR
+ 
+ 4.  REMOTE PROCEDURE File (#8994)
+ 
+         EAS ESR MESSAGING
+  
+ 
+ There are two post-install routines (EAS107P and EAS1071Q) that will
+  define the logical link and protocols associated with this patch.  
+ The server protocols associated with this patch will have the DISABLE (#2) 
+ field of the PROTOCOL (#101) file defined as disabled.  Once the ESR 
+ system is ready to begin processing of incoming message traffic, the 
+ protocols and logical links introduced by this patch will be activated 
+ via the EAS ESR MESSAGING remote procedure.
+  
+ 
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+ There is no NSR associated with this patch.
+ 
+ 
+ This patch addresses the following Remedy Ticket(s):
+ ----------------------------------------------------
+ There are no NOIS/Remedy tickets associated with this patch.
+ 
+ 
+ Components Released With Patch
+ ------------------------------ 
+ 
+ The following link, protocols and application are created by the post
+ install routine for this patch:
+ 
+ File# 870 - HL LOGICAL LINK 
+  
+  NODE: LLESROUT                       LLP TYPE: TCP
+    DEVICE TYPE: Non-Persistent Client AUTOSTART: Enabled
+    QUEUE SIZE: 10                     RE-TRANSMISSION ATTEMPTS: 3
+    READ TIMEOUT: 90                   ACK TIMEOUT: 270
+    EXCEED RE-TRANSMIT ACTION: restart  
+    TCP/IP SERVICE TYPE: CLIENT (SENDER)
+    PERSISTENT: NO
+  
+  
+ File# 101 - PROTOCOL
+ 
+      New ORU protocols are added for inbound messages:
+ 
+      (where nnn is the Vista site number)
+   
+         EAS ESR nnn ORU~Z04 CLIENT H
+         EAS ESR nnn ORU~Z04 SERVER H
+         EAS ESR nnn ORU~Z05 CLIENT
+         EAS ESR nnn ORU~Z05 SERVER
+         EAS ESR nnn ORU~Z10 CLIENT
+         EAS ESR nnn ORU~Z10 SERVER
+         EAS ESR nnn ORU~Z11 CLIENT
+         EAS ESR nnn ORU~Z11 SERVER
+ 
+      New ORU protocols are added for outbound messages:
+   
+         EAS ESR nnn ORU~Z07 CLIENT
+         EAS ESR nnn ORU~Z09 CLIENT
+   
+      New ORF protocols are added 
+ 
+         EAS ESR nnn ORF~Z07 CLIENT
+         EAS ESR nnn ORF~Z10 CLIENT
+         EAS ESR nnn ORF~Z10 SERVER
+         EAS ESR nnn ORF~Z11 CLIENT
+         EAS ESR nnn ORF~Z11 SERVER
+ 
+      New QRY protocols are added
+ 
+         EAS ESR nnn QRY-Z07 CLIENT
+         EAS ESR nnn QRY-Z07 SERVER
+         EAS ESR nnn QRY-Z10 CLIENT 
+         EAS ESR nnn QRY-Z11 CLIENT
+ 
+      New Protocol ENROLLMENT GROUP THRESHOLD/Unsolicited ESR to VAMC 
+ 
+         EAS ESR nnn MFN-ZEG CLIENT         
+         EAS ESR nnn MFN-ZEG SERVER       
+  
+  
+ File# 771 - HL7 APPLICATION PARAMETER
+  NAME: ESR                            ACTIVE/INACTIVE: ACTIVE
+    FACILITY NAME: 200ESR                    COUNTRY CODE: USA
+ 
+ File# 8994 - REMOTE PROCEDURE FILE
+ 
+         EAS ESR MESSAGING
+ 
+ ROUTINE SUMMARY
+ ---------------
+  
+ The following is a list of the routine(s) included in this patch. The 
+ second line of each of these routines will look like: 
+   
+ <tab>;;1.0;ENROLLMENT APPLICATION SYSTEM;**[patch list]**;15-MAR-O1
+  
+                             CHECK^XTSUMBLD results
+    
+    Routine        Before Patch     After Patch     Patch List
+    -------        ------------     -----------     ----------
+    EAS1071A          N/A            9781487        71
+    EAS1071B          N/A            5328982        71
+    EAS1071C          N/A            2636250        71
+    EAS1071P          N/A            9681291        71
+    EAS1071Q          N/A            5266692        71 
+    EASCM             N/A           14714366        71
+    EASEGT2           N/A            5365472        71
+    EASPREC3          N/A            4140512        71
+    EASPREC4          N/A            8373111        71
+                                                    
+    Total Number of Routines - 9 
+  
+                             CHECK1^XTSUMBLD results (new method)
+    
+    Routine        Before Patch     After Patch     Patch List
+    -------        ------------     -----------     ----------
+    EAS1071A          N/A            72340159       71
+    EAS1071B          N/A            26013480       71 
+    EAS1071C          N/A            6862758        71 
+    EAS1071P          N/A            43511372       71
+    EAS1071Q          N/A            23165038       71 
+    EASCM             N/A            80510854       71
+    EASEGT2           N/A            33652656       71
+    EASPREC3          N/A            11323531       71
+    EASPREC4          N/A            25401092       71
+                                                    
+    Total Number of Routines - 9 
+ 
+ 
+ TEST SITES:
+ ===========
+ Alpha / Beta testing was waived for this patch
+ 
+ 
+ PRE/POST INSTALLATION OVERVIEW:
+ ===============================
+ The post-install routine included in this patch will create
+ the HL Logical Links and Protocols necessary to support
+ communication with the ESR system.  The server protocols will
+ remain inactive until the ESR system is actually deployed.
+ 
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+ 
+ It is recommended that the patch not be installed while the IVM
+ Background job is running.  Installation of this patch while the
+ background job is running could cause the process to error.
+  
+ The patch should not be installed during peak hours.  This patch may
+ be installed with users on the system.
+ 
+ Install Time - less than 2 minutes
+ 
+ 
+ Installation Steps:
+ ===================
+ 1. Load transport global. Choose the Packman message containing this
+    patch and invoke the INSTALL/CHECK MESSAGE PackMan option.   
+      
+ 2. From the 'Kernel Installation & Distribution System' menu, select 
+    the Installation menu.
+ 
+   1.  START UP KIDS 
+       -------------
+       Start up the Kernel Installation and Distribution System Menu 
+       [XPD MAIN]: 
+ 
+          Edits and Distribution ...  
+          Utilities ...  
+          Installation ...  
+ 
+   Select Kernel Installation & Distribution System Option: INStallation 
+                                                            ---
+          Load a Distribution 
+          Print Transport Global 
+          Compare Transport Global to Current System 
+          Verify Checksums in Transport Global 
+          Install Package(s) 
+          Restart Install of Package(s) 
+          Unload a Distribution 
+          Backup a Transport Global 
+ 
+   Select Installation Option: 
+   
+   2.  Select Installation Option: 
+       ---------------------------
+    NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+            NAME, enter EAS*1.0*71):
+ 
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when this patch
+         is installed.  It compares all components of this patch
+         (routines, DD's, templates, etc.).
+     c.  Verify Checksums in Transport Global - This option will allow
+         you to ensure the integrity of the routines that are in the
+         transport global.
+ 
+   3.  Select Installation Option: Install Package(s) 
+                                   ------------------
+     **This is the step to start the installation of this KIDS patch: 
+ 
+     a.  Choose the Install Package(s) option to start the patch
+         install.
+ 
+     b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+         YES//' answer NO (unless otherwise indicated)
+     c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+         Options, and Protocols? YES//' answer YES
+ 
+         When prompted to select the option you would like to place out of
+         order, enter the following:
+ 
+         IVM BACKGROUND JOB             IVM Background Job
+             
+ 3. The post-install routine should NOT be deleted.
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;1.0;ENROLLMENT APPLICATION SYSTEM;**[Patch List]**;15-MAR-01;Build 18
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: EAS1071A
+    Before:       n/a   After: B72340159  **71**
+Routine Name: EAS1071B
+    Before:       n/a   After: B26013480  **71**
+Routine Name: EAS1071C
+    Before:       n/a   After:  B6862758  **71**
+Routine Name: EAS1071P
+    Before:       n/a   After: B43511372  **71**
+Routine Name: EAS1071Q
+    Before:       n/a   After: B23165038  **71**
+Routine Name: EASCM
+    Before:       n/a   After: B80510854  **71**
+Routine Name: EASEGT2
+    Before:       n/a   After: B33652656  **71**
+Routine Name: EASPREC3
+    Before:       n/a   After: B11323531  **71**
+Routine Name: EASPREC4
+    Before:       n/a   After: B25401092  **71**
+
+=============================================================================
+User Information:
+Entered By  : HARTLEY,PETER                 Date Entered  : DEC 15, 2005
+Completed By: MORGAN,BRIAN                  Date Completed: JAN 09, 2008
+Released By : GROOMS,ANTHONY E              Date Released : JAN 09, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

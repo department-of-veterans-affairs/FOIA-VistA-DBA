@@ -1,0 +1,254 @@
+$TXT Created by EVERETT,BRIAN at NPI.FELIX.PROXY-HC-LAB.COM  (KIDS) on Thursday, 06/12/08 at 08:31
+=============================================================================
+Run Date: JUL 24, 2008                     Designation: IB*2*391
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #366                      Status: Released
+                  Compliance Date: AUG 24, 2008
+=============================================================================
+
+Associated patches: (v)IB*2*377    <<= must be installed BEFORE `IB*2*391'
+                    (v)XU*8*480    <<= must be installed BEFORE `IB*2*391'
+                    (v)IB*2*395    <<= must be installed BEFORE `IB*2*391'
+
+Subject: SHARING THE NATIONAL PROVIDER IDENTIFIER BETWEEN FILES
+
+Category: 
+  - Routine
+  - Enhancement (Mandatory)
+  - Data Dictionary
+
+Description:
+============
+
+ This patch is dependent on patch XU*8*480. IB*2*391 should be installed 
+ immediately after XU*8*480 in your production account to prevent data 
+ corruption.
+  
+ Patch XU*8*480 creates a new security key XUSNPIMTL, and assigns it to 
+ anyone who has access to the options that allow them to edit the NPI 
+ field on a VA Provider in the NEW PERSON file #200.
+  
+ A person can work as both a VA Provider and a non-VA Provider at the same 
+ time. In that case their NPI number should be the same in both the NEW 
+ PERSON file and the non-VA provider file (IB NON/OTHER VA BILLING 
+ PROVIDER #355.93). If the NPI number is changed for a non-VA Provider, 
+ new code in IB*2*391 checks to see whether there is a VA provider with 
+ the old NPI. If so, IB sends a warning email message to the persons who 
+ maintain the NPI for VA providers, so that they can keep the NPI numbers 
+ in sync on the two files. The new IB code sends the warning email message 
+ to all holders of the new key XUSNPIMTL.
+  
+  
+ Modifications in this patch will allow users to continue to add/edit/delete
+ National Provider Identifiers (NPIs) in the Provider ID Maintenance
+ [IBCE PROVIDER MAINT] option.  However, the restriction in the Veterans 
+ Health Information Systems and Technology Architecture (VistA) does
+ not allow a user to enter an NPI in the IB NON/OTHER VA BILLING PROVIDER
+ file (#355.93) if it already exists in the NEW PERSON file (#200) has been
+ lifted with this patch.  This will allow a given provider's NPI to be ACTIVE
+ in both of these files at the same time.
+  
+ This patch will match the NPI being input to the NEW PERSON file (#200) and
+ the IB NON/OTHER VA BILLING PROVIDER file (#355.93). If the NPI being
+ input is also an active NPI in the NEW PERSON file (#200) the user will be
+ informed that a match was found in the NEW PERSON file (#200) and they
+ will be asked if they wish to continue to associate the NPI to both the IB
+ NON/OTHER VA BILLING PROVIDER file (#355.93) and the NEW PERSON file
+ (#200).
+  
+ If the NPI is found in the NEW PERSON file (#200) and the entry in the NEW
+ PERSON file (#200) is found to be inactive the user will be informed that
+ the NPI is inactive and the user will not be allowed to use that NPI.
+  
+ This patch will verify that the NPI being input by the user is not
+ associated, now or in the past, with the INSTITUTION file (#4).  If the NPI
+ being input by the user is associated, now or in the past, with the
+ INSTITUTION file (#4) the user will not be allowed to use the NPI.
+  
+ All other NPI formatting and checksum requirements will remain the same.
+ The NPI must be 10 numeric characters in length and have a proper checksum
+ in the 10th position based on the Luhn double-add-double formula.
+  
+  
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+ There is no NSR associated with this patch.
+   
+   
+ This patch addresses the following Remedy Ticket(s):
+ ---------------------------------------------------
+ HD 217536 Unable to add NPI number
+ duplicate: HD 233251 Unable to add NPI number to Provider Maint File
+ duplicate: HD 236989 NPI number won't go in for one provider
+  
+ Overview of Remedy Ticket(s):
+ -----------------------------
+ HD 217536 Unable to add NPI number
+  
+ Problem
+ -------
+ When the person putting in NPI numbers tries to put the number in for this
+ provider, LAST,FIRST M the system comes back and says that number is already
+ assigned to LAST,FIRST.
+  
+ It was discovered that the name LAST,FIRST M was in the NEW PERSON file
+ (#200) and the name LAST,FIRST was in the IB NON/OTHER VA BILLING
+ PROVIDER file (#355.93).  The lookup of an NPI is done in the NEW PERSON
+ file (#200),  the IB NON/OTHER VA BILLING PROVIDER file (#355.93) and the
+ INSTITUTION file (#4).   An NPI was allowed to be in only one of these files.
+ Situations were occurring where a provider was at one time a contractor
+ and was carried in the IB NON/OTHER VA BILLING PROVIDER file (#355.93) and
+ then became a VA employee and was put into the NEW PERSON file (#200).
+ The NPI lookup allowed the NPI to exist in only one of these two files.
+  
+ Resolution
+ ----------
+ The routines IBCEP8, IBCEP81 and IBCEP82 were modified to allow an NPI to
+ exist in both the NEW PERSON file (#200) and the IB NON/OTHER VA BILLING
+ PROVIDER file (355.93) at the same time.  Along with allowing the NPI to be
+ in both of these files at the same time the user is advised when making a
+ change in one of the files and it is found that the NPI also exists in
+ the other file at the same time.  This is done to insure that if the NPI
+ is changed or deleted in one of the files it is also changed or deleted in
+ the other file.  
+   
+ Components Sent With Patch
+ --------------------------
+  
+                                          UP    SEND  DATA
+                                          DATE  SEC.  COMES  SITE   RSLV
+ FILE #  NAME                             DD    CODE  W/FILE DATA   PTS
+ -----------------------------------------------------------------------
+ 355.93  IB NON/OTHER VA BILLING PROVIDER YES   NO    NO
+  
+ The following is a list of fields included in this patch:
+  
+ Field Name (Number)           File Name (Number)
+ -------------------           ------------------
+ NPI (#41.01)                  IB NON/OTHER VA BILLING PROVIDER (#355.93)  
+  
+   
+ Test Sites:
+ -----------
+ Battle Creek, MI
+ Fayetteville, AR
+ Heartland West, KS 
+   
+         ================INSTALLATION INSTRUCTIONS ================= 
+   
+ It is recommended that this patch be installed outside of normal working 
+ hours when no Integrated Billing users are on the system. However, if 
+ installed during the normal workday, it is recommended that the following 
+ selection(s) in the OPTION (#19) file, and all of their descendants be 
+ disabled to prevent possible conflicts while running the Kernel
+ Installation & Distribution System (KIDS) Install.  Other VistA users will
+ not be affected. 
+    
+       Enter/Edit Billing Information       [IB EDIT BILLING INFO] 
+       Provider ID Maintenance              [IBCE PROVIDER MAINT]
+  
+    
+ Install Time - Less than 2 minutes
+    
+ 1.  LOAD TRANSPORT GLOBAL 
+     --------------------- 
+     Choose the PackMan message containing this patch and invoke the 
+     INSTALL/CHECK MESSAGE PackMan option. 
+    
+ 2.  START UP KIDS       
+     ------------- 
+     Start up the Kernel Installation and Distribution System Menu
+     [XPD MAIN]: 
+    
+          Edits and Distribution ... 
+          Utilities ... 
+          Installation ... 
+    
+ Select Kernel Installation & Distribution System Option: INStallation 
+                                                          --- 
+          Load a Distribution 
+          Print Transport Global 
+          Compare Transport Global to Current System 
+          Verify Checksums in Transport Global 
+          Install Package(s) 
+          Restart Install of Package(s) 
+          Unload a Distribution 
+          Backup a Transport Global 
+    
+ Select Installation Option: 
+    
+ 3.  Select Installation Option: 
+     --------------------------- 
+     NOTE:  The following are OPTIONAL - (When prompted for the INSTALL 
+            NAME, enter IB*2.0*391): 
+    
+     a.  Backup a Transport Global - This option will create a backup 
+         message of any routines exported with this patch. It will not 
+         backup any other changes such as DD's or templates.
+  
+     b.  Compare Transport Global to Current System - This option will 
+         allow you to view all changes that will be made when this patch 
+         is installed. It compares all components of this patch 
+         (routines, DD's, templates, etc.).
+  
+     c.  Verify Checksums in Transport Global - This option will allow 
+         you to ensure the integrity of the routines that are in the 
+         transport global.
+  
+ 4.  Select Installation Option: Install Package(s)
+                                 ------------------ 
+     **This is the step to start the installation of this KIDS patch: 
+    
+     a.  Choose the Install Package(s) option to start the patch 
+         install.
+  
+     b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+         NO//' answer NO 
+  
+     c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+         Options, and Protocols? YES//' answer YES if installing during 
+         working hours 
+  
+     d.  When prompted 'Enter options you wish to mark as 'Out Of 
+         Order':'  Enter the following options: 
+    
+         Enter/Edit Billing Information     [IB EDIT BILLING INFO] 
+         Provider ID Maintenance            [IBCE PROVIDER MAINT]
+    
+     e.  When prompted 'Enter protocols you wish to mark as 'Out Of 
+         Order':' press <return>. 
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;2.0;INTEGRATED BILLING;**[Patch List]**;21-MAR-94;Build 39
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: IBCEF73A
+    Before: B31578985   After: B31517693  **343,374,395,391**
+Routine Name: IBCEP8
+    Before: B80393448   After: B47452533  **51,137,232,288,320,343,374,
+                                           377,391**
+Routine Name: IBCEP81
+    Before: B19908581   After: B63787045  **343,391**
+Routine Name: IBCEP82
+    Before: B31460736   After: B73798180  **343,374,377,391**
+Routine Name: IBCEP8B
+    Before:       n/a   After: B10681479  **391**
+ 
+Routine list of preceding patches: 377, 395
+
+=============================================================================
+User Information:
+Entered By  : EVERETT,BRIAN                 Date Entered  : JAN 04, 2008
+Completed By: ALDERMAN,MATT S               Date Completed: JUL 24, 2008
+Released By : JACKSON,SHERYL                Date Released : JUL 24, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

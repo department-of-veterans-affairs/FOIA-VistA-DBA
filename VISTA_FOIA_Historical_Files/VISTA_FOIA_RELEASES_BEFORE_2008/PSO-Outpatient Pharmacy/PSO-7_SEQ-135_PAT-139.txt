@@ -1,0 +1,459 @@
+$TXT Created by RUZBACKI,RON T at LAWVAA.FO-BIRM.MED.VA.GOV  (KIDS) on Saturday, 09/13/03 at 14:22
+=============================================================================
+Run Date: SEP 30, 2003                     Designation: PSO*7*139
+Package : PSO - OUTPATIENT PHARMACY           Priority: Mandatory
+Version : 7       SEQ #135                      Status: Released
+                  Compliance Date: OCT 31, 2003
+=============================================================================
+
+Associated patches: (v)PSO*7*70    <<= must be installed BEFORE `PSO*7*139'
+                    (v)PSO*7*73    <<= must be installed BEFORE `PSO*7*139'
+                    (v)PSO*7*112   <<= must be installed BEFORE `PSO*7*139'
+                    (v)PSO*7*146   <<= must be installed BEFORE `PSO*7*139'
+
+Subject: PROVIDER/ALLERGY/AUTO EXPIRE/FASTFILL/DRUG
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ 1. BIR-0203-30502 
+    This NOIS call reported the following software error that happened
+    with a FastFill machine: 
+  
+    $ZE= ACK+2^PSOHLSG:1, %DSM-E-UNDEF, undefined variable HL("APAT"), 
+         -DSM-I-ECODE, MUMPS error code: M6 
+    
+    The routine was corrected to reinitialize the variable if it does not
+    exist.
+  
+  
+ 2. CLA-0303-20198 
+    The Manual Auto Expire Rxs [PSO MANUAL AUTO EXPIRE] option was 
+    initially provided to synchronize the expired order status between 
+    Outpatient Pharmacy prescriptions and Computerized Patient Record 
+    System (CPRS) Version 1.0 order entries. And as such, the start date
+    was set to the date Outpatient Pharmacy Version 7.0 was installed minus
+    120 days. A few sites have reported that some of the very old
+    prescriptions, specifically those that are 120 days prior to the date
+    Outpatient Pharmacy Version 7.0 was installed, show an active status
+    when viewed via FileMan. In order to scan the PRESCRIPTION file (#52)
+    and flag such orders as expired, this option has been modified to
+    provide the user the flexibility to select a start date and the default
+    is set to the date Outpatient Pharmacy Version 7.0 was installed minus
+    120 days.
+   
+ 3. CLE-0303-42391 
+    This NOIS call reported that the PROVIDER COMMENTS field (#39) of the
+    PRESCRIPTION file (#52) was being lost when a prescription was renewed
+    from Outpatient Pharmacy. A correction was made to send the comments to
+    CPRS when the prescription is renewed from Outpatient Pharmacy.
+  
+ 4. ISB-0403-31630 
+    This NOIS call reported a problem in the display of Allergy severity
+    in the Patient Prescription Processing [PSO LM BACKDOOR ORDERS] 
+    option, on the Detailed Allergy Display screen. The content of the
+    field "Severity:" was limited to one, and only one, value. The possible
+    values were: MILD, MODERATE or SEVERE. The first Severity on file was
+    displayed. Since it is possible to have more than one Severity per 
+    Allergy, this display was changed to show all the Severities on file, 
+    along with the dates on which each one was observed. See example below:
+    
+         Before:     Severity: MODERATE
+     
+         Now:        Severity: 04/07/03 MODERATE
+                               04/15/03 MILD 
+                               04/17/03 SEVERE 
+    
+    Besides the changes to this display, the HL7 message for External 
+    Interfaces was also changed. The ZAL segment will have one for each
+    severity observed. Before, it would have only one entry for the
+    oldest severity observed. Furthermore, the date the severity was
+    observed is being added as piece #8 of this segment. From the same
+    example from above, here is how the ZAL segment will look:
+  
+      Before:   
+       ZAL|530|NIACIN 100MG TAB |ALLERGY|DRUG|VERIFIED|MODERATE
+  
+      Now:
+       ZAL|530|NIACIN 100MG TAB |ALLERGY|DRUG|VERIFIED|MODERATE|20030407|
+       ZAL|530|NIACIN 100MG TAB |ALLERGY|DRUG|VERIFIED|MILD|20030415|
+       ZAL|530|NIACIN 100MG TAB |ALLERGY|DRUG|VERIFIED|SEVERE|20030417|
+   
+ 5. ANN-0902-40951 
+    An undefined error was reported when using the Patient Prescription
+    Processing [PSO LM BACKDOOR ORDERS] option. If the drug of an active
+    order is edited, but the user quits without saving the changes and a
+    new order for the same drug is placed immediately afterwards, the error
+    could occur. This patch fixes this issue.
+  
+ 6. LAS-0503-60830 & BRX-0603-11755
+    The "NTE|2|" segment in the HL7 message generated for external
+    interfaces is composed by the concatenation of the following free text
+    fields from the OUTPATIENT SITE file (#59) in this order:
+     
+        Field #   Name
+        ------------------------------------------
+        1005      NARRATIVE REFILLABLE RX
+        1006      NARRATIVE NON-REFILLABLE RX
+        1004      NARRATIVE FOR COPAY DOCUMENT
+    
+    When building this segment, the routine PSOHLSG2 was skipping one line
+    between the content of each field. This line is being interpreted by
+    some external interfaces, such as Optifill, as the end of the "NTE|2|"
+    segment, because all it contains is a carriage return character. This
+    caused the external interface to reject messages with only a carriage
+    return in the line. To solve this problem a blank space will be
+    inserted between the content of each field. In the example below, the
+    blank space will be added where the arrow ("->") is pointing.
+  
+         :
+        NTE|2|
+        Call in your refill on your touch-tone phone.
+        Outside the metropolitan area: 1-800-123-4567.
+      -> 
+        The copay required is $7.00 for every 30 day or less supply of
+        medication or $21.00 for a 90-day supply. Be sure to indicate your
+        complete SSN on your check.
+      
+        NTE|3|          
+         :
+  
+ 7. WIM-0603-20338
+    The Print from Suspense File [PSO PNDLBL] option allows a user
+    to queue the printing of the labels at a later time by TaskMan. A
+    problem was found when the original task was re-queued through the
+    TaskMan Requeue Tasks [XUTM REQ] option by a different user. Once
+    the labels printed, the label print activity log for the prescription
+    was recorded as being performed by the second user, the one who 
+    re-queued the TaskMan task, which is wrong. This patch makes the 
+    correction to keep the user who queued the label print through the
+    Print from Suspense File [PSO PNDLBL] option in the label print
+    activity log.
+  
+ 8. MAC-0603-60315
+    Patch PSO*7*124 introduced the following change:
+  
+          Currently, if a non-controlled substance prescription is entered
+          with a day supply less than 5 days and there are no refills, the
+          expiration date defaults to 5 days from the issue date. If a
+          controlled substance prescription is entered with a day supply
+          less than 5 days without refills, the expiration date is the
+          Issue Date plus the Days Supply. The primary problem is that 
+          when these prescriptions were being transmitted to the CMOPs and
+          they were behind on dispensing, the prescriptions were being
+          rejected because the prescriptions had already expired. The
+          default of 5 is being changed to 30 to accommodate the CMOPs and
+          to allow the patients to receive their medications in a timely
+          manner. Prescriptions will no longer expire before 30 days
+          elapses from the Issue Date when the day supply is less than 30
+          days and there are no refills.  If a minimum of 1 refill is
+          entered the one year/six month rule still applies. 
+    
+    This created a problem for some sites with a rehab unit where some
+    patients go out on Authorized Absence every weekend. The site then 
+    enters a prescription with a patient status of AUTHORIZED ABSENCE and
+    no refills and a small number for days supply (3 or 4 days). Before,
+    such prescriptions expired within 5 days from the issue date and no
+    longer showed on the Medication Profile screen. Now, after PSO*7*124
+    was installed, such prescriptions remain active for at least 30 days.
+    The result is that multiple prescriptions for a single drug are listed
+    in the Medication Profile screen. Active prescriptions with a patient
+    status of AUTHORIZED ABSENCE can contain the same drug already in
+    another active prescription for the same patient.
+    Once this patch is installed, prescriptions with a patient status of
+    AUTHORIZED ABSENCE and no refills will have the expiration date 
+    calculation reversed to a minimum of 5 days from the issue date,
+    instead of the 30 days introduced by patch PSO*7*124.
+  
+ 9. PUG-0603-50491
+    This NOIS call reported a problem with the patient security check for
+    the Complete Orders from OERR [PSO LMOE FINISH] option. An example of
+    a patient security check is when an employee tries to get access to
+    his own medical record and is denied. In the case of the menu option
+    mentioned above, such security checks were not being performed when
+    the user selected to process ALL the patients with pending orders.
+    Also, when processing by clinic, route or priority, there were no
+    security checks performed. The only time the security checks were
+    performed was when the user selected to process a single patient.
+    When this patch is installed, this problem will be resolved and the
+    Complete Orders from OERR [PSO LMOE FINISH] option will perform the
+    security checks consistently for all the possible selections when
+    finishing pending orders.
+  
+ 10. CON-0703-11685, MAR-0703-21567 & SBY-0703-31538
+     When trying to reinstate discontinued prescriptions for a patient that
+     had the DATE OF DEATH field (#.351) in the PATIENT file (#2) entered
+     and then deleted, the user was getting an "Undefined variable DA" 
+     error. This problem was introduced by patch PSO*7*117, more 
+     specifically by the changes described in item #2b of patch PSO*7*117,
+     which was made to address NOIS call CAH-0402-31866. This patch
+     corrects the problem with the use of that variable.
+  
+ 11. MIN-1202-40079, FRE-0303-60233 & RIC-0603-21344
+     In some situations where a patient is being accessed by Inpatient 
+     Medications Version 5.0, if an attempt is made to finish orders in
+     Outpatient Pharmacy Version 7.0, a message is received that the
+     patient is in use. Then if an "^" is entered for the PATIENT STATUS
+     prompt, the cross-reference entries in the PHARMACY PATIENT file (#55)
+     could be deleted for that patient. This patch corrects the problem.  A
+     follow-up patch will provide a clean up to rebuild missing
+     cross-references.
+   
+ 12. HUN-0603-21419 & WPB-0803-30273
+     There have been some instances where a prescription from one patient
+     was being displayed on the Bingo Board for a different patient. This
+     patch kills a variable that could accidentally get carried over    
+     between patients.
+  
+  
+  
+  Associated NOISs: 
+  =================
+  BIR-0203-30502 
+  CLA-0303-20198 
+  CLE-0303-42391 
+  ISB-0403-31630 
+  ANN-0902-40951 
+  LAS-0503-60830
+  BRX-0603-11755
+  WIM-0603-20338
+  MAC-0603-60315
+  PUG-0603-50491
+  CON-0703-11685
+  MAR-0703-21567
+  SBY-0703-31538
+  MIN-1202-40079
+  FRE-0303-60233
+  RIC-0603-21344
+  HUN-0603-21419
+  WPB-0803-30273
+  SPO-0703-52222
+  WIM-0703-21849
+  NYH-0703-11805
+  ISB-0403-31633
+  NOL-0803-71580
+  HAM-0803-20682
+  LAS-0903-30273
+  LAS-0903-60731
+  
+  
+  Test Sites: 
+  ===========
+  BRONX, NY
+  OKLAHOMA CITY, OK
+  CLARKSBURG, WV
+  DUBLIN, GA
+  WILMINGTON, DE
+  CLEVELAND, OH
+  ANN ARBOR, MI
+  NORTHPORT, NY
+  HAMPTON, VA
+  
+  
+  Routine Summary: 
+  ================
+  
+  The second line now reads as follows: 
+  
+     <TAB>;;7.0;OUTPATIENT PHARMACY;**[patch list]**;DEC 1997 
+  
+  CHECK^XTSUMBLD results: 
+  
+  Routine  Before Patch After Patch Patch List 
+  =====================================================================
+  PSOCAN3    29505298     29666228  15,24,27,32,36,94,88,117,131,146,139
+  PSODIR2     9988037      9967810  3,9,26,46,124,146,139
+  PSODPT      N/A          1424045  139
+  PSODRG      9661718      9700870  20,23,36,53,54,46,112,139 
+  PSOHLSG    14589919     14129407  26,70,139 
+  PSOHLSG1   23766338     20159264  10,26,30,56,70,139 
+  PSOHLSG2   12235808     16332562  30,139 
+  PSOHLSN1   29994704     30766487  1,10,24,27,55,46,71,101,99,121,139
+  PSOMAUEX   10169933     10267059  40,73,139 
+  PSON52     23053118     23156382  1,16,23,27,32,46,71,111,124,117,131,139
+  PSONEW2    12533330     12656594  32,37,46,71,94,124,139
+  PSOORDA    22666488     22896958  44,139 
+  PSOORFI3   37234242     37590268  15,27,32,46,84,99,130,117,139
+  PSOORFIN   29425675     30138718  7,15,27,32,44,46,84,106,111,117,131,
+                                    146,139      
+  PSOORNE3   35602769     35601179  11,9,39,59,46,103,124,139
+  PSORX1     18395771     18882600  7,22,23,57,62,46,74,71,90,95,115,117,
+                                    146,139
+  PSOSULBL   20325252     20541608  139
+  PSOSUTL    30777185     30468372  10,34,139
+  
+   
+  Installation Instructions: 
+  ==========================
+  Before installing this patch, use List Tasks [XUTM INQ] option on the 
+  Taskman Management [XUTM MGR] menu to list currently running 
+  tasks. Do not install this patch while Outpatient Pharmacy users are 
+  using the software. Installation will take no longer than 5 minutes.  
+  There are no scheduling restrictions or recommendations.
+  
+  Suggested time to install: During non-peak requirement hours for
+  CPRS V. 1.0 and Outpatient Pharmacy V. 7.0 users.
+  
+   1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu.  
+  
+   2. Review your mapped set. If the routines are mapped, they should 
+      be removed from the mapped set at this time.  
+  
+   3. From the Kernel Installation & Distribution System menu, select 
+      the Installation menu.  
+  
+   4. From this menu, you may select to use the following options: 
+      (when prompted for INSTALL NAME, enter PSO*7.0*139) 
+  
+     a. Backup a Transport Global - this option will create a backup 
+        message of any routines exported with the patch. It will NOT 
+        backup any other changes such as DDs or templates.  
+  
+     b. Compare Transport Global to Current System - this option will 
+        allow you to view all changes that will be made when the patch 
+        is installed. It compares all components of the patch (routines, 
+        DDs, templates, etc.).  
+  
+     c. Verify Checksums in Transport Global - this option will ensure 
+        the integrity of the routines that are in the transport global.  
+  
+   5. Use the Install Package(s) option and select the package PSO*7.0*139.
+  
+   6. When prompted "Want KIDS to Rebuild Menu Trees Upon Completion of
+      Install? YES//" respond NO.
+  
+   7. When Prompted "Want KIDS to INHIBIT LOGONs during the install? 
+      YES//" respond NO.  
+  
+   8. When Prompted "Want to DISABLE Scheduled Options, Menu Options, and 
+      Protocols? YES//" respond NO.  
+  
+   9. If Routines were unmapped as part of step 2, they should be returned 
+      to completion.
+
+Routine Information:
+====================
+
+Routine Name:
+  - PSOHLSN1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOMAUEX
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOHLSG
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOORDA
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOHLSG1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOHLSG2
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSODRG
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSODIR2
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSONEW2
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOORNE3
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSON52
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOSUTL
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOORFIN
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOSULBL
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOORFI3
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSODPT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOCAN3
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSORX1
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : ROCHA,MARCELO                 Date Entered  : APR 04, 2003
+Completed By: GOYAL,NIHARIKA                Date Completed: SEP 29, 2003
+Released By : LESIEUR,SHIRLEY               Date Released : SEP 30, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

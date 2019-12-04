@@ -1,0 +1,196 @@
+$TXT Created by WANG,CHI at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 10/31/06 at 17:49
+=============================================================================
+Run Date: NOV 01, 2006                     Designation: IB*2*293
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #323                      Status: Released
+                  Compliance Date: DEC 02, 2006
+=============================================================================
+
+Associated patches: (v)IB*2*153    <<= must be installed BEFORE `IB*2*293'
+                    (v)IB*2*222    <<= must be installed BEFORE `IB*2*293'
+
+Subject: Clarify Exemption date & fix IVM Backbilling bug
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch addresses 2 issues. The first is that site requested to change
+ the heading "Last test date" to "Last RX Copayment Exemption date" in the
+ DG Patient Inquiry option to match up to the data. The second issue is
+ about a bug discovered in the IB's IVM backbilling functionality. If the
+ veteran has an appointment in a billable clinic but also has a non billable
+ stop code added, charges are not being generated.
+  
+ ASSOCIATED REMEDY TICKETS:
+ =========================
+  
+ 1. HD63266- MAC-0102-61448 Means test date on Patient Inquiry  bdj
+ 2. HD64320- HWH-1004-41456  VISITS NOT GENERATING 
+ Duplicate:
+    HD64346-IVM-1004-31947  GMT Conversion Not Creating Correct Billing
+  
+ ASSOCIATED NSR(s):
+ ==================
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Wilmington,DE
+ West Palm Beach,FL
+ Maryland HCS
+ Connecticut HCS
+  
+ REMEDY OVERVIEW:
+ ===============
+ 1. HD63266- MAC-0102-61448 Means test date on Patient Inquiry  bdj
+  
+    Problem:
+    --------
+    When using the Patient Inquiry option [DG PATIENT INQUIRY] to view a
+    patient, the heading "Last test date" can be very confusing to the
+    users because the data is pulled from the patient's entry in the
+    BILLING PATIENT (#354) file. It indicates the last updated date of the
+    patient's Medication Copay Income Exemption but not the Means Test date.
+  
+    Resolution:
+    -----------
+    Modified routine IBARXEU to change the heading "Last test date" to "Last
+    Rx Copay Exemption date" in the Patient Inquiry option [DG PATIENT
+    INQUIRY].
+  
+ 2. HD64320- HWH-1004-41456  VISITS NOT GENERATING
+  
+    Problem:
+    --------
+    The code was found to be flawed at CARE+52 and CARE+53 in IBAMTV1.
+    The logic of those two lines is stated as: "An encounter may also be
+    excluded from billing in the additional two scenarios:
+  
+    1. The encounter is a disposition of a registration, and the patient had
+       an appointment or add/edit stop on the same day.
+  
+    2. The encounter is an add/edit stop, and the patient had an appointment
+       on the same day or the stop code (for the stop) was set up to be
+       non-billable."
+  
+    How did the flawed code impact the process? "We checked a visit date 
+    where the vet had a Derm appointment and a Lab Stop. The appointment  
+    processed first and added an entry into ^TMP("IBAMTV". Then the Lab Stop
+    was processed. Since CARE+53 failed to work properly, the Lab Stop was
+    added to ^TMP("IBAMTV". Since that array is really only subscripted by 
+    visit day, it overlaid the entry for the appointment for that day. Thus,
+    the system tried to bill the Lab Stop and not the appointment. That stop
+    code is set as Non-Billable in file #352.2 and thus that add/edit (as
+    well as no encounter for that date) was not billed."
+  
+    Resolution:
+    -----------
+    Modified routine IBAMTV1 to implement the logic as follows: "An encounter
+    may also be excluded from billing in the additional two scenarios:
+  
+    1. The encounter is a disposition of a registration, and the patient has
+       a potentially billable appointment or add/edit stop on the same day.
+  
+    2. The encounter is an add/edit stop, and the patient has a potentially 
+       billable appointment on the same day or the stop code (for the stop)
+       was set up to be non-billable."
+  
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+ It is recommended that this patch be installed outside of normal business
+ hours to avoid any complications resulting from users on the system.
+ Installation will take less than 5 minutes.
+  
+  1.   Choose the PackMan message containing this patch and invoke the 
+       INSTALL/CHECK MESSAGE PackMan option. 
+  
+  2.   Start up the Kernel Installation and Distribution System Menu 
+       [XPD MAIN]: 
+            Edits and Distribution ...  
+            Utilities ...  
+            Installation ...  
+     
+  Select Kernel Installation & Distribution System Option: INStallation
+                                                           ---
+            Load a Distribution 
+            Print Transport Global 
+            Compare Transport Global to Current System
+            Verify Checksums in Transport Global 
+            Install Package(s) 
+            Restart Install of Package(s) 
+            Unload a Distribution 
+            Backup a Transport Global 
+     
+  3.   From this menu, you may elect to use the following options
+       (When prompted for the INSTALL NAME, enter IB*2.0*293):
+  
+       a.  Backup a Transport Global - This option will create a backup
+           message of any routines exported with this patch. It will not
+           backup any other changes such as DD's or templates.
+       b.  Compare Transport Global to Current System - This option will
+           allow you to view all changes that will be made when this patch
+           is installed. It compares all components of this patch
+           (routines, DD's, templates, etc.).
+       c.  Verify Checksums in Transport Global - This option will allow
+           you to ensure the integrity of the routines that are in the
+           transport global.
+  
+  4.   Use the Install Package(s) option and select the package
+       IB*2.0*293.
+   
+       a.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+           YES//', answer NO.
+       b.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+           Options, and Protocols? YES//', answer YES.
+       c.  When prompted 'Enter options you wish to mark as 'Out Of
+           Order':', enter the following options:
+  
+           Patient Inquiry                [DG PATIENT INQUIRY] 
+           Release Charges 'On Hold'      [IB MT RELEASE CHARGES]
+           
+       d.  When prompted 'Enter protocols you wish to mark as 'Out Of
+           Order':', press <return>.
+  
+ ROUTINE SUMMARY 
+ ===============
+  
+ The following is a list of the routines included in this patch.
+       The second line of each of these routines now looks like:
+  
+       ;;2.0;INTEGRATED BILLING;**[patch list]**;21-MAR-94
+  
+                  CHECK^XTSUMBLD results
+  
+       Routine          Before Patch   After Patch    Patch List
+       -------          ------------   -----------    ----------
+       IBAMTV1          3866166        3762927        15,33,91,132,153,293
+       IBARXEU          8218862        8292186        20,222,293
+  
+       Total number of routines: 2
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: IBAMTV1
+    Before:  B9609270  After:  B9409430  **15,33,91,132,153,293**
+Routine Name: IBARXEU
+    Before: B19501479  After: B19692471  **20,222,293**
+
+=============================================================================
+User Information:
+Entered By  : WANG,CHI                      Date Entered  : NOV 30, 2004
+Completed By: BOWEN,MARY JANE               Date Completed: NOV 01, 2006
+Released By : GANUS,MAUNETTE                Date Released : NOV 01, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

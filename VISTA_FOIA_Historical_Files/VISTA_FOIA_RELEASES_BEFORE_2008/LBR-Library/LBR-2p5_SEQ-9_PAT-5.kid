@@ -1,0 +1,302 @@
+Released LBR*2.5*5 SEQ #9
+Extracted from mail message
+**KIDS**:LBR*2.5*5^
+
+**INSTALL NAME**
+LBR*2.5*5
+"BLD",5126,0)
+LBR*2.5*5^LIBRARY - 2.5^0^3040211^y
+"BLD",5126,1,0)
+^^1^1^3031010^
+"BLD",5126,1,1,0)
+Receiving undefined error at option [LBRY PATRONS REPORTS].
+"BLD",5126,4,0)
+^9.64PA^^
+"BLD",5126,"KRN",0)
+^9.67PA^8989.52^19
+"BLD",5126,"KRN",.4,0)
+.4
+"BLD",5126,"KRN",.401,0)
+.401
+"BLD",5126,"KRN",.402,0)
+.402
+"BLD",5126,"KRN",.403,0)
+.403
+"BLD",5126,"KRN",.5,0)
+.5
+"BLD",5126,"KRN",.84,0)
+.84
+"BLD",5126,"KRN",3.6,0)
+3.6
+"BLD",5126,"KRN",3.8,0)
+3.8
+"BLD",5126,"KRN",9.2,0)
+9.2
+"BLD",5126,"KRN",9.8,0)
+9.8
+"BLD",5126,"KRN",9.8,"NM",0)
+^9.68A^1^1
+"BLD",5126,"KRN",9.8,"NM",1,0)
+LBRYRPT1^^0^B5942729
+"BLD",5126,"KRN",9.8,"NM","B","LBRYRPT1",1)
+
+"BLD",5126,"KRN",19,0)
+19
+"BLD",5126,"KRN",19.1,0)
+19.1
+"BLD",5126,"KRN",101,0)
+101
+"BLD",5126,"KRN",409.61,0)
+409.61
+"BLD",5126,"KRN",771,0)
+771
+"BLD",5126,"KRN",870,0)
+870
+"BLD",5126,"KRN",8989.51,0)
+8989.51
+"BLD",5126,"KRN",8989.52,0)
+8989.52
+"BLD",5126,"KRN",8994,0)
+8994
+"BLD",5126,"KRN","B",.4,.4)
+
+"BLD",5126,"KRN","B",.401,.401)
+
+"BLD",5126,"KRN","B",.402,.402)
+
+"BLD",5126,"KRN","B",.403,.403)
+
+"BLD",5126,"KRN","B",.5,.5)
+
+"BLD",5126,"KRN","B",.84,.84)
+
+"BLD",5126,"KRN","B",3.6,3.6)
+
+"BLD",5126,"KRN","B",3.8,3.8)
+
+"BLD",5126,"KRN","B",9.2,9.2)
+
+"BLD",5126,"KRN","B",9.8,9.8)
+
+"BLD",5126,"KRN","B",19,19)
+
+"BLD",5126,"KRN","B",19.1,19.1)
+
+"BLD",5126,"KRN","B",101,101)
+
+"BLD",5126,"KRN","B",409.61,409.61)
+
+"BLD",5126,"KRN","B",771,771)
+
+"BLD",5126,"KRN","B",870,870)
+
+"BLD",5126,"KRN","B",8989.51,8989.51)
+
+"BLD",5126,"KRN","B",8989.52,8989.52)
+
+"BLD",5126,"KRN","B",8994,8994)
+
+"BLD",5126,"PRE")
+
+"BLD",5126,"QUES",0)
+^9.62^^
+"BLD",5126,"REQB",0)
+^9.611^1^1
+"BLD",5126,"REQB",1,0)
+LBR*2.5*2^1
+"BLD",5126,"REQB","B","LBR*2.5*2",1)
+
+"MBREQ")
+0
+"PKG",515,-1)
+1^1
+"PKG",515,0)
+LIBRARY - 2.5^LBR^LIBRARY SERIALS PACKAGE^
+"PKG",515,20,0)
+^9.402P^^
+"PKG",515,22,0)
+^9.49I^1^1
+"PKG",515,22,1,0)
+2.5^2960227^
+"PKG",515,22,1,"PAH",1,0)
+5^3040211
+"PKG",515,22,1,"PAH",1,1,0)
+^^1^1^3040211
+"PKG",515,22,1,"PAH",1,1,1,0)
+Receiving undefined error at option [LBRY PATRONS REPORTS].
+"QUES","XPF1",0)
+Y
+"QUES","XPF1","??")
+^D REP^XPDH
+"QUES","XPF1","A")
+Shall I write over your |FLAG| File
+"QUES","XPF1","B")
+YES
+"QUES","XPF1","M")
+D XPF1^XPDIQ
+"QUES","XPF2",0)
+Y
+"QUES","XPF2","??")
+^D DTA^XPDH
+"QUES","XPF2","A")
+Want my data |FLAG| yours
+"QUES","XPF2","B")
+YES
+"QUES","XPF2","M")
+D XPF2^XPDIQ
+"QUES","XPI1",0)
+YO
+"QUES","XPI1","??")
+^D INHIBIT^XPDH
+"QUES","XPI1","A")
+Want KIDS to INHIBIT LOGONs during the install
+"QUES","XPI1","B")
+YES
+"QUES","XPI1","M")
+D XPI1^XPDIQ
+"QUES","XPM1",0)
+PO^VA(200,:EM
+"QUES","XPM1","??")
+^D MG^XPDH
+"QUES","XPM1","A")
+Enter the Coordinator for Mail Group '|FLAG|'
+"QUES","XPM1","B")
+
+"QUES","XPM1","M")
+D XPM1^XPDIQ
+"QUES","XPO1",0)
+Y
+"QUES","XPO1","??")
+^D MENU^XPDH
+"QUES","XPO1","A")
+Want KIDS to Rebuild Menu Trees Upon Completion of Install
+"QUES","XPO1","B")
+YES
+"QUES","XPO1","M")
+D XPO1^XPDIQ
+"QUES","XPZ1",0)
+Y
+"QUES","XPZ1","??")
+^D OPT^XPDH
+"QUES","XPZ1","A")
+Want to DISABLE Scheduled Options, Menu Options, and Protocols
+"QUES","XPZ1","B")
+YES
+"QUES","XPZ1","M")
+D XPZ1^XPDIQ
+"QUES","XPZ2",0)
+Y
+"QUES","XPZ2","??")
+^D RTN^XPDH
+"QUES","XPZ2","A")
+Want to MOVE routines to other CPUs
+"QUES","XPZ2","B")
+NO
+"QUES","XPZ2","M")
+D XPZ2^XPDIQ
+"RTN")
+1
+"RTN","LBRYRPT1")
+0^1^B5942729
+"RTN","LBRYRPT1",1,0)
+LBRYRPT1 ;ISC2/DJM - PATRON REPORTS ;[ 06/11/97  1:16 PM ]
+"RTN","LBRYRPT1",2,0)
+ ;;2.5;Library;**2,5**;Mar 11, 1996
+"RTN","LBRYRPT1",3,0)
+JTA ;
+"RTN","LBRYRPT1",4,0)
+ I $G(LBRYPTR)="" D  I $G(LBRYPTR)="" W !!,$C(7),"No Site has been selected" G EXIT
+"RTN","LBRYRPT1",5,0)
+ . D ^LBRYASK
+"RTN","LBRYRPT1",6,0)
+ D NOW^%DTC S Y=%\1 X ^DD("DD")
+"RTN","LBRYRPT1",7,0)
+ W @IOF,"VA Library Patron Journal Title for "_LBRYNAM_"   "_Y,!
+"RTN","LBRYRPT1",8,0)
+ S DIC="^LBRY(680.5,",DIC(0)="AEMQ"
+"RTN","LBRYRPT1",9,0)
+ S DIC("S")="I $P(^LBRY(680.5,+Y,0),U,2)]"""""
+"RTN","LBRYRPT1",10,0)
+ D ^DIC K DIC("S") G:Y<0 FINI S LBRYNUM=$P(Y,U,2)
+"RTN","LBRYRPT1",11,0)
+ S (FR,TO)=LBRYNUM,BY=.01,FLDS="[LBRY PATRON TITLES]",L=0
+"RTN","LBRYRPT1",12,0)
+ D EN1^DIP G FINI
+"RTN","LBRYRPT1",13,0)
+SLJ ;
+"RTN","LBRYRPT1",14,0)
+ I $G(LBRYPTR)="" D  I $G(LBRYPTR)="" W !!,$C(7),"No Site has been selected" G EXIT
+"RTN","LBRYRPT1",15,0)
+ . D ^LBRYASK
+"RTN","LBRYRPT1",16,0)
+ D NOW^%DTC S Y=%\1 X ^DD("DD")
+"RTN","LBRYRPT1",17,0)
+ W @IOF,"VA Library Patron Subject List for "_LBRYNAM_"   "_Y,!
+"RTN","LBRYRPT1",18,0)
+ S DIC="^LBRY(680.3,",DIC(0)="AEQ" D ^DIC G:Y<0 FINI
+"RTN","LBRYRPT1",19,0)
+ S LBRYSN=+Y,LBRYNM=$P(Y,U,2)
+"RTN","LBRYRPT1",20,0)
+QUEUE S %ZIS="MQ" K IO("Q") D ^%ZIS G:POP FINI I '$D(IO("Q")) U IO
+"RTN","LBRYRPT1",21,0)
+ D SLJ1^LBRYRPT1 D ^%ZISC G FINI
+"RTN","LBRYRPT1",22,0)
+QUEUE1 S ZTRTN="SLJ1^LBRYRPT1",ZTSAVE("LBRYSN")="",ZTSAVE("LBRYNM")=""
+"RTN","LBRYRPT1",23,0)
+ K IO("Q") D ^%ZTLOAD D ^%ZISC K ZTSK
+"RTN","LBRYRPT1",24,0)
+FINI K DIC,FR,TO,BY,FLDS,L,LBRYNUM,LBRYSN,LBRYNM,POP,Y,%ZIS,%
+"RTN","LBRYRPT1",25,0)
+ Q
+"RTN","LBRYRPT1",26,0)
+SLJ1 K ^TMP($J,"LBRYSLJ") S X=""
+"RTN","LBRYRPT1",27,0)
+SL S X=$O(^LBRY(680,"C",LBRYSN,X)) G:X="" SLJ2
+"RTN","LBRYRPT1",28,0)
+ I $P(^LBRY(680,X,0),U,4)'=LBRYPTR G SL
+"RTN","LBRYRPT1",29,0)
+ S LBR6805=$P(^LBRY(680,X,0),U)
+"RTN","LBRYRPT1",30,0)
+ S NM=$P(^LBRY(680.5,LBR6805,0),U) S:$E(NM,1,4)="THE " NM=$E(NM,5,999)
+"RTN","LBRYRPT1",31,0)
+ S ^TMP($J,"LBRYSLJ",$E(NM,1,60))=NM
+"RTN","LBRYRPT1",32,0)
+ G SL
+"RTN","LBRYRPT1",33,0)
+SLJ2 S PG=1 D NOW^%DTC S Y=% X ^DD("DD")
+"RTN","LBRYRPT1",34,0)
+ S LBDT=$P(Y,"@",1)_" "_$P(Y,"@",2) G PRINT
+"RTN","LBRYRPT1",35,0)
+H0 G:IO'=IO(0)!($D(ZTSK)) H R LZ:DTIME E  S LZ="^" Q
+"RTN","LBRYRPT1",36,0)
+ Q:LZ["^"
+"RTN","LBRYRPT1",37,0)
+H W @IOF,"Subject List of Journals Available",?47,LBDT,?69,"PAGE ",PG,!
+"RTN","LBRYRPT1",38,0)
+ S PG=PG+1
+"RTN","LBRYRPT1",39,0)
+ F I=1:1:80 W "-"
+"RTN","LBRYRPT1",40,0)
+ W !!,"SUBJECT: ",LBRYNM,!
+"RTN","LBRYRPT1",41,0)
+ Q
+"RTN","LBRYRPT1",42,0)
+T W ! Q
+"RTN","LBRYRPT1",43,0)
+PRINT S LZ="" D H
+"RTN","LBRYRPT1",44,0)
+ F  S X=$O(^TMP($J,"LBRYSLJ",X)) Q:X=""  D  Q:LZ["^"
+"RTN","LBRYRPT1",45,0)
+ . S X1=^TMP($J,"LBRYSLJ",X),LN=$L(X1)+8,NU=LN\80,NU=$S(LN#80>0:NU+1,1:NU)
+"RTN","LBRYRPT1",46,0)
+ . D:$Y+NU>(IOSL-2) H0 Q:LZ["^"  D T W "TITLE: ",X1
+"RTN","LBRYRPT1",47,0)
+EXIT K:$D(ZTSK) ^%ZTSK(ZTSK),ZTSK
+"RTN","LBRYRPT1",48,0)
+ K X,X1,I,XP,%,LN,LZ,NU,NM,PG,LBDT,Y,^TMP($J,"LBRYSLJ"),LBRYNUM,LBRYNM,LBR6805
+"RTN","LBRYRPT1",49,0)
+ Q
+"VER")
+8.0^22
+**END**
+**END**

@@ -1,0 +1,299 @@
+$TXT Created by CASTLE,JOHN at DAYT17.FO-BAYPINES.MED.VA.GOV  (KIDS) on Friday, 09/15/06 at 20:27
+=============================================================================
+Run Date: OCT 11, 2006                     Designation: PSJ*5*186
+Package : PSJ - INPATIENT MEDICATIONS         Priority: EMERGENCY
+Version : 5       SEQ #157                      Status: Released
+                  Compliance Date: OCT 13, 2006
+=============================================================================
+
+Associated patches: (v)PSJ*5*112   <<= must be installed BEFORE `PSJ*5*186'
+
+Subject: Special Instructions Deletion PSI 06 125
+
+Category: 
+  - Routine
+  - Other
+
+Description:
+============
+
+  
+ ********************* WARNING **********************
+ *****************************************************
+ If your facility has the Pyxis/Omnicell/McKesson interface 
+ from ILC this patch will overwrite any "local" modifications 
+ in routine PSJCOM. This could affect certain orders being 
+ sent across this interface.  The modifications will have to 
+ be reintroduced following installation of this patch.
+ ******************************************************
+ ******************************************************
+  
+ This patch addresses Remedy ticket HD158508 (PSI 06 125) and its duplicate
+ tickets.  When an order with Special Instructions was entered, and when
+ prompted, the order was finished such that the BCMA message box flag was
+ set.  Therefore, when the medication is to be administered in BCMA, a
+ pop-up message box would appear to the nurse displaying the Special
+ Instructions.  The order was then renewed via CPRS.  After FINISHING the order
+ in backdoor pharmacy, and before ACCEPTING the order, the Special
+ Instructions were deleted in the edit function.  The order was then Accepted 
+ and Verified.  While the Special Instructions text was deleted, the BCMA 
+ message box flag remained set.  When the nurse entered BCMA to administer 
+ the medication of the renewed order, BCMA behaved as though the medication 
+ was given even though not marked as given.  No Special Instruction pop-up
+ box appeared. The medication was NOT marked as GIVEN on the VDL 
+ (virtual due list).  The underlying issue is that while the Special 
+ Instructions were deleted, the flag to display the BCMA message box was not 
+ cleared which created the issue of medication not being marked as given.  
+  
+ The actual problem lies within the Inpatient Meds code that clears the
+ Special Instructions when deleted during the FINISHING process.  The
+ current code only sets the Special Instructions field to null when it is
+ deleted and does not consider the BCMA message box flag.  The fixes
+ contained within this patch will clear the BCMA message box flag  if
+ the special instructions are null.
+  
+ ASSOCIATED REMEDY TICKETS
+ =========================
+ HD158508 (Original)
+ HD158774 (Duplicate)
+ HD158815 (Duplicate)
+ HD159126 (Duplicate)
+  
+ ASSOCIATED NSR
+ ==============
+ N/A
+   
+ PARTICIPATING TEST SITES
+ ========================
+ NORTHAMPTON, MA
+ DETROIT, MI
+ DUBLIN, GA
+ MADISON, WI
+ MARTINSBURG, WV
+ MARYLAND HCS
+ SAN DIEGO, CA
+ WEST PALM BEACH, FL
+ ALEXANDRIA, LA
+ HINES, IL
+ MILWAUKEE, WI
+ WILKES BARRE, PA
+ DANVILLE/ILLIANA HCS
+ NORTHERN CALIFORNIA HCS
+ PALO ALTO HCS
+  
+ REMEDY TICKET OVERVIEW
+ ======================
+  
+ HD158508
+  
+ Problem
+ --------
+ When the Special Instructions are flagged to display a BCMA Message Box, and 
+ when the instructions are deleted on a renewed order during the FINISHING
+ process, the BCMA Message Box flag is not cleared.
+  
+ Resolution
+ ----------
+ This patch will clear the BCMA Message Box flag if the Special Instructions
+ are deleted.
+  
+ TECHNICAL DESCRIPTION
+ =====================
+ The routine PSGOEF1 was be updated such that if the first piece of the
+ PSGSI variable is null, it re-sets the ^PS(53.1,DA,6 node for the
+ order and sets the second piece to null as well.  Currently, if the
+ Special Instructions (first piece) is set, the second piece (BCMA
+ Message Box) flag remains set.
+  
+ Routine PSJCOM has been updated with the same code as PSJOEF1.
+  
+  
+ The PSJBCMA* API routines PSJBCMA and PSJBCMA1 have been updated so that 
+ if the Special Instructions are null, the second piece is also set to null, 
+ and the ! flag is not sent to BCMA to denote that a pop-up message box is 
+ expected.  In these routines, both the unit dose and the IV sections will 
+ be updated.
+  
+ A new routine named PSJ0186 was added to this patch which will allow the 
+ sites to determine how many orders were affected by this issue.
+  
+ **NOTE** The routine PSJ0186 will NOT update or correct any records
+ that it finds and prints on the report.
+  
+  
+ The features of PSJ0186 are:
+ 1. Select a device - a printer, P-message, or file.
+ 2. Queue the output
+ 3. Print in human-readable or comma-delimited format
+ 4. Select All orders or only Active orders.  If ALL orders is selected,
+    the output of the report will start from the date that PSB*3*13 was
+    installed at the site going forward.  If Only Active Orders is 
+    selected, the report will display any orders with a STOP DATE
+    within the last 7 days, a STOP DATE of Today, or a STOP DATE any time
+    in the future.
+ 5. If no orders are found, the report prints "Nothing to print".
+  
+ This routine can be run either from the programmer's prompt, or a new
+ stand alone menu option [PSJU SI SEARCH] included with this patch.
+  
+  
+ INSTALL INSTRUCTIONS
+ ===============
+  
+   ************************ NOTE ************************
+   IF A USER IS ON THE SYSTEM AND USING THESE PROGRAMS 
+   AN EDITED ERROR WILL OCCUR.  
+   The patch should be installed when NO Inpatient Pharmacy 
+   users are on the system.
+   ******************************************************
+  
+  Installation will take less than 1 minute.
+  
+   
+   Suggested time to install: non-peak requirement hours.
+   
+   1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+     
+   2. From the Kernel Installation & Distribution System menu, select
+      the Installation menu.
+   
+   3. From this menu, you may select to use the following options
+      (when prompted for INSTALL NAME, enter PSJ*5.0*186):
+          a.  Verify Checksums in Transport Global - This option will allow
+              you to ensure the integrity of the routines that are in the
+              transport global.
+          b.  Print Transport Global - This option will allow you to view
+              the components of the KIDS build.
+          c.  Compare Transport Global to Current System - This option will
+              allow you to view all changes that will be made when this patch
+              is installed.  It compares all components of this patch
+              (routines, DD's, templates, etc.).
+          d.  Backup a Transport Global - This option will create a backup
+              message of any routines exported with this patch. It will not
+              backup any other changes such as DD's or templates.
+    
+   4. Use the Install Package(s) option and select the package PSJ*5.0*186.
+  
+   5. When prompted "Want KIDS to Rebuild Menu Trees Upon Completion of
+      Install? YES//" respond NO.
+  
+   6. When prompted "Want KIDS to INHIBIT LOGONs during the install? YES//"
+      respond NO.
+    
+   7. When prompted "Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols? YES//" respond NO. 
+   
+ INSTALL EXAMPLE
+ ===============
+ Select INSTALL NAME: PSJ*5.0*186       Loaded from Distribution  9/15/06@07:58
+      => PSJ-5-186 
+  
+ This Distribution was loaded on Sep 15, 2006@07:58 with header of 
+    PSJ-5-186 
+    It consisted of the following Install(s):
+     PSJ*5.0*186
+ Checking Install for Package PSJ*5.0*186
+  
+ Install Questions for PSJ*5.0*186
+  
+  
+ Want KIDS to Rebuild Menu Trees Upon Completion of Install? YES// NO
+  
+ Want KIDS to INHIBIT LOGONs during the install? YES// NO
+ Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// NO
+  
+ Enter the Device you want to print the Install messages.
+ You can queue the install by enter a 'Q' at the device prompt.
+ Enter a '^' to abort the install.
+  
+ DEVICE: HOME//   TCP
+  
+  Install Started for PSJ*5.0*186 : 
+                Sep 15, 2006@08:00:06
+  
+ Build Distribution Date: Sep 15, 2006
+  
+  Installing Routines:
+                Sep 15, 2006@08:00:06
+  
+  Updating Routine file...
+  
+  Updating KIDS files...
+  
+  PSJ*5.0*186 Installed. 
+                Sep 15, 2006@08:00:06
+  
+  Install Message sent #449316
+   100%        25         50         75        
+ Complete  
+ Install Completed
+  
+  
+ NEW MENU OPTION
+ ===============
+ PSJU SI SEARCH
+  
+ This is a stand-alone menu option that runs the routine PSJ0186.
+  
+  
+ ROUTINE SUMMARY
+ ===============
+  
+      The following is a list of the routines included in this patch.
+      The second line of each of these routines now looks like this:
+   
+      ;;5.0; INPATIENT MEDICATIONS ;**[PATCH LIST]**;16 DEC 97
+   
+                        CHECK^XTSUMBLD results
+  
+ Routine Name     Before Patch     After Patch     Patch List
+ ============     ============     ===========     ========================
+ PSGOEF1          15820028         16143232        2,7,35,39,45,47,50,63,67
+                                                   58,95,110,186
+  
+ PSJBCMA          19216053         19601618        32,41,46,57,63,66,56,69,
+                                                   58,81,91,104,111,112,186
+  
+ PSJBCMA1         19636607         20012580        32,41,46,57,63,66,56,58
+                                                   81,91,104,186
+  
+ PSJCOM           17096072         17528074        110,186
+  
+ PSJ0186          N/A              5945333         186
+  
+ 
+ 
+ 
+ 
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PSGOEF1
+    Before: B29279351  After: B29654971  **2,7,35,39,45,47,50,63,67,58,
+                                          95,110,186**
+Routine Name: PSJ0186
+    Before:       n/a  After: B13531411  **186**
+Routine Name: PSJBCMA
+    Before: B62444725  After: B63223587  **32,41,46,57,63,66,56,69,58,
+                                          81,91,104,111,112,186**
+Routine Name: PSJBCMA1
+    Before: B58665814  After: B59316594  **32,41,46,57,63,66,56,58,81,
+                                          91,104,186**
+Routine Name: PSJCOM
+    Before: B38439683  After: B38929893  **110,186**
+
+=============================================================================
+User Information:
+Entered By  : CASTLE,JOHN                   Date Entered  : SEP 14, 2006
+Completed By: GOLDSMITH,JAMES H             Date Completed: OCT 11, 2006
+Released By : LESIEUR,SHIRLEY               Date Released : OCT 11, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

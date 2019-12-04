@@ -1,0 +1,466 @@
+$TXT Created by HOLLOWAY,THOMAS J at DEVFEY.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 01/21/03 at 10:05
+=============================================================================
+Run Date: APR 02, 2003                     Designation: IB*2*207
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #190                       Status: Released
+                  Compliance Date: MAY 03, 2003
+=============================================================================
+
+Associated patches: (v)IB*2*137    <<= must be installed BEFORE `IB*2*207'
+
+Subject: Fixes for EDI billing fields
+
+Category: 
+  - Input Template
+  - Data Dictionary
+  - Routine
+
+Description: 
+============
+
+ This patch modifies two entries in file 364.7 - IB FORM FIELD CONTENT to 
+ address issues with insurance company rejections when Medicare is 
+ indicated as the primary insurance and with missing Admit/Discharge dates 
+ on outpatient professional claims.  It also modifies the way the provider 
+ id is pulled when a care unit is needed and the billing is for the secondary
+ coverage on a claim where Medicare is primary.
+  
+  
+ ASSOCIATED E3R(s):
+ ==================
+   
+ N/A
+  
+ ASSOCIATED NOIS:
+ ================
+   
+ 1. LIT-1102-70321      Problem W/Box 24K on HCFA Claims 
+     Duplicate: BOI-1102-50254
+ 2. WAS-0902-20562      ERROR: DISCHARGE DATE IS REQUIRED
+ 3. CTX-1002-70456      Medicare as Primary Rejecting
+  
+   
+ NOIS OVERVIEW:
+ ==============
+   
+ 1. LIT-1102-70321      Problem W/Box 24K on HCFA Claims
+  
+    Problem:
+    --------
+    When a Payer (a Blue in this case) who is secondary on a claim that 
+    includes MEDICARE coverage requires a special provider id based on a 
+    care unit for a professional claim, that id is not being transmitted 
+    correctly.  Instead, the default MEDICARE id is transmitted.
+  
+  
+    Resolution:
+    -----------
+    This patch corrects the issue by modifying screen 8 for both UB92 and 
+    HCFA to get the correct provider id for a secondary insurance if a care 
+    unit is required.
+  
+ 2. WAS-0902-20562      ERROR: DISCHARGE DATE IS REQUIRED
+  
+    Problem:
+    --------
+    For outpatient professional claims, not related to an inpatient episode, 
+    the Discharge Date was not being filled.  Some payers required an entry 
+    in that field.
+  
+    Resolution:
+    -----------
+    The program will now output the statement 'To Date' in the Discharge Date
+    field for outpatient professional claims.
+   
+  
+ 3. CTX-1002-70456      Medicare as Primary Rejecting
+  
+    Problem:
+    --------
+    HCFA claims were being rejected when billing the secondary coverage
+    where Medicare was primary due to an invalid policy type code being sent.
+  
+    Resolution:
+    -----------
+    The output formatter is changed to send the correct code.
+  
+  
+ TECHNICAL:
+ ==========
+   
+ 1.  Changes are made to routines:        IBCEU, IBCSC8H, IBCEP3
+     For file #399 -- BILL/CLAIMS FILE
+     Changes are made to input templates: IB SCREEN8H, IB SCREEN82
+     Changes are made to field 222 -- PROVIDER,
+                      sub-fields:  .09     PRIMARY PROV ID CARE UNIT
+                                   .1     SECONDRY PROV ID CARE UNIT
+                                   .11    TERTIARY PROV ID CARE UNIT
+   
+ 2.  Entry 28 in file 364.7 is affected as follows:
+     Field 1-FORMAT CODE is changed
+     from:
+       K IBXDATA I $G(IBXSAVE("DISDT")) S IBXDATA=$$DT^IBCEFG1(IBXSAVE
+       ("DISDT")\1,"","D8")
+     to:
+       S IBXDATA=$G(IBXSAVE("DISDT")) D:$S(IBXDATA="":'$$INPAT^IBCEF
+       (IBXIEN,1),1:0) F^IBCEF("N-STATEMENT COVERS TO DATE",,,IBXIEN) I 
+        IBXDATA S IBXDATA=$$DT^IBCEFG1(IBXDATA\1,"","D8")
+   
+     Field 3-FORMAT CODE DESCRIPTION is changed
+     from:
+       Extract only date from date/time retrieved from IBXSAVE array 
+       previously extracted.  Format date in CCYYMMDD format.  If data
+       element's value is null, do not output.
+     to:
+       Extract only date from date/time retrieved from IBXSAVE array 
+       previously extracted.  For an outpatient claim not related to 
+       an inpatient episode, output the statement 'To Date'.  
+       Format date in CCYYMMDD format.  If data element's value is null,
+       do not output.
+  
+ 3.  The data element in VistA's flat file for the Other Insurance Billing
+     Provider Id type (OI1-13, mapped to 2330B/REF(3)) was using the 
+     INSURANCE CO LEVEL parameter to determine the correct code to send.
+     It will now use the POLICY LEVEL parameter as does the corresponding
+     data for the CURRENT INSURANCE (CI1-9).
+   
+     Entry 900 in file 364.7 is affected as follows:  
+     Field .03-DATA ELEMENT is changed 
+     from:
+       234   [N-OTHER INSURANCE CO TYPES]
+     to:
+       236   [N-OTH INS POL TYPES       ]
+   
+     Field #1 - FORMAT CODE is changed 
+     from: 
+       N Z,IBZ M IBZ=IBXDATA K IBXDATA F Z=1,2 I $P($G(IBZ),U,Z),$D(^DGCR
+       (399,IBXIEN,"I"_(Z+1))) S IBXDATA(Z)=$P("G2^1C^1D^1H^G2^",U,+$P(IBZ,
+       U,Z)) I IBXDATA(Z)="" S IBXDATA(Z)="G2"
+     to:
+       N A,Z,Q S Q=IBXDATA K IBXDATA F Z=1,2 S A=$P(Q,U,Z) I $D(^DGCR(399,
+       IBXIEN,"I"_(Z+1))) S IBXDATA(Z)=$S(A="":"G2","MAMB16"[A:"1C",A="TV"!
+       (A="MC"):"1D",A="CH":"1H",A="BL":$S($$FT^IBCEF(IBXIEN)=2:"1B",1:"1A")
+       ,1:"G2")
+   
+     Field #3 - FORMAT CODE DESCRIPTION is changed 
+     from:
+       This is a group data element so more than 1 occurrence of a value is
+       possible for the data element in the IBXDATA array.  If any 'other' 
+       insurance company data is found, the data is formatted as the
+       insurance type of the insurance company in X12 format.
+     to:
+       If any 'other' insurance company data is found, the data is formatted
+       from the electronic type of plan of the insurance company policy in
+       X12 format.  Refer to the 837 V4010 (professional) field
+       2330/REF(3)/01 for details.
+  
+     The pre-init routine, IB20P207, handles the data file changes described
+     above in items 2 and 3.
+  
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ INDIANAPOLIS
+ CENTRAL TEXAS VHCS
+ LITTLE ROCK VAMC
+ PALO ALTO VAMC
+ WASHINGTON VAMC
+  
+  
+ ROUTINE SUMMARY 
+ ===============
+ The following is a list of the routines included in this patch.  
+ The second line of each of these routines now looks like: 
+  
+   <tab>;;2.0;INTEGRATED BILLING;**[PATCH LIST]**;21-MAR-94
+  
+                        CHECK^XTSUMBLD results
+ Routine name      Before Patch        After Patch       Patch List
+ ============      ============        ===========       ===========
+ IBCEP3                10241732           10299570       137,207
+ IBCEU                 13162792           13254284       51,137,207
+ IBCSC8H               10788187           12543053       51,137,207
+ IB20P207          N/A                     6552022       207
+  
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+  
+  This patch can be installed at any time, however, all IB users need to 
+  be off the system, the IB MT NIGHT COMP job should not be running and 
+  sites should not be actively transmitting claims.
+   
+  If installed during the normal workday it is recommended that the
+  following menu options (File #19) be disabled to prevent possible
+  conflicts while running the KIDS Install. Other VISTA users will not be
+  affected.
+   
+          Billing Supervisor Menu [IB BILLING SUPERVISOR MENU]
+          Billing Clerk's Menu [IB BILLING CLERK MENU]
+          EDI Menu For Electronic Bills [IBCE 837 EDI MENU] 
+   
+  Install time - less than 5 minutes.
+   
+   
+  1.  LOAD TRANSPORT GLOBAL 
+      ---------------------
+      Choose the PackMan message containing this patch and invoke the 
+      INSTALL/CHECK MESSAGE PackMan option.  
+                                
+  2.  DISABLE ROUTINE MAPPING   (DSM for open VMS sites only)
+      -----------------------
+      Disable routine mapping on all systems for the routines listed in
+      the routine summary
+      NOTE:  If the routines included in this patch are not currently in
+      your mapped routine set, please skip this step.
+   
+  3.  START UP KIDS 
+      -------------
+      Start up the Kernel Installation and Distribution System Menu 
+      [XPD MAIN]: 
+                          
+            Edits and Distribution ...  
+            Utilities ...
+            Installation ...  
+                                    
+      Select Kernel Installation & Distribution System Option: INStallation
+                                                               ---
+   
+      1      Load a Distribution
+      2      Verify Checksums in Transport Global
+      3      Print Transport Global
+      4      Compare Transport Global to Current System
+      5      Backup a Transport Global
+      6      Install Package(s)
+             Restart Install of Package(s)
+             Unload a Distribution
+      
+  4.  From this menu, you may elect to use the following options
+      (When prompted for the INSTALL NAME, enter IB*2.0*207):
+      
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will
+          not backup any other changes such as DD's or templates.
+      b.  Compare Transport Global to Current System - This option
+          will allow you to view all changes that will be made when
+          this patch is installed.  It compares all components of this
+          patch (routines, DD's, templates, etc.).
+      c.  Verify Checksums in Transport Global - This option will
+          allow you to ensure the integrity of the routines that are
+          in the transport global.
+                    
+  5.  Use the Install Package(s) option and select the package IB*2.0*207.
+  
+      a.  When prompted 'Want KIDS to INHIBIT LOGONs during the
+          install? YES//', answer NO.
+      b.  When prompted 'Want to DISABLE Scheduled Options, Menu
+          Options, and Protocols? YES//' answer YES.
+      c.  When prompted 'Enter options you wish to mark as 'Out of
+          Order':' Enter the following:       
+            Billing Supervisor Menu       [IB BILLING SUPERVISOR MENU]
+            Billing Clerk's Menu          [IB BILLING CLERK MENU]
+            EDI Menu For Electronic Bills [IBCE 837 EDI MENU]
+      d.  When prompted 'Enter protocols you wish to mark as 'Out of
+          Order': Enter the following: (press return) 
+   
+  6.  REBUILD MAPPED ROUTINES(S)  (DSM for Open VMS sites only)
+      --------------------------
+      Optional - Include the routines distributed with this patch in the
+      mapped routine set.
+                     
+      NOTE: This step is only necessary if you performed step 2 or if you 
+      wish to include the routines in your mapped set.
+   
+  7.  DELETE PRE-INIT ROUTINE
+      ------------------------
+      Delete IB20P207 routine from your system after successful installation
+      of this patch.
+   
+ INSTALLATION EXAMPLE:
+ ---------------------
+   
+ Select Installation Option: 6  Install Package(s)
+ Select INSTALL NAME: IB*2.0*207       Loaded from Distribution  1/10/03@17:06:48
+      => IB*2*207
+   
+ This Distribution was loaded on Jan 10, 2003@17:06:48 with header of 
+    IB*2*207
+    It consisted of the following Install(s):
+      IB*2.0*207
+ Checking Install for Package IB*2.0*207
+   
+ Install Questions for IB*2.0*207
+   
+ Incoming Files:
+   
+   
+    399       BILL/CLAIMS  (Partial Definition)
+ Note:  You already have the 'BILL/CLAIMS' File.
+   
+   
+ Want KIDS to INHIBIT LOGONs during the install? YES// NO
+ Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// 
+   
+ Enter options you wish to mark as 'Out Of Order': IB BILLING SUPERVISOR MENU    
+    Billing Supervisor Menu
+   
+ Enter options you wish to mark as 'Out Of Order': IB BILLING CLERK MENU       Bi
+ lling Clerk's Menu
+   
+ Enter options you wish to mark as 'Out Of Order': IBCE 837 EDI MENU       EDI Me
+ nu For Electronic Bills
+   
+ Enter options you wish to mark as 'Out Of Order': 
+   
+ Enter protocols you wish to mark as 'Out Of Order': 
+   
+ Delay Install (Minutes):  (0-60): 0// 
+   
+ Enter the Device you want to print the Install messages.
+ You can queue the install by enter a 'Q' at the device prompt.
+ Enter a '^' to abort the install.
+   
+ DEVICE: HOME//   VIRTUAL CONNECTION
+   
+    
+  Install Started for IB*2.0*207 : 
+                Jan 10, 2003@17:14:06
+   
+ Build Distribution Date: Jan 10, 2003
+  
+  Installing Routines:
+                Jan 10, 2003@17:14:06
+  
+  Running Pre-Install Routine: ^IB20P207
+  
+ Updating format code for Admit Date.
+  
+ Updating format code description for Admit Date.
+  
+ Step complete.
+  
+ For IEN 900, file 364.7: changing data element from
+ N-OTHER INSURANCE CO TYPES to N-OTH INS POL TYPES.
+  
+ Updating format code for N-OTH INS POL TYPES.
+  
+ Updating format code description for N-OTH INS POL TYPES.
+  
+ Step complete.
+  
+  Installing Data Dictionaries: .
+                Jan 10, 2003@17:14:08
+  
+  Installing PACKAGE COMPONENTS: 
+  
+  Installing INPUT TEMPLATE
+                Jan 10, 2003@17:14:09
+  
+  Updating Routine file...
+  
+  The following Routines were created during this install:
+      IBXX
+      IBXX1
+      IBXX10
+      IBXX11
+      IBXX12
+      IBXX13
+      IBXX14
+      IBXX15
+      IBXX16
+      IBXX17
+      IBXX18
+      IBXX19
+      IBXX2
+      IBXX20
+      IBXX21
+      IBXX22
+      IBXX23
+      IBXX24
+      IBXX25
+      IBXX26
+      IBXX3
+      IBXX4
+      IBXX5
+      IBXX6
+      IBXX7
+      IBXX8
+      IBXX9
+      IBXSC8H
+      IBXSC8H1
+      IBXSC8H2
+      IBXSC8H3
+      IBXSC8H4
+      IBXSC8H5
+      IBXSC8H6
+      IBXSC8H7
+      IBXSC8H8
+                                    IB*2.0*207                                   
+ --------------------------------------------------------------------------------
+      IBXSC8H9
+      IBXSC82
+      IBXSC821
+      IBXSC822
+      IBXSC823
+      IBXSC824
+      IBXSC825
+      IBXSC826
+      IBXSC827
+      IBXSC828
+      IBXSC829
+  
+  Updating KIDS files...
+  
+  IB*2.0*207 Installed. 
+                Jan 10, 2003@17:14:10
+  
+  Install Message sent #8710
+ --------------------------------------------------------------------------------
+           +------------------------------------------------------------+
+   100%    |             25             50             75               |
+ Complete  +------------------------------------------------------------+
+  
+  
+ Install Completed
+
+Routine Information:
+====================
+
+Routine Name:
+  - IB20P207
+
+ This is a pre-install routine to update data entries in
+ file 364.7
+
+Routine Checksum:
+
+Routine Name:
+  - IBCEP3
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCSC8H
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCEU
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : HOLLOWAY,THOMAS J             Date Entered : DEC 20, 2002
+Completed By: PEREZ,CAROL                   Date Completed: APR 02, 2003
+Released By : JACKSON,SHERYL                Date Released : APR 02, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

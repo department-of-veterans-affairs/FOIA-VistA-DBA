@@ -1,0 +1,192 @@
+$TXT Created by KOPP,TERRY at MNTVLL.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 12/05/07 at 09:59
+=============================================================================
+Run Date: APR 08, 2008                     Designation: IVM*2*123
+Package : IVM - INCOME VERIFICATION MATCH     Priority: Mandatory
+Version : 2       SEQ #107                      Status: Released
+                  Compliance Date: MAY 09, 2008
+=============================================================================
+
+Associated patches: (v)IVM*2*74    <<= must be installed BEFORE `IVM*2*123'
+
+Subject: MEANS TEST FOR PRIOR YEAR NOT UPLOADING
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch addresses an issue concerning the inability of sites to upload 
+ certain means tests. All the Remedy tickets referenced below describe
+ the same issue and have the same solution.
+  
+  Issue:
+   If the following conditions are true:
+     1.  A patient has no means test on file for an income year, but has
+         an IVM converted test on file as the last test found in a previous
+         year 
+       AND
+     2.  A VAMC test from another site is received for a more current year
+  
+   Then the following occurs on VistA:      
+     1.  The newer means test is ignored (because the system erroneously
+         judges the newer test to be a duplicate of the earlier, IVM
+         converted test)
+       AND
+     2.  No HL7 message is sent back to the Health Eligibility Center (HEC)
+         to document its rejection.
+  
+  Resolution:
+   When a new means test arrives, the software will determine if it is a 
+   duplicate of an existing IVM converted means test for the patient by 
+   checking whether the tests' income years are the same.  If they are, an
+   'AE' error message will be sent via HL7 to the HEC to record a means
+   test was received that could not be uploaded due to an IVM test already
+   on file for that year.  If the existing test is not associated with the
+   same income year as the new test being added, the new test will not be
+   considered a duplicate and will be allowed to load into the veteran's
+   record.
+  
+ This patch addresses the following New Service Requests (NSR):
+ --------------------------------------------------------------
+ There are no NSRs associated with this patch.
+  
+  
+ This patch addresses the following Remedy Tickets:
+ --------------------------------------------------
+ HD0000000195790     Unable to get MT due to converted IVM test being the 
+                     last one on file
+ HD0000000220986     Means test not transmitting (Duplicate of 195790) 
+ HD0000000208764     Patient record spawning 40 plus means test required 
+                     w/11-2-07 dates as not primary.   5/22/07 is the
+                     primary date. (Duplicate of 195790)
+ HD0000000221627     Means Test Issue (Duplicate of 195790)
+ HD0000000226497     PIMS Package - Means Test (Duplicate of 195790)
+  
+ Test Sites
+ ==========
+ MADISON
+ DENVER
+ PUGET SOUND 
+  
+ ================INSTALLATION INSTRUCTIONS =================
+  
+ Install Time - less than 5 minutes
+  
+ This patch can be installed with users on the system.
+  
+   1.   LOAD TRANSPORT GLOBAL
+        ---------------------
+        Choose the PackMan message containing this patch and invoke the
+        INSTALL/CHECK MESSAGE PackMan option.
+  
+   2.   COMPONENTS SENT WITH PATCH
+        ------------------------
+  
+        ROUTINE: IVMCM 
+  
+        Number of routines changed:           1
+            Number of new routines:           0
+       Number of routines in patch:           1 
+  
+  
+  3.   START UP KIDS
+        -------------
+        Start up the Kernel Installation and Distribution System Menu
+        [XPD MAIN]:
+  
+             Edits and Distribution ...
+             Utilities ...
+             Installation ...
+  
+   Select Kernel Installation & Distribution System Option: INStallation
+                                                            ---
+             Load a Distribution
+             Print Transport Global
+             Compare Transport Global to Current System
+             Verify Checksums in Transport Global
+             Install Package(s)
+             Restart Install of Package(s)
+             Unload a Distribution
+             Backup a Transport Global
+  
+   Select Installation Option:
+  
+   4.   Select Installation Option:
+        --------------------------
+        NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+               NAME, enter IVM*2.0*123):
+  
+        a.  Print Transport Global - This option will allow you to view
+            all components the of this patch (routines, DD's, templates,
+            etc.).
+        b.  Backup a Transport Global - This option will create a backup
+            message of any routines exported with this patch. It will not
+            backup any other changes such as DD's or templates.
+        c.  Compare Transport Global to Current System - This option will
+            allow you to view all changes that will be made when this patch
+            is installed.  It compares all components of this patch
+            (routines, DD's, templates, etc.).
+        d.  Verify Checksums in Transport Global - This option will allow
+            you to ensure the integrity of the routines that are in the
+            transport global.
+  
+   5.   Select Installation Option: Install Package(s)
+                                    ----------------
+        **This is the step to start the installation of this KIDS patch:
+  
+       a.  Choose the Install Package(s) option to start the patch install.
+       b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+           NO//' answer NO (unless otherwise indicated).
+       c.  When prompted 'Want to DISABLE Scheduled Options, Menu
+           Options, and Protocols? YES// answer YES.
+           When prompted 'Enter options you wish to mark as 'Out Of
+           Order': enter the following option:
+  
+       [IVM FINANCIAL QUERY]     IVM Financial Query
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;2.0;INCOME VERIFICATION MATCH;**[Patch List]**;21-OCT-94;Build 6
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: IVMCM
+    Before: B76499309   After: B79374731  **12,17,28,41,44,53,34,49,59,
+                                           55,63,77,74,123**
+ Description of Changes:
+  Old Code:
+   +2         ;;2.0;INCOME VERIFICATION MATCH;
+  **12,17,28,41,44,53,34,49,59,55,63,77,74**;21-OCT-94
+  ...................
+  New Code:
+   +2         ;;2.0;INCOME VERIFICATION MATCH;
+  **12,17,28,41,44,53,34,49,59,55,63,77,74,123**;21-OCT-94
+   
+  Old Code
+   +144       .I $$Z06MT^EASPTRN1(+IVMLAST) Q
+  ...................
+  New code:
+   +144       .; Check that test is for same year
+   +145       .I $P(IVMLAST,U,2),$E($P(IVMLAST,U,2),1,3)'=$E(IVMMTDT,1,3) S 
+  IVMLAST=""
+   +146       .I $$Z06MT^EASPTRN1(+IVMLAST) D PROB^IVMCMC("IVM Means Test 
+  already on file for this year") Q
+
+ 
+Routine list of preceding patches: 74
+
+=============================================================================
+User Information:
+Entered By  : KOPP,TERRY M                  Date Entered  : JUL 10, 2007
+Completed By: RUDINGER,NANCY L.             Date Completed: APR 07, 2008
+Released By : GANUS,MAUNETTE                Date Released : APR 08, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

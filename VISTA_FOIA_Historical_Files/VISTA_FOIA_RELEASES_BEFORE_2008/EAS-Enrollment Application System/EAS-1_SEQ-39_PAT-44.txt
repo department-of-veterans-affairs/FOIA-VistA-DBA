@@ -1,0 +1,275 @@
+$TXT Created by KOPECKY,STEVE at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Friday, 12/12/03 at 13:02
+=============================================================================
+Run Date: FEB 18, 2004                     Designation: EAS*1*44
+Package : EAS - ENROLLMENT APPLICATION SYSTEM Priority: Mandatory
+Version : 1        SEQ #39                      Status: Released
+                  Compliance Date: MAR 20, 2004
+=============================================================================
+
+Associated patches: (v)EAS*1*9     <<= must be installed BEFORE `EAS*1*44'
+
+Subject: 1010EZ WEB PROCESSING VET SELECTION
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch addresses two issues with the Electronic 10-10EZ Processing.  
+  
+ First, when linking a new 1010EZ patient application to a patient in the 
+ PATIENT File (#2), under certain conditions incorrect patient information 
+ is being displayed after the linkage.  During the patient lookup, if the 
+ DFN of the 1010EZ patient matches uniquely with the initial portion of 
+ another patient's SSN, the IEN of this patient is stored in the 1010EZ 
+ HOLDING File (#712) instead of the IEN of the patient actually selected.  
+ As a result, when the List Manager display is rebuilt, the patient data 
+ from this other patient is displayed in the VistA Data column.  The 
+ patient identifier information may be correct, but other patient data is 
+ retrieved from the incorrect patient.  This patch will modify the current 
+ patient lookup to store the correct DFN.
+  
+ Secondly, attempting to print the 1010EZ form from the 1010EZ Processing 
+ application to a slave printer will result in either the List Manager 
+ application stalling or the generation of an INVALID OUTPUT DEVICE error 
+ from TaskMan.  This is being caused by the Standard Device Call being set 
+ to allow queuing and then selecting a slave printer.   The Device Call 
+ will be modified by this patch to screen out printers which are 
+ designated as a slave device in either the device name or terminal 
+ location fields.
+  
+ This patch addresses the following E3R(s):
+ ------------------------------------------
+ There are no E3Rs associated with this patch.
+  
+  
+ This patch addresses the following NOIS message(s):
+ ---------------------------------------------------
+ SDC-1003-60902 - Electronic 10-10 Processing Wrong Vet
+ ATG-0803-32133 - Patient Doesn't Match
+  
+ Problem: When linking 10-10EZ to Vista file, the correct name is entered 
+ but it's associated with another veteran with no apparent similarities.
+  
+ Resolution:  The FileMan ^DIE call using a three slash DR string is used 
+ to update the LINK TO FILE #2 field (#3.4) in the 1010EZ HOLDING File 
+ (#712).  Since this field is a pointer to the PATIENT File, FileMan calls 
+ the patient lookup, DPTLK, to validate the patient DFN being passed in.  
+ This lookup checks a series of cross-references on the patient file, one 
+ of which is the "SSN" cross-reference.  If the DFN uniquely matches the 
+ initial portion of a SSN in this cross-reference, this IEN is returned 
+ instead.  This patch modifies the routine to use the newer FILE^DIE 
+ database server call to update the LINK TO FILE #2 field (#3.4).  
+  
+  
+ DAY-0500-42574 - Invalid Output Device In 10-10T
+  
+ Problem: If the user selects the 1010EZ Print and selects a slave device 
+ as the printer, the form will attempt to queue to the selected device 
+ resulting in an INVALID OUTPUT DEVICE from Taskman.
+  
+ Resolution:  This patch modifies the Standard Device Call, %ZIS, to 
+ include a screen on the NAME Field (#.01) and LOCATION OF TERMINAL Field 
+ (#.02) in the DEVICE File (#3.5) to screen out any entries that include 
+ the word "SLAVE" in either of those two fields.  In addition, the print 
+ device warning message is updated to include: "Do not select a slave 
+ device for output."
+  
+  
+  
+        ================INSTALLATION INSTRUCTIONS =================
+  
+ If installed during the normal workday, it is recommended that the 
+ following menu options (File #19) and all of their descendants be 
+ disabled to prevent possible conflicts while running the KIDS Install. 
+ Other VISTA users will not be affected.
+  
+    [EAS EZ 1010EZ PROCESSING]       Electronic 10-10EZ Processing
+  
+ Install Time - 5 minutes
+  
+  
+   1.   LOAD TRANSPORT GLOBAL 
+        ---------------------
+        Choose the PackMan message containing this patch and invoke the 
+        INSTALL/CHECK MESSAGE PackMan option.  
+              
+   2.   DISABLE ROUTINE MAPPING   (DSM for Open VMS sites only) 
+        -----------------------
+        Disable routine mapping on all systems for the routines listed
+        in step 3 below.  
+       
+        NOTE:  If the routines included in this patch are not currently
+       in your mapped routine set, please skip this step.
+   
+   3.   COMPONENTS SENT WITH PATCH 
+        ------------------------
+        The following is a list of the routines included in this patch.  
+        The second line of each of these routines now looks like: 
+   
+  
+  <tab>;;1.0;ENROLLMENT APPLICATION SYSTEM;**[patch list]**;Mar 15, 2001
+  
+                            CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  EASEZI                 9323719              9300333           1,9,44
+  EASEZPF                4908564              5176532             44  
+  
+  
+         Total number of routines - 2 
+   
+         Total number of routines modified: 2
+         Total number of new routines:      0
+         Total number of deleted routines:  0
+  
+  
+   4.   START UP KIDS 
+        -------------
+        Start up the Kernel Installation and Distribution System Menu 
+        [XPD MAIN]: 
+    
+             Edits and Distribution ...  
+             Utilities ...  
+             Installation ...  
+    
+   Select Kernel Installation & Distribution System Option: INStallation 
+                                                            ---
+             Load a Distribution 
+             Print Transport Global 
+             Compare Transport Global to Current System 
+             Verify Checksums in Transport Global 
+             Install Package(s) 
+             Restart Install of Package(s) 
+             Unload a Distribution 
+             Backup a Transport Global 
+    
+   Select Installation Option: 
+    
+   5.   Select Installation Option: 
+        --------------------------
+        NOTE: The following are OPTIONAL - When prompted for the INSTALL
+               NAME, enter EAS*1.0*44):
+       
+        a.  Backup a Transport Global - This option will create a backup
+            message of any routines exported with this patch. It will
+            not backup any other changes such as DD's or templates.
+        b.  Compare Transport Global to Current System - This option 
+            will allow you to view all changes that will be made when 
+            this patch is installed.  It compares all components of this 
+            patch (routines, DD's, templates, etc.).
+        c.  Verify Checksums in Transport Global - This option will 
+            Allow you to ensure the integrity of the routines that are 
+            in the transport global.
+      
+   6.   Select Installation Option: Install Package(s) 
+                                    ----------------
+        **This is the step to start the installation of this KIDS patch: 
+    
+       a.  Choose the Install Package(s) option to start the patch
+           install.
+       b.  When prompted 'Want KIDS to INHIBIT LOGONs during the
+           install?  YES//' answer NO (unless otherwise indicated)
+       c.  When prompted 'Want to DISABLE Scheduled Options, Menu
+           Options, and Protocols? YES//' answer YES (unless otherwise 
+           indicated)
+       d.  When prompted 'Enter options you wish to mark as 'Out Of
+           Order':' Enter the following options:
+   
+           [EAS EZ 1010EZ PROCESSING]  Electronic 10-10EZ Processing
+  
+       e. When prompted 'Enter protocols you wish to mark as 'Out Of 
+          Order':' press <return>.
+  
+   7.    REBUILD MAPPED ROUTINE(S)  (DSM for Open VMS sites only)
+        -------------------------
+        Optional - Include the routines distributed with this patch
+        in the mapped routine set.
+      
+        NOTE: This step is only necessary if you performed step 2 or 
+              if you wish to include the routines in your mapped set.
+
+Routine Information:
+====================
+
+Routine Name:
+  - EASEZI
+
+ Before
+ ======
+  
+   2        ;;1.0;ENROLLMENT APPLICATION SYSTEM;**1,9**;Mar 15, 2001
+  
+  71        ;set link in file #712 record
+  72        S DA=EASAPP
+  73        S DIE="^EAS(712,"
+  74        S DR="3.4///^S X=DFN;" I NEW S DR=DR_"3.5///^S X=NEW"
+  75        D ^DIE
+  76        ;
+  
+  
+ After
+ =====
+   2        ;;1.0;ENROLLMENT APPLICATION SYSTEM;**1,9,44**;Mar 15, 2001
+  
+  71        ;set link in file #712 record
+  72        ; EAS*1*44 Modifications - SCK
+  73        N FDA,ERR
+  74        S FDA(712,EASAPP_",",3.4)=DFN
+  75        I NEW D
+  76        . S FDA(712,EASAPP_",",3.5)=NEW
+  77        D FILE^DIE("","FDA","ERR")
+  78        ;
+
+Routine Checksum:
+
+Routine Name:
+  - EASEZPF
+
+ Before
+ ======
+  
+   2        ;;1.0;ENROLLMENT APPLICATION SYSTEM;;Mar 15, 2001
+  
+  20        G:$$CHECKS(EASAPP) EXIT
+  21        ;
+  22        W !!?5,*7,"This output requires a 132 column output printer."
+  23        W !?5,"Output to SCREEN will be unreadable.",!
+  
+  25        S EASAPP=$G(EASAPP),EASDFN=$G(EASDFN)
+  26        ;
+  27        S %ZIS="Q" D ^%ZIS
+  28        ;
+  29        G:POP EXIT
+  
+  
+ After
+ =====
+  
+   2        ;;1.0;ENROLLMENT APPLICATION SYSTEM;**44**;Mar 15, 2001
+  
+  20        G:$$CHECKS(EASAPP) EXIT
+  21        ;
+  22        W !!?5,*7,"Do not select a slave device for output."
+  23        W !?5,"This output requires a 132 column output printer."
+  24        W !?5,"Output to SCREEN will be unreadable.",!
+  
+  27        ;
+  28        S %ZIS="Q",%ZIS("S")="I $P($G(^(1)),U)'[""SLAVE""&($P($G(^(0)),U)'[""SLAVE"")"
+  29        D ^%ZIS
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : KOPECKY,STEPHEN C.            Date Entered  : NOV 12, 2003
+Completed By: LANDRY,DANNA                  Date Completed: FEB 12, 2004
+Released By : FITCH,DONNA                   Date Released : FEB 18, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,312 @@
+$TXT Created by SHAMUKHAMEDOV,SHAVKAT at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 10/30/03 at 18:47
+=============================================================================
+Run Date: NOV 25, 2003                     Designation: FB*3.5*67
+Package : FB - FEE BASIS                      Priority: Mandatory
+Version : 3.5        SEQ #61                    Status: Released
+                  Compliance Date: DEC 26, 2003
+=============================================================================
+
+Associated patches: (v)FB*3.5*61   <<= must be installed BEFORE `FB*3.5*67'
+
+Subject: PROBLEMS WITH MULTIPLE PAYMENT ENTRY
+
+Category: 
+  - Routine
+  - Other
+
+Description:
+============
+
+ This patch corrects two different problems in the Multiple Payment Entry 
+ [FBAA MULTIPLE PAYMENT ENTRY] option that were addressed by NOIS calls:
+ - the user is not allowed to process payments with ICD Diagnosis codes 
+ that start with the letter "V" or any other non-digit character;
+ - when the multiple payment entry option is used to enter two different 
+ invoices by selecting another patient after the first invoice is 
+ complete, the adjustments from the first invoice can be inappropriately 
+ copied to the second one when the second invoice's claimed and paid 
+ amounts are the same.
+  
+  
+ ASSOCIATED NOIS:
+ ---------------
+ 1. CHY-1003-50097   Can't use v code in Multiple Payment Entry option 
+ 2. LOU-1003-41399   PROBLEM w/MULTIPLE PAYMENT ENTRY
+ 3. MAD-0903-42471   Fee Basis - Multiple Payment Option
+ 4. COS-1003-42612   Data carry-over in multiple payment option 
+  
+ ASSOCIATED E3R(s):
+ -----------------
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ ------------------------
+ LOUISVILLE, KY
+ MADISON, WI
+ COLUMBUS, OH
+  
+ NOIS OVERVIEW:
+ -------------
+ 1) CHY-1003-50097, LOU-1003-41399 and MAD-0903-42471 were entered to 
+ address the problem described below:
+  
+    Problem:
+    -------
+ The Multiple Payment Entry [FBAA MULTIPLE PAYMENT ENTRY] does not allow 
+ the user to enter payments if the ICD diagnosis code for the treatment 
+ starts with a non-digit character (V34.00 or E906.5, for example). 
+ The subroutine MULT^FBAAMP calls $$CHKICD9^FBCSV1 to make sure that the
+ ICD code is active on the date of service. $$CHKICD9^FBCSV1 returns the
+ ICD code itself if the code is active and returns null if it is inactive.
+ The MULT^FBAAMP treats the return value of $$CHKICD9^FBCSV1 as zero if it
+ starts with a non-digit character. This leads to repetition on the "Date
+ of service" prompt.
+  
+ EXAMPLE:
+  
+ Select ICD DIAGNOSIS:    V60.4     NO FAMILY ABLE TO CARE     
+          ...OK? Yes//   (Yes)
+  
+ Select PLACE OF SERVICE:    11     OFFICE
+ Select TYPE OF SERVICE:    2     SURGERY
+  
+ Service connected condition? n  NO
+ Amount Claimed:  $: 2.99
+  
+ Is $2.99 correct for Amount Claimed? Yes//   YES
+   Fee schedule amount is $232.45 from the 2003 RBRVS FEE SCHEDULE
+  
+ Amount Paid: $: 2.99// 2.99
+  
+ Is $2.99 correct for Amount Paid? Yes//   YES
+  
+ Current list of Remittance Remarks: none
+  
+  
+ Select REMITTANCE REMARK: 
+  
+  
+ Date of Service: t  (OCT 23, 2003)
+  
+  
+ Date of Service: t  (OCT 23, 2003)
+  
+  
+ Date of Service: ^
+  
+  
+  
+    Resolution:
+    ----------
+ The routine FBAAMP has been changed and after modification it checks 
+ whether the return value of $$CHKICD9^FBCSV1 is null or not. This allows 
+ the Multiple Payment Entry [FBAA MULTIPLE PAYMENT ENTRY] option to accept
+ the ICD diagnosis codes that start with non-digit characters.
+  
+ 2) COS-1003-42612 was entered to address the problem described below:
+  
+ The adjustment that has been entered for the previous invoice can be 
+ inappropriately copied to the next invoice. The problem is caused by 
+ the local array FBADJ that is not killed after multiple 
+ payments processing is completed for the patient. When program is
+ processing the next payment, which doesn't need an adjustment, it
+ erroneously applies the old content of FBADJ array to the new payment.
+  
+ EXAMPLE:
+  
+  
+ Amount Claimed:  $: 200
+  
+ Is $200 correct for Amount Claimed? Yes// YES
+   Fee schedule amount is $156.75 from the 2003 RBRVS FEE SCHEDULE
+  
+ Amount Paid: $: 156.75// 156.75
+  
+ Is $156.75 correct for Amount Paid? Yes//   YES
+  
+ Current list of Adjustments: none
+ Select ADJUSTMENT REASON:    B13  Previously paid. Payment for this 
+ claim/service may have been provided in a previous payment.
+ ADJUSTMENT GROUP:    CO  Contractual Obligations
+ ADJUSTMENT AMOUNT: 43.25// 43.25
+  
+ Current list of Remittance Remarks: none
+  
+ Select REMITTANCE REMARK: 
+  
+  
+ Date of Service: T-21  (OCT 09, 2003)
+ Is 10/9/03 correct? Yes//   YES
+  
+  
+        REPAIR MOUTH LACERATION ....OK, DONE....
+ Invoice: 2427 Totals: $ 156.75
+  
+  
+ Date of Service: 
+  
+ Select Patient: FEEPATIENT,MST B,MST B  FEEPATIENT,MST B      
+   5-4-30    000000000           SC VETERAN
+  
+ <*** skipped ***>
+  
+ Amount Claimed:  $: 200
+  
+ Is $200 correct for Amount Claimed? Yes//   YES
+   Fee schedule amount is $156.75 from the 2003 RBRVS FEE SCHEDULE
+  
+ Amount Paid: $: 156.75// 200
+  
+ Is $200 correct for Amount Paid? Yes//   YES
+  
+ Current list of Remittance Remarks: none
+  
+ Select REMITTANCE REMARK: 
+  
+  
+ Date of Service: 8/20/02  (AUG 20, 2002)
+   Warning: The fee schedule amount (152.54) for this date of service 
+   differs from the initial fee schedule amount (156.75).
+   Amount paid (200) exceeds the fee schedule amount.
+   You may want to separately process this date of service.
+ Is 8/20/02 correct? Yes//   YES
+  
+  
+        REPAIR MOUTH LACERATION ....OK, DONE....
+ Invoice: 2428 Totals: $ 200
+  
+  
+ Date of Service: 
+  
+  
+ Select Patient: 
+  
+ Select FEE BASIS BATCH NUMBER: 
+  
+ Select Payment menu Option: invoice Display
+  
+ <*** skipped ***>
+  
+ Invoice Number: 2428          Vendor Name: ACUTE CARE SPECIALISTS INC
+   Date Received: 10/30/03        Invoice Date: 10/30/03
+   FPPS Claim ID: N/A             Patient Account #: 
+        ('*' Reimb. to Patient  '+' Cancel. Activity  '#' Voided Payment)
+ PATIENT                     SVC DATE  CPT-MOD /REV  BATCH NO. VOUCHER DATE
+    FPPS LINE  AMT CLAIMED AMT PAID  UNITS  ADJ CODE  ADJ AMT REMIT RMK
+ ==========================================================================
+  
+  
+ FEEPATIENT,MST B            8/20/02   40830         1714      
+               $  200.00   $  200.00  1     B13       $43.25
+  
+  
+  
+    Resolution:
+    ----------
+ The routine FBAAMP has been changed to kill the local array FBADJ after 
+ processing of the payment has been completed.
+  
+  
+ ROUTINE SUMMARY
+ ===============
+ The following is a list of the routines included in this patch. The
+ second line of each of these routines now looks like:
+  
+   <tab>;;3.5;FEE BASIS;**[PATCH LIST]**;JAN 30 1995
+  
+                        CHECK^XTSUMBLD results
+   Routine name    Before Patch    After Patch          Patch List
+   ------------    ------------    -----------    ----------------
+   FBAAMP              22067655       22148926    4,21,38,55,61,67
+  
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+ This patch can be loaded with users in the system.  Installation time
+ will be less than 2 minutes.
+  
+  1.  Choose the PackMan message containing this patch and invoke the
+      INSTALL/CHECK MESSAGE PackMan option.
+  
+  2.  (DSM for Open VMS sites only) Disable routine mapping on all systems
+      for the routines listed in the Routine Summary.
+  
+      NOTE:  If the routines included in this patch are not currently
+      in your mapped routine set, please skip this step.
+  
+  3.  Start up the Kernel Installation and Distribution System Menu
+      [XPD MAIN]:
+  
+           Edits and Distribution ...
+           Utilities ...
+           Installation ...
+  
+      Select Kernel Installation & Distribution System Option: Installation
+                                                               ---
+           1      Load a Distribution
+           2      Verify Checksums in Transport Global
+           3      Print Transport Global
+           4      Compare Transport Global to Current System
+           5      Backup a Transport Global
+           6      Install Package(s)
+                  Restart Install of Package(s)
+                  Unload a Distribution
+  
+  4.  From this menu, you may elect to use the following options
+      (When prompted for the INSTALL NAME, enter FB*3.5*67):
+      
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will
+          not backup any other changes such as DD's or templates.
+      b.  Compare Transport Global to Current System - This option
+          will allow you to view all changes that will be made when
+          this patch is installed.  It compares all components of this
+          patch (routines, DD's, templates, etc.).
+      c.  Verify Checksums in Transport Global - This option will
+          allow you to ensure the integrity of the routines that are
+          in the transport global.
+  
+  5.  Use the Install Package(s) option and select the package
+      FB*3.5*67.
+  
+       a.  When prompted 'Want KIDS to INHIBIT LOGONs during the
+           install? YES//', answer NO.
+  
+       b.  When prompted 'Want to DISABLE Scheduled Options, Menu
+           Options, and Protocols? YES//' answer YES.
+  
+       c.  When prompted 'Enter options you wish to mark as 'Out Of
+           Order':', enter the following options:
+  
+             Multiple Payment Entry [FBAA MULTIPLE PAYMENT ENTRY]
+           
+       d.  When prompted 'Enter protocols you wish to mark as 'Out Of
+           Order':', press <return>.
+    
+  6.  (DSM for Open VMS sites only) Optional - Include the routines
+      distributed with this patch in the mapped routine set.
+  
+      NOTE: This step is only necessary if you performed step 2 or if
+      you wish to include the routines in your mapped set.
+
+Routine Information:
+====================
+
+Routine Name:
+  - FBAAMP
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : SHAMUKHAMEDOV,SHAVKAT         Date Entered  : OCT 23, 2003
+Completed By: LANIGAN,VASSER                Date Completed: NOV 25, 2003
+Released By : JACKSON,SHERYL                Date Released : NOV 25, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

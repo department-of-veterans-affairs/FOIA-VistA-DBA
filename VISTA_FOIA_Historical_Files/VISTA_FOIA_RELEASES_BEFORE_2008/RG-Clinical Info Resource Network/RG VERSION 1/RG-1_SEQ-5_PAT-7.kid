@@ -1,0 +1,524 @@
+Released RG*1*7 SEQ #5
+Extracted from mail message
+**KIDS**:RG*1.0*7^
+
+**INSTALL NAME**
+RG*1.0*7
+"BLD",1007,0)
+RG*1.0*7^CLINICAL INFO RESOURCE NETWORK^0^3000803^y
+"BLD",1007,1,0)
+^^3^3^3000712^
+"BLD",1007,1,1,0)
+STOP ADDRESS UPDATES
+"BLD",1007,1,2,0)
+Refer to patch RG*1*7 in the FORUM Patch Module for a complete
+"BLD",1007,1,3,0)
+description.
+"BLD",1007,4,0)
+^9.64PA^^0
+"BLD",1007,"ABNS",0)
+^9.66A^^
+"BLD",1007,"ABPKG")
+^^
+"BLD",1007,"INIT")
+EN^RG7POST
+"BLD",1007,"KRN",0)
+^9.67PA^19^17
+"BLD",1007,"KRN",.4,0)
+.4
+"BLD",1007,"KRN",.401,0)
+.401
+"BLD",1007,"KRN",.402,0)
+.402
+"BLD",1007,"KRN",.402,"NM",0)
+^9.68A^1^1
+"BLD",1007,"KRN",.402,"NM",1,0)
+RG MERGE    FILE #991.8^991.8^1^
+"BLD",1007,"KRN",.402,"NM","B","RG MERGE    FILE #991.8",1)
+
+"BLD",1007,"KRN",.403,0)
+.403
+"BLD",1007,"KRN",.5,0)
+.5
+"BLD",1007,"KRN",.84,0)
+.84
+"BLD",1007,"KRN",3.6,0)
+3.6
+"BLD",1007,"KRN",3.8,0)
+3.8
+"BLD",1007,"KRN",9.2,0)
+9.2
+"BLD",1007,"KRN",9.8,0)
+9.8
+"BLD",1007,"KRN",9.8,"NM",0)
+^9.68A^3^3
+"BLD",1007,"KRN",9.8,"NM",1,0)
+RGRSPT^^0^B14075644
+"BLD",1007,"KRN",9.8,"NM",2,0)
+RG7POST^^0^B271430
+"BLD",1007,"KRN",9.8,"NM",3,0)
+RGJUSITE^^0^B277809
+"BLD",1007,"KRN",9.8,"NM","B","RG7POST",2)
+
+"BLD",1007,"KRN",9.8,"NM","B","RGJUSITE",3)
+
+"BLD",1007,"KRN",9.8,"NM","B","RGRSPT",1)
+
+"BLD",1007,"KRN",19,0)
+19
+"BLD",1007,"KRN",19,"NM",0)
+^9.68A^1^1
+"BLD",1007,"KRN",19,"NM",1,0)
+RG MERGE EDIT PARAMETER^^1^
+"BLD",1007,"KRN",19,"NM","B","RG MERGE EDIT PARAMETER",1)
+
+"BLD",1007,"KRN",19.1,0)
+19.1
+"BLD",1007,"KRN",19.1,"NM",0)
+^9.68A^^
+"BLD",1007,"KRN",101,0)
+101
+"BLD",1007,"KRN",101,"NM",0)
+^9.68A^^
+"BLD",1007,"KRN",409.61,0)
+409.61
+"BLD",1007,"KRN",771,0)
+771
+"BLD",1007,"KRN",870,0)
+870
+"BLD",1007,"KRN",8994,0)
+8994
+"BLD",1007,"KRN","B",.4,.4)
+
+"BLD",1007,"KRN","B",.401,.401)
+
+"BLD",1007,"KRN","B",.402,.402)
+
+"BLD",1007,"KRN","B",.403,.403)
+
+"BLD",1007,"KRN","B",.5,.5)
+
+"BLD",1007,"KRN","B",.84,.84)
+
+"BLD",1007,"KRN","B",3.6,3.6)
+
+"BLD",1007,"KRN","B",3.8,3.8)
+
+"BLD",1007,"KRN","B",9.2,9.2)
+
+"BLD",1007,"KRN","B",9.8,9.8)
+
+"BLD",1007,"KRN","B",19,19)
+
+"BLD",1007,"KRN","B",19.1,19.1)
+
+"BLD",1007,"KRN","B",101,101)
+
+"BLD",1007,"KRN","B",409.61,409.61)
+
+"BLD",1007,"KRN","B",771,771)
+
+"BLD",1007,"KRN","B",870,870)
+
+"BLD",1007,"KRN","B",8994,8994)
+
+"BLD",1007,"QUES",0)
+^9.62^^
+"BLD",1007,"REQB",0)
+^9.611^2^2
+"BLD",1007,"REQB",1,0)
+DG*5.3*295^2
+"BLD",1007,"REQB",2,0)
+RG*1.0*3^2
+"BLD",1007,"REQB","B","DG*5.3*295",1)
+
+"BLD",1007,"REQB","B","RG*1.0*3",2)
+
+"INIT")
+EN^RG7POST
+"KRN",.402,1742,-1)
+1^1
+"KRN",.402,1742,0)
+RG MERGE    FILE #991.8
+"KRN",19,6701,-1)
+1^1
+"KRN",19,6701,0)
+RG MERGE EDIT PARAMETER
+"MBREQ")
+0
+"ORD",7,.402)
+.402;7;;;EDEOUT^DIFROMSO(.402,DA,"",XPDA);FPRE^DIFROMSI(.402,"",XPDA);EPRE^DIFROMSI(.402,DA,$E("N",$G(XPDNEW)),XPDA,"",OLDA);;EPOST^DIFROMSI(.402,DA,"",XPDA);DEL^DIFROMSK(.402,"",%)
+"ORD",7,.402,0)
+INPUT TEMPLATE
+"ORD",18,19)
+19;18;;;OPT^XPDTA;OPTF1^XPDIA;OPTE1^XPDIA;OPTF2^XPDIA;;OPTDEL^XPDIA
+"ORD",18,19,0)
+OPTION
+"PKG",272,-1)
+1^1
+"PKG",272,0)
+CLINICAL INFO RESOURCE NETWORK^RG^CIRN
+"PKG",272,20,0)
+^9.402P^^0
+"PKG",272,22,0)
+^9.49I^1^1
+"PKG",272,22,1,0)
+1.0^2990430^2990601^12555
+"PKG",272,22,1,"PAH",1,0)
+7^3000803
+"PKG",272,22,1,"PAH",1,1,0)
+^^3^3^3000803
+"PKG",272,22,1,"PAH",1,1,1,0)
+STOP ADDRESS UPDATES
+"PKG",272,22,1,"PAH",1,1,2,0)
+Refer to patch RG*1*7 in the FORUM Patch Module for a complete
+"PKG",272,22,1,"PAH",1,1,3,0)
+description.
+"QUES","XPF1",0)
+Y
+"QUES","XPF1","??")
+^D REP^XPDH
+"QUES","XPF1","A")
+Shall I write over your |FLAG| File
+"QUES","XPF1","B")
+YES
+"QUES","XPF1","M")
+D XPF1^XPDIQ
+"QUES","XPF2",0)
+Y
+"QUES","XPF2","??")
+^D DTA^XPDH
+"QUES","XPF2","A")
+Want my data |FLAG| yours
+"QUES","XPF2","B")
+YES
+"QUES","XPF2","M")
+D XPF2^XPDIQ
+"QUES","XPI1",0)
+YO
+"QUES","XPI1","??")
+^D INHIBIT^XPDH
+"QUES","XPI1","A")
+Want KIDS to INHIBIT LOGONs during the install
+"QUES","XPI1","B")
+YES
+"QUES","XPI1","M")
+D XPI1^XPDIQ
+"QUES","XPM1",0)
+PO^VA(200,:EM
+"QUES","XPM1","??")
+^D MG^XPDH
+"QUES","XPM1","A")
+Enter the Coordinator for Mail Group '|FLAG|'
+"QUES","XPM1","B")
+
+"QUES","XPM1","M")
+D XPM1^XPDIQ
+"QUES","XPO1",0)
+Y
+"QUES","XPO1","??")
+^D MENU^XPDH
+"QUES","XPO1","A")
+Want KIDS to Rebuild Menu Trees Upon Completion of Install
+"QUES","XPO1","B")
+YES
+"QUES","XPO1","M")
+D XPO1^XPDIQ
+"QUES","XPZ1",0)
+Y
+"QUES","XPZ1","??")
+^D OPT^XPDH
+"QUES","XPZ1","A")
+Want to DISABLE Scheduled Options, Menu Options, and Protocols
+"QUES","XPZ1","B")
+YES
+"QUES","XPZ1","M")
+D XPZ1^XPDIQ
+"QUES","XPZ2",0)
+Y
+"QUES","XPZ2","??")
+^D RTN^XPDH
+"QUES","XPZ2","A")
+Want to MOVE routines to other CPUs
+"QUES","XPZ2","B")
+NO
+"QUES","XPZ2","M")
+D XPZ2^XPDIQ
+"RTN")
+3
+"RTN","RG7POST")
+0^2^B271430
+"RTN","RG7POST",1,0)
+RG7POST ;BIR/PTD-RG*1*7 PATCH POST-INIT ROUTINE ;07/12/00
+"RTN","RG7POST",2,0)
+ ;;1.0;CLINICAL INFO RESOURCE NETWORK;**7**;30 Apr 99
+"RTN","RG7POST",3,0)
+ Q  ;Quit if called from the top.
+"RTN","RG7POST",4,0)
+EN ; Eliminate data in the AUTO ACCEPT DEMOGRAPHICS (#11) field.
+"RTN","RG7POST",5,0)
+ L +^RGSITE(991.8):10
+"RTN","RG7POST",6,0)
+ S DIE="^RGSITE(991.8,",DA=1,DR="11///@"
+"RTN","RG7POST",7,0)
+ D ^DIE K DA,DIE,DR
+"RTN","RG7POST",8,0)
+ L -^RGSITE(991.8)
+"RTN","RG7POST",9,0)
+ ; Delete the AUTO ACCEPT DEMOGRAPHICS (#11) field in the
+"RTN","RG7POST",10,0)
+ ; CIRN SITE PARAMETER (#991.8) file.
+"RTN","RG7POST",11,0)
+ S DIK="^DD(991.8,",DA=11,DA(1)=991.8
+"RTN","RG7POST",12,0)
+ D ^DIK
+"RTN","RG7POST",13,0)
+ K DA,DIC,DIK,X,Y
+"RTN","RG7POST",14,0)
+ Q
+"RTN","RGJUSITE")
+0^3^B277809
+"RTN","RGJUSITE",1,0)
+RGJUSITE ;ALB/JLU-CIRN SITE PARAMETER (#991.8) FILE API ;10/01/96
+"RTN","RGJUSITE",2,0)
+ ;;1.0;CLINICAL INFO RESOURCE NETWORK;**7**;30 Apr 99
+"RTN","RGJUSITE",3,0)
+ ;
+"RTN","RGJUSITE",4,0)
+SEND() ;this function call is used to determine if the CIRN messages should
+"RTN","RGJUSITE",5,0)
+ ;be fired.  It will check the parameter 'stop cirn messaging' in 991.8
+"RTN","RGJUSITE",6,0)
+ ;INPUTS - There are no inputs.
+"RTN","RGJUSITE",7,0)
+ ;OUTPUTS - This function will return a zero if the messages are
+"RTN","RGJUSITE",8,0)
+ ;          to be stopped.
+"RTN","RGJUSITE",9,0)
+ ;          A positive one will be returned if the messages are 
+"RTN","RGJUSITE",10,0)
+ ;          not to be stopped.
+"RTN","RGJUSITE",11,0)
+ ;          A two will be returned for suspend.
+"RTN","RGJUSITE",12,0)
+ ;
+"RTN","RGJUSITE",13,0)
+ N VAL,IEN,STOP ;**7
+"RTN","RGJUSITE",14,0)
+ S STOP=1
+"RTN","RGJUSITE",15,0)
+ S IEN=$O(^RGSITE(991.8,"B",1,0))
+"RTN","RGJUSITE",16,0)
+ G STOPQ:'IEN
+"RTN","RGJUSITE",17,0)
+ S VAL=$P($G(^RGSITE(991.8,IEN,1)),U,6)
+"RTN","RGJUSITE",18,0)
+ S STOP=$S('VAL:0,1:1,2:2)
+"RTN","RGJUSITE",19,0)
+ ;
+"RTN","RGJUSITE",20,0)
+STOPQ Q STOP
+"RTN","RGJUSITE",21,0)
+ ;
+"RTN","RGRSPT")
+0^1^B14075644
+"RTN","RGRSPT",1,0)
+RGRSPT ;ALB/RJS,CML-HIGH LEVEL ROUTINE FOR PARSING AND FILING ;06/25/98
+"RTN","RGRSPT",2,0)
+ ;;1.0;CLINICAL INFO RESOURCE NETWORK;**1,3,7**;30 Apr 99
+"RTN","RGRSPT",3,0)
+ ;
+"RTN","RGRSPT",4,0)
+ ;Parse Incoming Message, and file.
+"RTN","RGRSPT",5,0)
+ ;
+"RTN","RGRSPT",6,0)
+ ;
+"RTN","RGRSPT",7,0)
+ Q:($G(HL("MTN"))'="ADT")
+"RTN","RGRSPT",8,0)
+ N RGRSDFN,VAFCA,RGRS,VAFCA08,RGRSARAY,BOGUS,RGDC,SENSTVTY,CMORDISP
+"RTN","RGRSPT",9,0)
+ N NAME,LASTNAME,SSN,ICN,CMOR,CMORIEN,OTHSITE,RGRSDATA,HERE,BULSUB,NODE
+"RTN","RGRSPT",10,0)
+ S RGRSARAY="RGRS(2)"
+"RTN","RGRSPT",11,0)
+ D INITIZE^RGRSUTIL ;copy HL7 message into local RGDC array
+"RTN","RGRSPT",12,0)
+ S VAFCA=$$EN^RGRSMSH() ;parse MSH for filer
+"RTN","RGRSPT",13,0)
+ D EN^RGRSPARS(RGRSARAY) ;parse HL7 message into local array RGRS
+"RTN","RGRSPT",14,0)
+ I $$SKIP^RGRSZZPT(1,RGRSARAY) D  G EXIT ;skip if certain data is not there
+"RTN","RGRSPT",15,0)
+ . D SKIPBULL^RGRSBULL(RGRSARAY)
+"RTN","RGRSPT",16,0)
+ S RGRSDFN=$$GETDFN^MPIF001(@RGRSARAY@(991.01)) ;Get DFN from ICN
+"RTN","RGRSPT",17,0)
+ Q:+$$SEND2^VAFCUTL1(RGRSDFN,"T")  ;safeguard to prevent the processing of test patients
+"RTN","RGRSPT",18,0)
+ S OTHSITE=@RGRSARAY@("SITENUM")\1
+"RTN","RGRSPT",19,0)
+ S HERE=$P($$SITE^VASITE,"^",3)\1
+"RTN","RGRSPT",20,0)
+ ;
+"RTN","RGRSPT",21,0)
+ ;If patient not known in site, send bulletin, go exit
+"RTN","RGRSPT",22,0)
+ ;
+"RTN","RGRSPT",23,0)
+ I +RGRSDFN=-1 M RGRS("MESSAGE")=RGDC D NOT2^RGRSBUL1(RGRSARAY) G EXIT
+"RTN","RGRSPT",24,0)
+ ;
+"RTN","RGRSPT",25,0)
+ S NAME=$$GET1^DIQ(2,+RGRSDFN_",",.01)
+"RTN","RGRSPT",26,0)
+ S LASTNAME=$P(NAME,",",1)
+"RTN","RGRSPT",27,0)
+ S SSN=$$GET1^DIQ(2,+RGRSDFN_",",.09)
+"RTN","RGRSPT",28,0)
+ S NODE=$$MPINODE^MPIFAPI(RGRSDFN)
+"RTN","RGRSPT",29,0)
+ S ICN=$P(NODE,"^")
+"RTN","RGRSPT",30,0)
+ S CMORIEN=$P(NODE,"^",3)
+"RTN","RGRSPT",31,0)
+ S CMOR=$$NS^XUAF4(CMORIEN)
+"RTN","RGRSPT",32,0)
+ S CMORDISP=$P(CMOR,"^",1)
+"RTN","RGRSPT",33,0)
+ S CMOR=$P(CMOR,"^",2)
+"RTN","RGRSPT",34,0)
+ ;
+"RTN","RGRSPT",35,0)
+ S @RGRSARAY@("NAME")=@RGRSARAY@(.01)
+"RTN","RGRSPT",36,0)
+ S @RGRSARAY@("SSN")=@RGRSARAY@(.09)
+"RTN","RGRSPT",37,0)
+ S @RGRSARAY@("ICN")=@RGRSARAY@(991.01)
+"RTN","RGRSPT",38,0)
+ S @RGRSARAY@("CMOR")=$P($$NS^XUAF4($$LKUP^XUAF4(OTHSITE)),"^")
+"RTN","RGRSPT",39,0)
+ ;
+"RTN","RGRSPT",40,0)
+ ;If ICN or CMOR don't match, send bulletin and go exit
+"RTN","RGRSPT",41,0)
+ I '$$MATCH(RGRSDFN,RGRSARAY,,,ICN,CMOR,.BULSUB) D  G EXIT
+"RTN","RGRSPT",42,0)
+ . D MTCHBULL^RGRSBULL(RGRSDFN,RGRSARAY,NAME,SSN,ICN,CMORDISP,BULSUB)
+"RTN","RGRSPT",43,0)
+ ;
+"RTN","RGRSPT",44,0)
+ ;if ICN and CMOR match, check for SSN edit from CMOR
+"RTN","RGRSPT",45,0)
+ I @RGRSARAY@("SENDING SITE")=CMOR,(SSN'=@RGRSARAY@(.09)) D
+"RTN","RGRSPT",46,0)
+ .D SSNBULL^RGRSBUL1(RGRSDFN,RGRSARAY,NAME,SSN,ICN,CMORDISP)
+"RTN","RGRSPT",47,0)
+ ;
+"RTN","RGRSPT",48,0)
+ ;If patient is Sensitive at other site but not here send bulletin
+"RTN","RGRSPT",49,0)
+ S SENSTVTY=$G(@RGRSARAY@("SENSITIVITY"))
+"RTN","RGRSPT",50,0)
+ I '$$SENSTIVE^RGRSENS(RGRSDFN),SENSTVTY D SENSTIVE^RGRSBUL1(RGRSDFN,RGRSARAY,NAME)
+"RTN","RGRSPT",51,0)
+ ;
+"RTN","RGRSPT",52,0)
+ ;If patient has DATE OF DEATH (DOD) at remote site send bulletin
+"RTN","RGRSPT",53,0)
+ ;Ignore time if present with date.
+"RTN","RGRSPT",54,0)
+ S RMTDOD=@RGRSARAY@(.351),RMTDOD=$P(RMTDOD,".")
+"RTN","RGRSPT",55,0)
+ S DFN=RGRSDFN D DEM^VADPT
+"RTN","RGRSPT",56,0)
+ S LOCDOD=$P($P(VADM(6),"^"),".")
+"RTN","RGRSPT",57,0)
+ ;If there is a remote DOD but no local DOD  OR
+"RTN","RGRSPT",58,0)
+ ;if remote DOD is different from local DOD, send bulletin
+"RTN","RGRSPT",59,0)
+ I RMTDOD D RMTDOD^RGRSBUL1(RGRSDFN,RGRSARAY,NAME,RMTDOD,LOCDOD)
+"RTN","RGRSPT",60,0)
+ K LOCDOD,RMTDOD,VADM
+"RTN","RGRSPT",61,0)
+ ;
+"RTN","RGRSPT",62,0)
+ D  G EXIT ;**7
+"RTN","RGRSPT",63,0)
+ . ;
+"RTN","RGRSPT",64,0)
+ . ;IF it's the CMOR - review file
+"RTN","RGRSPT",65,0)
+ . ;
+"RTN","RGRSPT",66,0)
+ . I (OTHSITE)=(HERE) D  Q
+"RTN","RGRSPT",67,0)
+ . . S VAFCA=VAFCA_"^"_RGRSDFN
+"RTN","RGRSPT",68,0)
+ . . S VAFCA08=1 S BOGUS=$$ADD^VAFCEHU1(VAFCA,"RGRS")
+"RTN","RGRSPT",69,0)
+ . ;
+"RTN","RGRSPT",70,0)
+ . ;IF it's not the CMOR - Don't Rebroadcast
+"RTN","RGRSPT",71,0)
+ . ;
+"RTN","RGRSPT",72,0)
+ . I (OTHSITE)'=(HERE) D  Q
+"RTN","RGRSPT",73,0)
+ . . S VAFCA08=1
+"RTN","RGRSPT",74,0)
+ . . D EDIT^VAFCPTED(RGRSDFN,RGRSARAY,".01;.03;.09;.02;.2403") ;**7 broadcasted fields - removed .05,.08,.111;.112;.113;.114;.115;.1112;.117;.131;.132;.211;.219;.31115
+"RTN","RGRSPT",75,0)
+EXIT ;
+"RTN","RGRSPT",76,0)
+ Q
+"RTN","RGRSPT",77,0)
+ ;
+"RTN","RGRSPT",78,0)
+MATCH(DFN,RGRSARAY,LASTNAME,SSN,ICN,CMOR,BULSUB) ;
+"RTN","RGRSPT",79,0)
+ Q:$G(DFN)=""!($G(RGRSARAY)="") 0
+"RTN","RGRSPT",80,0)
+ N COUNT,TRUE S (COUNT,TRUE)=0
+"RTN","RGRSPT",81,0)
+ S BULSUB=""
+"RTN","RGRSPT",82,0)
+ I $D(LASTNAME) D
+"RTN","RGRSPT",83,0)
+ . S COUNT=COUNT+1
+"RTN","RGRSPT",84,0)
+ . I (LASTNAME'=""),(LASTNAME=$P(@RGRSARAY@(.01),",",1)) S TRUE=TRUE+1
+"RTN","RGRSPT",85,0)
+ I $D(SSN) D
+"RTN","RGRSPT",86,0)
+ . S COUNT=COUNT+1
+"RTN","RGRSPT",87,0)
+ . I (SSN'=""),(SSN=$G(@RGRSARAY@(.09))) S TRUE=TRUE+1
+"RTN","RGRSPT",88,0)
+ I $D(ICN) D
+"RTN","RGRSPT",89,0)
+ . S COUNT=COUNT+1
+"RTN","RGRSPT",90,0)
+ . I (ICN'=""),(ICN=$G(@RGRSARAY@(991.01))) S TRUE=TRUE+1 Q
+"RTN","RGRSPT",91,0)
+ . S BULSUB=BULSUB_"ICN"
+"RTN","RGRSPT",92,0)
+ I $D(CMOR) D
+"RTN","RGRSPT",93,0)
+ . S COUNT=COUNT+1
+"RTN","RGRSPT",94,0)
+ . I (CMOR'=""),(CMOR=$G(@RGRSARAY@("SITENUM"))) S TRUE=TRUE+1 Q
+"RTN","RGRSPT",95,0)
+ . I BULSUB]"" S BULSUB=BULSUB_" & "
+"RTN","RGRSPT",96,0)
+ . S BULSUB=BULSUB_"CMOR"
+"RTN","RGRSPT",97,0)
+ I COUNT=TRUE Q 1
+"RTN","RGRSPT",98,0)
+ Q 0
+"VER")
+8.0^22.0
+**END**
+**END**

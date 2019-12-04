@@ -1,0 +1,326 @@
+$TXT Created by KOPP,TERRY at MNTVLL.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 12/19/06 at 09:07
+=============================================================================
+Run Date: DEC 27, 2006                     Designation: DG*5.3*583
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #650                    Status: Released
+                  Compliance Date: JAN 05, 2007
+=============================================================================
+
+Associated patches: (v)DG*5.3*659  <<= must be installed BEFORE `DG*5.3*583'
+
+Subject: ENABLE UPLOAD OF CLAIM FOLDER LOCATION
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ I. OVERVIEW
+  
+ This patch, DG*5.3*583, along with the Health Eligibility Center (HEC) 
+ patch IVMB*2.0*854, enables the upload of CLAIM FOLDER LOCATION from 
+ HEC to the associated CLAIM FOLDER LOCATION (#.314) field in the Patient
+ file (#2) on VistA. The upload will occur using the ORU~Z11 HL7 message
+ sent from HEC to VistA.
+  
+ This patch will add data entry screening logic to limit input on the 
+ following fields from the PATIENT (#2) file:
+  
+     1.  CLAIM FOLDER LOCATION(#.314): to allow entering of a claim folder
+         location only if it is an active facility and it has one of the
+         following facility types in support of ESR:
+         
+            RO            (Regional Office)
+            RO&IC         (Regional Office and Insurance Center)
+            RO-OC         (Regional Office - Outpatient Clinic)
+            RPC           (Record Processing Center)
+            M&ROC         (Medical and Regional Office Center)
+            M&ROC (M&RO)  (Medical and Regional Office Center)
+  
+     2.  PREFERRED FACILITY (#27.02): to allow entering of a preferred
+         facility only if it is an active facility that has one of the
+         following facility types:
+  
+            CBOC        (Community Based Outpatient Clinic)
+            HCS         (Health Care System)
+            HEALTHCARE  (VA Boston Health Care System)
+            M&ROC       (Medical and Regional Office Center)
+            MOC         (Mobile Outpatient Clinic)
+            MORC        (Mobile Outreach Clinic)
+            NETWORK     (VA Healthcare Network Upstate NY)
+            NHC         (Nursing Home Care)
+            OC          (Outpatient Clinic - Independent)
+            OCMC        (Outpatient Clinic - Subordinate)
+            OCS         (Outpatient Clinic Substation)
+            OPC         (Out Patient Clinic)
+            ORC         (Outreach Clinic)
+            RO-OC       (Regional Office - Outpatient Clinic)
+            SATELLITE   (Satellite Outpatient Clinic)
+            SOC         (Satellite Outpatient Clinic)
+            VAMC        (VA Medical Center)
+            VANPH       (Neural Psychiatric Hospital)
+            VA ROSEBERG (VA Roseburg Health Care System)
+  
+ During testing of this patch against the Enrollment System Redesign 
+ (ESR), an issue was found where an incorrect variable name was used 
+ for the error count when an HL7 error was detected.  This issue was 
+ noted in four differing places in the routine DGENUPLA.  This patch 
+ corrects the problem. 
+  
+ A post-installation routine (DG53583P) that will run during the patch 
+ installation process will delete the 'ACFL2' cross reference on the *CLAIM
+ FOLDER LOCATION (#.312) field.  This routine will also recompile the input
+ templates DG LOAD EDIT SCREEN 7 and DVBHINQ UPDATE for the PATIENT file
+ #2.
+  
+  
+ II. ASSOCIATED REMEDY TICKETS & NEW SERVICE REQUESTS
+  
+     The following section lists the Remedy tickets and/or New Service
+     Requests associated with this patch.
+  
+ 1. Associated Remedy Tickets:
+    -----------------------------------------
+    NONE
+  
+ 2. Associated New Service Request(s):
+    -----------------------------------------
+    NONE 
+  
+  
+ III. FUNCTIONAL OVERVIEW
+  
+ The routines DGENELA, DGENELA1, and DGENUPLA are being changed to 
+ allow parsing and storage of the CLAIM FOLDER LOCATION (#.314) field 
+ values received from the Health Eligibility Center (HEC).
+  
+ The routine DGREGDD changes are as follows:
+      o Change the trigger logic code that sets the *CLAIM FOLDER LOCATION
+        (#.312) field based on the value of the CLAIM FOLDER LOCATION
+        (#.314) field to use standard Fileman and Kernel utilities.
+      o Change to the code called by the input transform of the CLAIM 
+        FOLDER LOCATION (#.314) field to only allow entry of facilities
+        having the correct facility types as listed above.
+      o Change to the code called by the input transform of the PREFERRED 
+        FACILITY (#27.02) field to only allow entry of facilities
+        having the correct facility types as listed above.
+     
+  
+ IV. TECHNICAL COMPONENTS
+  
+ The following section describes the technical components being 
+ exported with this patch.
+  
+ 1. The following FILES will be modified.
+  
+  a. PATIENT (#2) file
+     Modified Field:
+     ==============
+           FIELD #: .312 
+        FIELD NAME: *CLAIM FOLDER LOCATION
+      MODIFICATION: Delete the trigger cross reference ACFL2 on field that
+                    sets CLAIM FOLDER LOCATION (#.314)
+  
+  b. PATIENT (#2) file
+     Modified Field:
+     ==============
+           FIELD #: .314
+        FIELD NAME: CLAIM FOLDER LOCATION
+      MODIFICATION: - Modify the trigger cross reference ACFL4 to call the
+                      new SET and KILL entrypoints in DGREGDD so the code
+                      adheres to Standards and Conventions Committee (SACC)
+                      standards for setting/killing Fileman fields.
+                    - Modify the screen/input transform to call new
+                      entrypoint CFLTF^DGREGDD to screen for only active
+                      institutions with valid facility types.
+                    - Modify the description to include the valid types.
+  
+  c. PATIENT (#2) file
+     Modified Field:
+     ==============
+           FIELD #: 27.02
+        FIELD NAME: PREFERRED FACILITY
+      MODIFICATION: - Modify the screen/input transform to call new
+                      entrypoint PFTF^DGREGDD to screen for only active
+                      medical facilities (institutions) with valid facility
+                      types.
+                    - Modify the description to include the valid types.
+  
+ 2. The following ROUTINE(s) will be added/modified.
+  
+  ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;5.3;Registration;**[patch list]**;Aug 13, 1993;Build 20
+  
+                              CHECK^XTSUMBLD results
+  Routine       Before Patch   After Patch              Patch List
+  =======       ============   ===========              ==========
+  DG53583P               N/A       1290800                  583
+  DGENELA            4380119       4416754          121,147,232,314,451
+                                                    564,631,672,659,583
+  DGENELA1          21827469      21761136          147,327,314,367,497
+                                                    451,564,631,672,659
+                                                            583
+  DGENUPLA          11463106      12795007          397,379,497,451,564
+                                                        672,659,583
+  DGREGDD             117402       1520652                  583
+  
+ Number of routines in patch:  5
+      Number of new routines:  1
+  Number of routines changed:  4
+  
+  
+ V. SOFTWARE AND DOCUMENTATION RETRIEVAL 
+  
+  * Environment Check:
+  
+     Programmer access is required for installing this patch.  Prior to 
+     installation, the installer must ensure the DUZ(0) node of the DUZ
+     array is set to the "@" symbol.
+  
+  * Users On the System: 
+  
+     This patch may be installed with users on the system, but should be
+     loaded during non-peak hours to minimize disruption to users and to
+     reduce the possibility of errors when the routines are updated.
+  
+  * Software Installation Time:
+  
+     The estimated installation time is less than 5 minutes during off peak
+     hours.
+  
+  * Required Builds:
+  
+     The following is a list of REQUIRED builds for this KIDS
+     distribution.  KIDS will not allow the installation of this patch
+     without their prior installation.
+  
+     Required Build(s):
+     ------------------
+     DG*5.3*659
+  
+  * Documentation Retrieval:
+  
+  Sites may retrieve the patch documentation directly via FTP.  The
+  preferred method is to FTP the files from:
+  
+      download.vista.med.va.gov
+  
+  This transmits the files from the first available FTP server.  Sites may 
+  also elect to retrieve software directly from the ANONYMOUS.SOFTWARE 
+  directory from a specific server as follows:
+  
+   OIFO               FTP ADDRESS                  DIRECTORY
+   ------------       ------------------------     -------------
+   Albany             ftp.fo-albany.med.va.gov     anonymous.software
+   Hines              ftp.fo-hines.med.va.gov      anonymous.software
+   Salt Lake City     ftp.fo-slc.med.va.gov        anonymous.software
+  
+   The following files will be available:
+  
+   FILE NAME                    DESCRIPTION
+   ------------------------     -----------------------------------------
+   DG_5_3_P583_REG_UM.PDF       Revised PIMS V. 5.3 Registration User
+                                 Manual
+   DG_5_3_P583_IVM_UM.PDF       Revised IVM V. 2.0 User Manual
+  
+       * Note:  Use Binary mode when transferring the .PDF files.
+  
+  
+  Installation Steps:
+  ===================
+  
+   1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu to unload
+      the KIDS distribution included with this message.
+  
+   2. From the 'Kernel Installation & Distribution System' menu, select the
+      Installation menu.
+  
+   3. From this menu, you may now elect to use the following options (when
+      prompted for INSTALL NAME, enter DG*5.3*583).
+  
+      a. Backup a Transport Global - This option will create a backup
+         message of any routines exported with the patch.  It will NOT
+         backup any changes such as DDs or templates.
+  
+      b. Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when the patch is
+         installed.  It compares all components of the patch (routines,
+         DDs, templates, etc.).
+  
+      c. Verify Checksums in Transport Global - This option will allow you
+         to ensure the integrity of the routines that are in the transport
+         global.
+  
+      d. Print Transport Global - this option will allow you to view the
+         components of the KIDS build.
+  
+   4. Use the Install Package(s) option and select package DG*5.3*583.
+  
+   5. When prompted 'Want KIDS to Rebuild Menu Trees Upon Completion of
+      Install? YES//', respond NO.
+  
+   6. When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+      YES//', it is recommended you answer NO.
+  
+   7. When prompted to 'Want to DISABLE Scheduled Options, Menu Options,
+      and Protocols? YES//', respond YES.  When prompted to select the
+      options you would like to place out of order, enter the following:
+  
+        [DG REGISTER PATIENT]        Register a Patient
+        [DG LOAD PATIENT DATA]       Load/Edit Patient Data
+  
+   8. When the installation has successfully run to completion, you may 
+      delete the post-installation routine DG53583P.
+                    
+                    
+ VII. IMPLEMENTATION STEPS
+  
+ There are no special implementation steps to take after the successful
+ installation of this software.
+  
+  
+ VIII. TEST SITES
+  
+ The following sites participated in the testing of the DG*5.3*583
+ software:
+  
+  PSHCS (Puget Sound HCS)
+  San Francisco
+  Madison
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: DG53583P
+    Before:       n/a  After:  B1889297  **583**
+Routine Name: DGENELA
+    Before: B24544789  After: B24750309  **121,147,232,314,451,564,631,
+                                          672,659,583**
+Routine Name: DGENELA1
+    Before: B76520001  After: B76444729  **147,327,314,367,497,451,564,
+                                          631,672,659,583**
+Routine Name: DGENUPLA
+    Before: B38035486  After: B45441511  **397,379,497,451,564,672,659,583**
+Routine Name: DGREGDD
+    Before:   B256845  After:  B3102847  **583**
+
+=============================================================================
+User Information:
+Entered By  : MULLER,RICHARD                Date Entered  : FEB 06, 2004
+Completed By: SADA,WILLIAM J                Date Completed: DEC 19, 2006
+Released By : GROOMS,ANTHONY E              Date Released : DEC 27, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

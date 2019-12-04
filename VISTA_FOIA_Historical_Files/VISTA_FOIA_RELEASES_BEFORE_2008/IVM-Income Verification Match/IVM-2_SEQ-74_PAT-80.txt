@@ -1,0 +1,201 @@
+$TXT Created by HUA,PATRICK at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 08/21/03 at 09:27
+=============================================================================
+Run Date: SEP 22, 2003                     Designation: IVM*2*80
+Package : IVM - INCOME VERIFICATION MATCH     Priority: Mandatory
+Version : 2        SEQ #74                      Status: Released
+                  Compliance Date: OCT 23, 2003
+=============================================================================
+
+Associated patches: (v)IVM*2*11    <<= must be installed BEFORE `IVM*2*80'
+
+Subject: Fix Visit Discrepancy at HEC
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch will address the problem reported in NOIS IVM-1102-31357.  A 
+ discrepancy was found with the process currently being used to calculate 
+ Patient Encounters.
+  
+ NOTE: The visit discrepancy exists ONLY in the HEC database and does NOT
+ affect data transmitted from VistA to the National Patient Care Data Base
+ (NPCDB).
+  
+ The discrepancy referenced by the NOIS above was discovered by the 
+ Data Migration team during analysis work for the HEC Redesign data
+ migration.  It was discovered that the solicited Z07 messages (ORF~Z07)
+ returned to the HEC from the site are causing the NUMBER OF OUTPATIENT
+ VISITS, field (#6.5) and the LENGTH OF STAY, field (#6.2) in the INCOME
+ YEAR multiple, field (#13) of the IVM CLIENT INCOME file, (#300.13) to
+ be set to 0 (zero) for veterans who previously had a non-zero value in
+ these fields.  These fields are being reset to the previous value upon
+ the receipt of an unsolicited Z07 message (ORU~Z07).
+  
+ The value stored in the NUMBER OF OUTPATIENT VISITS field represents the 
+ number of outpatient days from the date of the Veteran's last Means Test
+ to the day before their next or today's date, whichever comes first.  The
+ value stored in the LENGTH OF STAY field represents the number of
+ inpatient days a veteran had from the date of their last means test to
+ the day before their next or today's date, whichever comes first.
+  
+ After the installation of this patch the NUMBER OF OUTPATIENT VISITS and 
+ the LENGHT OF STAY returned by the ORF~Z07 will match the NUMBER OF 
+ OUTPATIENT VISITS and the length of stay received in a ORU~Z07 for the 
+ same veteran.
+  
+ Associated NOIS: 
+ =======================
+ IVM-1102-31357
+  
+ Associated E3R:
+ =======================
+ N/A 
+  
+ Test Sites:
+ =======================
+ Manchester, NH
+  
+ Heartland-East HCS:
+      St. Louis, MO
+      Poplar Bluff, MO
+      Marion, IL
+  
+  
+ DATA DICTIONARY CHANGES:
+ ========================
+  
+ There are no Data Dictionary changes in this patch.
+  
+  
+ ROUTINE SUMMARY:
+ ================
+  
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routines will look like:
+  
+       <tab>;;2.0;INCOME VERIFICATION MATCH;****[patch list]**;; 21-OCT-94
+  
+                              CHECK^XTSUMBLD results
+   Routine name      Before Patch          After Patch         Patch List
+   ============      ============          ===========         ==========
+   IVMUFNC1          7484770               7565716             3,11,80
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ =========================
+  
+ This patch can be loaded with users on the system.  Installation will 
+ take less than 5 minutes.
+  
+                        * * * * * * * * * * *
+                        * A T T E N T I O N *
+                        * * * * * * * * * * * 
+  
+ You may wish to stop the HL7 filers prior to the install to prevent 
+ possible 'No Source Error' from occurring.  No transmissions will be lost 
+ if the filers are not stopped first. They will be picked up once the
+ filers are restarted.
+ **************************************************************************
+  
+ 1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu.  [Note: TEXT
+    PRINT/DISPLAY option in the PackMan menu will display the patch text
+    only.]
+  
+ 2. Review your mapped set.  If any of the routines listed in the Routine
+    Summary section of this guide are mapped, they should be removed from
+    the mapped set at this time.
+  
+ 3. From the Kernel Installation and Distribution System Menu, select the
+    Installation menu.
+  
+ 4. From this menu, you may elect to use the following options (when
+    prompted for INSTALL NAME, enter IVM*2.0*80):
+  
+      a) Backup a Transport Global - this option will create a
+         backup message of any routines exported with the patch.  It
+         will NOT backup any other changes such as DDs or templates.
+  
+      b) Compare Transport Global to Current System  - this option
+         will allow you to view all changes that will be made when
+         the patch is installed.  It compares all components of the
+         patch (routines, DDs, templates, etc.).
+  
+      c) Verify Checksums in Transport Global - this option will
+         allow you to ensure the integrity of the routines that are
+         in the transport global.
+  
+      d) Print Transport Global - this option will allow you to view
+         the components of the KIDS build.
+  
+ 5. Use the Install Package(s) option and select the package IVM*2.0*80.
+  
+ 6. When prompted 'Want KIDS to INHIBIT LOGONs during the install? YES//',
+    respond NO.
+  
+ 7. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+    Protocols? YES//', respond NO.
+  
+ 8. If routines were unmapped as part of Step 2, they should be returned
+    to the mapped set once the installation has run to completion.
+  
+ 9. When the installation is complete, be sure to restart the filers if 
+    you chose to stop them.
+
+Routine Information:
+====================
+
+Routine Name:
+  - IVMUFNC1
+
+ Existing code, Lines 15 through 20
+   
+     N IVMASIH,IVMADPTR,IVMDATE,VAINDT,VADMVT,VAIP,VAERR
+     ;
+     S (IVMIN,IVMOUT)=0
+     I '$G(IVMMTDT) G EPQ
+     S IVMMTDT=$P(IVMMTDT,".")
+     K ^TMP($J,"IVMUFNC1") 
+  
+ Modifide code, Lines 15 through 22
+  
+     N IVMASIH,IVMADPTR,IVMDATE,VAINDT,VADMVT,VAIP,VAERR
+     ;
+     S (IVMIN,IVMOUT)=0
+     I '$G(IVMMTDT) G EPQ
+     S IVMMTDT=$P($$LST^DGMTU(DFN,IVMMTDT),"^",2)   (NEW CODE)
+     I '$G(IVMMTDT) G EPQ                           (NEW CODE)
+     S IVMMTDT=$P(IVMMTDT,".")
+     K ^TMP($J,"IVMUFNC1")
+  
+ Explanation of modifications:
+  
+ In order to correctly calculate Inpatient/Outpatient encounters, the 
+ variable IVMMTDT must be set to the date of the means test for a given 
+ income year.  The value that is passed into this routine will either be 
+ set to December 31 of the income year plus one year or Null. If Null is
+ received, the process will quit and return 0 (zero) for the inpatient and
+ and outpatient encounters.  If an income year is received, a new call
+ will be made to $$LST^DGMTU which will return the actual date of
+ the Means Test for a given income year. This date will be used as the
+ start date from which to calculate encounters during an income year. If 
+ Null is returned from this new call, it will mean that a Means Test 
+ does not exist for a given income year and the process will quit and
+ return 0 (zero) for both inpatient and outpatient encounters.
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : KEHOE,THOMAS C                Date Entered  : MAY 30, 2003
+Completed By: LANDRY,DANNA                  Date Completed: SEP 22, 2003
+Released By : GANUS,MAUNETTE                Date Released : SEP 22, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

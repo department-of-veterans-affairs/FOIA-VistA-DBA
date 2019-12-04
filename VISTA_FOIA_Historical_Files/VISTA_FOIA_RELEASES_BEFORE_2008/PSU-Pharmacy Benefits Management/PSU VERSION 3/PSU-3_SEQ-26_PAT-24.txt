@@ -1,0 +1,292 @@
+$TXT Created by ROWLANDS,ELMER at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 07/19/04 at 11:37
+=============================================================================
+Run Date: SEP 16, 2004                     Designation: PSU*3*24
+Package : PSU - PHARMACY BENEFITS MANAGEMENT  Priority: Mandatory
+Version : 3        SEQ #26                      Status: Released
+                  Compliance Date: OCT 18, 2004
+=============================================================================
+
+Associated patches: (v)PSU*3*21    <<= must be installed BEFORE `PSU*3*24'
+                    (v)PSU*3*30    <<= must be installed BEFORE `PSU*3*24'
+
+Subject: THIS PATCH DECREASES PROCESSING TIME, TRUNCATION OF ICN, STOPS DUPLICATE JOBS.
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch corrects the problem of excessively long run times for the 
+ Automatic Pharmacy Statistics [PSU PBM AUTO] and Manual Pharmacy 
+ Statistics [PSU PBM MANUAL] options. It also addresses the problem of
+ truncating (Internal Control Numbers (ICN) in the extract.
+  
+ **************************** N O T E *****************************
+ There is no conflict between this patch and the Pharmacy Benefits - 
+ CoreFLS software. Installation of this patch by the CoreFLS sites 
+ will not cause any problems.
+ ****************************************************************** 
+  
+ ASSOCIATED NOIS:
+ ================
+  
+ HWH-0103-42054       Manual run erroring out
+   Duplicates:
+   TAM-0303-31053     PSU PBM ERROR <NULLSUBSCR>EN+12^PSUDEM1:2
+   MEM-0703-71332     PSU PBM auto and manual stats is blowing up
+   CLE-1103-41014     PSU extract job did not finish
+   HEH-1103-40705     problems with the monthly PBM reports
+   RIC-1103-21003     PSU run was ultimately killed
+   DAY-1203-41685     report took over three days to run
+   UNY-0104-11348     extract errored during the night
+  
+ HIN-0503-41359       PBM/3.0 only retrieving first portion of an ICN 
+   
+ ASSOCIATED E3R:
+ ===============
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ HINES, IL
+ TAMPA, FL
+ CLEVELAND, OH
+ MEMPHIS, TN
+ RICHMOND, VA
+  
+ NOIS OVERVIEW:
+ ==============
+  
+ 1. HWH-0103-42054
+  
+ Problem:
+ --------
+  
+ The Automatic Pharmacy Statistics [PSU PBM AUTO] and Manual Pharmacy 
+ Statistics [PSU PBM MANUAL] options are used to gather statistics for
+ the previous month from the following files:
+    
+   1. Pharmacy Patient IV Sub-file            File # 55.01
+   2. Pharmacy Patient UD Sub-file            File # 55.06
+   3. AR/WS Stats File                        File # 58.5
+   4. Prescription                            File # 52
+   5. Procurement                             File # 442,# 58.811,# 58.81 
+   6. Controlled Substances                   File # 58.81
+   7. Laboratory                              File # 60,# 63
+   8. Patient Demographics                    File # 2
+   9. Outpatient Visits                       File # 9000010,# 9000010.07 
+  10. Inpatient PTF Record                    File # 45
+  11. Provider Data                           File # 200,# 7,# 49,#8932.1 
+   
+ The options are executed either as a background job or started manually.
+ The statistics are gathered and then sent to the National Pharmacy 
+ Benefits Management (PBM) section via MailMan messages.
+  
+ The problem reported was found to be not a loop problem but instead the 
+ use of the 'AA' cross-reference which keyed on the patient and visit date
+ in the V POV file (900010.07). This cross-reference checked each visit 
+ date for each Patient to determine if the visit date met the reporting
+ criteria for the extract. Using this cross-reference caused the extract to
+ process all patient visit dates, and run excessively long.
+  
+ Resolution:
+ ----------- 
+  
+ The routine PSUDEM2 (Outpatient Visits) was modified to traverse the "B"
+ index of file AUPNVSIT for start/stop date to get the visit IEN. It uses
+ the IEN to find the visit using the "AD" index in V POV. The routine was
+ also modified to reduce the number of "disk hits" while processing. 
+  
+ Routine PSUDEM1 was modified to reduce the number of "disk hits" and 
+ improve processing performance.
+  
+ 2. HIN-0503-41359 PBM/3.0 Only retrieving first portion of an ICN
+  
+ Problem:
+ --------
+  
+ Only retrieving first portion of ICN.  This portion, in some cases matches
+ patients social security number (SSN).
+  
+ Resolution:
+ -----------
+  
+ Retrieve entire ICN (ICN_"V"_checksum)
+  
+ Patch PSU*3*34 will correct this problem in the following 2 files.
+  
+   1. Pharmacy Patient IV Sub-file            File # 55.01
+   2. Pharmacy Patient UD Sub-file            File # 55.06
+  
+ Patch PSU*3*24 will correct the problem in all other applicable files.  
+ This is being done so that patches PSU*3*24 and PSU*3*34 can move forward
+ without conflict.
+  
+ 3. Problem found and corrected during development (no NOIS associated).
+  
+ Problem:
+ --------
+  
+ If either option failed, no notification was provided to the user and a 
+ variable flag was left set and then neither option could be restarted. 
+  
+ Resolution:
+ -----------
+  
+ A modification to the routine PSUCP was made adding a lock so that a 
+ new job cannot be started until a running job is complete. Since this
+ was the cause of most task failures, this greatly reduces the chances
+ for task failures. If a user does attempt to start a concurrent job, 
+ a VA alert will be generated informing them that the task could not 
+ be started because another task was running.  
+ Additionally, if for some other reason, the job crashes, and a flag 
+ is set, the user will receive an alert stating that the task stopped 
+ because of an error. 
+  
+  DATA DICTIONARY CHANGES:
+  =======================
+  N/A
+   
+  ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;3.0;PHARMACY BENEFITS MANAGEMENT;**[patch list]**;OCT 15,1998
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  PSUALERT                   N/A              2451350             24
+  PSUCP                 17116688             17895170         4,5,8,19,24
+  PSUCS1                 2746688              2714031         1,7,9,16,19
+                                                                  24
+  PSUCS5                 2081936              2101257        1,7,14,19,24
+  PSUDEM1               10951650              7698702          19,21,24
+  PSUDEM2                5326314              6722886            19,24
+  PSUDEM7                4602472              4510645          19,21,24
+  PSUIV2                 9791166             10209953         14,15,19,24
+  PSUOP3                 6602302              6574496       14,19,20,28,30
+                                                                  24
+ Total number of routines - 9
+   
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+  
+ This patch can be loaded with users on the system.
+  
+ **********************NOTE******************************
+ It cannot be loaded while the monthly extract is running
+ ********************************************************
+  
+ Installation time will be less than 5 minutes.
+    
+ 1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu to unload
+     the KIDS distribution included with this message.
+   
+ 2.  Review your mapped set.  If any of the routines listed in the ROUTINE   
+     SUMMARY section are mapped, they should be removed from the mapped set 
+     at this time.
+  
+ 3.  From the Kernel Installation and Distribution System Menu, select
+     the Installation menu.
+  
+ 4.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter PSU*3.0*24):
+  
+     a.  Compare Transport Global to Current System  - this option will
+         allow you to view all changes that will be made when the patch
+         is installed.  It compares all components of the patch (routines,
+         DDs, templates, etc.).
+     b.  Verify Checksums in Transport Global - this option will
+         allow you to ensure the integrity of the routines that are in
+         the transport global.
+     c.  Print Transport Global - this option will allow you to view the
+         components of the KIDS build.
+    
+ 5.  Use the Install Package(s) option and select the package PSU*3.0*24.
+  
+ 6.  When prompted ' Want KIDS to INHIBIT LOGONs during the install?
+     YES//', respond NO.
+  
+ 7.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+     Protocols? YES//', respond YES. When prompted to select the options you 
+     would like to place out of order, enter the following:
+  
+       PSU PBM AUTO         Automatic Pharmacy Statistics
+       PSU PBM JOB CHECK    Pharmacy Background Job Check
+       PSU PBM MANUAL       Manual Pharmacy Statistics
+         
+ 8.  If routines were unmapped as part of step 2, they should be returned
+     to the mapped set once the installation has run to completion.
+
+Routine Information:
+====================
+
+Routine Name:
+  - PSUCP
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSUDEM2
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSUDEM1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSUCS5
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSUDEM7
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSUIV2
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSUOP3
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSUALERT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSUCS1
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : HOUTCHENS,THOMAS              Date Entered  : MAY 27, 2003
+Completed By: CROSSMAN,PAM                  Date Completed: SEP 15, 2004
+Released By : HEMBREE,SUSAN                 Date Released : SEP 16, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

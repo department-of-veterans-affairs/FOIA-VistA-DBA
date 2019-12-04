@@ -1,0 +1,252 @@
+$TXT Created by CURTIS,RICHARD L at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 02/09/04 at 08:13
+=============================================================================
+Run Date: MAY 24, 2004                     Designation: SD*5.3*323
+Package : SD - SCHEDULING                     Priority: Mandatory
+Version : 5.3       SEQ #293                    Status: Released
+                  Compliance Date: JUN 24, 2004
+=============================================================================
+
+Associated patches: (v)SD*5.3*154  <<= must be installed BEFORE `SD*5.3*323'
+                    (v)SD*5.3*194  <<= must be installed BEFORE `SD*5.3*323'
+
+Subject: SENSITIVE RECORDS/FIX UNDEFINED VARIABLE ERROR
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch addresses two problems occurring with the SCENI IEMM ERROR 
+ CORRECTION option.  One deals with Sensitive records, where the user is 
+ not receiving the Warning message whenever they select a patient with a 
+ sensitive record.  The second is an undefined variable SDT error.
+  
+  
+ ASSOCIATED E3R(s):
+ ==================
+ N/A
+  
+ ASSOCIATED NOIS:
+ ================
+ 1.  HWH-1103-41554      Sensitive Records
+ 2.  SBY-0501-31021      ERROR - DTQ+2^SCENI01:1, %DSM-E-UNDEF
+     Duplicate:
+        BRX-1001-10703   IEMM Error
+  
+ PARTICIPATING TEST SITES:
+ =========================
+  
+ Big Spring, TX
+ Biloxi, MS 
+ Salisbury, NC
+ Roseburg, OR 
+  
+ NOIS OVERVIEW:
+ ==============
+ 1.  HWH-1103-41554    Sensitive Records
+  
+     Problem:
+     --------
+     When users with the SCENI IEMM EDIT security key go into the 
+     SCENI IEMM ERROR CORRECTION option and enter either a Clinic 
+     Name or an Error Code, after entering a date range, they are 
+     taken to the Incomplete Encounter Mgmt screen, which displays
+     a list of all applicable patients.  If the user then selects
+     action - Display Error(s), selects a patient from the
+     displayed list with a Sensitive record, and then at the next
+     screen selects action - Correct Error(s), they do not get the
+     required warning message shown below:
+  
+                             ***WARNING***
+                         ***RESTRICTED RECORD***
+     * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     * This record is protected by the Privacy Act of 1974, if you elect *
+     * to proceed, you will be required to prove you have a need to know.*
+     * Accessing this patient is tracked, and your station Security      *
+     * Officer will contact you for your justification.                  *
+     * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+  
+     Do you want to continue processing this patient record? No//
+  
+     Please note, users who possess security keys DG SECURITY OFFICER or
+     DG SENSITIVITY, will only receive the WARNING and RESTRICTED RECORD
+     lines on their screens.
+  
+     Resolution:
+     -----------
+     This patch will add logic so that when the user selects action -
+     Display Error(s), selects a patient from the displayed list with
+     a Sensitive record and then selects action - Correct Error(s)
+     a check is made for Sensitive records and correctly displays the
+     applicable warning message.  This check and warning only occurs 
+     when the correction of an error leads toward  the "Load/Edit  of 
+     patient data.
+  
+  
+ 2.  SBY-0501-31021     ERROR - DTQ+2^SCENI01:1, %DSM-E-UNDEF
+  
+     Problem:
+     --------
+     When users go into the SCENI IEMM ERROR CORRECTION option selecting
+     by clinic name, if they enter an up-arrow (^) at either the Begin date
+     prompt or the End date prompt, the application errors out with an
+     Undefined Variable error, i.e.:
+  
+     %DSM-E-UNDEF, undefined variable SDT
+     -DSM-I-ECODE, MUMPS error code:  M6
+     %DSM-I-ATLABEL, DTQ+2^SCENI01:1  I SDT=SDT1 S X=0
+  
+     Resolution:
+     -----------
+     This patch will correct the code that causes this error to occur.
+     Variable SDT is set to the date(s) entered by the user via Fileman
+     API DIR.  If output variable DIRUT is defined (indicating an up-
+     arrow was entered), variable SDT is killed and the logic goes to
+     line label DTQ, where a check is made to see if SDT equals SDT1,
+     so the application errors because variable SDT was killed.
+  
+ TECHNICAL:
+ ==========
+ 1. HWH-1103-41554    Sensitive Records
+  
+ When a user selects action - Display Error(s) - from the Incomplete 
+ Encounter Mgmt screen, enters the line number corresponding to the 
+ patient they want to process, and at the following screen selects
+ action - Correct Error(s), logic flows to routine SCENIA1.  Within
+ this routine, code was added in 3 subroutines to check if the
+ selected patient has a Sensitive record and when applicable,
+ display the required warning message shown above.  The following
+ code was added at the points indicated below:
+  
+ CE+33^SCENIA1    CE is the entry point for getting corrective action
+        I SDOK=1 D REFRESH^VALM Q
+  
+ DEM+7^SCENIA1  ; DEM is the entry point for Patient Demographics
+ protocol
+        N DIC S DIC=2,DIC(0)="EM",X="`"_DFN D ^DIC I Y=-1 S SDOK=1 Q
+  
+ CO+4^SCENIA1   ; CO is the entry point for Checkout Interview
+        N DFN
+        S DFN=$G(^TMP("SCENI DFN",$J,0)) Q:'DFN
+        S SDXMT=$G(^TMP("SCENI XMT",$J,0)) Q:'SDXMT
+        D FULL^VALM1
+        N DIC S DIC=2,DIC(0)="EM",X="`"_DFN D ^DIC I Y=-1 S SDOK=1 Q
+  
+ LE+8^SCENIA1   ; LE is the entry point for Patient Load edit
+        N DIC S DIC=2,DIC(0)="EM",X="`"_DFN D ^DIC I Y=-1 S SDOK=1 Q
+  
+ 2.  SBY-0501-31021     ERROR - DTQ+2^SCENI01:1, %DSM-E-UNDEF 
+   
+ Routine SCENI01 was modified to remove the kill command (K SDT)
+ when output variable DIRUT is defined.  It will be replaced with a Set 
+ command to set SDT equal to null (S SDT=""), at both the Beginning and 
+ Ending date prompts.
+  
+ ROUTINE SUMMARY:
+ ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;5.3;Scheduling;**[patch list]**;AUG 13, 1993
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  SCENIA1                5725218              6195977         66,154,323
+  SCENI01                3890153              4132679         66,194,323
+                                                           
+  
+  
+  
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+ This patch can be installed at any time.  Users do not need to be off
+ the system.  If the patch is installed during the normal workday, 
+ it is recommended that the following menu option(s) (File #19) and 
+ all of their descendants be disabled to prevent possible conflicts 
+ while running the KIDS install.  Other VISTA users will not be affected.
+  
+ Correct Incomplete Encounters  [SCENI IEMM ERROR CORRECTION]
+  
+  
+ Installation should take less than 5 minutes.
+  
+ 1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+  
+ 2.  Review your mapped set.  If the routines are mapped, they should be
+     removed from the mapped set at this time.
+  
+ 3.  From the Kernel Installation & Distribution System menu, select
+     the Installation menu.
+  
+ 4.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter SD*5.3*323)
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with the patch.  It will NOT
+         backup any other changes such as DDs or templates.
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when the patch
+         is installed.  It compares all components of the patch
+         (routines, DDs, templates, etc.)
+     c.  Verify Checksums in Transport Global - This option will ensure
+         the integrity of the routines that are in the transport global.
+  
+ 5.  Use the Install Package(s) option and select the package SD*5.3*323.
+  
+ 6.  When prompted "Want KIDS to INHIBIT LOGONs during the install?
+     YES//" respond NO.
+  
+ 7.  When prompted "Want to DISABLE Scheduled Options, Menu Options, and
+     Protocols? YES//" respond YES.
+     a.  When prompted "Enter options you wish to mark as "Out of Order":"
+         Enter the following option:
+  
+         Correct Incomplete Encounters [SCENI IEMM ERROR CORRECTION]
+  
+     b.  When prompted "Enter protocols you wish to mark as "Out of
+         Order":" just press <return>.
+  
+ 8.  If any routines were unmapped as part of step 2, they should be
+     returned to the mapped set once the installation has run to
+     completion.
+
+Routine Information:
+====================
+
+Routine Name:
+  - SCENI01
+
+ Change the following lines of code:
+  
+ At ASKDT+19^SCENI01:
+  
+    From:  I $D(DIRUT) K SDT G DTQ
+      To:  I $D(DIRUT) S SDT="" G DTQ
+  
+ At ASKDT+26^SCENI01:
+  
+    From:  I $D(DIRUT) K SDT G DTQ
+      To:  I $D(DIRUT) S SDT="" G DTQ
+
+Routine Checksum:
+
+Routine Name:
+  - SCENIA1
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : CURTIS,RICHARD                Date Entered  : NOV 07, 2003
+Completed By: BAUMAN,HELENE                 Date Completed: MAY 21, 2004
+Released By : LANDRIE,LARRY                 Date Released : MAY 24, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,620 @@
+$TXT Created by COX,KEITH A at DMA.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 05/14/03 at 22:48
+=============================================================================
+Run Date: MAY 23, 2003                     Designation: DG*5.3*244
+Package : DG - REGISTRATION                    Priority: Mandatory
+Version : 5.3       SEQ #445                     Status: Released
+                  Compliance Date: JUN 23, 2003
+=============================================================================
+
+Associated patches: (v)XU*8*211    <<= must be installed BEFORE `DG*5.3*244'
+                    (v)XU*8*240    <<= must be installed BEFORE `DG*5.3*244'
+                    (v)DI*22*116   <<= must be installed BEFORE `DG*5.3*244'
+                    (v)DG*5.3*489  <<= must be installed BEFORE `DG*5.3*244'
+                    (v)DG*5.3*494  <<= must be installed BEFORE `DG*5.3*244'
+                    (v)DG*5.3*506  <<= must be installed BEFORE `DG*5.3*244'
+                    (v)XU*8*301    <<= must be installed BEFORE `DG*5.3*244'
+
+Subject: PATIENT NAME STANDARDIZATION
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Other
+
+Description: 
+============
+
+ An effort is underway within VHA to establish a greater uniformity to the 
+ manner in which person names are stored in computer databases.  The 
+ benefits of achieving this include greater reliability in matching names
+ from different systems, more powerful person lookup and selection
+ mechanisms and the ability to accurately reformat names for correspondence
+ salutations, etc.
+  
+ This patch implements name standardization for eleven fields in the 
+ PATIENT (#2) file, including the patient NAME (#.01) field.  While the
+ standardization of names attempts to reduce the input format variations
+ that may occur, for reasons of patient safety, respect and ethnic
+ sensitivity it is important for the approach that is implemented to retain
+ the name value in a format which accurately represents the name as
+ provided by the patient.
+  
+  
+ Name Standardization Rules:
+ ===========================
+  
+ Once standardized, name fields will utilize the format FAMILY_NAME<comma> 
+ GIVEN_NAME(S)<space>MIDDLE_NAME(S)<space>SUFFIX(ES).  Name values will be 
+ uppercase alpha characters and contain no other characters except spaces, 
+ hyphens, apostrophes and a single comma.  Specific cleanup and formatting 
+ rules are as follows:
+  
+   o  All lowercase alpha characters transformed to uppercase
+   o  Embedded accent grave characters ( ` ) will be transformed to 
+      apostrophes
+   o  Parenthetical text will be removed (text captioned by parenthesis, 
+      bracket or brace characters)
+   o  All characters other than uppercase alpha, comma, hyphen, 
+      apostrophe, numeric and space transformed to a space
+   o  All double spaces transformed to a single space
+   o  All double hyphens transformed to a single hyphen
+   o  All double apostrophes transformed to a single apostrophe
+   o  All comma_(space, hyphen or apostrophe) and (space, hyphen, or 
+      apostrophe)_comma combinations transformed to a comma
+   o  All space_(hyphen or apostrophe) and (hyphen or apostrophe)_space 
+      combinations transformed to a space
+   o  All hyphen_apostrophe or apostrophe_hyphen combinations transformed 
+      to a hyphen
+   o  All numeric characters will be removed except for the combinations
+      "1ST", "2ND", "3RD" and "4TH" through "10TH" which must have a space,
+      comma or null value preceding and following to be considered valid
+   o  Numeric birth position identifiers ("1ST", "2ND", "3RD", etc.) will 
+      be transformed to corresponding roman numeral values, I, II, III,
+      etc.
+   o  All characters other than uppercase alpha will be removed from the
+      beginning and end of the family name
+   o  All characters other than uppercase alpha will be removed from the
+      beginning and end of the given_middle_suffix name value
+   o  Suffixes moved from the immediate left of the comma to the end of 
+      the name
+   o  "DR" moved to the end of the name if it is found at the immediate 
+      right of the comma
+   o  Any suffixes between commas following the family name will be moved 
+      to the end of the name
+   o  "NMI" or "NMN" will be removed if either is used as the middle name
+  
+ If the length of the name value reconstructed from name components is 
+ greater than the length allowed for the name field, the following actions
+ will be taken sequentially until the resulting value falls within length
+ restrictions:
+  
+   o  Truncate the middle name from the right-most position until only the 
+      initial character remains
+   o  Drop the suffix
+   o  Truncate the given name from the right-most position until only the
+      initial character remains
+   o  Truncate the family name from the right-most position
+  
+ Additional rules relative to name formatting:
+  
+   o  If there are multiple family, given, middle or suffix values they
+      will be separated by spaces
+   o  The user's input value must contain at least one comma in order to
+      add or edit a name value [except for the MOTHER'S MAIDEN NAME
+      (#.2403) field]
+   o  At a minimum, a patient name value must consist of a family name
+      followed by a comma (given, middle and suffix may be omitted but this
+      method of entry should only be used for patients whose legal name is
+      a single value such as "MADONNA")
+  
+  
+ Data Dictionary Changes:
+ ========================
+  
+ The following fields have had their input transforms, short description 
+ and long description updated. Each field has a new index type cross
+ reference added which keeps the field in synch with the corresponding NAME
+ COMPONENTS (#20) file record.  Additionally, the NAME (#.01) field has a
+ new index type cross reference added which maintains the 'NOP' special
+ lookup cross reference.
+  
+      Field Name                                      Field #
+      -----------------------------------             -------
+      NAME                                             .01
+      K-NAME OF PRIMARY NOK                            .211
+      K2-NAME OF SECONDARY NOK                         .2191
+      FATHER'S NAME                                    .2401
+      MOTHER'S NAME                                    .2402
+      MOTHER'S MAIDEN NAME                             .2403
+      E-NAME                                           .331
+      E2-NAME OF SECONDARY CONTACT                     .3311
+      D-NAME OF DESIGNEE                               .341
+      DISPOSITION LOG-IN DATE/TIME (multiple)          1000
+       ATTORNEY'S NAME                                 30
+      ALIAS (multiple)                                 1
+       ALIAS                                           .01
+  
+ The following index type cross references have been added:
+  
+ Index name             File or sub-file                 Field
+ ------------           ----------------                 --------
+ NOP                         2                            .01
+ ANAM01                      2                            .01
+ ANAM1001                    2.101                        30
+ ANAM201                     2.01                         .01
+ ANAM211                     2                            .211
+ ANAM2191                    2                            .2191
+ ANAM2401                    2                            .2401
+ ANAM2402                    2                            .2402
+ ANAM2403                    2                            .2403
+ ANAM331                     2                            .331
+ ANAM3311                    2                            .3311
+ ANAM341                     2                            .341
+  
+ Eleven new fields have been added.  These fields contain pointers to the 
+ NAME COMPONENTS file and represent the relationship between the existing
+ PATIENT file fields listed above and their corresponding NAME COMPONENTS
+ record.
+  
+ Field Name                                      Field #
+ -----------------------------------             -------
+ NAME COMPONENTS                                  1.01
+ K-NAME COMPONENTS                                1.02
+ K2-NAME COMPONENTS                               1.03
+ FATHER'S NAME COMPONENTS                         1.04
+ MOTHER'S NAME COMPONENTS                         1.05
+ MOTHERS MAIDEN NAME COMPONENTS                   1.06
+ E-NAME COMPONENTS                                1.07
+ E2-NAME COMPONENTS                               1.08
+ D-NAME COMPONENTS                                1.09
+ ALIAS (multiple)                                 1
+  ALIAS COMPONENTS                                100.03
+ DISPOSITION LOG-IN DATE/TIME (multiple)          1000
+  ATTORNEY'S NAME COMPONENTS                      100.21
+  
+  
+ Changes to Options:
+ ===================
+  
+ The name components of the patient NAME (#.01) field can be viewed with 
+ the 'View Registration Data' [DG REGISTRATION VIEW] option.  Name
+ components for the NAME field may be edited through screen 1 of the
+ demographic edit functionality contained in the 'Register a Patient' [DG
+ REGISTER PATIENT] and 'Load/Edit Patient Data' [DG LOAD PATIENT DATA]
+ options.  The following is an example of what this might look like:
+  
+                      PATIENT DEMOGRAPHIC DATA, SCREEN <1>
+ BELL,DONALD MD; 000-00-3456                                        NSC VETERAN
+ ==============================================================================
+                                
+ [1]    Name: BELL,DONALD MD                SS: 000-00-3456  DOB: MAY 12,1949
+      Family: BELL                   [2] Alias: BELL,DAVIS G        000-00-3434
+       Given: DONALD                            SMITH,DUCKY
+      Middle:                                   DRAKE,D             000-00-4321
+      Prefix: MR                                JONES,DOE SMITH     000-00-5567
+      Suffix: MD                                BELL,ORMSBY R
+      Degree: PHD                               < More alias entries on file >
+ [3] Remarks: SEE SOCIAL WORKER NOTES 
+ [4] Permanent Address:                 [5] Temporary Address: 
+          APARTMENT 43                             LONESOME ONE MOTEL
+          BUILDING G                               ROOM 999
+          93 FAIRMONT PLAZA                        53935 WEST HIGHWAY 50
+          PITTSBURGH,PA 15201                      MOO MESA,NV 89898
+  County: ALLEGHENY (003)                  County: ESMERALDA (021)
+   Phone: 555-444-3333                      Phone: 777-890-7654
+  Office: 555-432-1234                    From/To: DEC 31,2001-APR 30,2002
+  
+ <RET> to CONTINUE, 1-5 or ALL to EDIT, ^N for screen N or '^' to QUIT: 1
+ NAME: BELL,DONALD MD// 
+ FAMILY (LAST) NAME: BELL// BELL
+ GIVEN (FIRST) NAME: DONALD// DONALD
+ MIDDLE NAME: JOE
+ PREFIX: MR// MR
+ SUFFIX: MD// MD
+ DEGREE: PHD// PHD
+ Ok to file 'BELL,DONALD JOE MD' and its name components? Yes//   (Yes)
+ SOCIAL SECURITY NUMBER: 000003456// 
+ DATE OF BIRTH: 05/12/1949//
+  
+ If the patient's name components have been edited, the user is prompted to
+ confirm that they wish to file the newly reconstructed name and its
+ components. If the user responds "no" the name component edits and newly
+ reconstructed name value will not be filed.
+  
+  
+ Changes to PATIENT file lookups:
+ ================================
+  
+ In cases where standardized representation (stripped of spaces, 
+ punctuation, etc.) of a patient name is different than the value stored in
+ the NAME (#.01) field, the standardized value is stored in the 'NOP' 
+ cross reference described above.  This facilitates lookup matches to be 
+ identified for common name input variations based on a single user input 
+ value.  For example, the entry of OBRIEN will return OBRIEN, O'BRIEN and 
+ O BRIEN variations.  
+  
+ Previously, lookups on the Social Security Number were limited to the
+ first character of the last name and the last four digits of the SSN; just
+ the last four digits of the SSN; or the complete nine or ten digit SSN
+ value.  The SSN lookup logic has been modified allow two or more numeric 
+ characters to be applied as a lookup value.
+  
+  
+ Programmer API:
+ ===============
+  
+ A new application programming interface (API), LIST^DPTLK1 has been 
+ created which facilitates the non-interactive return of patient record 
+ match lists based on a specified lookup value.  Access to this API is
+ available by a controlled subscription Integration Agreement (IA).
+  
+  
+ Interactions with the MPI:
+ ==========================
+  
+ When the patient name conversion utility distributed in this patch is 
+ performed, any change to Patient Name or Mother's Maiden Name (other than
+ just a comma added to Mother's Maiden Name) will generate an A31 update
+ message to the MPI for any patient that has a National ICN.
+  
+  
+ Test Sites:
+ ===========
+ Battle Creek, MI
+ Bay Pines, FL
+ Charleston, SC
+ Clarksburg, WV
+ Dublin, GA
+ Grand Junction, CO
+ Lexington, KY
+ Miami, FL
+ New Orleans, LA
+ Northern California HCS
+ Reno, NV
+ Tennessee Valley HCS
+  
+                   
+ Routine Summary:
+ ================
+  
+ The following is a list of routines included in this patch.
+  
+ The second line of each of these routines will look like:
+  
+      <tab>;;5.3;Registration;**[patch list]**;Aug 13, 1993
+  
+                     CHECK^XTSUMBLD results
+  
+ Routine name       Before Patch          After Patch        Patch List
+ ============       ============          ===========        ==========
+ DG53244P            N/A                   5765684            244
+ DG53244Q            N/A                   20392109           244
+ DG53244R            N/A                   31006811           244
+ DG53244S            N/A                   8984289            244
+ DG53244T            N/A                   25590231           244
+ DG53244U            N/A                   13284605           244
+ DG53244V            N/A                   13356281           244
+ DGBUL               3509242               4065107            31,244
+ DGDDC               4841232               5005727            489,244
+ DGLOCK2             11684785              12302800           18,244
+ DGNFUNC             901162                244095             149,244
+ DGRP1               14523092              14821010           109,161,506,244
+ DGRPDD1             18965250              19626105           72,136,244
+ DGRPE               24923895              26258242           32,114,139,169,
+                                                              175,247,190,343, 
+                                                              397,342,454,415,
+                                                              489,506,244
+ DPTLK               17131072              16844003           32,72,93,73,136, 
+                                                              157,197,232,265, 
+                                                              277,223,327,244
+ DPTLK1              11676550              12893756           32,50,197,249,
+                                                              317,391,244
+ DPTLK2              16365827              14251761           32,197,214,244
+ DPTNAME             N/A                   7767521            244
+ DPTNAME1            N/A                   7789567            244
+  
+  
+ Installation Instructions:
+ ==========================
+  
+    This patch can be installed with users on the system, however it should
+    be installed during off hours to minimize disruption to users.  
+    
+    An installation post-init will build the 'NOP' cross reference.  The
+    amount of time to accomplish this will vary depending on the size of
+    the PATIENT (#2) file but will take at least several minutes.  On a
+    quiet VMS/Cache system it took about 7 minutes to build the 'NOP' cross
+    reference for 100,000 patients.  If the installation is not queued the
+    KIDS progress bar will be updated to reflect the completion rate of
+    this activity.
+  
+   1. Review your mapped set.  If the routines listed in the ROUTINE
+      SUMMARY section are mapped, they should be removed from the mapped
+      set at this time.
+  
+   2. Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+  
+   3. From the Kernel Installation and Distribution System Menu, select
+      the Installation menu.
+  
+   4. From this menu, you may elect to use the following options (when
+      prompted for the INSTALL NAME, enter DG*5.3*244).
+  
+       a. Backup a Transport Global - this option will create a backup
+          message of any routines exported with the patch.  It will NOT
+          backup any of the other changes.
+  
+       b. Compare Transport Global to Current System - this option will
+          allow you to view all changes that will be made when the patch is
+          installed.  It compares all components of the patch (routines and
+          options).
+  
+       c. Verify Checksums in Transport Global - this option will allow
+          you to ensure the integrity of the routines that are in the
+          transport global.
+  
+   5. Use the Install Package(s) option and select the package
+      DG*5.3*244.
+  
+   6. When prompted, 'Want KIDS to INHIBIT LOGONs during the install?
+      YES//' answer NO.
+  
+   7. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols? YES//', respond YES.
+  
+      When prompted to select the options you would like to place out of
+      order, enter the following:
+  
+        DG REGISTRATION VIEW             View Registration Data 
+        DG LOAD PATIENT DATA             Load/Edit Patient Data 
+        DG REGISTER PATIENT              Register a Patient  
+  
+   8. If any routines were unmapped as a part of step 1, they should be
+      returned to the mapped set once the installation has run to
+      completion.
+  
+   9. Upon successful completion of the KIDS install, you may delete the 
+      routines DG53244P, DG53244Q, DG53244R and DG53244S.
+  
+  10. Use PRINT^DG53244T to print a report of name value exceptions which 
+      will be encountered when the name conversion is performed.  This
+      report should be reviewed to determine if there is data that needs to
+      be cleaned up prior to the name conversion. 
+  
+      This report provides for the printing of statistics and detailed name
+      exception lists. The detailed format should be used to review name
+      exceptions prior to doing the conversion.  Individual fields or all
+      fields may be selected for review.  It is recommended that all fields
+      be reviewed.
+  
+      This report groups name exceptions by the following categories:
+  
+           1         Name value contains no comma
+           2         Parenthetical text is removed from name
+           3         Name value cannot be converted
+           4         Characters are removed from the name
+  
+      Of these types, the first three are considered important to review.  
+      Names with no comma may not be parsed correctly by Kernel name
+      standardization utilities.  Names with parenthetical text, e.g.
+      "(INELIGIBLE)" may require clean up prior to conversion.  Names that
+      cannot be converted should be corrected or deleted.
+  
+      The fourth category will apply to the majority of name changes.  
+      These are instances where characters such as periods, have been
+      removed from the name and probably do not require review.  You may
+      review all four categories but limiting the report to the first three
+      will produce a more relevant and manageable list.
+  
+  11. Use CONVERT^DG53244T to perform the name conversion.  This process 
+      will establish a NAME COMPONENTS (#20) file record for each data
+      value associated with the 11 fields to be converted.  Data values
+      will be transformed to match the rules listed in the patch
+      description above as indicated.  Due to the volume of activity, the
+      patient name change bulletin will be disabled during the conversion.
+      The conversion is a lengthy and reasonably intensive process.  It
+      should be performed during non-business hours.  
+  
+      The name conversion should not be performed concurrently with the 
+      patient record merge process.  Patient names in records that are
+      being merged by the patient record merge functionality will not be
+      converted.
+  
+      To avoid the system and network messaging impact that would result 
+      from the volume of changes that occur during the conversion process,
+      the HL7 messages that would normally be generated by the VAFC ADT-A08
+      SERVER protocol are disabled for the activity related to the
+      conversion.  Local subscribers to this protocol such as VistA Imaging
+      and RAI/MDS will still receive HL7 notification messages through a
+      special protocol created for the conversion process.
+  
+      To assist sites in managing impacts to users, system journaling, etc.
+      limitations may be specified when queuing the conversion process
+      which will stop the conversion after a specified entry number or time
+      of day.  This will allow portions of the conversion to be performed
+      on subsequent days.  For example, the entry number limitation may be
+      used to process a group of 20,000 patients; the date/time limitation
+      would allow the site to start the process at 10 pm and have it stop
+      at 6 am the next day.
+  
+      CONVERSION PROCESSING IMPACTS:  Although eleven fields in the PATIENT
+      file are being converted, not all of them may contain data in a given
+      record.  In testing it was observed that approximately five NAME 
+      COMPONENTS records were created per PATIENT record.  A quiet
+      VMS/Cache system was able to process about 5,000 PATIENT records per
+      hour.
+  
+      SYSTEM JOURNALING:  A VMS/Cache system journaling all globals
+      including ^TMP and ^XTMP used about one gigabyte of journal space per
+      10,000 PATIENT records processed.  Approximately two thirds of this
+      activity was ^TMP and ^XTMP.  Sites may need to utilize the
+      conversion limiting methods described above to avoid running out of
+      journal space during a conversion processing session.
+  
+      GLOBAL GROWTH:  Due to the creation of records in the NAME 
+      COMPONENTS (#20) file, the ^VA global can be expected to grow
+      approximately 73 megabytes for every 100,000 PATIENT file records
+      converted.
+  
+      STOPPING THE CONVERSION PROCESS:  It is important that each session
+      of the conversion process ends gracefully.  This will insure the
+      reactivation of the patient name change bulletin, tasking of HL7 name
+      change messaging and the accurate recording of the conversion
+      progress to that point.  System utilities should not be used to
+      restore (kill) the conversion process.
+  
+      In addition to the limitations which may be specified during queuing,
+      the conversion process may be stopped gracefully by using the
+      STOP^DG53244T entry point or by using the 'Stop task' functionality
+      of the 'TaskMan User' [XUTM USER] option on the 'User's Toolbox'
+      [XUSERTOOLS] menu.
+  
+      When the conversion process ends or is stopped with the methods noted
+      above, a mail message is sent to the user that initiated the
+      conversion process.  This message contains statistics regarding
+      records converted, exception types, run time, processing rate, etc.
+  
+      If the process is stopped without processing the entire PATIENT (#2)
+      file, it is important that it be subsequently re-tasked to run as
+      needed to complete the conversion. The results of the conversion may
+      be printed with PRINT^DG53244T.
+  
+      RETENTION OF REPORT AND CONVERSION DATA:  Data generated for 
+      reporting (prior to conversion) will be retained for 90 days after
+      the first report generation.  Once the conversion process has begun,
+      conversion data will be retained for 90 days after the conversion was
+      last started.
+  
+  12. When the conversion has processed to completion and all desired
+      review reports have been obtained, the routines DG53244T, DG53244U
+      and DG53244V may be deleted.
+
+Routine Information:
+====================
+
+Routine Name:
+  - DG53244P
+
+
+Routine Checksum:
+
+Routine Name:
+  - DG53244Q
+
+
+Routine Checksum:
+
+Routine Name:
+  - DG53244R
+
+
+Routine Checksum:
+
+Routine Name:
+  - DG53244S
+
+
+Routine Checksum:
+
+Routine Name:
+  - DG53244T
+
+
+Routine Checksum:
+
+Routine Name:
+  - DG53244U
+
+
+Routine Checksum:
+
+Routine Name:
+  - DG53244V
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGBUL
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGLOCK2
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGNFUNC
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGRP1
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGRPE
+
+
+Routine Checksum:
+
+Routine Name:
+  - DPTLK1
+
+
+Routine Checksum:
+
+Routine Name:
+  - DPTLK2
+
+
+Routine Checksum:
+
+Routine Name:
+  - DPTNAME
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGDDC
+
+
+Routine Checksum:
+
+Routine Name:
+  - DPTNAME1
+
+
+Routine Checksum:
+
+Routine Name:
+  - DPTLK
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGRPDD1
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : SHER,JOEL                      Date Entered : AUG 03, 1999
+Completed By: FAIN,ZACHARY                  Date Completed: MAY 23, 2003
+Released By : ALEXANDER,DIANNE              Date Released : MAY 23, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,177 @@
+$TXT Created by DESMOND,LINDA at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 11/12/03 at 16:07
+=============================================================================
+Run Date: JAN 15, 2004                     Designation: DG*5.3*566
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #489                    Status: Released
+                  Compliance Date: FEB 22, 2004
+=============================================================================
+
+Associated patches: (v)DG*5.3*540  <<= must be installed BEFORE `DG*5.3*566'
+
+Subject: FIX LTC TYPE 4 INCONSISTENCY CK
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ Developed in MNT,VBB
+  
+  
+ This patch addresses the following NOIS message(s):
+ ---------------------------------------------------
+ MOU-1003-31209     Receive error when jumping out of New LTC Copay test
+ SBY-1003-32049     $ZE= INCON+21^DGMTUTL1:1, %DSM-E-NULLSUBSCR
+  
+  
+ Problem Description:
+ ====================
+ When a new LTC copay exemption test is being added, if the user chooses 
+ not to complete the test and answers 'NO' or '^' at the prompt, a null 
+ subscript error is occurring.  See the following example:
+  
+ Do you wish to complete the copay exemption test? YES// NO
+ NOTE: If you do not complete the LTC copay exemption test, the incomplete 
+ test will be deleted.
+ Do you wish to complete the copay exemption test? YES// NO
+ %DSM-E-NULLSUBSCR, Null subscript
+ %DSM-I-ATLABEL, INCON+21^DGMTUTL1:1
+  
+  
+ Problem Resolution:
+ ===================
+ When a LTC copay exemption test (type 4) is added but is not completed, 
+ the Status field (#.03) in the Annual Means Test file (#408.31) is left 
+ null and the incomplete LTC copay exemption test is deleted.
+  
+ The problem is occurring because a line of code was added to tag K in 
+ routine DGMTSC for DG*5.3*463 which calls consistency check logic 
+ (INCON^DGMTUTL1).  Now, the incomplete LTC copay exemption test is going 
+ through the consistency check logic instead of being deleted.  Since the 
+ Status field is null, and the consistency check expects the Status field 
+ to be defined, there is a null subscript error occurring in INCON+21.
+  
+ The line of code that calls the consistency check logic in tag K of 
+ routine DGMTSC was modified to add a check to see if the Status field is 
+ defined. If the Status field is not defined the consistency check logic 
+ will not be called and the incomplete LTC copay exemption test will be 
+ deleted.
+  
+  
+  
+ ROUTINE SUMMARY:
+ ================
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+  
+      <tab>;;5.3;Registration;**[patch list]**;Aug 13, 1993
+  
+                             CHECK^XTSUMBLD results
+ Routine name      Before Patch         After Patch        Patch List
+ ============      ============         ===========        ==========
+ DGMTSC                 5138233             5398759   182,327,372,433,463
+                                                             540,566
+  
+ INSTALLATION INSTRUCTIONS
+ =========================  
+ It is recommended this patch be installed outside of normal business 
+ hours to avoid any complications resulting from users on the system.
+ Installation will take less than 2 minutes.
+  
+   Installation Steps:
+   ===================
+   
+   1. Review your mapped set.  If the routine listed in the ROUTINE 
+      SUMMARY section is mapped, it should be removed from the
+      mapped set at this time.
+     
+   2. Choose the PackMan message containing this patch and select the
+      INSTALL/CHECK MESSAGE option on the PackMan menu.
+   
+   3. From the 'Kernel Installation & Distribution System' menu [XPD
+      MAIN], select the Installation menu.
+   
+   4. From this menu, you may elect to use the following options (when
+      prompted for INSTALL NAME, enter DG*5.3*566).
+   
+      a. Backup a Transport Global - This option will create a backup
+         message of any routines exported with the patch.  It will NOT 
+         backup any other changes such as DDs or templates.
+   
+      b. Compare Transport Global to Current System - This option will 
+         allow you to view all changes that will be made when the patch 
+         is installed.  It compares all components of the patch 
+         (routines, DDs, templates, etc.).
+   
+      c. Verify Checksums in Transport Global - This option will allow 
+         you to ensure the integrity of the routines that are in the 
+         transport global.
+   
+      d. Print Transport Global - This option will allow you to view the
+         components of the KIDS build.
+         
+   5. Use the Install Package(s) option and select DG*5.3*566.
+   
+   6. When prompted 'Want KIDS to INHIBIT Logon's during the install? 
+      YES//', it is recommended you answer NO.
+   
+   7. When prompted 'Want to DISABLE Scheduled Options, Menu Options, 
+      and Protocols? YES//', respond YES.  When prompted to select 
+      the options you would like to place out of order, enter the
+      following:
+  
+      Add a New Means Test                   [DG MEANS TEST ADD]
+      Complete a Required Means Test         [DG MEANS TEST COMPLETE]
+      Edit an Existing Means Test            [DG MEANS TEST EDIT]
+      Add a Copay Exemption Test             [DG CO-PAY TEST ADD]
+      Edit an Existing Copay Exemption Test  [DG CO-PAY TEST EDIT]
+      Add a New LTC Copayment Test           [EASEC LTC COPAY TEST ADD]
+  
+   8. If the routine was unmapped as part of Step 1, it should be 
+      returned to the mapped set once the installation has run to 
+      completion.
+
+Routine Information:
+====================
+
+Routine Name:
+  - DGMTSC
+
+ Before Patch:
+ =============
+ K+2:K+5
+         ; Validate record with consistency checks, when adding, editing, 
+ or
+         ; completing either a means or copay test.
+         K IVMERR,IVMAR,IVMAR2
+         I DGMTACT'="VEW" D INCON^DGMTUTL1(DFN,DGMTDT,DGMTI,DGMTYPT,.IVMERR
+ ) ,PROB^IVMCMFB(DGMTDT,.IVMERR,1)
+  
+ After Patch:
+ ============
+ K+2:K+7
+         ; Validate record with consistency checks, when adding, editing, 
+ or
+         ; completing either a means or copay test.
+         ; For DG*5.3*566 - added a check for Status field to be defined 
+ before
+         ; calling the consistency check API (INCON^DGMTUTL1).
+         K IVMERR,IVMAR,IVMAR2
+         I DGMTACT'="VEW",$P($G(^DGMT(408.31,DGMTI,0)),U,3) D INCON^DGMTUT
+ L1(DFN, DGMTDT,DGMTI,DGMTYPT,.IVMERR),PROB^IVMCMFB(DGMTDT,.IVMERR,1)
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : MULLER,RICHARD                Date Entered  : NOV 06, 2003
+Completed By: LANDRY,DANNA                  Date Completed: JAN 14, 2004
+Released By : GROOMS,ANTHONY E              Date Released : JAN 15, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

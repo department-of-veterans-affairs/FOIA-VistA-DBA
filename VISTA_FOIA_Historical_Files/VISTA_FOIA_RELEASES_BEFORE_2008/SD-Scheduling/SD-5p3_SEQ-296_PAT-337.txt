@@ -1,0 +1,202 @@
+$TXT Created by CURTIS,RICHARD L at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 06/15/04 at 10:55
+=============================================================================
+Run Date: JUN 28, 2004                     Designation: SD*5.3*337
+Package : SD - SCHEDULING                     Priority: Mandatory
+Version : 5.3       SEQ #296                    Status: Released
+                  Compliance Date: JUL 29, 2004
+=============================================================================
+
+Associated patches: (v)SD*5.3*335  <<= must be installed BEFORE `SD*5.3*337'
+
+Subject: PERFORMANCE MONITOR SUMMARY REPORT ERROR
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch addresses invalid subscript error with the Performance 
+ Monitor Summary Report.
+   
+ ASSOCIATED NOIS:
+ ================
+ 1. ANC-1103-51042 - Performance Monitor Summary Report
+  Duplicate:
+      WPB-0204-30479 - Null Subscript PRTHEAD+17^SCRPW304
+    
+ ASSOCIATED E3R(s):
+ ==================
+ N/A
+   
+ PARTICIPATING TEST SITES:
+ =========================
+ Anchorage, AK (OPC)
+ West Palm Beach, FL
+ El Paso, TX
+ North Chicago, IL
+    
+ NOIS OVERVIEW:
+ ==============
+ 1.  ANC-1103-51042  Performance Monitor Summary Report
+    
+     Problem: 
+     ----------
+     When running this report, users are getting a Null Subscript
+     error at Linetag PRTHEAD+17 in routine SCRPW304.
+     
+     Resolution:
+     -----------
+     This patch modifies the existing logic so that this error will no
+     longer occur.
+    
+ TECHNICAL:
+ ==========
+ When variable DIV is null, a Naked DO is performed.  Within this dot
+ structure, the call to the Institution File Access utility is returning
+ array VISN as null, which should not happen.  To resolve this problem,
+ an accent grave was added to the Institution File Access call so that
+ it uses the record number.  Additionally, the next line in the dot
+ structure uses a FOR command to $Order on array VISN and set variable
+ VISN, quitting when VISN equals null.  But, when VISN is null, it only
+ quits the FOR loop, not the dot structure and the next line in the dot
+ structure is executed.  This is where the error is actually occurring
+ because variable VISN is being used as a subscript.  As a precautionary
+ measure, the FOR command will be removed and replaced with a SET
+ command.  Routine SCRPW304 will be changed as follows:
+    
+ From:
+       .D PARENT^XUAFA("VISN",$P(TMP,U,1))
+       .S VISN="" F VISN=$O(VISN("P",VISN)) Q:VISN=""
+       .S LINE="Facility: "_$P(TMP,U,2)_" ("_$P(TMP,U,3)_")"_ 
+ "_$P($G(VISN("P",VISN)),U,1)
+    
+   To:
+       .D PARENT^XUAFA("VISN","`"_$P(TMP,U,1)) <<accent grave added
+       .S VISN="",VISN=$O(VISN("P",VISN)) Q:VISN=""
+       .S LINE="Facility: "_$P(TMP,U,2)_" ("_$P(TMP,U,3)_")"_ 
+ "_$P($G(VISN("P",VISN)),U,1)
+    
+ ROUTINE SUMMARY:
+ ================
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+    
+      <tab>;;5.3;SCHEDULING;**[patch list]**;AUG 13, 1993
+    
+                             CHECK^XTSUMBLD results
+ Routine name      Before Patch          After Patch         Patch List
+ ============      ============          ===========         ==========
+ SCRPW304               5841130              5915415         292,335,337
+     
+ INSTALLATION INSTRUCTIONS
+ =========================
+ If the patch is installed during the normal workday, it is recommended
+ that the following menu option(s) (File #19) and all of their
+ descendants be disabled to prevent possible conflicts while running the
+ KIDS install.  Other VISTA users will not be affected.
+     
+ Performance Monitor Menu               [SCRPW PERFORMANCE MONITOR MENU]
+ Performance Monitor Detailed Report    [SCRPW PM DETAILED REPORT]
+ Performance Monitor Summary Report     [SCRPW PM SUMMARY REPORT]
+ Performance Monitor Retransmit Report (AAC) [SCRPW PM RETRANSMIT REPORT]
+    
+ Installation should take less than 2 minutes.
+    
+ 1.  LOAD TRANSPORT GLOBAL
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the
+     INSTALL/CHECK MESSAGE PackMan option.
+    
+ 2.  DISABLE ROUTINE MAPPING   (DSM for open VMS sites only)
+     -----------------------
+     Disable routine mapping on all systems for the routines listed in
+     the routine summary.
+    
+     NOTE:  If the routine(s) included in this patch are not currently in
+     your mapped routine set, please skip this step.
+    
+ 3.  START UP KIDS
+     -------------
+     Start up the Kernel Installation and Distribution System Menu
+     [XPD MAIN]:
+    
+           Edits and Distribution ...
+           Utilities ...
+           Installation ...
+    
+     Select Kernel Installation & Distribution System Option:  INStallation
+                                                               ---
+    
+     1.    Load a Distribution
+     2.    Verify Checksums in Transport Global
+     3.    Print Transport Global
+     4.    Compare Transport Global to Current System
+     5.    Backup a Transport Global
+     6.    Install Package(s)
+           Restart Install of Package(s)
+           Unload a Distribution
+    
+ 4.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter SD*5.3*337):
+    
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with the patch.  It will NOT
+         backup any other changes such as DDs or templates.
+    
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when the patch
+         is installed.  It compares all components of the patch
+         (routines, DDs, templates, etc.).
+     
+     c.  Verify Checksums in Transport Global - This option will ensure
+         the integrity of the routines that are in the transport global.
+    
+ 5.  Use the Install Package(s) option and select the package SD*5.3*337.
+    
+     a.  When prompted "Want KIDS to INHIBIT LOGONS during the
+         install? YES//" respond NO.
+    
+     b.  When prompted "Want to DISABLE Scheduled Options, Menu Options,
+         and Protocols? YES//" respond YES.
+    
+         1) When prompted "Enter options you wish to mark as "Out of
+            Order":" enter the following options:
+    
+            SCRPW PERFORMANCE MONITOR MENU
+            SCRPW PM DETAILED REPORT
+            SCRPW PM SUMMARY REPORT
+            SCRPW PM RETRANSMIT REPORT
+    
+         2) When prompted "Enter protocols you wish to mark as "Out of
+            Order":" just press <return>.
+    
+ 6.  REBUILD MAPPED ROUTINE(S)   (DSM for Open VMS sites only)
+     -------------------------
+     Optional - Include the routines distributed with this patch in
+     the mapped routine set.
+    
+     NOTE:  This step is only necessary if you performed step 2 or if
+     you wish to include the routines in your mapped set.
+
+Routine Information:
+====================
+
+Routine Name:
+  - SCRPW304
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : CURTIS,RICHARD                Date Entered  : JAN 06, 2004
+Completed By: DAWSON,TIM                    Date Completed: JUN 25, 2004
+Released By : FITCH,DONNA                   Date Released : JUN 28, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

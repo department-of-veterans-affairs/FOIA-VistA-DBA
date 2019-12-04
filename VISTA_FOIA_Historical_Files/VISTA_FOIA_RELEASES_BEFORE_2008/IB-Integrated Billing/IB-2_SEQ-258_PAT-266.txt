@@ -1,0 +1,490 @@
+
+=============================================================================
+Run Date: OCT 08, 2004                     Designation: IB*2*266
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #258                      Status: Released
+                  Compliance Date: NOV 08, 2004
+=============================================================================
+
+Associated patches: (v)IB*2*115    <<= must be installed BEFORE `IB*2*266'
+                    (v)IB*2*210    <<= must be installed BEFORE `IB*2*266'
+                    (v)IB*2*245    <<= must be installed BEFORE `IB*2*266'
+                    (v)ICD*18*12   <<= must be installed BEFORE `IB*2*266'
+                    (v)ICPT*6*19   <<= must be installed BEFORE `IB*2*266'
+
+Subject: CODE TEXT DESCRIPTORS
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Enhancement (Mandatory)
+  - Informational
+
+Description:
+============
+
+ Overview
+ ---------
+  
+ The patch IB*2.0*266 represents the Integrated Billing portion of the
+ Code Text Descriptors (CTD) project. It modifies the Integrated Billing
+ (IB) Package functionality to comply the HIPAA Code Set Versioning (CSV)
+ requirements in regards to the DRG, CPT and ICD Code Text Descriptors.
+  
+  
+ Functional Description
+ -----------------------
+ There are no changes to the user interface with this patch. The only 
+ functional change is the method of accessing the DRG, ICD and CPT Code
+ Text Descriptors. In order to retrieve the versioned Code Text Descriptor,
+ the IB software will be using the Lexicon API, passing the Date of Service
+ as the second parameter to this API, so the correct Code Text Descriptor
+ for the date of service will be retrieved. Also the patch modifies the
+ user lookup functionality for ICD, DRG and CPT codes to ensure that the
+ displayed Code Text Description will be versioned for the date of service,
+ if the date of service is available in context.
+  
+  
+ Technical Description
+ ----------------------
+  
+ The patch IB*2.0*266 performs the following changes:
+  
+  
+ 1. IB20P266 - this routine contains the post-install procedure. It 
+ recompiles Input Templates for the Data Dictionaries affected by this 
+ patch.
+  
+ 2. IBACSV - this routine contains a number of functions to support HIPAA 
+ Code Set Versioning within the IB package. The patch adds one new 
+ procedure to the routine:
+  
+ $$DRGTD(IEN,IBDT) - the function accepts two input parameters:
+         IEN  - internal entry number of the DRG code
+         IBDT - date of service (optional) current date by default
+  
+ Output: the function returns the 1st line of the long Code Text 
+ Descriptor for the given DRG code for the passed date of service.
+  
+ The function DRGTD^IBACSV calls the external API DRGD^ICDGTDRG(), 
+ implemented by the Code Text Descriptors project.
+  
+ 3. IBATO1 - this routine contains procedures for the TRANSFER PRICING 
+ report. The routine was modified by this patch to replace direct global 
+ access to ^ICD() with the respective API call DRGTD^IBACSV() and ensures, 
+ that the DRG Code Text Descriptor will be determined correctly for the
+ date of service, in accordance with the CTD project requirements.
+  
+ 4. IBCSC4E - this routine belongs the "IB EDIT BILLING INFO" menu option, 
+ screen 4. The routine was modified by this patch to replace direct global 
+ access to ^ICD() with the respective API call DRGTD^IBACSV() and ensures, 
+ that the DRG Code Text Descriptor will be determined correctly for the
+ date of service, in accordance with the CTD project requirements.
+  
+ 5. IBTOBI4 - the routine prints Claims Tracking information. The routine 
+ was modified by this patch to replace direct global access to ^ICD() with 
+ the respective API call DRGTD^IBACSV() and ensures, that the DRG Code Text
+ Descriptor will be determined correctly for the date of service, in
+ accordance with the CTD project requirements.
+  
+ 6. IBTRV2 - the routine contains procedures for Claims Tracking. The 
+ routine was modified by this patch to replace direct global access to 
+ ^ICD() with the respective API call DRGTD^IBACSV() and ensures, that the 
+ DRG Code Text Descriptor will be determined correctly for the date of
+ service, in accordance with the CTD project requirements.
+  
+ 7. IBTRVD - this is a List Manager routine for the Claims Tracking
+ Expanded Review Screen. The routine was modified by this patch to replace
+ direct global access to ^ICD() with the respective API call DRGTD^IBACSV()
+ and ensures, that the DRG Code Text Descriptor will be determined
+ correctly for the date of service, in accordance with the CTD project
+ requirements.
+  
+ 8. IBCSC4C - this routine has been modified by setting the local variable 
+ ICDVDT to the Date of Service in FileMan format. That will ensure that 
+ the FileMan lookup for ICD0 and ICD9 codes will display the correct text 
+ descriptor in accordance to the service date.
+  
+ 9. IBTRE3 - this routine has been modified by setting the local variable 
+ ICDVDT to the Date of Service in FileMan format. That will ensure that the
+ FileMan lookup for ICD9 codes will display the correct text descriptor in
+ accordance to the service date.
+  
+ 10. IBTRE4 - this routine has been modified by setting the local variable
+ ICDVDT to the Date of Service in FileMan format. That will ensure that the
+ FileMan lookup for ICD0 codes will display the correct text descriptor in
+ accordance to the service date.
+  
+ 11. IBATLM2A - the routine has been modified to call the function 
+ $$PROC^IBATUTL() with the second parameter - the Date of Service. 
+ Thus, the Transfer Pricing List Manager screen will be displaying the 
+ correct Code Text Description for the procedure.
+  
+ 12. IBATLM2B - this routine has been modified to set ICDVDT and ICPTVDT 
+ to the date of service (FileMan format). That will ensure, that users 
+ will see the right version of the Core Text Description when editing 
+ pricing information.
+  
+ 13. IBATUTL - the function $$PROC^IBATUTL() has been modified. Now it 
+ accepts the second (optional) parameter: the Date of Service, and 
+ respectively passes this parameter to the Lexicon API $$CPT^ICPTCOD(). 
+ That modification will ensure that the function $$PROC^IBATUTL() will be 
+ able to return the versioned CPT Code Text Descriptors.
+  
+ 14. IBCCPT - there are two changes made to this routine. The first one 
+ sets the variable ICPTVDT so that users will see correct (versioned) Code 
+ Text Descriptors during CPT input or lookup.
+ The second change modifies the call to $$MOD^ICPTMOD() by adding the 
+ third parameter - the Date of Service. Thus the program will be 
+ displaying the correct (versioned) Code Text Descriptor for the CPT 
+ Modifier.
+  
+ 15. IBCSC5 - in this routine the existing calls to $$DX^IBCSC4() have 
+ been modified to pass the second parameter: the Date of Service. Thus the 
+ routine will be displaying the correct (versioned) Code Text Descriptor.
+  
+ 16. IBCSCH1 - the routine has been modified to pass the Date of Service 
+ as a parameter to the call $$PRCNM^IBCSCH1() and the call 
+ $$MODLST^IBEFUNC2() to ensure that only the correct versioned Code Text 
+ Descriptor will be displayed.
+  
+ 17. IBCSCP - the routine is a dispatcher for IB EDIT BILLING INFO user 
+ screens. It has been modified to ensure that the "Date of Service" 
+ variables ICDVDT and ICPTVDT are correctly set for each users screen, and 
+ are cleaned up when leaving the program.
+  
+ 18. IBCU1 - the executable modifier help (file 399.042, .14) was modified 
+ to pass the Date of Service to the API call $$MOD^ICPTMOD(). Therefore 
+ the help procedure will be displaying correct versioned Code Text 
+ Descriptors for CPT Modifiers.
+  
+ 19. IBEFUNC2 - the function $$MODLST^IBEFUNC2() has been modified to 
+ accept one more parameter: the date of service. Thus it will be able to 
+ return the list of versioned CPT Modifiers Code Text Descriptors. 
+  
+  
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+ There is no NSR associated with this patch.
+  
+  
+ This patch addresses the following NOIS message(s):
+ ---------------------------------------------------
+ There are no NOIS messages associated with this patch.
+  
+  
+ Test Sites
+ -------------
+ Loma Linda
+ Indianapolis
+ Hines, IL
+ Madison, WI
+  
+  
+  
+ ROUTINES SENT WITH PATCH
+ ------------------------
+ The following is a list of the routines included in this patch.
+ The second line of each of these routines now looks like:
+  
+  The second line of each of these routines now looks like:
+  ;;2.0;INTEGRATED BILLING;**[patch list]**;21-MAR-94
+  
+                   CHECK^XTSUMBLD results
+  
+  Routine     Before Patch  After Patch  Patch List
+  -------     ------------  -----------  ----------
+  IB20P266         N/A          1145791  266
+  IBACSV         3140739        3815038  210,266
+  IBATLM2A       6629474        6708335  115,210,266
+  IBATLM2B       2632552        2786629  115,266
+  IBATO1        12530762       12730698  115,266
+  IBATUTL        6727418        6750225  115,266
+  IBCCPT        22070956       22355407  55,62,52,91,106,125,51,
+                                         148,174,182,245,266
+  IBCSC4C       10304268       10518925  210,266
+  IBCSC4E       15872127       15948271  8,106,121,124,210,266
+  IBCSC5         9495592        9833217  52,125,51,210,266
+  IBCSCH1       14622929       14629667  106,125,51,245,266
+  IBCSCP         6397317        6592948  52,51,161,266
+  IBCU1         10024821       10055724  27,52,106,138,51,182,210,266
+  IBEFUNC2       2920502        2961313  51,266
+  IBTOBI4        7459087        7843944  91,125,51,210,266
+  IBTRE3         8155240        8257557  10,60,210,266
+  IBTRE4         8749328        8860625  10,210,266
+  IBTRV2         7880820        8107876  60,210,266
+  IBTRVD         3563633        3701480  266
+  
+       Number of new routines   - 1
+       Total number of routines - 19
+  
+  
+ DATA DICTIONARIES SUMMARY
+ -------------------------
+  
+ The following is a list of the DD changes included in this patch.
+  
+  File #      Field #    Name
+  ----------  -------  ------------------------------
+  362.3                 IB BILL/CLAIMS DIAGNOSIS
+               .01      DIAGNOSIS
+  399                   BILL/CLAIMS
+               215      ADMITTING DIAGNOSIS
+  399.0304              PROCEDURES  (sub-file)
+               .01      PROCEDURES
+  399.042               REVENUE CODE  (sub-file)
+               .06      PROCEDURE
+  399.30416             CPT MODIFIER SEQUENCE  (sub-file)
+               .02      CPT MODIFIER
+  
+       Total number of modified files - 2
+  
+  
+ SOFTWARE AND DOCUMENTATION RETRIEVAL
+ ====================================
+ The software for this patch is not being distributed through the National
+ Patch Module.  This patch is being distributed as a host file.  The host
+ file is a multi-package build containing five (5) KIDS builds.
+  
+          Host file name: CTD_MS_1_0.KID
+     Multi-Package Build: CTD MS 1.0
+                  Builds: EC*2.0*63
+                        : PX*1.0*149
+                        : SD*5.3*351
+                        : DG*5.3*606
+                        : IB*2.0*266
+  
+ Sites may retrieve the software and documentation directly using FTP
+ from the ANONYMOUS.SOFTWARE directory at the following OI Field Offices:
+  
+             Albany: ftp.fo-albany.med.va.gov
+              Hines: ftp.fo-hines.med.va.gov
+     Salt Lake City: ftp.fo-slc.med.va.gov
+  
+  The following files will be available:
+  
+     File Name                         Description
+     ---------                         -----------
+     CTD_MS_1_0.KID                    Host file containing KIDS software
+                                       distribution
+     CTD_Install_Guide_1_0.pdf         Code Text Descriptors (CTD)
+                                       Installation Guide
+     EC2_0P63.EXE                      Event Capture GUI
+  
+     * Note: Use ASCII mode when transferring the .KID file.  Use Binary
+             mode when transferring the .EXE and .PDF files.  The .PDF files
+             can be read on a PC using the Adobe Acrobat Reader program.
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ =========================
+ This patch can be installed with users on the system, however it should
+ be installed during off hours to minimize disruption to users.
+  
+ This patch affects the check-out process and must be installed when the
+ SCDX AMBCAR NIGHTLY XMIT background job is not running.  Installation will
+ take less than 10 minutes.
+  
+ Note: The following is a list of REQUIRED builds for this multi-package
+       distribution.  KIDS will not allow the installation of this patch
+       without the prior installation of them.
+  
+             DG*5.3*158     DG*5.3*243     DG*5.3*511    DG*5.3*594
+             DG*5.3*599     EC*2*55        EC*2*56       EC*2*62
+             IB*2*115       IB*2*210       IB*2*245      ICD*18*12
+             ICPT*6*19      PX*1.0*136     PX*1.0*134    SD*5.3*324
+             SD*5.3*329
+  
+  
+  1. Download the KIDS file CTD_MS_1_0.KID from the ANONYMOUS.SOFTWARE
+     directory of either Albany, Hines or the Salt Lake OIFO to the
+     appropriate directory on your system.
+  
+  2. Use LOAD A DISTRIBUTION option on the KIDS INSTALLATION menu, and
+     enter: CTD_MS_1_0.KID
+  
+  3. Review your mapped set.  If any of the routines listed in the
+     ROUTINE SUMMARY section are mapped, they should be removed
+     from the mapped set at this time.
+  
+  4. From the Kernel Installation and Distribution System Menu, select
+     the Installation menu.
+  
+  5. From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter the appropriate patch
+     designation - EC*2.0*63, PX*1.0*149, SD*5.3*351, DG*5.3*606 and
+     IB*2.0*266):
+  
+       a.  Backup a Transport Global - this option will create a backup
+           message of any routines exported with the patch.  It will NOT
+           backup any other changes such as DDs or templates.
+       b.  Compare Transport Global to Current System  - this option will
+           allow you to view all changes that will be made when the patch
+           is installed.  It compares all components of the patch
+           (routines, DDs, templates, etc.).
+       c.  Verify Checksums in Transport Global - this option will
+           allow you to ensure the integrity of the routines that are in
+           the transport global.
+       d.  Print Transport Global - this option will allow you to view the
+           components of the KIDS build.
+  
+  6. Use the Install Package(s) option and select the package CTD MS 1.0.
+  
+  7. When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+     YES//',respond NO.
+  
+  8. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+     Protocols? YES//', respond YES.  When prompted to select the
+     options you would like to place out of order, enter the following:
+  
+       DG PTF MENU                      PTF Menu
+       DG REGISTRATION 10/10 REPRINT    10/10 Print without New Registration
+       ECMENU                           Event Capture Menu
+       EC GUI CONTEXT                   EC GUI Context
+       PXCE ENCOUNTER DATA ENTRY        PCE Encounter Data Entry
+       PXCE ENCOUNTER ENTRY & DELETE    PCE Encounter Data Entry & Delete
+       PXCE ENCOUNTER ENTRY NO DELETE   PCE Encounter Entry Without Delete
+       PXCE ENCOUNTER ENTRY SUPER       PCE Encounter Data Entry -
+                                        Supervisor
+       SCDX AMBCAR NIGHTLY XMIT         Ambulatory Care Nightly
+                                        Transmission to NPCDB
+       SDAM APPT MGT                    Appointment Management
+       SDAM APPT CHECK IN/OUT           Appointment Check-in/Check-out
+       SDADDEDIT                        Add/Edit Stop Codes
+       SDAPP                            Appointment Menu
+       SDI                              Check-in/Unsched. Visit
+       SDM                              Make Appointment
+  
+  9. If routines were unmapped as part of step 3, they should be
+     returned to the mapped set once the installation has run to
+     completion.
+
+Routine Information:
+====================
+
+Routine Name:
+  - IBACSV
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBATO1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBTOBI4
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBTRV2
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBTRVD
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCSC4E
+
+
+Routine Checksum:
+
+Routine Name:
+  - IB20P266
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCSC4C
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBTRE3
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBTRE4
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBATUTL
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBATLM2A
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBEFUNC2
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCSCH1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCU1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCSC5
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCCPT
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCSCP
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBATLM2B
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : TUSEYEV,ANDREY                Date Entered  : MAR 02, 2004
+Completed By: LANIGAN,VASSER                Date Completed: OCT 06, 2004
+Released By : BOTTINI,STEVE                 Date Released : OCT 08, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

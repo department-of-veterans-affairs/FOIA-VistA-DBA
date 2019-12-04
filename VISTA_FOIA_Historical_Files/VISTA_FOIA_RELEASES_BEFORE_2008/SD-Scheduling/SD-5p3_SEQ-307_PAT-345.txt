@@ -1,0 +1,209 @@
+$TXT Created by CURTIS,RICHARD L at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 07/28/04 at 07:02
+=============================================================================
+Run Date: SEP 22, 2004                     Designation: SD*5.3*345
+Package : SD - SCHEDULING                     Priority: Mandatory
+Version : 5.3       SEQ #307                    Status: Released
+                  Compliance Date: OCT 23, 2004
+=============================================================================
+
+Associated patches: (v)SD*5.3*293  <<= must be installed BEFORE `SD*5.3*345'
+
+Subject: ALLOW FOR NULL PROVIDER SSN WHEN SENDING DATA TO NPCDB
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ Allow a null Provider SSN when sending data to the NPCDB in Austin.  
+ There are cases where the provider is not a US citizen and, therefore, 
+ does not have a SSN. The error associated with this is: D140 - Provider 
+ SSN missing or invalid.
+    
+ ASSOCIATED NOIS:
+ ================
+ MPI-1102-61160   D140 Error Code
+    duplicates:   ISD-1102-72331  D140 Errors on Lab Since SD*5.3*245
+                        BED-0303-11613  D140 Error Code
+    
+ ASSOCIATED E3R(s):
+ ==================
+ N/A
+    
+ PARTICIPATING TEST SITES:
+ =========================
+ Clarksburg, WV
+ Memphis, TN
+ Salt Lake City, UT
+ St. Cloud, MN
+    
+ NOIS OVERVIEW:
+ ==============
+ 1.  MPI-1102-61160   D140 Error Code
+    
+     Problem:
+     --------
+     Since the national release of patches SD*5.3*245 and DG*5.3*389,
+     sites are getting error code D140 when running the "Incomplete
+     Encounters by Error" report.  Error D140 was introduced by patch
+     SD*5.3*245 for Provider SSN missing or invalid (i.e., contains 5
+     leading zeroes).  In cases where the provider is a non-U.S. citizen
+     and has no SSN or, when lab tests are completed at another facility
+     and the provider is not in the site's New Person file, the SSN will
+     be blank.
+    
+     Resolution:
+     -----------
+     An optional input parameter (NULLOK) is added to the SSN
+     validation logic in routine SCMSVUT0, where 1=Allow SSN to be null
+     and 0=Don't allow null SSNs (default).  Additionally, the validation 
+     logic for error code D140 is updated in the Transmitted Outpatient 
+     Encounter Error Code (#409.76) file.
+    
+ TECHNICAL:
+ ==========
+    
+ Optional input parameter (NULLOK) will be added to subroutine SSN in
+ routine SCMSVUT0, as follows:
+    
+    SSN(DATA,NOPCHK,NULLOK)
+    
+ And, line SSN+7 will be changed:
+    
+    From:  I '$D(DATA) Q 0
+      To:  I $G(DATA)="" Q +$G(NULLOK)
+    
+ Additionally, the validation logic for error code D140 is updated 
+ in the Transmitted Outpatient Encounter Error Code (#409.76) file
+ with post-init routine SC345PST, as follows:
+    
+    From:  S RES=$$SSN^SCMSVUT0(DATA,1)
+      To:  S RES=$$SSN^SCMSVUT0(DATA,1,1)
+    
+  ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+    
+      <tab>;;5.3;Scheduling;**[patch list]**;Aug 13, 1993
+    
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  SCMSVUT0               5073216              5132358      44,55,66,132,245
+                                                              254,293,345
+  SC345PST               N/A                   294836             345
+    
+  NOTE:  Post-init routine SC345PST will be deleted after installation.
+    
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ If the patch is installed during the normal workday, it is recommended
+ that the menu option shown in item 7a below be disabled.  This patch
+ should not be installed while the Ambulatory Care Nightly Transmission
+ to NPCDB is running.
+    
+ Installation should take less than 2 minutes.
+    
+ 1.  LOAD TRANSPORT GLOBAL
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the
+     INSTALL/CHECK MESSAGE PackMan option.
+    
+ 2.  DISABLE ROUTINE MAPPING   (DSM for Open VMS sites only)
+     -----------------------
+     Disable routine mapping on all systems for the routines listed in
+     the routine summary.
+    
+     NOTE:  If the routine(s) included in this patch are not currently in
+     your mapped routine set, please skip this step.
+    
+ 3.  START UP KIDS
+     -------------
+     Start up the Kernel Installation and Distribution System Menu
+     [XPD MAIN]:
+    
+           Edits and Distribution ...
+           Utilities ...
+           Installation ...
+    
+     Select Kernel Installation & Distribution System Option:  INStallation
+                                                               ---
+    
+     1.    Load a Distribution
+     2.    Verify Checksums in Transport Global
+     3.    Print Transport Global
+     4.    Compare Transport Global to Current System
+     5.    Backup a Transport Global
+     6.    Install Package(s)
+           Restart Install of Package(s)
+           Unload a Distribution
+    
+ 4.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter SD*5.3*345):
+    
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with the patch.  It will NOT
+         backup any other changes such as DDs or templates.
+    
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when the patch
+         is installed.  It compares all components of the patch
+         (routines, DDs, templates, etc.).
+    
+     c.  Verify Checksums in Transport Global - This option will ensure
+         the integrity of the routines that are in the transport global.
+    
+ 5.  Use the Install Package(s) option and select the package SD*5.3*345.
+    
+ 6.  When prompted "Want KIDS to INHIBIT LOGONS during the
+     install? YES//" respond NO.
+    
+ 7.  When prompted "Want to DISABLE Scheduled Options, Menu Options,
+     and Protocols? YES//" respond YES.
+    
+     a.  When prompted "Enter options you wish to mark as "Out of Order":"
+         Enter the following option:
+       
+         Ambulatory Care Nightly Transmission to NPCDB [SCDX AMBCAR 
+         NIGHTLY XMIT]
+    
+     b.  When prompted "Enter protocols you wish to mark as "Out of 
+         Order":" just press return.
+    
+ 8.  REBUILD MAPPED ROUTINE(S)   (DSM for Open VMS sites only)
+     -------------------------
+     Optional - Include the routine(s) distributed with this patch in
+     the mapped routine set.
+    
+     NOTE:  This step is only necessary if you performed step 2 or if
+     you wish to include the routine(s) in your mapped set.
+
+Routine Information:
+====================
+
+Routine Name:
+  - SCMSVUT0
+
+
+Routine Checksum:
+
+Routine Name:
+  - SC345PST
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : CURTIS,RICHARD                Date Entered  : FEB 11, 2004
+Completed By: DAWSON,TIM                    Date Completed: SEP 15, 2004
+Released By : BURTS,WANDA                   Date Released : SEP 22, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

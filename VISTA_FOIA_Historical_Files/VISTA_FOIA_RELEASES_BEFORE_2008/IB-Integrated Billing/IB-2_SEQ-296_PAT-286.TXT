@@ -1,0 +1,538 @@
+$TXT Created by PAJERSKI,JAN at DEVVII.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 12/19/05 at 11:30
+=============================================================================
+Run Date: FEB 01, 2006                     Designation: IB*2*286
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #296                      Status: Released
+                  Compliance Date: MAR 04, 2006
+=============================================================================
+
+Associated patches: (v)IB*2*260    <<= must be installed BEFORE `IB*2*286'
+                    (v)HL*1.6*118  <<= must be installed BEFORE `IB*2*286'
+
+Subject: PFSS GENERIC IBB COMPONENTS
+
+Category: 
+  - Data Dictionary
+  - Routine
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ *************************************************************************
+                                  IMPORTANT
+  
+ If your site is using the DSS Quadramed EPS encoding software it is 
+ important that you install their updates included in the DSS Quarterly CD
+ - 1Q-2006 before installing IB*2*286.  The software included in their CD 
+ is ACM 3.7, PTF 3.7, CCM 3.7.1, DSIP 1.1, VEJDCRE 3.5, VEJDPCE 20.0, and
+ VEJDPTF 6.8.  To validate if installed, check the INSTALL (#9.7) file for
+ an entry called "VEJD DSS CORE RPCS 3.5".
+  
+ *************************************************************************
+  
+  
+ This patch is part of the Patient Financial Services System (PFSS) 
+ project. PFSS patches are being released on various schedules.  Some patch
+ functionality will not be active until a new PFSS switch is activated 
+ during final implementation. PFSS will initially be implemented at select
+ pilot sites ONLY.
+   
+ The purpose of the PFSS project is to prepare the VistA environment for
+ the implementation of a commercial off-the-shelf (COTS) billing 
+ replacement system.  The project consists of the implementation of the
+ billing replacement system, business process improvements, and
+ enhancements to Veterans Health Information Systems and Technology
+ Architecture (VistA) to support integration with the COTS billing
+ replacement system. Significant changes to VistA legacy systems and
+ ancillary packages are necessary.
+   
+ These PFSS software components are not operational until the PFSS On/Off
+ Switch, distributed with patch IB*2*260, is set to "ON .  The ability for
+ the local site to set the switch to "ON  will be provided at the 
+ appropriate time with the release of a subsequent Integrated Billing
+ patch, IB*2*314.
+   
+ For more information about the PFSS project, review the documentation 
+ accompanying this patch and refer to the following website: 
+   
+      http://vista.med.va.gov/billreplace/
+   
+   
+ IB*2*286 contains routines, files, and a menu option in a new subsection
+ (IBB) created specifically for PFSS.  These software components, along
+ with components distributed in patch IB*2*260 (part of the CIDC patch),
+ provide the ability for various VistA applications to store data in IBB
+ files, as a common repository, in preparation for transmission to a COTS
+ billing replacement system.
+   
+ Patches IB*2*313 and IB*2*310, which are being distributed at a later
+ date, will provide the remaining essential IBB components for successful
+ implementation of PFSS functionality.
+   
+   
+ Functional Description:
+ =======================
+   
+ The IBB module operates chiefly through the use of several extrinsic
+ functions:
+   
+ (1) $$SWSTAT^IBBAPI()
+     
+     The calling application obtains the status of the PFSS On/Off
+     Switch via $$SWSTAT.  Applications will only proceed with PFSS
+     processing logic, if switch status is "ON".  In other words,
+     applications will not make calls to other IBB functions if
+     switch status is "OFF".
+    
+ (2) $$GETACCT^IBBAPI(IBBDFN,IBBARFN,IBBEVENT,IBBAPLR,.IBBPV1,.IBBPV2,
+                      .IBBPR1,.IBBDG1,.IBBZCL,IBBDIV,IBBRAIEN,.IBBSURG)
+   
+     Accounts must be established in the COTS billing replacement
+     system against which charges can be made.  Applications in
+     VistA establish an account via $$GETACCT by passing all the
+     necessary data in the input parameters.  When establishing
+     a new account, variable IBBARFN is passed as null.
+   
+     IBB stores the data in its PFSS ACCOUNT file (#375).  The
+     internal entry number for the file #375 record is referred to
+     as the PFSS Account Reference.  (The #.01 field also holds
+     the same value.)  The PFSS Account Reference is returned to
+     the calling application where it is stored in an application
+     file for later use (e.g., account updates and charging).
+   
+     The PFSS Account Reference is a VistA-only entity.  It has
+     no meaning to the COTS billing replacement system, and is not
+     communicated to that system.
+     
+     IBB calls the VDEF application ($$QUEUE^VDEFQM) to place a
+     messaging request in the VDEF Request Queue.  VDEF assembles
+     the appropriate HL7 message, which is transmitted via VistA
+     HL7 to the COTS system.  Thus, messaging is accomplished on a
+     near-real-time basis.
+    
+     Later, if the application needs to update account information
+     or cancel the account, it uses $$GETACCT with IBBARFN set to
+     the PFSS Account Reference.  IBB overwrites data in the PFSS
+     ACCOUNT record, as needed, and places a new message request
+     in the VDEF Request Queue.
+    
+ (3) $$GETCHGID^IBBAPI()
+    
+     The COTS billing replacement system expects to find a Unique
+     Charge ID associated with each charge transaction from VistA.
+     Applications responsible for charge processing call $$GETCHGID
+     to obtain a unique, sequential, numeric identifier.
+     
+     The Unique Charge ID is stored in the application database 
+     record containing the charge data.  This identifier is then
+     associated with the CPT procedure, HCPCS item, or Pharmacy
+     prescription fill/refill that forms the basis of the charge.
+   
+     The CURRENT CHARGE ID field (#2) of the PFSS SITE PARAMETERS
+     file (#372) holds the value of the last Unique Charge ID
+     issued.  It is incremented by 1 each time the function is
+     called.
+     
+ (4) $$CHARGE^IBBAPI(IBBDFN,IBBARFN,IBBCTYPE,IBBUCID,.IBBFT1,.IBBPR1,
+                     .IBBDG1,.IBBZCL,.IBBRXE,IBBORIEN,.IBBPROS)
+    
+     This function is called in order to place charge transaction
+     data into the PFSS CHARGE CACHE file (#373).  Most clinical 
+     applications will not use $$CHARGE.  Instead, they pass their
+     charge-related data to PCE through one of the supported 
+     "data-to-PCE" APIs.  Exceptions are OUTPATIENT PHARMACY and   
+     PROSTHETICS, which will call $$CHARGE directly.
+    
+     The input parameters to $$CHARGE include the PFSS Account
+     Reference (IBBARFN), the Unique Charge ID (IBBUCID), and Charge
+     Type (IBBCTYPE).  The Charge Type may be either "CG" (debit) or
+     "CD" (credit).
+     
+     The initial charge transaction sent through $$CHARGE for a
+     given item/procedure will have a Charge Type of "CG" and
+     will have a Unique Charge ID that is shared by no other charge
+     transaction.  Later, if it is necessary to amend or cancel the
+     charge, then additional transactions are sent to $$CHARGE with
+     Charge Type of "CG" for amendment, or Charge Type of "CD" for
+     cancellation, but still using the same Unique Charge ID to allow
+     positive identification in the COTS system.
+     
+     Since charging is a transactional process, each call to $$CHARGE
+     creates a new record in file #373.  These charge transactions
+     are not transmitted to the COTS system until the following
+     menu option runs via TaskManager:
+     
+     PFSS Charge Batch Processing  [IBBA BATCH DFT]
+   
+     This option should normally be scheduled to run daily at a time
+     of low system activity.  When the batch processor starts, the
+     CHARGE PROCESSOR RUNNING field (#.1) and the CHARGE PROCESS
+     START TIME field (#.11) in the PFSS SITE PARAMETERS file (#372)
+     are updated.  Only one batch processor job can be running at
+     a given time.  So if the CHARGE PROCESSOR RUNNING field is set
+     to "YES", then any additional jobs that attempt to start will
+     quit immediately.
+     
+     The charge records that have accumulated in file #373 are 
+     processed into HL7 batch messages.  Each batch message will 
+     contain many individual charge messages.  When a batch message has
+     been assembled, it is transmitted via VistA HL7 to the COTS system. 
+   
+     The local site can set the maximum number of individual messages 
+     to be included in a batch by adjusting the value of the MESSAGES PER
+     BATCH field (#.03) in the PFSS SITE PARAMETERS file (#372).  Field
+     #.03 can be set via the FileMan Enter/Edit option.  The numeric
+     range of this field is 10-999.
+   
+ (5) $$SETACCT^IBBAPI(IBBDFN,HLMTIENS)
+   
+     When account create messages (resulting from $$GETACCT) are 
+     received by the COTS billing replacement system, they are
+     processed.  As the account is setup, it is assigned a COTS
+     system-specific identifier.  This identifier is referred to as
+     the Account Number.  The assigned Account Number is added to the
+     HL7 message, and the message is sent back to VistA.
+   
+     In VistA, the routine that processes the inbound message will
+     call $$SETACCT.  This IBB function parses relevant data from the
+     HL7 message using the standard VistA HL7 API, locates the correct
+     record in the PFSS ACCOUNT file (#375) based on that data, and
+     stores the returned Account Number in the EXTERNAL ACCOUNT NUMBER
+     field (#.02).  If the account is later updated or cancelled in
+     VistA, the Account Number can be included in the HL7 message for
+     positive identification by the COTS system.
+   
+     The COTS system will also manage inpatient admissions and bed
+     movements.  To support VistA clinical applications, this bed
+     control information is provided to VistA via real-time HL7
+     messaging.  Each inpatient admission will have an Account Number
+     assigned by the COTS system.
+    
+     The inbound inpatient admission messages are processed by VistA 
+     Bed Control.  The processor routine will call $$SETACCT.  In this
+     specific scenario, $$SETACCT will create a new PFSS ACCOUNT 
+     record using minimal data (i.e., Patient ID, Admit Date/Time,
+     Ward Location), as well as the Account Number for the admission.
+     $$SETACCT returns the PFSS Account Reference to the calling
+     routine for storage in the PATIENT MOVEMENT (#405) admission
+     record.
+     
+ (6) $$EXTNUM^IBBAPI(IBBDFN,IBBARFN)
+    
+     It may be necessary for applications to retrieve the Account
+     Number assigned by the COTS billing replacement system for a given
+     patient admission/visit/encounter.  This simple function returns
+     the Account Number when the PFSS Account Reference is provided
+     as input.
+   
+ (7) A04^IBBAADTI
+    
+     This entry point is called from the PROTOCOL file (#101) entry,
+            IBB PFSS ADT-A04 CLIENT
+     which subscribes to the inbound message event driver for ADT-A04
+     messages.  This receiver code performs appropriate checks on the
+     incoming message and files the Account Number provided in the PV1
+     segment.  (See description of $$SETACCT^IBBAPI above.)  Depending
+     on the outcome, either an ACK (i.e., successful completion) or a
+     NAK (i.e., error encountered) application acknowledgement message
+     will be returned.
+    
+ (8) A05^IBBAADTI
+    
+     This entry point is called from the PROTOCOL file (#101) entry,
+            IBB PFSS ADT-A05 CLIENT
+     which subscribes to the inbound message event driver for ADT-A05
+     messages.  This receiver code performs appropriate checks on the
+     incoming message and files the Account Number provided in the PV1
+     segment.  (See description of $$SETACCT^IBBAPI above.)  Depending
+     on the outcome, either an ACK (i.e., successful completion) or a
+     NAK (i.e., error encountered) application acknowledgement message
+     will be returned.
+   
+ Functions (1) - (6) will be called by administrative and clinical packages
+ that are directly involved with the PFSS pilot project.  Those packages
+ are:
+   
+    OUTPATIENT PHARMACY
+    PATIENT CARE ENCOUNTER
+    PROSTHETICS
+    RADIOLOGY
+    REGISTRATION (PTF and Bed Control)
+    SCHEDULING
+    SURGERY
+   
+ Further details can be found in routine IBBDOC and in the Release Notes.
+ (See below.)
+   
+   
+ This patch addresses the following New Service Request (NSR):
+ =============================================================
+  
+ There are no NSRs associated with this patch.
+  
+  
+ This patch addresses the following NOIS/Remedy Ticket(s):
+ =========================================================
+  
+ There are no NOIS/Remedy tickets associated with this patch.
+  
+ Test Sites:
+ ===========
+ Boston HCS, MA
+ Dayton VAMC, OH
+ Tuscaloosa, AL
+  
+  
+        ================= DOCUMENTATION RETRIEVAL ==================
+   
+ More technical details for IB*2*286, can be retrieved from:
+   
+     File Name                 Description
+     ---------                 -----------
+     IB_2_P286_RN.PDF          IBB Generic API for PFSS Release Notes
+         
+ Sites may retrieve the documentation directly using FTP from  the 
+ ANONYMOUS.SOFTWARE directory at the following OI Field Offices:
+   
+                 Albany:  ftp.fo-albany.med.va.gov
+                  Hines:  ftp.fo-hines.med.va.gov
+         Salt Lake City:  ftp.fo-slc.med.va.gov
+ First available server:  download.vista.med.va.gov
+   
+ NOTE: Use Binary mode when transferring the .PDF file.  The .PDF 
+       files can be read on a PC using the Adobe Acrobat Reader 
+       program.
+   
+   
+        ================ INSTALLATION INSTRUCTIONS =================
+                           
+ This patch may be installed during normal business hours. VISTA users
+ will not be affected.
+                    
+                    
+ Install Time - less than 5 minutes 
+               
+                  
+   1.   LOAD TRANSPORT GLOBAL 
+        ---------------------
+        Choose the PackMan message containing this patch and invoke the 
+        INSTALL/CHECK MESSAGE PackMan option.  
+               
+   2.   DISABLE ROUTINE MAPPING   (DSM for Open VMS sites only) 
+        -----------------------
+        Disable routine mapping on all systems for the routines listed in 
+        step 3 below.  
+       
+        NOTE:  If the routines included in this patch are not currently in 
+               your mapped routine set, please skip this step.
+                  
+   3.   COMPONENTS SENT WITH PATCH
+        --------------------------
+        The following is a list of the routines included in this patch.  
+        The second line of each of these routines now looks like: 
+                 
+         <tab>;;2.0;INTEGRATED BILLING;**[patch list]**;21-MAR-94
+           
+                           CHECK^XTSUMBLD results
+   
+        Routine name   Before Patch       After Patch         Patch List
+        ============   ============       ===========         ==========
+        IB20P286       N/A                1195340             286
+        IBBAACCT       N/A                10110875            286
+        IBBAADD        N/A                1495041             286
+        IBBAADTI       N/A                10465373            286
+        IBBACDM        N/A                1245752             286
+        IBBACHRG       N/A                8455033             286
+        IBBADFTO       N/A                654168              286
+        IBBAPI         411020             2133939             256,228,267,
+                                                              260,286
+        IBBDOC         211310             221183              267,260,286
+           
+        Total number of routines modified: 2
+        Total number of new routines:      7
+        Total number of deleted routines:  0
+   
+   
+        The following is a list of files included in this patch:
+    
+                                             UP    SEND  DATA                
+                                             DATE  SEC.  COMES  SITE   RSLV  
+        FILE #  NAME                         DD    CODE  W/FILE DATA   PTS 
+        --------------------------------------------------------------------
+        372     PFSS SITE PARAMETERS         YES   YES   NO      --    --
+        373     PFSS CHARGE CACHE            YES   YES   NO      --    --   
+        375     PFSS ACCOUNT                 YES   YES   NO      --    --
+         
+   
+        File #372 was originally distributed with IB*2*260.  
+   
+   
+        The following mail groups are added to the MAIL GROUP file (#3.8):
+        
+        NAME: IBB PFSS DATA TRANS ERROR         TYPE: public
+        ALLOW SELF ENROLLMENT?: NO
+        DESCRIPTION:   This Mailgroup will receive a message whenever an 
+        error is encountered while building an HL7 message for PFSS.
+   
+        NAME: IBB PFSS CHARGE ERRORS            TYPE: public
+        ALLOW SELF ENROLLMENT?: NO
+        DESCRIPTION:   The purpose of this mail group is to receive any 
+        error message generated in IBB during processing of charge
+        transaction data. Processing of a charge transaction is initiated
+        by a call from a clinical application to CHARGE^IBBAPI.
+    
+        This mail group is added to the MAIL GROUP file via patch 
+        IB*2.0*286.  A post-installation routine adds this mail group to
+        the MAIL GROUP FOR CHARGE field (#.06) in the PFSS SITE PARAMETERS
+        file (#372).
+    
+     During the installation, you will be prompted to enter the Coordinator
+     for these mail groups.  You should enter the name of the person who
+     will be responsible for adding or removing members to the mail
+     groups.  The members added to the mail group should be any IRM staff
+     who will be responsible for troubleshooting errors that relate to
+     PFSS.
+  
+  
+        The following menu option is added to the OPTION file (#19):
+    
+        PFSS Charge Batch Processing  [IBBA BATCH DFT]
+    
+        When PFSS is activated at a site, this option will be scheduled to
+        run on a daily basis via TaskManager.  No action should be taken to
+        schedule IBBA BATCH DFT until your site is specifically directed to
+        do so.
+   
+    
+        The following entries are added to the PROTOCOL file (#101):
+   
+        NAME: IBB PFSS ADT-A04 SERVER           
+        ITEM TEXT: PFSS/IBB ADT-A04 Receiver
+        TYPE: event driver
+    
+        NAME: IBB PFSS ADT-A04 CLIENT           
+        TYPE: subscriber
+    
+        NAME: IBB PFSS ADT-A05 SERVER           
+        ITEM TEXT: PFSS/IBB ADT-A05 Receiver
+        TYPE: event driver 
+    
+        NAME: IBB PFSS ADT-A05 CLIENT           
+        TYPE: subscriber
+        
+        These are needed to allow IBB to receive incoming ADT-A04 and
+        ADT-A05 messages from the COTS billing system.
+    
+              
+        The following entries are added to HL7 APPLICATION PARAMETER
+        (#771) file.
+   
+        IBB PFSS RECV
+        IBB PFSS SENDING
+   
+        These Application Parameter settings are associated with the
+        four protocols listed above.
+   
+   
+   4.   START UP KIDS 
+        -------------
+        Start up the Kernel Installation and Distribution System Menu 
+        [XPD MAIN]: 
+                    
+             Edits and Distribution ...  
+             Utilities ...  
+             Installation ...  
+                     
+      Select Kernel Installation & Distribution System Option: INStallation 
+                                                               ---
+             Load a Distribution 
+             Print Transport Global 
+             Compare Transport Global to Current System 
+             Verify Checksums in Transport Global 
+             Install Package(s) 
+             Restart Install of Package(s) 
+             Unload a Distribution 
+             Backup a Transport Global 
+        
+      Select Installation Option: 
+       
+   5.   Select Installation Option: 
+        ---------------------------
+        NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+               NAME, enter IB*2.0*286):
+                    
+        a.  Backup a Transport Global - This option will create a backup
+            message of any routines exported with this patch. It will not
+            backup any other changes such as DD's or templates.
+        b.  Compare Transport Global to Current System - This option will
+            allow you to view all changes that will be made when this patch
+            is installed.  It compares all components of this patch
+            (routines, DD's, templates, etc.).
+        c.  Verify Checksums in Transport Global - This option will allow
+            you to ensure the integrity of the routines that are in the
+            transport global.
+                     
+   6.   Select Installation Option: Install Package(s) 
+                                    ----------------
+        **This is the step to start the installation of this KIDS patch: 
+             
+        a. Choose the Install Package(s) option to start the patch install.
+        b. When prompted 'Want KIDS to Rebuild Menu Trees Upon Completion 
+           of Install? YES//' answer NO.
+        c. When prompted 'Want KIDS to INHIBIT LOGONs during the 
+           install? YES//' answer NO.
+        d. When prompted 'Want to DISABLE Scheduled Options, Menu 
+           Options, and Protocols? YES//' answer NO.
+                
+   7.  REBUILD MAPPED ROUTINE(S)  (DSM for Open VMS sites only)
+       -------------------------
+       Optional - Include the routines distributed with this patch
+       in the mapped routine set.
+                     
+       NOTE: This step is only necessary if you performed step 2 or 
+             if you wish to include the routines in your mapped set.
+                           
+   8.  Two new mail groups were added during the installation, IBB PFSS
+       DATA TRANS ERROR and IBB PFSS CHARGE ERRORS  Don't neglect to add
+       members to both groups.
+  
+   9.  The post-installation routine, IB20P286, can be deleted
+       after successful installation.
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: IB20P286
+    Before:            After:  B1896750  **286**
+Routine Name: IBBAACCT
+    Before:            After: B32887998  **286**
+Routine Name: IBBAADD
+    Before:            After:  B4110066  **286**
+Routine Name: IBBAADTI
+    Before:            After: B49644433  **286**
+Routine Name: IBBACDM
+    Before:            After:  B1943255  **286**
+Routine Name: IBBACHRG
+    Before:            After: B31941477  **286**
+Routine Name: IBBADFTO
+    Before:            After:   B930780  **286**
+Routine Name: IBBAPI
+    Before:   B540488  After:  B3356759  **256,228,267,260,286**
+Routine Name: IBBDOC
+    Before:   B264185  After:   B657364  **267,260,286**
+
+=============================================================================
+User Information:
+Entered By  : ZEIGLER,EDWARD L              Date Entered  : SEP 22, 2004
+Completed By: LYNCH,MARY F.                 Date Completed: JAN 27, 2006
+Released By : BOTTINI,STEVE                 Date Released : FEB 01, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

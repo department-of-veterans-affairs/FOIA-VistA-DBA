@@ -1,0 +1,1564 @@
+$TXT Created by ANDREASSEN,LARRY J at NXT.KERNEL.FO-OAKLAND.MED.VA.GOV  (KIDS) on Friday, 05/30/03 at 11:38
+=============================================================================
+Run Date: JUN 11, 2003                     Designation: HL*1.6*103
+Package : HL - HEALTH LEVEL SEVEN     Priority: Mandatory
+Version : 1.6        SEQ #88                    Status: Released
+                  Compliance Date: JUL 12, 2003
+=============================================================================
+
+
+Subject: Capacity Management APIs Optimizations
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+ Test sites:      North Florida/South Georgia HCS (Gainesville/
+                  Lake City), Northern Indiana, White River, 
+                  VA Connecticut HCS (West Haven/Newington),
+                  Kansas City, Buffalo
+  
+ NOIS:            None
+  
+ Required Builds: HL*1.6*79, HL*1.6*88
+  
+         ==================================================
+  
+ OVERVIEW
+ --------
+ Three application programming interfaces (API) have been created for
+ calculating the volume of HL7 activity at a site over a user-defined
+ period of time.  These APIs have been created for the Capacity 
+ Planning (CP) team, but can be used by sites as well.  These new 
+ APIs are $$CM^HLUCM, $$CM2^HLUCM, and $$CM2F^HLUCM.
+  
+ Note:  Capacity Planning was previously known as Capacity Management.
+  
+ These APIs calculate the volume of HL7 activity over a period of time.  
+ The information collected includes the following:
+  
+     1. Total number characters in the messages.
+     2. Total Number of messages or message units.
+     3. Total time elapsed for transmission of messages.
+  
+ The $$CM^HLUCM API was created by patch HL*1.6*79, and is similar in 
+ almost all details to the $$CM2^HLUCM API.  The major difference is 
+ related to the count of messages, or message units.  The $$CM^HLUCM API 
+ returns the number of messages, and the $$CM2^HLUCM API returns the 
+ number of message units.  $$CM2F^HLUCM is most like $$CM2^HLUCM in that it
+ returns the total number of messages units.  However, it differs from both
+ $$CM^HLUCM and $$CM2^HLUCM in that it includes totals only for messages
+ sent to remote facilities.
+  
+ Note:  A "message unit" is a collection of related messages.  (E.g., an 
+        outgoing message, and the acknowledgement message, which would 
+        form a collection of related messages, or message unit.)
+  
+ This patch makes minor changes to the $$CM and $$CM2 APIs.  But, the 
+ users of these APIs do not need to refer to the patch documentation for 
+ HL*1.6*79 and HL*1.6*88, because full documentation for all APIs are 
+ included in this patch HL*1.6*103.
+  
+  
+ ENHANCEMENTS & CHANGES
+ ----------------------
+ Some problems (i.e., "bugs") in $$CM^HLUCM and $$CM2^HLUCM are fixed by 
+ this patch.  In addition, the $$CM^HLUCM and $$CM2^HLUCM APIs have been 
+ optimized to run more efficiently.
+  
+ Some enhancements have been implemented for all three APIs.  These 
+ include:
+  
+ * A common load process for all APIs.  (This ensures that the character
+   count totals, and the transmission time totals for all  three APIs are
+   identical.  Naturally, the number of messages returned by $$CM^HLUCM 
+   will differ from the number of units returned by $$CM2^HLUCM.  This is
+   explained more fully in the next section.)
+  
+ * Changes in the structure of the ^TMP($J,"HLUCMSTORE") debug data.
+  
+ * Remote facility totals added to the ^TMP($J,"HLUCMSTORE") debug data.
+  
+ * Developer utility to assist in the display of the totals returned by
+   all three APIs, and to view the ^TMP($J,"HLUCMSTORE") debug data.
+  
+  
+ MESSAGES VS MESSAGE UNITS
+ -------------------------
+ Messages are discrete transmitted messages.  An example of this would be 
+ a message transmitted to another medical center containing patient 
+ demographic information.  Obviously, this message does not include any of 
+ the acknowledgement messages returned by the medical center receiving the 
+ patient information verifying receipt and processing.
+  
+ Message units consist of one or more related messages.  In the above
+ example, the "message unit" would include the initial message, and also
+ all messages sent back and forth between the source medical center and
+ receiving medical center in response to the original message.  A
+ message unit might include the (1) original message, (2) commit
+ acknowledgement by the receiving site, (3) application acknowledgement by
+ receiving site, and (4) commit acknowledgement to the application
+ acknowledgement by the source site.  In this example, the $$CM^HLUCM API
+ reports four(4) messages, whereas the $$CM2^HLUCM API reports one(1)
+ "message unit."
+  
+  
+ TOTALS
+ ------
+ The totals returned by the $$CM^HLUCM, $$CM2^HLUCM, and $$CM2F^HLUCM APIs 
+ are subtotaled by:
+  
+     1. TIME OF TRANSMISSION OR RECEIPT. Time entries are
+        rounded to the hour.
+        - Time data is subtotaled by namespace, and within namespace
+          by protocol.
+  
+     2. NAMESPACE.
+        - Namespace data is subtotaled by whether the message unit is
+          incoming or outgoing, and further subtotaled by namespace, time
+          of transmission, and protocol.
+        - Namespace data is also subtotaled by whether the message unit
+          originated locally or remotely, and further subtotaled by
+          namespace, time of transmission, and protocol.
+  
+     3. PROTOCOL
+        - Protocol data is subtotaled by namespace and time of
+          transmission.
+  
+  
+ MESSAGE UNIT DETAILS
+ --------------------
+ Message units frequently contain more than one individual message.  When
+ this is the case, the following actions occur:
+  
+  - The time of transmission is calculated using all messages, and is
+    calculated by comparing the earliest time of transmission for any
+    message and the latest time of receipt for any message in the
+    message unit.
+  - The namespace is determined by evaluating the first message in the
+    message unit.
+  - The protocol is determined by evaluating the first message in the
+    message unit.
+  
+  
+ API SYNTAX
+ ------------
+ The syntax for the Capacity Planning HL7 APIS is shown below.
+  
+     $$CM^HLUCM(START,END,NAMESPACE,PROTOCOL,SAVE,CONDITION,ERRORS)
+     $$CM2^HLUCM(START,END,NAMESPACE,PROTOCOL,SAVE,CONDITION,ERRORS)
+     $$CM2F^HLUCM(START,END,NAMESPACE,PROTOCOL,SAVE,CONDITION,ERRORS)
+  
+ The syntax and parameters for all three APIs are identical.
+  
+ When these APIs are invoked, they return a three-piece string of data 
+ containing totals from all messages or message units found matching the 
+ parameter-defined criteria.  The information returned is "Total number of 
+ characters ^ Total number of messages or message units ^ Total seconds to 
+ transmit and receive."  (See OUTPUT below for more information.)  When 
+ these APIs are invoked they also store these totals in the ^TMP global, 
+ as well as additional subtotal data.  
+  
+  
+ INPUT PARAMETERS
+ ----------------
+ The input parameters used by the $$CM^HLUCM, $$CM2^HLUCM, and $$CM2F^HLUCM 
+ APIs are listed and explained below.
+  
+ PARAMETER  EXPLANATION
+ -------------------------------------------------------------------------
+ START       This is a FileMan date.  It sets the beginning point for the
+             time range for the calculation of the HL7 activity totals.
+ END         This is also a FileMan date.  It sets the ending point for the
+             time range for the calculation of HL7 activity totals.
+ NAMESPACE   This refers to the namespace of a message unit.  The namespace
+             of a message unit is determined by the following steps:
+             - Finding the PROTOCOL file (#101) entry associated with a
+               message unit.
+             - Finding the PACKAGE file (#9.4) entry associated with the
+               PROTOCOL file entry.
+             - Finding the namespace in the PACKAGE file entry.
+             The NAMESPACE parameter can be passed in several different
+             ways as explained in the "INPUT PARAMETERS: ADDITIONAL
+             DISCUSSION - NAMESPACE" section of this patch description.
+ PROTOCOL    This is the protocol of a message unit.  The PROTOCOL
+             parameter
+             can be passed in several different ways as explained in the
+             "INPUT PARAMETERS: ADDITIONAL DISCUSSION - PROTOCOL" section.
+ SAVE        This parameter is free-text data, and specifies the initial
+             subscript to be used when storing ^TMP data.  If $$CM2^HLUCM
+             is invoked, and "HLTYPE" is passed as the value of the SAVE
+             parameter, data will be stored in the ^TMP("HLTYPE",$J,...)
+             global.
+ CONDITION   This parameter can be "EITHER" or "BOTH".  CONDITION refers to
+             the namespace and the protocol of a message unit.  If the
+             "EITHER" condition is specified, a message unit will be
+             counted if "either" of the following conditions is met:
+             - NAMESPACE parameter is satisfied (this is discussed in
+               length later in this patch description), or the
+             - PROTOCOL parameter is satisfied.
+               If the BOTH condition is specified, a message unit will be
+               counted only if "both" the NAMESPACE and PROTOCOL parameters
+               are satisfied.
+ ERRORS      This parameter must be passed by reference.  It specifies the
+             array name location for error information to be stored.
+  
+  
+ OUTPUT
+ ------
+ When the $$CM^HLUCM, $$CM2^HLUCM, and $$CM2F^HLUCM APIs are invoked, they 
+ return a three-piece string of data.  The following example shows the 
+ syntax of this call and the resulting output:
+  
+    >W $$CM2^HLUCM(3010416,3010416.0005,1,1,"HLTOTS","EITHER",.ERR)
+    290060^805^792
+  
+ NOTE: The $$CM2^HLUCM API is used in this example.  However, the 
+       following discussion also applies to $$CM^HLUCM and in most
+       details to the $$CM2F^HLUCM API.      
+  
+ NOTE: Additional information regarding the input parameters - in
+       particular, the "1" found in the NAMESPACE and PROTOCOL 
+       parameter positions - is provided later in this patch description.
+  
+ Notice in the previous example, the API returned the value 
+ "290060^805^792". This refers to the number of characters in all matching 
+ message units, the number of message units, and the total processing time 
+ for these message units. To better explain this:
+  
+   - 805 matching message units were found between 4/16/2001 and
+     4/16/2001@00:05. (The value 805 is the second piece of data.)
+   - These 805 message units held 290,060 total characters. (The value
+     290060 is the first piece of data.)
+   - It took a total of 792 seconds to transmit and/or receive the
+      805 message units. (The value 792 is the third piece of data.)
+  
+ In addition to these three pieces of data, this call created other data,
+ stored in the ^TMP global, in which subtotals by various criteria can be
+ found.  This data is shown in the following example:
+  
+     1 ^TMP("HLTOTS",$J) = 290060^805^792
+    --------------------------------------------------------------
+     2 ^TMP("HLTOTS",$J,"HR") = 290060^805^792
+     3 ^TMP("HLTOTS",$J,"HR","TM") = 290060^805^792
+     4 ^TMP("HLTOTS",$J,"HR","TM","U") = 290060^805^792
+     5 ^TMP("HLTOTS",$J,"HR","TM","U","3010416.00") = 290060^805^792
+     6 ^TMP("HLTOTS",$J,"HR","TM","U","3010416.00","DG") = 289677^804^214
+     7 ^TMP("HLTOTS",$J,"HR","TM","U","3010416.00","DG","VAFH A08~4620") =
+        289677^804^214
+     8 ^TMP("HLTOTS",$J,"HR","TM","U","3010416.00","SD") = 383^1^578
+     9 ^TMP("HLTOTS",$J,"HR","TM","U","3010416.00","SD","VAFC ADT-A08-SC
+        HED SERVER~4654") = 383^1^578
+    --------------------------------------------------------------
+    10 ^TMP("HLTOTS",$J,"NMSP") = 290060^805^792
+    11 ^TMP("HLTOTS",$J,"NMSP","IO") = 290060^805^792
+    12 ^TMP("HLTOTS",$J,"NMSP","IO","O") = 290060^805^792
+    13 ^TMP("HLTOTS",$J,"NMSP","IO","O","DG") = 289677^804^214
+    14 ^TMP("HLTOTS",$J,"NMSP","IO","O","DG","3010416.00") = 289677^804^
+        214
+    15 ^TMP("HLTOTS",$J,"NMSP","IO","O","DG","3010416.00","VAFH A08~
+        4620") = 289677^804^214
+    16 ^TMP("HLTOTS",$J,"NMSP","IO","O","SD") = 383^1^578
+    17 ^TMP("HLTOTS",$J,"NMSP","IO","O","SD","3010416.00") = 383^1^578
+    18 ^TMP("HLTOTS",$J,"NMSP","IO","O","SD","3010416.00","VAFC ADT-A08-
+        SCHED SERVER~4654") = 383^1^578
+                               -----------------------------------
+    19 ^TMP("HLTOTS",$J,"NMSP","LR") = 290060^805^792
+    20 ^TMP("HLTOTS",$J,"NMSP","LR","L") = 290060^805^792
+    21 ^TMP("HLTOTS",$J,"NMSP","LR","L","DG") = 289677^804^214
+    22 ^TMP("HLTOTS",$J,"NMSP","LR","L","DG","3010416.00") = 289677^804^
+        214
+    23 ^TMP("HLTOTS",$J,"NMSP","LR","L","DG","3010416.00","VAFH A08~
+        4620") = 289677^804^214
+    24 ^TMP("HLTOTS",$J,"NMSP","LR","L","SD") = 383^1^578
+    25 ^TMP("HLTOTS",$J,"NMSP","LR","L","SD","3010416.00") = 383^1^578
+    26 ^TMP("HLTOTS",$J,"NMSP","LR","L","SD","3010416.00","VAFC ADT-A08-
+        SCHED SERVER~4654") = 383^1^578
+    --------------------------------------------------------------
+    27 ^TMP("HLTOTS",$J,"PROT") = 290060^805^792
+    28 ^TMP("HLTOTS",$J,"PROT","PR") = 290060^805^792
+    29 ^TMP("HLTOTS",$J,"PROT","PR","P") = 290060^805^792
+    30 ^TMP("HLTOTS",$J,"PROT","PR","P","VAFC ADT-A08-SCHED SERVER~4654")
+        = 383^1^578
+    31 ^TMP("HLTOTS",$J,"PROT","PR","P","VAFC ADT-A08-SCHED SERVER~4654"
+        ,"SD") = 383^1^578
+    32 ^TMP("HLTOTS",$J,"PROT","PR","P","VAFC ADT-A08-SCHED SERVER~4654"
+        ,"SD","3010416.00") = 383^1^578
+    33 ^TMP("HLTOTS",$J,"PROT","PR","P","VAFH A08~4620") = 289677
+        ^804^214
+    34 ^TMP("HLTOTS",$J,"PROT","PR","P","VAFH A08~4620","DG") = 289677^
+        804^214
+    35 ^TMP("HLTOTS",$J,"PROT","PR","P","VAFH A08~4620","DG",
+        "3010416.00") = 289677^804^214
+    --------------------------------------------------------------
+    36 ^TMP("HLTOTS",$J,"RFAC") = 275^2^10
+    37 ^TMP("HLTOTS",$J,"RFAC","LR") = 275^2^10
+    38 ^TMP("HLTOTS",$J,"RFAC","LR","R") = 275^2^10
+    39 ^TMP("HLTOTS",$J,"RFAC","LR","R","ALBUQUERQUE CHAMPVA") = 275^2^10
+    40 ^TMP("HLTOTS",$J,"RFAC","LR","R","ALBUQUERQUE CHAMPVA","DG") =
+       275^2^10
+    41 ^TMP("HLTOTS",$J,"RFAC","LR","R","ALBUQUERQUE CHAMPVA","DG",
+       3010406.00) = 275^2^10
+    42 ^TMP("HLTOTS",$J,"RFAC","LR","R","ALBUQUERQUE CHAMPVA","DG",
+       3010406.00, ","VAFH A08~4620") = 275^2^10
+  
+    Note: Row numbers have been artificially placed in front of each
+          global node to facilitate the discussion of the ^TMP global
+          output.  Separator lines have also been added to the global
+          data shown above for the same reason.
+  
+    Note: The totals for messages sent to remote facilities are placed 
+          in the new ^TMP("HLTOTS",$J,"RFAC") section.  The totals from
+          this section will not equal the totals from the "HR", "NMSP",
+          and "PROT" sections because these other sections hold totals
+          for messages sent locally and also to remote facilities.  
+          Refer to the discussion of the $$CM2F^HLUCM API for additional
+          information.
+  
+  
+ OUTPUT: HR SUBSCRIPT
+ --------------------
+ ROW #1 in the global data above holds the grand totals for the call to
+ $$CM2^HLUCM.  The data in this row, ^TMP("HLTOTS",$J), is the same as the
+ value returned by the call to the $$CM2^HLUCM API.
+  
+ ROWS #2-9 hold the totals for all message units divided  by the time of
+ transmission.  The subscripts found in these rows are explained as
+ follows:
+  
+    HR - Initial subscript for time-sorted data.  (This is a constant
+         value; it will always be "HR".)
+  
+    TM - Second subscript for time-sorted data.  (This is also a
+         constant value subscript.  It was added to keep the structure
+         of this global the same as the other global sections mentioned
+         below.)
+  
+    U -  This subscript specifies whether the message unit totals are from
+         TCP (T), Mailman (M), or Unknown (U) activity.  In this example,
+         the data is from "Unknown" activity.
+  
+    3010416.00 - Specifies the time of message unit transmission rounded to
+         the hour.
+  
+    DG,SD - Namespaces of message unit totals in the above example.
+  
+    VAFH A08~4620 & VAFC ADT-A080SCHED SERVER~4654 - PROTOCOL file
+         entries. ("VAFH A08" is the name of entry "4620" in the
+         PROTOCOL file.)
+  
+ The following is a detailed explanation of ROWS 2# through #9.  The
+ structure of this global is identical to that found in the "OUTPUT: NMSP
+ SUBSCRIPT" and "OUTPUT: PROT SUBSCRIPT" sections of this patch
+ description. (These sections can be found later in this document.)  So,
+ the comments about structure made next are applicable to all sections
+ of the ^TMP("HLTOTS",$J) global.
+  
+ ROW #2 holds the grand total for all entries in the
+ ^TMP("HLTOTS",$J,"HR") section.  The totals of this node will always
+ equal the grand total in the ^TMP("HLTOTS",$J) node (i.e., ROW #1).
+  
+ ROW #4 holds the subtotals for all message units transmitted or received
+ during the first hour of 4/1/2001 with a designation of "U" meaning
+ "UNKNOWN."
+  
+ ROW #5 holds the subtotals for all message units transmitted during the
+ first hour of 4/1/2001 (i.e., 3010416.00).  For the sake of brevity
+ in this documentation, the total of this row equals the total of ROW #2,
+ because only one hour was included in this example.  If instead of one
+ hour, multiple hours had been included, there would be multiple subtotal
+ nodes for each hour, and the sum of these subtotals would equal ROW #2.
+ This can be seen more clearly in the next section of this patch
+ description "OUTPUT: NMSP SUBSCRIPT".
+  
+ ROW #6 holds the subtotals for all message units with the "DG" namespace:
+ 289677 characters in 804 message units that were transmitted or received
+ in 214 total seconds.
+  
+ ROW #7 holds the subtotals for all message units with the "DG" namespace,
+ for protocol "VAFH A08~4620".
+  
+ ROW #8 holds the subtotals for all message units with the "SD" namespace.
+  
+ ROW #9 holds the subtotals for all message units with the "SD" namespace,
+ for protocol "VAFC ADT-A08-SCHED SERVER~4654".
+  
+ Note that the totals of ROW #6 (289,677 characters, 804 message units, 214
+ seconds) and ROW #8 (383 characters, 1 message unit, 578 seconds) equal
+ the grand totals (290,060 characters, 805 message units, 792 seconds)
+ returned for this section.
+  
+  
+ OUTPUT: NMSP SUBSCRIPT
+ ----------------------
+ Refer to ROWS 10-26, the "NMSP", or namespace, section in the
+ ^TMP("HLTOTS",$J) global. The subscripts in this section are explained
+ as follows:
+  
+  NMSP - Initial subscript for namespace data.
+  
+    IO - There are two subdivisions within this section:
+            1. Incoming (I)/Outgoing (O)/Unknown (U).
+            2. Local (L)/Remote (R)/Unknown (U).
+         This IO subscript holds the Incoming/Outgoing subtotals.
+  
+    LR - The LR subscript holds the Local/Remote subtotals.
+  
+ The other subscripts in this section that are not mentioned are
+ individual namespaces and protocols.
+  
+  
+ OUTPUT: PROT SUBSCRIPT
+ ----------------------
+ Refer to ROWS 27-35, the subscripts in the protocol-related section of the
+ ^TMP("HLTOTS",$J) global are explained as follows:
+  
+    PR - There are no variable subsections in this section (similar to
+         the Local/Remote and the Incoming/Outgoing subtotals found in the
+         previous section "OUTPUT: NMSP SUBSCRIPT.")  This means that the
+         PR subscript will never change. (It was added to keep the data
+         structure compatible with all other sections.)
+  
+    P -  This variable also is a placeholder like PR, and will not change.
+  
+ The other subscripts in this section that are not specifically mentioned
+ are individual namespaces and protocols.
+  
+  
+ OUTPUT: RFAC SUBSCRIPT
+ ----------------------
+ The RFAC subscript holds totals for messages sent to remote facilities, 
+ and is discussed in detail in the discussion of the new $$CM2F^HLUCM API.
+  
+  
+ NEW API: $$CM2F^HLUCM
+ --------------------
+ The $$CM^HLUCM API was created by patch HL*1.6*79.  Patch HL*1.6*88 
+ created the $$CM2^HLUCM API.  These APIs return totals for all messages 
+ matching the time, namespace, and protocol parameters passed into the 
+ APIs.
+  
+ The new $$CM2F^HLUCM API is introduced by this API in order to provide 
+ totals exclusively for messages sent to remote facilities.
+  
+ The terminal dialogue seen when calling this API is shown next.
+  
+ ===================== BEGINNING OF TERMINAL CAPTURE =====================
+ >W $$CM2F^HLUCM(3030312.14,3030312.1402,1,1,"TOT","EITHER",.ERR)
+ 536^3^30
+ ======================= END OF TERMINAL CAPTURE =====================
+  
+ When the $$CM2F^HLUCM API is called, totals are returned as shown above.  
+ In addition, the following global is created.
+  
+ ^TMP("TOT",541283335) = 536^3^30^3
+ -------------------------------------------------------------------------
+ ^TMP("TOT",541283335,"HR") = 536^3^30
+ ^TMP("TOT",541283335,"HR","TM") = 536^3^30
+ ^TMP("TOT",541283335,"HR","TM","T") = 536^3^30
+ ^TMP("TOT",541283335,"HR","TM","T","ALBUQUERQUE CHAMPVA") = 536^3^30
+ ^TMP("TOT",541283335,"HR","TM","T","ALBUQUERQUE CHAMPVA",3030312.15) = 
+    536^3^30
+ ^TMP("TOT",541283335,"HR","TM","T","ALBUQUERQUE CHAMPVA",3030312.15,
+    "IVM") = 536^3^30
+ ^TMP("TOT",541283335,"HR","TM","T","ALBUQUERQUE CHAMPVA",3030312.15,
+    "IVM","VAMC 512 QRY-Z10 SERVER~6027") = 536^3^30
+ -------------------------------------------------------------------------
+ ^TMP("TOT",541283335,"NMSP") = 536^3^30
+ ^TMP("TOT",541283335,"NMSP","IO") = 536^3^30
+ ^TMP("TOT",541283335,"NMSP","IO","O") = 536^3^30
+ ^TMP("TOT",541283335,"NMSP","IO","O","ALBUQUERQUE CHAMPVA") = 536^3^30
+ ^TMP("TOT",541283335,"NMSP","IO","O","ALBUQUERQUE CHAMPVA","IVM") = 
+    536^3^30
+ ^TMP("TOT",541283335,"NMSP","IO","O","ALBUQUERQUE CHAMPVA","IVM",
+    3030312.15) = 536^3^30
+ ^TMP("TOT",541283335,"NMSP","IO","O","ALBUQUERQUE CHAMPVA","IVM",
+    3030312.15,"VAMC 512 QRY-Z10 SERVER~6027") = 536^3^30
+ ^TMP("TOT",541283335,"NMSP","LR") = 536^3^30
+ ^TMP("TOT",541283335,"NMSP","LR","R") = 536^3^30
+ ^TMP("TOT",541283335,"NMSP","LR","R","ALBUQUERQUE CHAMPVA") = 536^3^30
+ ^TMP("TOT",541283335,"NMSP","LR","R","ALBUQUERQUE CHAMPVA","IVM") = 
+    536^3^30
+ ^TMP("TOT",541283335,"NMSP","LR","R","ALBUQUERQUE CHAMPVA","IVM",
+    3030312.15) = 536^3^30
+ ^TMP("TOT",541283335,"NMSP","LR","R","ALBUQUERQUE CHAMPVA","IVM",
+    3030312.15,"VAMC 512 QRY-Z10 SERVER~6027") = 536^3^30
+ -------------------------------------------------------------------------
+ ^TMP("TOT",541283335,"PROT") = 536^3^30
+ ^TMP("TOT",541283335,"PROT","PR") = 536^3^30
+ ^TMP("TOT",541283335,"PROT","PR","P") = 536^3^30
+ ^TMP("TOT",541283335,"PROT","PR","P","ALBUQUERQUE CHAMPVA") = 536^3^30
+ ^TMP("TOT",541283335,"PROT","PR","P","ALBUQUERQUE CHAMPVA","VAMC 512 
+    QRY-Z10 SERVER~6027") = 536^3^30
+ ^TMP("TOT",541283335,"PROT","PR","P","ALBUQUERQUE CHAMPVA","VAMC 512 
+    QRY-Z10 SERVER~6027","IVM") = 536^3^30
+ ^TMP("TOT",541283335,"PROT","PR","P","ALBUQUERQUE CHAMPVA","VAMC 512 
+    QRY-Z10 SERVER~6027","IVM",3030312.15) = 536^3^30
+ -------------------------------------------------------------------------
+ ^TMP("TOT",541283335,"RFAC") = 536^3^30
+ ^TMP("TOT",541283335,"RFAC","LR") = 536^3^30
+ ^TMP("TOT",541283335,"RFAC","LR","R") = 536^3^30
+ ^TMP("TOT",541283335,"RFAC","LR","R","ALBUQUERQUE CHAMPVA") = 536^3^30
+ ^TMP("TOT",541283335,"RFAC","LR","R","ALBUQUERQUE CHAMPVA","IVM") = 
+    536^3^30
+ ^TMP("TOT",541283335,"RFAC","LR","R","ALBUQUERQUE CHAMPVA","IVM",
+    3030312.15) = 536^3^30
+ ^TMP("TOT",541283335,"RFAC","LR","R","ALBUQUERQUE CHAMPVA","IVM",
+    3030312.15,"VAMC 512 QRY-Z10 SERVER~6027") = 536^3^30
+  
+ Note:  The significance of the data included in the report shown above
+        has already been explained in the OUTPUT section above.
+  
+ Note:  When the $$CM^HLUCM and $$CM2^HLUCM APIs are called, the totals 
+        in the "HR", "NMSP", and "PROT" sections hold totals for all 
+        messages, and the "RFAC" section holds totals only for messages 
+        sent to remote facilities.  
+  
+ In contrast to calls to $$CM^HLUCM and $$CM2^HLUCM, the $$CM2F^HLUCM API 
+ being currently discussed only includes totals for messages sent to 
+ remote facilities.  In other words, for the $$CM2F^HLUCM API, the "HR", 
+ "NMSP", "PROT", and "RFAC" sections contain totals for messages sent to 
+ remote facilities.  This means that the totals for every section will 
+ equal the total from every other section.  (This is not true for 
+ $$CM^HLUCM and $$CM2^HLUCM.)
+  
+  
+ INPUT PARAMETERS: ADDITIONAL DISCUSSION
+ ---------------------------------------
+ The input parameters of the $$CM2^HLUCM API were listed in detail in
+ the "INPUT PARAMETERS" section of this patch description.  Discussion
+ of these parameters, using the information just provided regarding
+ entry point output as necessary background, will now be resumed.
+  
+  
+ INPUT PARAMETERS: ADDITIONAL DISCUSSION - NAMESPACE
+ ---------------------------------------------------
+ There are four different ways to specify namespaces to be included when
+ creating totals.  These are:
+  
+     1. Pass in "1" to specify that all namespaces are to be included,
+        and that subtotals should be created by individual namespace(s).
+        If you will refer back to the sample data in "OUTPUT: HR
+        SUBSCRIPT", you can see that each namespace was placed in the
+        ^TMP("HLTOTS",$J,"HR",...) global data because a "1" was passed
+        in the namespace parameter.)
+  
+     2. Pass in "2" to specify that all namespaces are to be included, but
+        no subtotaling by namespaces should be done.  Totals should be
+        lumped together.  To further explain the results of passing a "2"
+        in the namespace parameter position consider the following example.
+  
+ When $$CM2^HLUCM(3010416,3010416.0005,2,1,"HLTOTS","EITHER",.ERR) is
+ called the following data in the NMSP subscript of the ^TMP global was
+ created:
+  
+    ^TMP("HLTOTS",549492684,"NMSP") = 290060^805^792
+    ^TMP("HLTOTS",549492684,"NMSP","IO") = 290060^805^792
+    ^TMP("HLTOTS",549492684,"NMSP","IO","O") = 290060^805^792
+    ^TMP("HLTOTS",549492684,"NMSP","IO","O","ZZZ") = 290060^805^792
+    ^TMP("HLTOTS",549492684,"NMSP","IO","O","ZZZ","3010416.00") = 290060
+     ^805^792
+    ^TMP("HLTOTS",549492684,"NMSP","IO","O","ZZZ","3010416.00","VAFC ADT
+     -A08-SCHED SERVER~4654") = 383^1^578
+    ^TMP("HLTOTS",549492684,"NMSP","IO","O","ZZZ","3010416.00","VAFH A08
+     ~4620") = 289677^804^214
+    ^TMP("HLTOTS",549492684,"NMSP","LR") = 290060^805^792
+    ^TMP("HLTOTS",549492684,"NMSP","LR","L") = 290060^805^792
+    ^TMP("HLTOTS",549492684,"NMSP","LR","L","ZZZ") = 290060^805^792
+    ^TMP("HLTOTS",549492684,"NMSP","LR","L","ZZZ","3010416.00") = 290060
+     ^805^792
+    ^TMP("HLTOTS",549492684,"NMSP","LR","L","ZZZ","3010416.00","VAFC ADT
+     -A08-SCHED SERVER~4654") = 383^1^578
+    ^TMP("HLTOTS",549492684,"NMSP","LR","L","ZZZ","3010416.00","VAFH A08
+     ~4620") = 289677^804^214
+  
+ Note in the preceding example, no namespaces are specified and that all
+ individual namespaces have been lumped together in the ZZZ "namespace."
+  
+ To further illustrate the effect when either the namespace or the
+ protocol parameter value of "2" is passed into the API, notice the
+ results below when the protocol value is passed as a "2".  (When a "2" is
+ passed into the API in the protocol parameter position, it has the same
+ effect as when a "2" is passed into the namespace position: data is
+ "lumped" together under "ZZZ" rather than individual namespaces or
+ protocols.)
+  
+ When $$CM2^HLUCM(3010416,3010416.0005,2,2,"HLTOTS","EITHER",.ERR) was
+ called the following data in the NMSP subscript was created.
+  
+    ^TMP("HLTOTS",549492684,"NMSP") = 290060^805^792
+    ^TMP("HLTOTS",549492684,"NMSP","IO") = 290060^805^792
+    ^TMP("HLTOTS",549492684,"NMSP","IO","O") = 290060^805^792
+    ^TMP("HLTOTS",549492684,"NMSP","IO","O","ZZZ") = 290060^805^792
+    ^TMP("HLTOTS",549492684,"NMSP","IO","O","ZZZ","3010416.00") = 290060
+     ^805^792
+    ^TMP("HLTOTS",549492684,"NMSP","IO","O","ZZZ","3010416.00","ZZZ") =
+     290060^805^792
+    ^TMP("HLTOTS",549492684,"NMSP","LR") = 290060^805^792
+    ^TMP("HLTOTS",549492684,"NMSP","LR","L") = 290060^805^792
+    ^TMP("HLTOTS",549492684,"NMSP","LR","L","ZZZ") = 290060^805^792
+    ^TMP("HLTOTS",549492684,"NMSP","LR","L","ZZZ","3010416.00") = 290060
+     ^805^792
+    ^TMP("HLTOTS",549492684,"NMSP","LR","L","ZZZ","3010416.00","ZZZ") =
+     290060^805^792
+  
+ The listing of data in the preceding section, where namespace was passed
+ as "2" and protocol was passed as "1", contains multiple protocols.
+ This data does not.  As an example, refer to the "LR","L" subscript
+ section of the data from both examples.  The first example "itemizes"
+ the "VAFC ADT-A08-SCHED SERVER~4654" (383 characters, 1 message unit, 578
+ seconds) AND "VAFH A08~4620" (289,677 characters, 804 message units, 214
+ seconds) protocols.  In this last example, these protocols have been
+ lumped together in the ZZZ "protocol" (290,060 characters, 805 message
+ units, 792 seconds.)
+  
+ There are four different ways to specify namespaces to be included when
+ $$CM2^HLUCM.  The first two - passing a "1" or "2" - have already been
+ discussed.  The additional ways of specifying namespaces are explained
+ next.
+  
+    3. Pass in "namespace" in order to search for one specific
+       namespace.  An example call would be:
+  
+       $$CM2^HLUCM(3010416,3010416.0005,"DG",2,"HLTOTS","EITHER",.ERR).
+  
+    4. Specify namespaces by creating a local variable array and passing
+       in the array by reference.  An example call, using this technique,
+       is shown below.  The call is functionally identical to passing in
+       "DG", but this method allows the inclusion of one or more
+       namespaces.
+  
+ >K NAMESPACE
+ >S NAMESPACE("DG")=""
+ >W $$CM2^HLUCM(3010416,3010416.0005,.NAMESPACE,2,"HLTOTS","EITHER",.ERR)
+  
+  
+ INPUT PARAMETERS: ADDITIONAL DISCUSSION - PROTOCOL
+ --------------------------------------------------
+ There are four different ways to specify protocols to be included when
+ calling $$CM2^HLUCM.  These are:
+  
+     1. Pass in "1" to specify that all protocols are to be included.
+        (See the preceding "INPUT PARAMETERS: ADDITIONAL DISCUSSION -
+        NAMESPACE" section for additional explanation.)
+  
+     2. Pass in "2" to specify that all namespaces are to be included, but
+        no subtotaling by namespaces should be done.  (See the preceding
+        "INPUT PARAMETERS: ADDITIONAL DISCUSSION - NAMESPACE" section for
+        additional explanation.)
+  
+     3. Pass in "protocol name" or "protocol IEN" (i.e., the internal
+        entry number (IEN) of the PROTOCOL file entry) in order to search
+        for one specific protocol.  (See the preceding "INPUT PARAMETERS:
+        ADDITIONAL DISCUSSION - NAMESPACE" section for additional
+        explanation.)
+  
+     4. Specify protocols by creating a local variable array and passing
+        in the array by reference. The local array subscripts can be
+        either the protocol name or the protocol IEN. (See the preceding
+        "INPUT PARAMETERS: ADDITIONAL DISCUSSION - NAMESPACE" section for
+        additional explanation.)
+  
+  
+  
+ API RULES OF OPERATION
+ ----------------------
+ There are several rules that are followed by the software when collecting
+ data. These rules are explained in detail on the following pages of this
+ patch description.
+  
+  
+ API RULES OF OPERATION: EITHER CONDITION
+ ----------------------------------------
+ The following three rules are followed by the software when the "EITHER"
+ CONDITION input parameter is specified:
+  
+     1. If an explicit namespace(s) and a protocol(s) is specified, all
+        entries will be counted where the namespace or the protocol
+        matches. Both namespace(s) and protocol(s) do not need to match.
+        (For example, if the "DG" namespace and the "4625" protocol are
+        passed, all entries for the "DG" namespace will be counted no
+        matter what the associated protocol is.  And, all message units
+        associated with the PROTOCOL file entry 4625 will be counted no
+        matter what the associated namespace.)
+  
+     2. If an explicit namespace(s) is specified, and if the protocol is
+        "all" - specified by passing "1" or "2" - all "DG" entries, but
+        only "DG" entries will be counted no matter what the associated
+        protocol.  (This is a slightly different than rule #1 above, and
+        will usually return smaller totals.  Rule #2 is a way to ask for
+        "all DGs, but DGs only", where rule #1 is a way to ask for "all
+        DGs AND all 4625s".)
+  
+        Note: If all namespaces are specified, and a specific protocol(s)
+              specified, (which is the opposite of the rule #2 example),
+              the same logic is used.  (If all namespaces are requested
+              by passing a "1" or a "2", and the protocol specified is
+              "4625", only PROTOCOL file entry 4625 will be included.)
+  
+     3. If all namespaces and all protocols are specified, every message
+        unit found will be included.  If the namespace of an entry cannot
+        be determined it will be arbitrarily counted under the
+        ZZZ" namespace.
+  
+        If the associated protocol of a message unit cannot be determined,
+        it will be similarly counted under the ZZZ "protocol."  This
+        ensures that all entries, even those with missing namespaces and
+        protocols are counted.
+  
+  
+ API RULES OF OPERATION: BOTH CONDITION
+ --------------------------------------
+ The following two rules are followed when the "BOTH" CONDITION parameter
+ is specified:
+  
+     1. If an explicit namespace(s) and protocol(s) is specified, entries
+        will be counted only when the entry's namespace and protocol both
+        match.  (For example, if the "DG" namespace and the "4625"
+        protocol are passed, entries will be counted when the message unit
+        is associated with the "DG" namespace, and the message unit's
+        associated protocol is PROTOCOL file entry 4625.)
+  
+     2. The BOTH condition requires that the namespace(s) and
+        the protocol(s) be specified.  Under no circumstances can either
+        namespace or protocol be specified "all."
+  
+  
+ API RULES OF OPERATION: DEFAULTS
+ --------------------------------
+ Some input parameters are required, while others are not.  Default
+ values are usually assigned to those parameters that are not required
+ if they are not explicitly passed into the entry point.  This is
+ explained in the table below.
+  
+  
+ PARAMETER     REQUIRED     DEFAULT      COMMENTS
+ -----------------------------------------------------------------------
+ START         YES
+ END           YES
+ NAMESPACE     NO           1            "All", with subtotals
+ PROTOCOL      NO           1            "All", with subtotals
+ SAVE          NO           "HLTOTALS"   If not passed data will be
+                                         stored in ^TMP("HLTOTALS",$J,...)
+ CONDITION     NO           "EITHER"
+ ERRORS        NO                        If "ERRORS" is not passed by
+                                         reference, no error information
+                                         will be returned
+  
+  
+ ERROR MESSAGES
+ --------------
+ Checks are made of the validity of the parameters passed into the
+ $$CM2^HLUCM entry point before any processing occurs.  If the
+ parameters are not correct, processing aborts immediately, and the
+ reasons for failure are returned in the ERRORS("failure reason")
+ local array.
+  
+ All possible failure reasons are listed below:
+  
+    BOTH NAMESPACES(S) AND PROTOCOL(S) MUST BE PASSED SPECIFICALLY
+    CAN'T FIND PROTOCOL
+    INVALID END TIME
+    INVALID NAMESPACE PARAMETER
+    INVALID PROTOCOL PARAMETER
+    INVALID START TIME
+  
+  
+ SOFTWARE FEATURES
+ -----------------
+ The following section documents features that exist in both the
+ $$CM^HLUCM API, (after HL*1.6*88 is installed), and the $$CM2^HLUCM API.
+ (This is true even when the $$CM^HLUCM API is not explicitly mentioned.)
+  
+  
+ SOFTWARE FEATURE #1: Excessive Transmission Times
+ -------------------------------------------------
+ Messages taking 30 minutes or longer to send or receive are not included
+ in the returned totals and documented global structure. However, these
+ excluded messages do not completely disappear.  They are placed in a
+ separate global for evaluation.  For example, if the following API call
+ were made:
+  
+    W $$CM2^HLUCM(3020228.08,3020228.0859,1,1,"HLTOT","EITHER",.ERR)
+  
+ data would be stored in:
+  
+    ^TMP("HLTOT",$J,...)
+  
+ and the data from messages or message units taking 30 minutes or longer
+ to send or receive, would be placed in:
+  
+    ^TMP("HLTOTERRTIME",$J,...).
+  
+ The subscript "HLTOTERRTIME" is calculated by concatenating the storage
+ subscript (passed in the fifth parameter of $$CM2) with "ERRTIME".
+  
+ The structure of data in ^TMP("HLTOTERRTIME",$J) is the same as the
+ structure of the ^TMP(TOTAL,$J) global.
+  
+ Thirty minutes is an arbitrary cutoff point.  However, investigation
+ shows that the number of messages or message units with transmission
+ times 30 minutes or more is very small, but the effect of these entries
+ on the average time of transmission or receipt is significant.  Most, if
+ not all such messages experienced some type of problem that made them
+ useless for meaningful data reporting.
+  
+  
+ SOFTWARE FEATURE #2: Sorting by Date, not Hour
+ ----------------------------------------------
+ Normally, the ^TMP global data created by the $$CM2 API includes the hour
+ of activity.  A sample global node might look like this:
+  
+    ^TMP("HLTOT",$J,"HR","TM","T",3020228.08,"DG","VAFH A08~4620")=42223
+  
+ There is a "backdoor" method by which the hour of activity can be dropped,
+ resulting in sorting by date only.  If the user wishes to do so, they
+ must set the following global node prior to making the call to $$CM2:
+  
+    ^TMP($J,"HLUCMDT")=""
+  
+ If this global node is created and the call made to $$CM2, the resulting
+ data would be saved in the following slightly altered format:
+  
+    ^TMP("HLTOT",$J,"HR","TM","T",3020228,"DG","VAFH A08~4620")=42223
+  
+ In the above node, the ".08" was dropped.  All activity occurring during
+ the 24 hour period of February 28, 2002 would be included in the totals
+ of this global node.
+  
+  
+ SOFTWARE FEATURE #3: Debug Global Data
+ --------------------------------------
+ When calls are made to $$CM or $$CM2, ^TMP(TOTALS,$J) global data is
+ created.  ("TOTALS" is the storage subscript passed into the API in the
+ fifth parameter position.) The data in this global can be examined by
+ listing the global on-screen.  However, the PRINTREG^HLUCM002 API has 
+ been created by which this data can be viewed in a more-readable format.  
+  
+ In addition to the totals data recorded in ^TMP(TOTALS,$J), debug data is 
+ also captured if ^TMP($J,"HLUCM") is set to a value of "DEBUG GLOBAL" 
+ prior to calling these APIs.  This debug data is stored in 
+ ^TMP($J,"HLUCMSTORE").  The PRINTREG^HLUCM002 API also assists in the 
+ display of the ^TMP($J,"HLUCMSTORE") data.
+  
+ The terminal dialogue seen when invoking this API is shown next.
+  
+ ===================== BEGINNING OF TERMINAL CAPTURE =====================
+                 Print Totals Report & Debug Data to Screen
+ =========================================================================
+ You will be allowed to print report totals (from ^TMP(TOTALS,$J), and/or
+ you may print the debug data (in ^TMP($J,"HLUCMSTORE").
+  
+       ------------ Report Totals from ^TMP("TOT",$J) ------------
+  
+ Print REPORT TOTALS (Y/N): Yes// N<return>
+  
+      ----------- Debug Data from ^TMP($J,"HLUCMSTORE") -----------
+  
+ Print raw DEBUG DATA (Y/N): Yes// N<return>
+  
+ Print filtered DEBUG DATA (Y/N): Yes// N<return>
+  
+ Press RETURN to restart, or '^' to exit... ^<return>
+ ======================= END OF TERMINAL CAPTURE =====================
+  
+ In the above terminal capture, notice that there are three places where 
+ the user is asked whether they want to print information.  (And, in each 
+ instance, the answer given was NO.)  The first 'Print REPORT TOTALS' 
+ query prints totals from the ^TMP(TOTALS,$J) global.  The second query - 
+ 'Print raw DEBUG DATA' - and the third query - 'Print filtered DEBUG 
+ DATA' - both print information from the ^TMP($J,"HLUCMSTORE") global.
+  
+ The output from these three queries is included next, accompanied with 
+ explanation of the output.
+  
+ TOTALS REPORT
+ -------------
+ The terminal capture seen when printing ^TMP(TOTALS,$J) data is shown 
+ next.
+  
+ ===================== BEGINNING OF TERMINAL CAPTURE =====================
+ Print REPORT TOTALS (Y/N): Yes//<return>
+ Include subtotals (Y/N): NO//<return>
+  
+                               XTMP-stored Reports
+ ==========================================================================
+ #   Run-time        API Call
+ ==========================================================================
+ #1  3030318.125503  $$CM(3030305.1005,3030305.102,1,1,"EITHER",TOTALS,...
+ #2  3030318.143617  $$CM(3030305.1005,3030305.112,1,1,"EITHER",TOTALS,...
+ #3  3030318.144435  $$CM(3030318.14,3030318.142,1,1,"EITHER",TOTALS,.ERR)
+ #4  3030318.154552  $$CM(3030318.145,3030318.151,1,1,"EITHER",TOTALS,.ERR)
+ #5  3030319.020019  $$CM(3030318,3030318.99,1,1,"EITHER",TOTALS,.ERR)
+ #6  3030319.102912  $$CM(3030318.14,3030318.142,1,1,"EITHER",TOTALS,.ERR)
+ #7  3030319.151645  $$CM(3030318.14,3030318.15,1,1,"EITHER",TOTALS,.ERR)
+ #8  3030320.015556  $$CM(3030319,3030319.99,1,1,"EITHER",TOTALS,.ERR)
+ #9  3030320.085023  $$CM2(3030318.14,3030318.142,1,1,"EITHER",TOTALS,.ERR)
+ #10 3030321.015538  $$CM(3030320,3030320.99,1,1,"EITHER",TOTALS,.ERR)
+ #11 3030321.153523  $$CM(3030318.14,3030318.14001,1,1,"EITHER",TOTALS,...
+ #12 3030321.153749  $$CM(3030318.14,3030318.15,1,1,"EITHER",TOTALS,.ERR)
+ #13 3030322.015133  $$CM(3030321,3030321.99,1,1,"EITHER",TOTALS,.ERR)
+ #14 3030323.013139  $$CM(3030322,3030322.99,1,1,"EITHER",TOTALS,.ERR)
+ #15 3030324.013422  $$CM(3030323,3030323.99,1,1,"EITHER",TOTALS,.ERR)
+ #16 3030324.122403  $$CM2(3030318.14,3030318.14001,1,1,"EITHER",TOTALS,...
+  
+ You may choose to print the totals report from stored XTMP data if you 
+ like. If so, enter the number of the XTMP report from above now.  
+ (Otherwise, press RETURN.)
+  
+ Enter XTMP Report#:<return>
+  
+ About to print ^TMP("TOT",$J) data report.  Press RETURN... <return>
+  
+  Total   Total   Total  Main
+ #Chars   #Msgs    #Sec  Sort Sub1 Sub2 Sub3
+ ==========================================================================
+    275       2      10  HR   TM   T    3030318.15
+   3118      16     204  HR   TM   U    3030318.15
+     95       1       0  NMSP IO   I    IVM
+   3118      16     204  NMSP IO   O    DG
+    180       1      10  NMSP IO   O    IVM
+   3118      16     204  NMSP LR   L    DG
+    275       2      10  NMSP LR   R    IVM
+   3118      16     204  PROT PR   P    VAFH CLIENT A08~4625
+    275       2      10  PROT PR   P    VAMC 512 QRY-Z10 SERVER~6027
+    275       2      10  RFAC LR   R    ALBUQUERQUE CHAMPVA
+ ======================= END OF TERMINAL CAPTURE =====================
+  
+ The first query above is ' Print REPORT TOTALS.'  The user entered YES.  
+ Next, the user was asked whether they wanted to 'include subtotals.'  The 
+ prompted answer of NO was accepted.  (Below, examples of reports with and 
+ without subtotals are included.)
+  
+ Whenever the $$CM^HLUCM, $$CM2^HLUCM, or $$CM2F^HLUCM APIs are called, if 
+ the protocol and namespace parameters are both passed as '1', the 
+ ^TMP(TOTALS,$J) data is stored in ^XTMP for later review.  In the above 
+ terminal capture, 16 different instances of calls to $$CM^HLUCM and 
+ $$CM2^HLUCM have been stored and are offered the user for printing.  (The 
+ ninth and sixteenth entries were from calls to $$CM2^HLUCM.  The other 
+ entries were all from calls to $$CM^HLUCM.)  In this example, the user 
+ pressed RETURN at the 'Enter XTMP Report#' prompt, and no ^XTMP-based 
+ totals report was printed.  If the user had entered one of the XTMP 
+ report numbers (in the leftmost column), the totals stored from that 
+ particular API "run" would have been displayed.
+  
+ The totals report shown above is identical to the totals report from 
+ patches HL*1.6*79 and HL*1.6*88, except for the new RFAC (remote 
+ facility) section.  In the above example, there is only remote facility: 
+ ALBUQUERQUE CHAMPVA.
+  
+ When asked if subtotals should be included, if the user had answered YES, 
+ subtotals for every section would have been included.  A report with 
+ section subtotals is shown next.
+  
+ Total   Total   Total  Main
+ #Chars   #Msgs    #Sec  Sort Sub1 Sub2 Sub3
+ ==========================================================================
+    275       2      10  HR   TM   T    3030318.15
+   3118      16     204  HR   TM   U    3030318.15
+ --------------------------------------------------------------------------
+   3393      18     214
+  
+     95       1       0  NMSP IO   I    IVM
+  
+   3118      16     204  NMSP IO   O    DG
+    180       1      10  NMSP IO   O    IVM
+  
+   3118      16     204  NMSP LR   L    DG
+  
+    275       2      10  NMSP LR   R    IVM
+ --------------------------------------------------------------------------
+   3393      18     214
+  
+   3118      16     204  PROT PR   P    VAFH CLIENT A08~4625
+    275       2      10  PROT PR   P    VAMC 512 QRY-Z10 SERVER~6027
+ --------------------------------------------------------------------------
+   3393      18     214
+  
+    275       2      10  RFAC LR   R    ALBUQUERQUE CHAMPVA
+ --------------------------------------------------------------------------
+    275       2      10
+  
+ Note that the RFAC section totals do not equal the totals from the other 
+ sections.  This is as expected, for the RFAC section holds totals for 
+ messages sent to remote locations.  Whereas, the other sections hold 
+ totals for local and remote messages.
+  
+  
+ RAW DEBUG DATA REPORT
+ ---------------------
+ There are two queries dealing with the debug data in 
+ ^TMP($J,"HLUCMSTORE").  The first of these queries is 'Print raw DEBUG 
+ DATA.'  If this is answered YES, three additional questions are asked.  
+  
+ There are three subscripts held within ^TMP($J,"HLUCMSTORE"):
+  
+ * ^TMP($J,"HLUCMSTORE","T")
+ * ^TMP($J,"HLUCMSTORE","U")
+ * ^TMP($J,"HLUCMSTORE","X")
+  
+ These subscripts are what is referred to by the additional queries being 
+ discussed.  The data stored in these three unique subscripts is discussed 
+ after the terminal capture.
+  
+ ===================== BEGINNING OF TERMINAL CAPTURE =====================
+ Print raw DEBUG DATA (Y/N): Yes// Y<return>
+  
+ Print T nodes(Y/N): No// Y<return>
+  
+ Print X nodes(Y/N): No// Y<return>
+  
+ Print U nodes(Y/N): Yes// Y<return>
+  
+ "T")=3393^18^214
+ "T","CCC")=3393^18^214
+ "T","CCC",59148681)=441^2^25
+ "T","CCC",59148683)=393^2^25
+ "T","CCC",59148685)=388^2^24
+ "T","CCC",59148687)=385^2^25
+ "T","CCC",59148689)=347^2^25
+ "T","CCC",59148691)=379^2^25
+ "T","CCC",59148693)=377^2^26
+ "T","CCC",59148695)=408^2^29
+ "T","CCC",59148697)=275^2^10
+ "U",59148681)=441^2^25^3030318.140003^3030318.140028^MSG~MSG^VAFH CLIE
+               NT A08~4625^^DG^^ADT/MRTS
+ "U",59148681,59148681,"CCC")=441^1^0^3030318.140003^3030318.140003^MSG
+                              ^VAFH A08~4620^^DG^^ADT/MRTS
+ "U",59148681,59148681,"CCC",772)=U^O^L^59148681^VAFH CLIENT A08~4625^D
+                                  G
+ "U",59148681,59148682,"CCC")=^1^25^3030318.140003^3030318.140028^MSG^V
+                              AFH CLIENT A08~4625^^DG^^ADT/MRTS
+ "U",59148681,59148682,"CCC",772)=U^O^L^59148681^VAFH CLIENT A08~4625^D
+                                  G
+ "U",59148681,"CCC")=441^2^25
+ ... some data not shown ...
+ "U",59148697)=275^2^10^3030318.140009^3030318.140019^MSG~CA^VAMC 512 Q
+               RY-Z10 SERVER~6027^^IVM^^ALBUQUERQUE CHAMPVA
+ "U",59148697,59148697,"CCC")=180^1^10^3030318.140009^3030318.140019^MS
+                              G^VAMC 512 QRY-Z10 
+ SERVER~6027^^IVM^^ALBUQUERQUE
+                               CHAMPVA
+ "U",59148697,59148697,"CCC",772)=T^O^R^59148697^VAMC 512 QRY-Z10 SERVE
+                                  R~6027^IVM
+ "U",59148697,59148698,"CCC")=95^1^0^3030318.14001^3030318.14001^CA^VAM
+                              C 512 QRY-Z10 SERVER~6027^^IVM^^ALBUQUERQUE 
+ CHAM
+                              PVA
+ "U",59148697,59148698,"CCC",772)=T^I^R^59148697^VAMC 512 QRY-Z10 SERVE
+                                  R~6027^IVM
+ "U",59148697,"CCC")=275^2^10
+ "X",59148681)=59148681 <
+ "X",59148682)=59148681
+ "X",59148683)=59148683
+ "X",59148684)=59148683
+ "X",59148685)=59148685
+ "X",59148686)=59148685
+ "X",59148687)=59148687
+ "X",59148688)=59148687
+ "X",59148689)=59148689
+ "X",59148690)=59148689
+ "X",59148691)=59148691
+ "X",59148692)=59148691
+ "X",59148693)=59148693
+ "X",59148694)=59148693
+ "X",59148695)=59148695
+ "X",59148696)=59148695
+ "X",59148697)=59148697
+ "X",59148698)=59148697
+ ======================= END OF TERMINAL CAPTURE =====================
+  
+ In the report text above, the leading '^TMP($J,"HLUCMSTORE",' has been 
+ truncated to make more readable output.  In actuality, '"X",59148698)' is 
+ referring to '^TMP($J,"HLUCMSTORE","X",59148698).'  All "T", "U", and "X" 
+ data has been similarly truncated.
+  
+  
+ "T" SUBSCRIPT DATA
+ ------------------
+ There are three subscripts within ^TMP($J,"HLUCMSTORE"): "T", "U", and 
+ "X".  Below is a portion of the "T" data shown in the terminal capture 
+ above.
+  
+ "T")=3393^18^214
+ "T","CCC")=3393^18^214
+ "T","CCC",59148681)=441^2^25
+ ... some data not shown ...
+  
+ First, the "CCC" in the above data will be explained.
+  
+ All three APIs collect data for message units.  This is true even for 
+ $$CM^HLUCM, which returns totals only for messages and not message 
+ units.  This is an important change from previous versions of this 
+ software.  (Previously, $$CM^HLUCM collected data for messages, and 
+ ignored any of the relationships between discrete messages that formed 
+ units.)  So, at times a message unit will be collected including messages 
+ that fall outside the time range specified when an API is called.  
+  
+ An example of a call where a message falls outside the time range of the 
+ API is shown next.
+  
+      W $$CM2^HLUCM(3010416.14,3010416.15,1,1,"HLTOTS","EITHER",.ERR)
+  
+ In this call, the following message unit holding two messages was 
+ collected.
+  
+       Message IEN      Message Start Time      Message End Time
+       -----------------------------------------------------------
+          100           4/16/01@1359            4/1/01@1401
+          105           4/16/01@1402            4/1/01@1403
+  
+ In the above example, the API call specified a start time of 1400 and an 
+ end time of 1500.  The first message, IEN 100, has a start time that 
+ precedes 1400.  However the end time of that message, and the start and 
+ end time of message 105 falls within the API-specified time range.
+  
+ The first character position in the "CCC" string indicates whether a 
+ message's start time falls within the API-specified time range.  The 
+ letter "C" indicates that the API-specified time range was not violated 
+ by the message.
+  
+ If a message violates the API-specified time range, the letter "X" is 
+ used.
+  
+ The second character position in the "CCC" string refers to the 
+ transmission time.  If the transmission time for a message is less than 
+ 1800 seconds, the letter "C" is used.  If the transmission time is 1800 
+ or more seconds, "X" is placed in the second character position.
+  
+ The third character position in the "CCC" string refers to the namespace 
+ and protocol parameters passed into the API.  In the
+  
+     W $$CM2^HLUCM(3010416.14,3010416.15,"DG",2532,"HLTOTS","EITHER",.ERR)
+  
+ API call, it is specified that "EITHER" the "DG" namespace or the 
+ IEN=2532 protocol should be included in the totals.  If a message's 
+ namespace is "DG" or the protocol is IEN 2532, the letter "C" will be 
+ placed in the third character position.  Otherwise, "X" will be present.
+  
+ To further illustrate this three character string, consider the following 
+ example values that might occur.
+  
+ The individual Cs in "CCC" have the following significance:
+  
+    C=Message start time falls within API time range.
+    C=Message transmission time is less than 1800 seconds.
+    C=Namespace and protocol matches API parameters.
+  
+ A value of "XXX" has the following significance:
+  
+    X=Message start time does not fall within API time range.
+    X=Message transmission time is 1800 or more seconds.
+    X=Namespace and protocol does not match API parameters.
+  
+ Any combination of C's and X's in three character units is possible.  
+ (E.g., CXX, CXC, XCC.)
+  
+ Here is the sample data again.
+  
+ "T")=3393^18^214
+ "T","CCC")=3393^18^214
+ "T","CCC",59148681)=441^2^25
+ ... some data not shown ...
+  
+ In this example, message unit 59148681 has 441 characters, 2 messages 
+ within the unit, and was transmitted over 25 seconds.  The "CCC" 
+ indicates that the message is fully "compliant", as explained above.  
+ Other messages are not shown here, but can be viewed in the terminal 
+ capture above.
+  
+ The "T","CCC")=3393^18^214 node "says" that there are 18 messages with 
+ the "CCC" string, and that these messages held 3393 characters and were 
+ transmitted over 214 seconds.
+  
+ The "T") node holds the total for all subtotal nodes.  (Usually, there 
+ will be more than just "CCC" nodes.)
+  
+  
+ "U" SUBSCRIPT DATA
+ ------------------
+ The U subscript data is very similar to the ^TMP($J,"HLUCMSTORE","U") 
+ data produced by $$CM^HLUCM and $$CM2^HLUCM prior to this patch.  
+ However, there are important differences.  Here is an example of this 
+ data (with artificially inserted node numbers placed there to facilitate 
+ discussion.)
+  
+ 1.  "U",59148681)=441^2^25^3030318.140003^3030318.140028^MSG~MSG^VAFH CLIE
+               NT A08~4625^^DG^^ADT/MRTS
+     ---------------------------------------------------------------------
+ 2.  "U",59148681,59148681,"CCC")=441^1^0^3030318.140003^3030318.140003^MSG
+                              ^VAFH A08~4620^^DG^^ADT/MRTS
+ 3.  "U",59148681,59148681,"CCC",772)=U^O^L^59148681^VAFH CLIENT A08~4625^
+                              DG
+     ---------------------------------------------------------------------
+ 4.  "U",59148681,59148682,"CCC")=^1^25^3030318.140003^3030318.140028^MSG^V
+                              AFH CLIENT A08~4625^^DG^^ADT/MRTS
+ 5.  "U",59148681,59148682,"CCC",772)=U^O^L^59148681^VAFH CLIENT A08~4625^
+                              DG
+     ---------------------------------------------------------------------
+ 6.  "U",59148681,"CCC")=441^2^25
+  
+ This "U" data is the message unit level data.  This message unit includes 
+ the two file 772 entries 59148681 and 59148682.  For this message unit...
+  
+ * Node 1 is a summary node, holding the totals and "credit" information
+   for a message unit.  (Node 1 is a shorthand way to refer to
+   '"U",59148681)', which in turn is shorthand for  
+   ^TMP($J,"HLUCMSTORE","U",59148681).)
+ * Node 2 holds the summary information for file 772 entry 59148681.  
+ * Node 3 holds additional information about file 772 entry 59148681.
+ * Nodes 4 & 5 are identical to nodes 2 & 3, except these nodes refer to
+   file 772 entry 59148682.
+ * Node 6 holds the totals for all "CCC" entries in the message.  
+  
+ The significance of each node is explained next.
+  
+  
+ NODE 1
+ ------
+ Node 1 holds the totals for all messages within the message unit.  It 
+ also holds the "credit" information used by that message.  (At times 
+ messages within a unit hold different protocols, namespaces, or remote 
+ facilities or local applications.)  Node 1 also holds the protocol, 
+ namespace, and remote facility used when totaling.)
+  
+ The data stored on node 1 is listed and explained below.
+  
+ Node   Piece   Value                       Explanation                  
+ -------------------------------------------------------------------------
+  1       1     441                         # characters
+  1       2     2                           # messages
+  1       3     25                          # seconds to transmit
+  1       4     3030318.140003              Start time
+  1       5     3030318.140028              End time
+  1       6     MSG~MSG                     Message constituents:  
+                                            - MSG (if an original message)
+                                            - CA, CE, or CR (if a commit 
+                                              acknowledgement)
+                                            - AA, AE, or AR (if an 
+                                              application acknowledgement)
+  1       7     VAFH CLIENT A08~4625        Protocol
+  1       8                                 Not used
+  1       9     DG                          Namespace
+  1      10                                 Not used
+  1      11     ADT/MRTS                    Remote facility or local
+                                              application
+  
+  
+ NODE 2
+ ------
+ Node 2 holds the totals for an individual message: entry 59148681.  The 
+ significance of the pieces of data for node 2 are the same as for node 1.
+  
+  
+ NODE 3
+ ------
+ Node 3 holds additional information about entry 59148681 as shown below.  
+  
+ Node   Piece   Value                   Explanation                  
+ -------------------------------------------------------------------------
+  1       1     U                       Possible values: T=TCP, M=Mail, 
+                                          or U=Unknown
+  1       2     O                       Possible values: I=Incoming, 
+                                          O=Outgoing, or U=Unknown
+  1       3     L                       Possible values: L=Local, or 
+                                          R=Remote
+  1       4     59148681                Parent message IEN.
+  1       5     VAFH CLIENT A08~4625    Credit protocol. (See node 1).
+  1       6     DG                      Credit namespace. (See node 1).
+  
+  
+ NODE 4
+ ------
+ The significance of each piece of node 4 is identical to node 2.
+  
+  
+ NODE 5
+ ------
+ The significance of each piece of node 5 is identical to node 3
+  
+  
+ NODE 6
+ ------
+ Node 6 holds the totals for the "CCC" messages within this message unit. 
+  
+ If there were some messages within this unit that were "CCX" messages (as 
+ an example), there would be a node 7 with totals for the "CCX" messages.
+  
+ To illustrate the relationship between node 6 and other similar nodes, 
+ and node 1, consider the following example.  
+  
+    "U",59148681)=441^2^25^3030318.140003^3030318.140028^MSG~MSG^VAFH CLIE
+              NT A08~4625^^DG^^ADT/MRTS
+    ... some nodes not shown ...
+    "U",59148681,"CCC")=200^1^22
+    "U",59148682,"CCX")=221^1^3
+  
+ Notice that the totals (on pieces 1 to 3) for the "CCC" and "CCX" nodes 
+ equal the totals on the first 3 pieces of the '"U",59148681)' node.
+  
+  
+ "X" SUBSCRIPT DATA
+ ------------------
+ The "X" subscript data discussed now is identical to the 
+ ^TMP($J,"HLUCMSTORE","X") data produced by $$CM^HLUCM and $$CM2^HLUCM 
+ prior to this patch.
+  
+ The "X" subscript global data holds as the first subscript after "X" the
+ internal entry number of the child HL7 MESSAGE TEXT file (#772).  The next
+ subscript holds that child's parent file 772 entry.  So, the structure is:
+  
+        ^TMP($J,"HLUCMSTORE","X",CHILD-IEN,PARENT-IEN) =
+  
+ If a third subscript existed, it would hold the HL7 MESSAGE 
+ ADMINISTRATION file
+ (#773) entry associated with the parent entry.  This additional structure
+ can be seen in the last row in the data below.
+  
+ ^TMP(549483094,"HLUCMSTORE","X",35959463,35959463) =
+ ^TMP(549483094,"HLUCMSTORE","X",35959464,35959463) =
+  
+ ^TMP(549483094,"HLUCMSTORE","X",35959465,35959465,5297021) =
+  
+ In the above data the third node "says" that entry 35959465 in file 772 
+ is pointed to by entry 5297021 in file 773.
+  
+  
+ FILTERED DEBUG DATA REPORT
+ --------------------------
+ When calling the PRINTREG^HLUCM API, the final query relates to the 
+ filtered printing of debug data.  The terminal capture seen when printing 
+ filtered debug data is shown below.
+  
+ ===================== BEGINNING OF TERMINAL CAPTURE =====================
+ Print filtered DEBUG DATA (Y/N): Yes//<return>
+  
+                 Display of ^TMP($J,"HLUCMSTORE","U") Data
+ ========================================================================
+  
+                                Type Totals
+                      --------------------------------
+                             CCC   3393^18^214
+  
+ Enter text in messages to include and exclude...
+  
+  
+ Every parent node that includes one of the EXCLUDE values that you 
+ enter now will not be included in the entries displayed.
+  
+ EXCLUDE: <return>       
+  
+  
+ Every parent node that doesn't include one of the INCLUDE values that
+ you enter now will not be included in the entries displayed.
+  
+ INCLUDE: <return>
+  
+ Restrict # messages: 999// 2<return>
+  
+  
+  
+      441^2^25^3030318.140003^3030318.140028^MSG~MSG^VAFH CLIENT 
+ A08~4625^^D
+                                   G^^ADT/MRTS
+ ==========================================================================
+ 59148681    - 441^1^0^3030318.140003^3030318.140003^MSG^VAFH A08~4620^
+               DG^ADT/MRTS   <<>>  U^O^L^59148681^VAFH CLIENT A08~4625^
+               DG   <<>>  CCC
+ --------------------------------------------------------------------------
+ 59148682    - ^1^25^3030318.140003^3030318.140028^MSG^...^DG^
+               ADT/MRTS   <<>>  U^O^L^59148681^VAFH CLIENT A08~4625^
+               DG   <<>>  CCC
+ ==========================================================================
+                                  CCC - 441^2^25
+  
+  
+  
+      393^2^25^3030318.140003^3030318.140028^MSG~MSG^VAFH CLIENT 
+ A08~4625^^D
+                                   G^^ADT/MRTS
+ ==========================================================================
+ 59148683    - 393^1^0^3030318.140003^3030318.140003^MSG^VAFH A08~4620^
+               DG^ADT/MRTS   <<>>  U^O^L^59148683^VAFH CLIENT A08~4625^
+               DG   <<>>  CCC
+ --------------------------------------------------------------------------
+ 59148684    - ^1^25^3030318.140003^3030318.140028^MSG^...^DG^
+               ADT/MRTS   <<>>  U^O^L^59148683^VAFH CLIENT A08~4625^
+               DG   <<>>  CCC
+ ==========================================================================
+                                  CCC - 393^2^25
+ ^<return>
+  
+ #2 matching entries displayed...
+ #0 entries skipped...
+  
+ Press RETURN to restart, or '^' to exit... 
+ ======================= END OF TERMINAL CAPTURE =====================
+  
+ In the above terminal capture, no inclusion or exclusion strings were 
+ entered.  The only filtering performed was specified at the 'Restrict # 
+ messages' prompt, where 2 was entered.  This specified that only two 
+ message units were to be included.
+  
+ The terminal capture included two units before an up-arrow was entered 
+ aborting the print process.  Note that both units were for the VAFH 
+ CLIENT A08~4625 protocol.  If the printing of filtered debug data were 
+ repeated, but 'VAFH CLIENT A08', or 'VAFH CLIENT A08~4625' were entered 
+ as an exclusion, these entries would have been filtered out and not 
+ included in the printout.  If one of these values had been entered as 
+ inclusions, only entries with these protocols would be included.
+  
+ NOTE:     "VAFH CLIENT A08~4625" refers to the "VAFH CLIENT A08" protocol
+           with an IEN of 4625.
+  
+         ==================================================
+  
+ Routine Summary:
+  
+ The first and second lines of the routines included in this patch are
+ shown below.
+  
+ HLUCM     ;CIOFO-O/LJA - HL7/Capacity Mgt API ;2/27/01 10:15
+            ;;1.6;HEALTH LEVEL SEVEN;**79,88,103**;Oct 13, 1995
+ HLUCM001  ;CIOFO-O/LJA - HL7/Capacity Mgt API (continued) ;2/27/01 10:15
+            ;;1.6;HEALTH LEVEL SEVEN;**79,88,103**;Oct 13, 1995
+ HLUCM002  ;CIOFO-O/LJA - HL7/Capacity Mgt API ;2/27/01 10:15
+            ;;1.6;HEALTH LEVEL SEVEN;**79,88,103**;Oct 13, 1995
+ HLUCM003  ;CIOFO-O/LJA - HL7/Capacity Mgt API-II ;10/23/01 12:01
+            ;;1.6;HEALTH LEVEL SEVEN;**88,103**;Oct 13, 1995
+ HLUCM004  ;CIOFO-O/LJA - HL7/Capacity Mgt API ;3/13/03 09:37
+            ;;1.6;HEALTH LEVEL SEVEN;*88,103**;Oct 13, 1995
+ HLUCM009  ;CIOFO-O/LJA - HL7/Capacity Mgt API-II ;2/25/03-08:50
+            ;;1.6;HEALTH LEVEL SEVEN;**103**;Oct 13, 1995
+ HLUCM050  ;CIOFO-O/LJA - HL7/Capacity Mgt API-II ;10/23/01 12:01
+            ;;1.6;HEALTH LEVEL SEVEN;**103**;Oct 13, 1995
+ HLUCM090  ;CIOFO-O/LJA - Facility Finder Software ;2/20/2003 - 12:35
+            ;;1.6;HEALTH LEVEL SEVEN;**103**;Oct 13, 1995
+  
+ Checksums:
+  
+ Routine Name   Checksum Before    Checksum After   Patch List
+ -------------  -----------------  ---------------  -----------
+ HLUCM             8527659            10319512       79,88,103
+ HLUCM001          9301547             8520277       79,88,103
+ HLUCM002          6864282            11828365       79,88,103
+ HLUCM003          8255457             8334668       88,103
+ HLUCM004          9473283            10058594       88,103
+ HLUCM009            ----              7865709       103
+ HLUCM050            ----             11085974       103
+ HLUCM090            ----              9176419       103
+  
+ Sites should use CHECK^XTSUMBLD to verify checksums.
+  
+ Routine Deletion:
+  
+ This patch deletes four HLUCM-namespaced routines no longer used by the 
+ HL7/Capacity Planning APIs.  These routines are HLUCM005, HLUCM006, 
+ HLUCM007, and HLUCM008.
+  
+  
+ Installation Instructions:
+ ==========================
+ Step 1.  Users are allowed to be on the system during all steps in
+          the installation of this patch.  
+  
+ Step 2.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu to
+          load the KIDS package onto your system.
+  
+ Step 3.  Verify the checksums in the transport global using the 'Verify
+          Checksums in Transport Global [XPD PRINT CHECKSUM]' menu
+          option.
+  
+ Step 4.  Backup of all software structures that will be overwritten by
+          the patch using the 'Backup a Transport Global [XPD BACKUP]'
+          menu option.
+  
+            (If desired, you may print a list of the changes that will
+            be installed by this patch using the 'Compare Transport
+            Global to Current System [XPD COMPARE TO SYSTEM]' menu
+            option.)
+  
+ Step 5.  DSM SITES: Review your mapped set.  If any HLUCM-namespaced
+          routines are mapped, remove them from the mapped set at
+          this time.
+  
+ Step 6.  The patch has now been loaded into a Transport global on your
+          system. You now need to move the transport global into a
+          build on your system. This is done using the 'Installation
+          menu's 'Install Package(s) [XPD INSTALL BUILD]' menu option.
+          When using this menu option to install the HL*1.6*103 build,
+          you will be asked several questions.  The questions, and
+          the answers you should supply, are shown below:
+  
+            INSTALL NAME: <HL*1.6*103>
+            Want KIDS to INHIBIT LOGONS during the install?  <NO>
+            Want to DISABLE Scheduled Options, Menu Options,
+            and Protocols?  <NO>
+  
+  Step 7.  DSM Sites: Rebuild your mapped set if necessary.
+
+Routine Information:
+====================
+
+Routine Name:
+  - HLUCM001
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLUCM
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLUCM090
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLUCM009
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLUCM002
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLUCM003
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLUCM004
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLUCM050
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : ANDREASSEN,LARRY               Date Entered : JAN 23, 2003
+Completed By: MURPHY,MINAO J               Date Completed: JUN 10, 2003
+Released By : GAYFIELD,LISA                 Date Released : JUN 11, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

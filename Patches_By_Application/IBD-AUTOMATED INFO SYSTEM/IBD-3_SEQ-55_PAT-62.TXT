@@ -1,0 +1,186 @@
+$TXT Created by PAJERSKI,JAN at MNTVLL.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 09/29/09 at 13:00
+=============================================================================
+Run Date: NOV 10, 2010                     Designation: IBD*3*62
+Package : IBD - AUTOMATED INFO COLLECTION SYS Priority: Mandatory
+Version : 3        SEQ #55                      Status: Released
+                  Compliance Date: DEC 11, 2010
+=============================================================================
+
+Associated patches: (v)IBD*3*23    <<= must be installed BEFORE `IBD*3*62'
+
+Subject: REVISIONS FOR UNSUPPORTED FIELDS IN FILE 80
+
+Category: 
+  - Routine
+
+Description:
+============
+
+  A routine in the AUTOMATED INFO COLLECTION SYS namespace (IBD) has been
+  found with references to fields in the ICD DIAGNOSIS file (#80), which 
+  will no longer be supported or available after installation of patch
+  ICD*18*40.
+   
+  These references have been removed and replaced with calls to the supported
+  functions within the Code Set API.
+   
+  Routine IBDF18E0 is called by the Send Forms Tracking Entries Pending
+  Pages to PCE [IBDF FREE PENDING PAGES] menu option, which allows a user
+  to send Forms Tracking entries that are in a pending pages status to 
+  the PATIENT CARE ENCOUNTER (PCE) application.  
+   
+  (a) Revision to subroutine CODES^IBDF18E0 to use supported function 
+      $$ICDDX^ICDCODE to obtain DIAGNOSIS (field #3) from the ICD DIAGNOSIS
+      file (#80). 
+   
+  (b) Revision to subroutine OTHRBUB^IBDF18E0 to use supported functions
+      $$ICDDX^ICDCODE to obtain CODE NUMBER (field #.01 ) and $$ICDD^ICDCODE
+      to obtain the DESCRIPTION(VERSIONED) (subfield #1, subfile #80.068)
+      from the ICD DIAGNOSIS file (#80).
+   
+   
+  ASSOCIATED REMEDY:
+  ==================
+  N/A
+   
+   
+  ASSOCIATED NSR(s):
+  ==================
+  N/A
+   
+   
+  PARTICIPATING TEST SITES:
+  =========================
+  Bay Pines FL
+  Montana HCS
+  New Jersey HCS
+   
+   
+  INSTALLATION INSTRUCTIONS:
+  ==========================
+  This patch may be run with users on the system, but it is recommended
+  that it be run after normal business hours.
+  
+  Installation will take less than 2 minutes.
+  Suggested time to install: non-peak requirement hours.
+    
+      1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+  
+      2. From the Kernel Installation & Distribution System menu, select
+         the Installation menu.
+  
+      3. From this menu, you may select to use the following options
+         (when prompted for INSTALL NAME, enter IBD*3.0*62)
+        a. Backup a Transport Global - this option will create a backup
+           message of any routines exported with the patch. It will NOT
+           backup any other changes such as DDs or templates.
+        b. Compare Transport Global to Current System - this option will
+           allow you to view all changes that will be made when the patch
+           is installed. It compares all components of the patch (routines,
+           DDs, templates, etc.).
+        c. Verify Checksums in Transport Global - this option will ensure
+           the integrity of the routines that are in the transport global.
+        d. Print Transport Global - this option will allow you to view the
+           components of the KIDS build.
+  
+      4. Use the Install Package(s) option and select the package IBD*3.0*62.
+  
+      5. When prompted "Want KIDS to INHIBIT LOGONs during the install?
+         NO//" you may accept the default.
+  
+      6. When prompted "Want to DISABLE Scheduled Options, Menu Options, 
+         and Protocols? NO//" you may accept the default.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;3.0;AUTOMATED INFO COLLECTION SYS;**[Patch List]**;APR 24, 1997;Build 9
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: IBDF18E0
+    Before: B40950973   After: B42573446  **11,25,38,36,23,62**
+ Description of Changes:
+  OTHRBUB+1:OTHRBUB+17
+  ------------------
+    before:
+    N NODE,CODE
+    S I=0 F  S I=$O(PXCA("PROCEDURE",I)) Q:I=""  S J=0 F  S J=$O(PXCA(
+     "PROCEDURE",I,J)) Q:J=""  D
+    .I +$G(PXCA("PROCEDURE",I,J))<1 D  ;no code, may be treatment
+    ..I $P($G(PXCA("PROCEDURE",I,J)),"^",6)["OTHER#" D
+    ...D LOGERR^IBDF18E2(3579612,.FORMID)
+    ...K PXCA("PROCEDURE",I,J)
+    .I +$G(PXCA("PROCEDURE",I,J)),$P($G(PXCA("PROCEDURE",I,J)),"^",6)[
+     "OTHER#" D
+    ..;; --change to api cpt ; dhh
+    ..S CODE=$$CPT^ICPTCOD(CODE)
+    ..S $P(PXCA("PROCEDURE",I,J),"^",6)=$S(+CODE'=-1:$E($P((CODE),"^",3),
+     1,80),1:"")
+    ;
+    S I=0 F  S I=$O(PXCA("DIAGNOSIS/PROBLEM",I)) Q:I=""  S J=0 F  S J=
+     $O(PXCA("DIAGNOSIS/PROBLEM",I,J)) Q:J=""  D
+    .I $P($G(PXCA("DIAGNOSIS/PROBLEM",I,J)),"^",13)="" D
+    ..S $P(PXCA("DIAGNOSIS/PROBLEM",I,J),"^",13)=$E($G(^ICD9(+PXCA(
+     "DIAGNOSIS/PROBLEM",I,J),1)),1,79)
+    .I $P($G(PXCA("DIAGNOSIS/PROBLEM",I,J)),"^",13)["OTHER#" D
+    ..S $P(PXCA("DIAGNOSIS/PROBLEM",I,J),"^",13)=$E($G(^ICD9(+PXCA(
+     "DIAGNOSIS/PROBLEM",I,J),1)),1,79)
+    Q
+    
+    after:
+    N NODE,CODE,OUT,X,XX
+    S I=0 F  S I=$O(PXCA("PROCEDURE",I)) Q:I=""  S J=0 F  S J=$O(PXCA(
+     "PROCEDURE",I,J)) Q:J=""  D
+    .I +$G(PXCA("PROCEDURE",I,J))<1 D  ;no code, may be treatment
+    ..I $P($G(PXCA("PROCEDURE",I,J)),"^",6)["OTHER#" D  
+    ...D LOGERR^IBDF18E2(3579612,.FORMID)
+    ...K PXCA("PROCEDURE",I,J)
+    .I +$G(PXCA("PROCEDURE",I,J)),$P($G(PXCA("PROCEDURE",I,J)),"^",6)[
+     "OTHER#" D
+    ..;; --change to api cpt ; dhh
+    ..S CODE=$$CPT^ICPTCOD(CODE)
+    ..S $P(PXCA("PROCEDURE",I,J),"^",6)=$S(+CODE'=-1:$E($P((CODE),"^",3),
+     1,80),1:"")
+    ;
+    S I=0 F  S I=$O(PXCA("DIAGNOSIS/PROBLEM",I)) Q:I=""  S J=0 F  S J=
+     $O(PXCA("DIAGNOSIS/PROBLEM",I,J)) Q:J=""  D
+    .I $P($G(PXCA("DIAGNOSIS/PROBLEM",I,J)),"^",13)="" K OUT D
+    ..S X=$P($$ICDDX^ICDCODE(+$P(PXCA("DIAGNOSIS/PROBLEM",I,J),"^"),
+     $G(DT),"",1),"^",2) D
+    ...S XX=$$ICDD^ICDCODE(X,"OUT"),$P(PXCA("DIAGNOSIS/PROBLEM",I,J),"^",13)=
+     $E($G(OUT(1)),1,79)
+    .I $P($G(PXCA("DIAGNOSIS/PROBLEM",I,J)),"^",13)["OTHER#" K OUT D
+    ..S X=$P($$ICDDX^ICDCODE(+$P(PXCA("DIAGNOSIS/PROBLEM",I,J),"^"),
+     $G(DT),"",1),"^",2) D
+    ...S XX=$$ICDD^ICDCODE(X,"OUT"),$P(PXCA("DIAGNOSIS/PROBLEM",I,J),"^",13)=
+     $E($G(OUT(1)),1,79)
+    Q
+    
+  CODES+9:CODES+10
+  ----------------
+    before:
+    ..I $G(^ICD9($G(X),0))="" K X S Y="" Q
+    ..E  S Y=$P(^ICD9(X,0),"^",3)
+    
+    after:
+    ..I $G(^ICD9($G(X),0))="" K X S Y="" Q
+    ..E  S Y=$$ICDDX^ICDCODE(+X,$G(DT),"",1),Y=$P(Y,"^",4)
+    
+
+ 
+Routine list of preceding patches: 23
+
+=============================================================================
+User Information:
+Entered By  : PAJERSKI,JAN                  Date Entered  : MAY 01, 2009
+Completed By: BARBER,HAROLDINE              Date Completed: OCT 04, 2010
+Released By : CAULFIELD,MARY                Date Released : NOV 10, 2010
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

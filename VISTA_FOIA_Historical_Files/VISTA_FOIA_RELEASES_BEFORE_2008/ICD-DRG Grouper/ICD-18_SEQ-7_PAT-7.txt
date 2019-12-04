@@ -1,0 +1,322 @@
+
+=============================================================================
+Run Date: SEP 24, 2003                     Designation: ICD*18*7
+Package : ICD - DRG GROUPER                   Priority: Mandatory
+Version : 18         SEQ #7                     Status: Released
+                  Compliance Date: OCT 15, 2003
+=============================================================================
+
+Associated patches: (v)ICD*18*6    <<= must be installed BEFORE `ICD*18*7'
+
+Subject: CSV UPDATES FOR THE DRG GROUPER
+
+Category: 
+  - Data Dictionary
+  - Routine
+  - Enhancement (Mandatory)
+  - Informational
+
+Description:
+============
+
+ Description:
+ ===========
+ 
+ **********************************************************************************
+ *           THIS PATCH MUST BE INSTALLED AT ALL SITES BY             *
+ *                     SEPTEMBER 30, 2003                                                      
+ *
+ **********************************************************************************
+ 
+   **************************************************************************
+   **************************************************************************
+  
+   This patch supports Code Set Versioning, mandated under the Health
+   Information Portability and Accountability Act (HIPAA).  It contains
+   routines, data, and data dictionary changes to recognize code sets for
+   the Current Procedural Terminology (CPT) and Health Care Financing
+   Administration (HCFA) Common Procedure Coding System (HCPCS). When
+   implemented, applications will be able to retrieve appropriate CPT
+   and HCPCS codes based upon a date that a clinical event occurred.
+  
+   This patch is contained in the MULTIPLE BUILD DISTRIBUTION:
+     CSV MS 1.0
+ 
+   Installing the CSV MS 1.0 build provides all of the updates
+   listed below.  Sites will use the Multi-Build Distribution to
+   ensure the proper order of installation for the VISTA Packages
+   in the Management Systems Product Line.
+ 
+   **************************************************************************
+   **************************************************************************
+   
+ 
+ I. OVERVIEW
+ ---------------------
+ 
+ Gail Graham, Director of Information Assurance, requested modifications to the
+ VHA Information Systems and Technology Architecture (VISTA) Patient
+ Information Management System (PIMS) package that allows the use of multiple
+ versions of the code sets employed in financial transactions.  The Health
+ Insurance Portability and Accessibility Act (HIPPA) stipulates that diagnostic
+ and procedure codes used for billing purposes must be the codes that were
+ applicable at the time the service was provided.  This initiative is commonly
+ referred to as the Code Set Versioning (CSV) project.  For this project, four
+ code sets required by HIPPA legislation are date sensitive and needed
+ modification.  These include:
+ * International Classification of Diseases-9-Clinical Modifications (ICD-9-CM)
+ * Diagnostic Related Group (DRG) codes, which is part of the ICD-9 code set
+ * Clinical Procedure Terminology-4 (CPT-4), and
+ * Healthcare Common Procedural Coding System (HCPCS) Level II Codes.
+ 
+ This patch addresses the changes done within the DRG Grouper package in
+ compliance to the specifications of CSV. Modifications were done within the
+ DRG Grouper application to assure the validity of CPT codes, ICD diagnosis and
+ CPT procedure codes, and DRG codes, by utilizing API's that return codes for a
+ given date.  In the case of DRG codes, new API's were created to return the
+ correct codes for a given date. New fields were also added to the DRG file
+ (#80.2) to accommodate the new information required for CSV. This included
+ adding an inactive flag, active date, and inactive date to the .01 level of
+ the file and creating a new effective date multiple level that contains the
+ status flag for the effective date along with the MDC# and Surgery flag. A
+ string of DRG codes were also added to the effective date multiple field in
+ the ICD OPERATION/PROCEDURE file (#80.1) and the ICD DIAGNOSIS file (#80).
+ This consisted of DRGa through DRGf fields added.
+ 
+ II. TECHNICAL
+ 
+ a. All Direct Global Accesses (DGA's) to the ICD OPERATION/PROCEDURE file
+ (#80.1) or the ICD DIAGNOSIS file (#80) were changed to use newly-developed
+ Application Program Interfaces (API's). The API's are passed the ICD/CPT code
+ and the "effective date" and the proper information is returned. These new
+ API's also check to verify that the ICD/CPT code is active for the given date.
+ 
+ b. All DGA's to the DRG file (#80.2) were changed to use a newly-developed
+ API. These API's determine the correct DRG code for the effective date and
+ verify that the DRG code is active for the given date
+ 
+ c. The following new fields were added to the EFFECTIVE DATE multiple (#66) of
+ both the ICD DIAGNOSIS file (#80) and the ICD OPERATION/PROCEDURE file (#80.1)
+ -
+ DRGa  (#60)
+ DRGb  (#61)
+ DRGc  (#62)
+ DRGd  (#63)
+ DRGe  (#64)
+ DRGf   (#65)
+ 
+ d. File #80.2 was updated to add an ACTIVATION DATE (14), INACTIVE (15), and
+ INACTIVATION DATE (16) to the .01 level of the file.
+ 
+ e. A new EFFECTIVE DATE multiple  (#66) was added to the DRG file (#80.2). 
+ New fields within the multiple are -
+ EFFECTIVE DATE  (#.01)
+ STATUS  (#.03)
+ MDC#  (#.05)
+ SURGERY  (#.06)
+ 
+ f. Post-Install Routine (ICD187PT) This routine:
+    1. Populates the "DRG" level of the ICD DIAGNOSIS (#80) and the ICD
+ OPERATION/PROCEDURE (#80.1) files. See (c) above. This data is taken from the
+ existing DRG codes in the DRGa (#60) through DRGf (#65) data fields.
+    2. Populates the EFFECTIVE DATE multiple (#66) in the DRG file (#80.2) See
+ (e) above. The MDC# (#.05) is set equal to the MDC# field (#5) in the 0 node.
+ and the SURGERY field (#.06) is set to the SURGERY field (#.06) in the 0 node. 
+ STATUS and EFFECTIVE DATES are determined by the FISCAL YEAR ("FY") entries
+ that already exist in the file. A WEIGHT of 0.00 in the FY entry will result
+ in an EFFECTIVE DATE entry with a STATUS of INACTIVE, otherwise the STATUS
+ will be ACTIVE.
+ 
+ STATUS (#.03) has a default of ACTIVE and the EFFECTIVE DATE (#.01) has a
+ default of 10/1/82. If the DRG code has a WEIGHT (#2) of 0.0 then its STATUS
+ (#.03) is INACTIVE and the EFFECTIVE DATE (#.01) is set to October 1 of the
+ first Fiscal Year that has a WEIGHT of 0.0.
+ 
+ III. Functional
+ ---------
+ * The users will be prompted for an "effective date" when calculating the DRG
+ using the DRG Grouper
+ * All calculations of ICD/CPT/DRG codes will be based on an effective date
+ that was either entered by the user or extracted from the patient's data
+ 
+ EXAMPLES
+ 
+ Run the DRG Grouper menu option.
+ The first question now is "Effective Date" (with the default of today). 
+ If you want to calculate the DRG for a date other than today, enter that date.
+ All other functionality is the same. The DRG will be calculated using the
+ entered date.
+ 
+ 
+ ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+ 	
+      <tab>;;18.0;DRG Grouper;**[patch list]**;Oct 20, 2000
+ 
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch                   After Patch            Patch
+ List
+  ============      ============          ===========         ==========
+  ICD187PT                   N/A                           11418263                        
+ 7
+  ICDCOD                 2304573                        3554932                      
+ 7
+  ICDDRG                 9700215                      10470305                    
+ 2,7
+  ICDDRG0               12389990                    12552788                  
+ 1,2,7
+  ICDDRG5                6116849                       6210421                    
+ 2,7
+  ICDDRGM               13582256                   15096754                      
+ 7
+  ICDDRGX                7314853                       7600411                 
+ 1,2,5,7
+  ICDGTDRG                   N/A                        13362323                     
+ 7
+  ICDTLB5                9783009                         9942147                     
+ 7
+ 
+ GLOBAL SUMMARY
+ ---------------------------
+ 
+ The following globals are included in the patch:
+ 
+ ^DD(80.2
+ ^DD(80.066
+ ^DD(80.166
+  
+ 
+ SOFTWARE AND DOCUMENTATION RETRIEVAL
+ ====================================
+ The software for this patch is being distributed in host file 
+ CSV_MS_1_0.KID.  The host file will contain nine KIDS builds.
+ The builds contained in the CSV MS 1.0 multi-package distribution are:
+  
+      Package                  Patch(es)
+      -------                          ---------
+      AICS                         IBD*3.0*51
+      Ambulatory Care       DG*5.3*511
+                                       SD*5.3*295
+      DRG Grouper           ICD*18.0*7
+      Event Capture          EC*2.0*47
+      Fee Basis                 FB*3.5*55
+      Integrated Billing      IB*2.0*210
+      PCE                          PX*1.0*121
+      Registration (PTF)    DG*5.3*510
+ 
+  
+ Please refer to the 'Software and Documentation Retrieval' section of the 
+ EC*2*47 patch description for instructions on how to acquire the patch 
+ software and documentation.
+  
+  
+  
+ 
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ Please refer to the Health Insurance Portability and Accountability  
+ Act (HIPAA) Code Set Versioning (CSV) Installation Guide for details
+ of the installation procedure for this patch.
+  
+ The HIPAA CSV Installation Guide can be found in the following
+  [ANONYMOUS.SOFTWARE] directories:
+   
+                                                Preferred Address
+                                                -------------------------
+ First available FTP server      download.vista.med.va.gov
+   
+ Specific Field Office                FTP Address
+ ---------------------                       ------------------------
+ Albany                                      ftp.fo-albany.med.va.gov
+ Hines                                        ftp.fo-hines.med.va.gov
+ Salt Lake City                           ftp.fo-slc.med.va.gov
+   
+   
+ File Name                   Description        Format          FTP Protocol
+ --------------                   -------------          ---------         
+ ------------
+ CSV_1_0_IG.DOC      Install Guide     MS Word      Binary
+ 
+
+Routine Information:
+====================
+
+Routine Name:
+  - ICDDRG
+
+ UPDATE FOR CODE SET VERSIONING PROJECT
+
+Routine Checksum:
+
+Routine Name:
+  - ICDCOD
+
+ UPDATE FOR CODE SET VERSIONING PROJECT
+
+Routine Checksum:
+
+Routine Name:
+  - ICDDRG5
+
+ UPDATE FOR CODE SET VERSIONING PROJECT
+
+Routine Checksum:
+
+Routine Name:
+  - ICDDRGX
+
+ UPDATE FOR CODE SET VERSIONING PROJECT
+
+Routine Checksum:
+
+Routine Name:
+  - ICDTLB5
+
+ UPDATE FOR CODE SET VERSIONING PROJECT
+
+Routine Checksum:
+
+Routine Name:
+  - ICD187PT
+
+ POST INSTALL ROUTINE THAT CREATES THE NEW EFFECTIVE DATE MULTIPLE IN THE DRG
+ FILE (#80.2) AND ADDS THE DRG CODES TO THE MULTIPLE FIELD LEVEL IN THE ICD
+ OP/PROC CODE FILE (#80.1) AND ICD DIAG CODE FILE(#80)
+
+Routine Checksum:
+
+Routine Name:
+  - ICDDRGM
+
+ UPDATE FOR CSV PROJECT
+
+Routine Checksum:
+
+Routine Name:
+  - ICDGTDRG
+
+ NEW ROUTINE FOR CSV PROJECT - DRG API'S
+
+Routine Checksum:
+
+Routine Name:
+  - ICDDRG0
+
+ UPDATED FOR CODE SET VERSION PROJECT
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : KRAUTER,DARYL                 Date Entered  : APR 09, 2003
+Completed By: LENART,ANTHONY D              Date Completed: SEP 04, 2003
+Released By : NELSON,VICKI M                Date Released : SEP 24, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

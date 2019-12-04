@@ -1,0 +1,228 @@
+$TXT Created by BOWEN,MARY JANE at DAYT16.FO-BAYPINES.MED.VA.GOV  (KIDS) on Tuesday, 04/21/09 at 09:15
+=============================================================================
+Run Date: JUL 29, 2009                     Designation: DG*5.3*750
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #716                    Status: Released
+                  Compliance Date: AUG 29, 2009
+=============================================================================
+
+Associated patches: (v)DG*5.3*688  <<= must be installed BEFORE `DG*5.3*750'
+
+Subject: PATIENT NAME AND CATASTROPHIC ALERT FIXES
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch does the following:          
+ - Ensures that the Registration package will store long patient names
+   properly.
+ - Catastrophic edit (CE) warning will not be displayed if only the pseudo
+   SOCIAL SECURITY NUMBER (#.09) field & the PSUEDO SSN REASON (#.0906) 
+   fields are changed.
+ - Catastrophic edit warning will be displayed if two or more edits to any
+   potential CE field (patient name, ssn, dob, sex) have been done on the 
+   same day.
+  
+ ASSOCIATED REMEDY TICKETS:
+ ========================= 
+ 1) HD0000000179019-  PATIENT LOAD/EDIT filing >30 chars in Patient NAME
+    DUPLICATE:
+    =========
+    HD0000000227629- Add width to labels
+  
+ 2) HD0000000201084- Changing SSN Causes Catastrophic Edit Alert
+  
+ 3) HD0000000183757- Catastrophic Edit at Puget Sound  
+    DUPLICATE:
+    =========
+    HD0000000244327- Eastern Colorado HCS - Catastrophic Edit Alert
+  
+ PARTICIPATING TEST SITES:
+ ========================
+ Little Rock, AR
+ Martinsburg, WV
+ Maryland HCS
+  
+ REMEDY OVERVIEW:
+ ===============
+ 1) HD0000000179019- PATIENT LOAD/EDIT filing >30 chars in Patient NAME
+  
+ Problem:
+ ========
+ The Load/Edit Patient Data [DG LOAD PATIENT DATA] option is allowing more 
+ than 30 characters in the patient name field. This violates the
+ Data Dictionary rule that limits the length of the PATIENT NAME field
+ (#.01) of the PATIENT file (#2) to 3-30 characters and was also reported
+ by the Health Eligibility Center (HEC) as causing problems with processing
+ HL7 messages.
+  
+ Solution:
+ =========
+ Routine DGRPECE has been modified to prevent this violation from 
+ occurring.
+  
+ Post-init routine DG53P750 will correct any patient names that are over 30
+ characters by truncating the middle name and if needed, will truncate the
+ first name.
+  
+ Routine DGRP1 was changed to allow up to 28 characters (instead of only up
+ to 23) to be displayed for the family name on Screen #1.
+  
+  
+ 2) HD0000000201084- Changing SSN Causes Catastrophic Edit Alert
+  
+ Problem:
+ ========
+ When using Screen #1 in the Load/Edit Patient Data [DG LOAD PATIENT DATA]
+ option to enter a pseudo SOCIAL SECURITY NUMBER field (#.09), users are 
+ required to enter a PSEUDO SSN REASON field (#.0906) which produces a
+ catastrophic edit warning although no change is made to the other patient
+ identifiers.
+  
+ Solution:
+ =========
+ Routine DGRPECE has been modified not to count the Pseudo SSN Reason as a
+ catastrophic edit field.
+  
+  
+ 3) HD0000000183757- Catastrophic Edit at Puget Sound
+  
+ Problem:
+ ========
+ The following two problems were reported in this remedy ticket:
+  
+ 1)  If the user edits a single field and exits the load/edit session and 
+ subsequently edits an additional demographic field, the CE alert is not 
+ displayed.
+  
+ 2) If the user is editing demographics, edits a single field and 
+ completes the edits, the user would have to select 1 again to edit 
+ demographics and edit a second trigger field that would generate a CE
+ alert.  In this scenario if the fields are not edited in a consecutive
+ fashion, the CE alert is not generated.
+  
+  
+ Solution:
+ =========
+ After the count of edits are received in DGRPECE routine, routine DGRPAUD
+ will be called if one change has been made in the current session. DGRPAUD
+ will go through the audit file and see if any other potential Catastrophic
+ Edit field changes were made during the current day for the patient, then
+ count the changes. If the total count is two or more an alert is
+ generated.
+  
+  
+  INSTALLATION INSTRUCTIONS:
+  ===========================
+  This patch may be run with users on the system, HOWEVER because
+  certain Registration options need to be placed out of order, we strongly
+  suggest it be installed after business hours.
+   
+  Installation may take an hour or more, depending on how many records are
+  in the PATIENT file (#2) and how many require updating.
+  
+  1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu to unload
+      the KIDS distribution included with this message.
+   
+      NOTE:  If the required patches are not installed, the transport 
+             global will be removed.  If the transport global is removed
+             you will need to repeat this step.
+   
+  2.  From the Kernel Installation and Distribution System Menu, select
+      the Installation menu.
+   
+  3.  From this menu, you may elect to use the following options
+      (when prompted for INSTALL NAME, enter DG*5.3*750):
+      a.  Compare Transport Global to Current System  - this option will
+          allow you to view all changes that will be made when the patch
+          is installed.  It compares all components of the patch (routines,
+          DDs, templates, etc.).
+      b.  Verify Checksums in Transport Global - this option will
+          allow you to ensure the integrity of the routines that are in
+          the transport global.
+      c.  Print Transport Global - this option will allow you to view the
+          components of the KIDS build.
+      d.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will not
+          backup any other changes such as DD's or templates.
+   
+  4.  Use the Install Package(s) option and select the package DG*5.3*750.
+   
+  5.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+      NO//', respond NO.
+   
+  6.  When prompted,'Want to DISABLE Scheduled Options, Menu Options, and 
+      Protocols? YES//', respond Yes.
+      When prompted,'Enter options you wish to mark as 'Out Of Order':',
+      enter:
+             Register a Patient [DG REGISTER PATIENT]
+             Load/Edit Patient Data [DG LOAD PATIENT DATA]
+             Preregister a Patient [DGPRE PRE-REGISTER OPTION]
+             Collateral Patient Register [DG COLLATERAL PATIENT]  
+   
+      When prompted,'Enter protocols you wish to mark as 'Out Of Order':', 
+      hit enter.
+  
+ POST-INSTALL INSTRUCTIONS:
+ ==========================
+ To obtain a list of the patients that were updated, execute 
+ PRTRPT^DG53P750 after patch installation; provided the ^XTMP("DG53P750"
+ global is still available (it has a 90-day purge period). Use a 132 column
+ output to get output for patient on one line.
+  
+    Example:
+  
+ CHEY20 13d1>D PRTRPT^DG53P750
+  
+ DEVICE: HOME// 0;132;999  TELNET TERMINAL
+  
+ Apr 17, 2009   DG*5.3*750 List of patients with long names     Page:    1
+ -------------------------------------------------------------------------
+ ------------------------------------------------
+  
+ File 2 IEN File 20 IEN   Patient Name Before///Patient Name After
+ --------------------------------------------------------------------------
+ ------------------------------------------------
+ 7186994    1199156       TESTLTESTLTESTLTESTL,REGTEST 
+ MIDDLE///TESTLTESTLTESTLTESTL,REGTEST M
+  
+ Enter RETURN to continue or '^' to exit:  
+  
+ Routine DG53P750 can be deleted after install of patch if it successfully 
+ ran to completion.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.3;Registration;**[Patch List]**;Aug 13, 1993;Build 6
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: DG53P750
+    Before:       n/a   After: B18640459  **750**
+Routine Name: DGRP1
+    Before: B34627316   After: B34628086  **109,161,506,244,546,570,629,
+                                           638,649,700,653,688,750**
+Routine Name: DGRPAUD
+    Before:       n/a   After:  B6109099  **750**
+Routine Name: DGRPECE
+    Before: B66239213   After: B73130741  **638,682,700,720,653,688,750**
+ 
+Routine list of preceding patches: 688
+
+=============================================================================
+User Information:
+Entered By  : THEROUX,JOHN                  Date Entered  : MAR 07, 2007
+Completed By: SESSLER,APRIL                 Date Completed: JUL 27, 2009
+Released By : HEUER,CINDY                   Date Released : JUL 29, 2009
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

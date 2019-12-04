@@ -1,0 +1,668 @@
+$TXT Created by KENNEY,JIM at DEVFEY.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 07/25/05 at 08:23
+=============================================================================
+Run Date: AUG 12, 2005                     Designation: PRCA*4.5*228
+Package : PRCA - ACCOUNTS RECEIVABLE          Priority: Mandatory
+Version : 4.5       SEQ #201                    Status: Released
+                  Compliance Date: AUG 17, 2005
+=============================================================================
+
+Associated patches: (v)PRCA*4.5*201<<= must be installed BEFORE `PRCA*4.5*228'
+                    (v)IB*2*233    <<= must be installed BEFORE `PRCA*4.5*228'
+                    (v)PRCA*4.5*227<<= must be installed BEFORE `PRCA*4.5*228'
+                    (v)IB*2*301    <<= must be installed BEFORE `PRCA*4.5*228'
+
+Subject: VISTA IB/AR DATA EXTRACT PHASE II - PART 1
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Enhancement (Mandatory)
+  - PATCH FOR A PATCH
+
+Description:
+============
+
+ Interface Overview
+ ------------------
+ In September 2004, patches, PRCA*4.5*201 and IB*2.0*233, implemented the
+ design requirements for a software development project where the Veterans
+ Health Administration (VHA) established a new set of revenue metrics
+ for use in monitoring the performance of the VHA revenue cycle at all VHA
+ facilities.  The desired metrics are industry-standard measures that are
+ commonly used in other public and private health care institutions.  An 
+ existing VHA centralized data warehouse is used to calculate these metrics
+ and provides results via a web-based performance metric site.  This data
+ warehouse is updated on a monthly basis.
+  
+ VHA's Chief Business Office (CBO) has identified the daily collection of 
+ this data as a high priority to support the metrics development process.  
+ CBO needs the daily collection of data to populate the centralized data 
+ warehouse with billing and collections transactions from each VHA facility.
+ The calculated metrics would be viewable to field and headquarters staff 
+ through an existing website.  An automated daily VistA extract would 
+ provide more timely and accurate data to this centralized data warehouse.
+  
+  
+ Functional Description
+ ----------------------
+ This patch adds additional fields to the existing transmission, and is 
+ Part 1 of Phase 2 of the implementation.  Another patch will be issued 
+ later this year adding more fields to the transmission and several new
+ extracts.
+  
+ This patch adds the following items to the transmission:
+  
+ ************************* IB Files and Fields *************************
+  
+ Bill/Claims File Line (#399)
+  
+ o       MRA REQUESTED DATE (#7)
+ o       LAST ELECTRONIC EXTRACT DATE (#21)
+ o       PRINTED VIA EDI? (#26)
+ o       FORCE CLAIM TO PRINT (#27)
+ o       CLAIM MRA STATUS (#24)
+ o       MRA RECORDED DATE (#22)
+ o       DATE BILL CANCELLED (#17)
+ o       FORM TYPE (#.19)
+ o       GROUP NUMBER (from file 355.3-GROUP INSURANCE PLAN,#.04)
+ o       PAYER (from file 365.12-PAYER, #.01)
+ o       NATIONAL VA ID NUMBER (from file 365.12-PAYER, #.02)
+ o       DRG (computed from PTF field in 399 (.08) and DRG file 
+                (#45),field #9)
+ o       MRA REJECTIONS (YES/NO)
+ o       ECME Number (#460 -Numerical portion of data only)
+  
+ Bill/Claims Prosthetics File (#362.5) Line
+  
+ o       BILL NUMBER (#.02)
+ o       ITEM (#.03)
+  
+ Integrated Billing Action File (#350) Line
+  
+ o       DATE OF TREATMENT (#.17)
+ o       ACTUAL REFILL DATE OF PRESCRIPTION
+ o       DIVISION WHERE CARE WAS RENDERED
+          Note:  The above two fields are calculated from the file 
+                 number contained in RESULTING FROM field (#.04).
+  
+ ********************* AR Files and Fields *************************
+  
+ AR Transactions (#433) Line
+  
+ o       RECEIPT NUMBER (#13)
+ o       DATE OF PAYMENT (TRANSACTION DATE) (#11)
+ o       DATE OF CHECK (Extracted from Word processing field #433.041)
+  
+ Accounts Receivable (#430) Line
+  
+ o       MEDICARE CONT. ADJUSTMENT (#131)
+ o       MEDICARE UNREIMBURSABLE (#132)
+ o       REFUNDED AMOUNT (#79.18)
+ o       REFUNDED DATE (#79.19)
+  
+ AR Batch Payment (#344) Line
+  
+ o       FACILITY NUMBER (Calculated by AR function $$SITE^RCMSITE() )
+  
+ ********************** New Person File and Fields **********************
+  
+ New Person (#200)
+  
+ o       SPECIALITY (#747.111)
+   
+ Note: The correct specialty is calculated by a function that returns the 
+ specialty on the date of care.
+  
+ o       SERVICE/SECTION  (#29)
+  
+ Note:   These 2 fields from the New Person file (#200) will be added to 
+ the Procedures and CPT Modifiers section of the transmission 
+ (#399.030/#399.0416).
+  
+ *********************** Patient File and Fields ************************
+  
+ Patient (#2)
+  
+ o       DATE OF DEATH (#.351)
+ o       MARITAL STATUS (#.05)
+  
+ Annual Means Test (#408.31)
+  
+ Note:  Data from #408.31 is transmitted on the Patient file (#2) line.
+  
+ o       CURRENT MEANS TEST
+            DATE   (#.01)
+            STATUS (#.03)
+            CURRENT INCOME (#.04)
+  
+ Note:  The field numbers for CURRENT COPAY TEST, LTC CO-PAY TEST, and LTC 
+        CO-PAY EXEMPTION TEST are the same as for CURRENT MEANS TEST above)
+  
+ o       CURRENT COPAY TEST
+            DATE
+            STATUS
+            CURRENT INCOME
+ o       LTC CO-PAY TEST
+            DATE
+            STATUS
+            CURRENT INCOME
+ o       LTC CO-PAY EXEMPTION TEST
+            DATE
+            STATUS
+            CURRENT INCOME
+  
+ Other Changes:
+ -------------- 
+ o       Functionality has been added to screen out test patients from the 
+         information being transmitted in the data extracts.
+  
+ o       The header of the AR Batch Payment (#344) line has been modified 
+         to display the number of rows transmitted.
+  
+ o       This patch adds a new batch type to the BATCH TYPE field (#.04) 
+         of the AR DATA QUEUE file (# 348.4). The CBO FISCAL YR 2005 
+         transmissions will be sent with a batch type of "E".
+  
+ o       This patch also corrects problems with the first release of this 
+         software (PRCA*4.5*201).   These issues include Remedy Ticket 
+         #HD85294, a flaw which stopped some of the CPT codes from being 
+         transmitted, the transmission of internal numbers rather than 
+         external values for procedures in line 399.0402, flaws in the 
+         original patch that prevented all the transactions from 433 (AR 
+         Transaction file) from transmitting, and the use of direct global
+         references.
+   
+  
+ ************************* SPECIAL NOTES *************************
+ *****************************************************************
+  
+ Test Accounts
+ -------------
+ As with the previous patch, if this patch is installed in a test 
+ account, data will begin to be accumulated and the historical extracts 
+ will be setup to run in the test account's TaskMan and sent to the 
+ Allocation Resource Center (ARC).  The ability to turn this functionality 
+ off ONLY in the test account has been provided.  It can be turned off and 
+ on as needed for testing purposes.  Turning this functionality off, turns 
+ off both the capture of data into the AR DATA QUEUE file (#348.4) and the 
+ transmission of batches.  Batches created from a test account are ftp'd 
+ to a separate account at the ARC.
+  
+  
+ Report
+ ------
+ A print and sort template were provided in patch, PRCA*4.5*201, to be used
+ as a validation of active and suspended bills.  This report needs to be 
+ queued upon installation of this patch.  This report then needs to be sent
+ to April Zaidel and Carolyn Pomicter in FORUM.
+  
+ An example of running this report is given below:
+  
+  OUTPUT FROM WHAT FILE: ACCOUNTS RECEIVABLE// 430  ACCOUNTS RECEIVABLE
+                                           (683237 entries)
+     SORT BY: BILL NO.// [RCXV ACTIVE SORT
+                               (Feb 18, 2004@11:56) User #12803 File #430  
+ SORT
+     WANT TO EDIT 'RCXV ACTIVE SORT' TEMPLATE? NO//
+     FIRST PRINT FIELD: [RCXV ACTIVE PRINT
+                               (Feb 18, 2004@11:37)          File #430
+     WANT TO EDIT 'RCXV ACTIVE PRINT' TEMPLATE? No//   (No)
+     Heading (S/C): ACCOUNTS RECEIVABLE STATISTICS  Replace
+     START AT PAGE: 1//
+     DEVICE: P-MESSAGE
+  
+  
+ Example Report:
+  
+ ACCOUNTS RECEIVABLE STATISTICS              FEB 20,2004  13:54    PAGE 1
+  
+                                                CURRENT
+            BILL NO.                            BALANCE
+ --------------------------------------------------------------------------
+            CATEGORY: C (MEANS TEST)
+ SUBTOTAL                                   1673207.45
+ SUBCOUNT  9171
+            CATEGORY: CHAMPVA
+ SUBTOTAL                                     16359.19
+ SUBCOUNT  105
+            CATEGORY: CHAMPVA THIRD PARTY
+ SUBTOTAL                                       878.14
+ SUBCOUNT  8
+            CATEGORY: CURRENT EMP.
+ SUBTOTAL                                     10278.57
+ SUBCOUNT  59
+            CATEGORY: EMERGENCY/HUMANITARIAN
+ SUBTOTAL                                     68626.06
+ SUBCOUNT  18
+            CATEGORY: EX-EMPLOYEE
+ SUBTOTAL                                      4360.72
+ SUBCOUNT  6
+            CATEGORY: INELIGIBLE HOSP.
+ SUBTOTAL                                    109659.37
+ SUBCOUNT  141
+            CATEGORY: INTERAGENCY
+ SUBTOTAL                                    214741.00
+ SUBCOUNT  5
+            CATEGORY: MILITARY
+ SUBTOTAL                                    579895.09
+ SUBCOUNT  29
+            CATEGORY: REIMBURS.HEALTH INS.
+ SUBTOTAL                                   9874797.10
+ SUBCOUNT  14247
+            CATEGORY: RX CO-PAYMENT/NSC VET
+ SUBTOTAL                                    350734.49
+ SUBCOUNT  25612
+            CATEGORY: RX CO-PAYMENT/SC VET
+ SUBTOTAL                                     78850.60
+ SUBCOUNT  7261
+            CATEGORY: TORT FEASOR
+ SUBTOTAL                                    934735.53
+ SUBCOUNT  991
+            CATEGORY: VENDOR
+ SUBTOTAL                                     22709.43
+ SUBCOUNT  22
+            CATEGORY: WORKMAN'S COMP.
+ SUBTOTAL                                    310871.14
+ SUBCOUNT  489
+ TOTAL                                     14250703.88
+ COUNT     58164
+   
+  
+ Post-Installation Notes
+ -----------------------
+ In the post-installation process, a task will be queued to send a 
+ FTP file of all active and suspended bills to the ARC.  This task 
+ will be queued for 8pm on the date of installation.  Also, multiple
+ background jobs will be automatically created to send back data from the
+ date of the installation of patch PRCA*4.5*201. There will be a series of
+ 9 transmissions sent.  The description for these jobs will be CBO FISCAL
+ YR 2005 for the 1st 5 transmissions and CBO FISCAL YR 2004 for the final 4
+ transmissions.
+  
+ All jobs are queued for a Saturday at 6:00 am.  The first job will
+ be queued to start the first Saturday after installation and subsequent
+ jobs will be queued for the next 3 Saturdays.  The 5th transmission 
+ will be sent on the Sunday after the 4th Saturday at 6:00 am.
+  
+ The FY05 tasks set up by the post-init are:
+  
+ First task is for Date of installation of PRCA*4.5*201 thru 9/27/2004
+ Second is for 9/28/2004-12/31/2004
+ Third is for 1/1/2005-3/31/2005
+ Fourth is for 4/1/2005-6/30/2005
+ Fifth is for 7/1/2005-Installation date of this patch
+  
+ There will also be four transmissions of FY 04 data set up in the task 
+ manager.  These will begin on the Saturday following the fifth FY05 
+ transmission and subsequent jobs will be queued for the next 3 Saturdays.
+  
+ The FY04 tasks set up by the post-init are:
+  
+ First task is for 9/26/2003-12/31/2003
+ Second is for 1/1/2004-3/31/2004
+ Third is for 4/1/2004-6/30/2004
+ Fourth is for 7/1/2004-One day before the Date of installation of 
+ PRCA*4.5*201
+  
+ NOTE:  If the scheduled times for these historical extracts are 
+ inconvenient, they may be 'requeued' via the 'Requeue Tasks' option in 
+ TaskMan.  The time frame chosen (Saturdays/ Sunday at 6:00am) was picked
+ to lessen impact on your VistA system.
+  
+  
+ Example on how to Requeue
+ -------------------------
+  
+ First, find the task number of the FY05 extract that needs to be 
+ requeued.
+  
+ Select TaskMan Management Option: list Tasks
+  
+                     List Tasks Option
+  
+                          All of one user's tasks.
+                          One user's future tasks.
+                          Every task.
+                          List of tasks.
+                          Unsuccessful tasks.
+                          Future tasks.
+                          Running tasks.
+  
+                     Select Type Of Listing: Future tasks.
+  
+ --------------------------------------------------------------------------
+ 166594: CUR^RCXVTSK, CBO FISCAL YR 2005 (2/1/05-2/28/05). No device.  VAH.
+         From Today at 15:18,  By you.  Scheduled for 11/22/2003 at 6:00
+ --------------------------------------------------------------------------
+  
+ Second, dequeue the original task.
+  
+ Select TaskMan Management Option: DEQueue Tasks
+   
+ Select TASK: 166594
+  
+ 166594: CUR^RCXVTSK, CBO FISCAL YR 2005 (2/1/05/-2/28/05). No device.  
+ VAH. From Today at 15:18,  By you.  Scheduled for 11/22/2003 at 6:00
+  
+ Are you sure you want to unschedule this task? NO// YES
+  
+      Unscheduled!
+  
+ Then, requeue to a new, more convenient date and time.
+  
+ Select TaskMan Management Option: REQueue Tasks
+    
+ Task Number: 166594
+  
+ 166594: CUR^RCXVTSK, CBO FISCAL YR 2005 (2/1/05/-2/28/05). No device.  
+ VAH. From Today at 15:18,  By you.  Unscheduled by you.
+  
+ Requeue for what time: April 2, 2005@06:00//4/9@0600  (Apr 9,
+ 2003@06:00:00) Do you wish to change the Device the task goes to:? No//   
+ NO Task priority: :  (1-10):
+   
+ Task requeued!
+  
+  
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+ There is no NSR associated with this patch.
+  
+  
+ This patch addresses the following NOIS/Remedy Ticket(s):
+ ---------------------------------------------------------
+ Remedy Ticket #: HD85294
+  
+ Overview of Remedy Ticket #HD85294:
+ -----------------------------------
+  
+ The ARC was not getting all the transactions from file 433. There are 4
+ changes made in this patch to correct the problem:
+  
+ 1. Change the Transaction Date to Date Entered rather than Transaction 
+ Date.
+ 2. Change the CBO EXTRACT FLAG to allow OPEN status bills to be processed.
+ 3. Change the software to allow the sending of data on the CCPC extract 
+ date.
+ 4. Add a MUMPS Cross-reference to file 433 (AR Transaction file), field 
+    12 (Transaction type).
+  
+ COMPONENTS SENT WITH PATCH 
+ --------------------------
+  
+ The following is a list of the routines included in this patch.  
+ The second line of each of these routines now looks like: 
+  
+      ;;4.5;Accounts Receivable;**patch list**;Mar 20, 1995
+  
+                            CHECK^XTSUMBLD results
+  
+ Routine          Before Patch     After Patch    Patch List 
+ -------          ------------     -----------    ----------
+ RCXVDC           2206754          2943383         201,228
+ RCXVDC1          5665210          6355331         201,227,228
+ RCXVDC2          1632521          2981043         201,227,228
+ RCXVDC3          5523444          7660792         201,227,228
+ RCXVDC4          3608991          4399456         201,227,228
+ RCXVDC5          1746689          3900426         201,227,228
+ RCXVDC6          2268293          2994531         201,227,228
+ RCXVDC7          N/A              565756          228
+ RCXVDC8          1312885          1376572         201,228
+ RCXVDEQ          3534252          3534252         201,228
+ RCXVP201         8120116          8261339         201,228
+ RCXVP228         N/A              3206422         228
+ RCXVTSK          7330599          7550359         201,227,228
+  
+ Total number of routines - 13
+ Total number of modified routines - 11
+ Total number of new routines - 2
+  
+ The following is a list of files included in this patch:
+  
+                                      UP    SEND  DATA                
+                                      DATE  SEC.  COMES  SITE  RSLV  
+ FILE #  NAME                         DD    CODE  W/FILE DATA  PTS 
+ ------------------------------------------------------------------
+ 348.4   AR DATA QUEUE                YES   NO    NO           NO
+ Partial DD: subDD: 348.4      fld: .04
+   DATA SCREEN:
+ 433         AR TRANSACTION           YES   NO    NO           NO
+ Partial DD: subDD: 433        fld: 12
+   DATA SCREEN:
+  
+ The following is a list of fields included in this patch:
+  
+ Field Name (Number)           File Name (Number)
+ -------------------           ------------------
+  
+ BATCH TYPE  (.04)             AR DATA QUEUE (348.4)
+ TRANSACTION TYPE (12)         AR TRANSACTION (433)
+  
+ Test Sites:
+ -----------
+ Bay Pines
+ Fort Harrison (Montana HCS)
+ Oklahoma City
+ Sioux Falls
+ Topeka (Heartland-West HCS)
+  
+  
+ Pre/Post Installation Overview
+ ------------------------------
+ Please be sure to note and follow the Pre-Installation and Post-
+ Installations.  The Pre-Installation Instructions discuss making sure
+ the PRCA NIGHTLY PROCESS is NOT running while installing this patch.
+ The Post-Installation Instructions deal with running the report detailed
+ in the SPECIAL NOTES section and discussed in the Post-Installation Notes
+ section.  This report must be queued to run after business hours the same 
+ day as the installation of the patch.
+  
+  
+        ================INSTALLATION INSTRUCTIONS =================
+  
+ It is recommended that the following selection(s) in the OPTION (#19) 
+ file and all of their descendants be disabled to prevent possible 
+ conflicts while running the KIDS Install. Other VISTA users will not be 
+ affected.
+  
+ ****All IB*, PRCA*, and RC* options should be disabled during 
+ installation of the patch****
+  
+  
+ Installation of this patch is mandatory at all sites, including the 
+ legacy systems, if the legacy system still has "active" or outstanding 
+ bills in AR.
+  
+ This patch should be installed after normal business hours, when all 
+ Accounts Receivable Users are logged off the system.
+  
+ Install Time - less than 5 minutes in the foreground depending upon the 
+ size of the Task file.  It is recommended that this install NOT be queued 
+ but run in the foreground.
+  
+ ******************** PRE-INSTALLATION INTRUCTIONS ********************
+  
+ Ensure the PRCA NIGHTLY PROCESS is NOT running while installing this 
+ patch.  TaskMan should be used to verify that the PRCA NIGHTLY PROCESS 
+ is not running.  If it is, TaskMan should be used to turn it off using
+ the option Dequeue Tasks [XUTM DQ].
+  
+ ***********************************************************************
+   
+   1.   LOAD TRANSPORT GLOBAL 
+        ---------------------
+        Choose the PackMan message containing this patch and invoke the 
+        INSTALL/CHECK MESSAGE PackMan option.  
+  
+   2.   START UP KIDS 
+        -------------
+        Start up the Kernel Installation and Distribution System Menu 
+        [XPD MAIN]: 
+    
+             Edits and Distribution ...  
+             Utilities ...  
+             Installation ...  
+    
+   Select Kernel Installation & Distribution System Option: INStallation 
+                                                            ---
+             Load a Distribution 
+             Print Transport Global 
+             Compare Transport Global to Current System 
+             Verify Checksums in Transport Global 
+             Install Package(s) 
+             Restart Install of Package(s) 
+             Unload a Distribution 
+             Backup a Transport Global 
+    
+   Select Installation Option: 
+    
+   3.   Select Installation Option: 
+        ---------------------------
+        NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+               NAME, enter PRCA*4.5*228):
+       
+        a.  Backup a Transport Global - This option will create a backup
+            message of any routines exported with this patch. It will not
+            backup any other changes such as DD's or templates.
+        b.  Compare Transport Global to Current System - This option will
+            allow you to view all changes that will be made when this patch
+            is installed.  It compares all components of this patch
+            (routines, DD's, templates, etc.).
+        c.  Verify Checksums in Transport Global - This option will allow
+            you to ensure the integrity of the routines that are in the
+            transport global.
+      
+   4.   Select Installation Option: Install Package(s) 
+                                    ----------------
+        **This is the step to start the installation of this KIDS patch: 
+    
+        a.  Choose the Install Package(s) option to start the patch 
+            install.
+        b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+            YES//' answer NO
+        c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+            Options, and Protocols? YES//' answer YES
+  
+              Enter options you wish to mark as 'Out Of Order': PRCA*
+  
+              Enter options you wish to mark as 'Out Of Order': RC*
+  
+              Enter options you wish to mark as 'Out Of Order': IB*
+  
+              Enter options you wish to mark as 'Out Of Order': 
+  
+              Enter protocols you wish to mark as 'Out Of Order': 
+  
+              Delay Install (Minutes):  (0-60): 0// 
+  
+  
+ ******************** POST-INSTALLATION INSTRUCTIONS ******************** 
+  
+ Be sure to queue your report after business hours so the
+ numbers reported will include that day's IB and AR transactions and 
+ reflect as accurate count of the active/suspended bills from the 8:00 PM 
+ automated job. This will help us insure that we have received all the 
+ "active" batches.  Please reference the SPECIAL NOTES on the report 
+ listed in the body of the patch description.
+  
+ Additionally, if the schedule time for the running of the historical 
+ extracts needs to be changed for your site.  Please reference the Post 
+ Installation Notes listed in the body of the patch description.
+  
+ *************************************************************************
+ 
+ 
+
+Routine Information:
+====================
+
+Routine Name:
+  - RCXVDC
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCXVDC1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCXVDC2
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCXVDC3
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCXVDC4
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCXVDC5
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCXVDC6
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCXVDC7
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCXVDC8
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCXVDEQ
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCXVP228
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCXVTSK
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCXVP201
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : KENNEY,JIM                    Date Entered  : JAN 04, 2005
+Completed By: KUREK,STANLEY M               Date Completed: AUG 10, 2005
+Released By : BATIE,NADINE                  Date Released : AUG 12, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

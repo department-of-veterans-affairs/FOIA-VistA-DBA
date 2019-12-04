@@ -1,0 +1,486 @@
+$TXT Created by MCCORMACK,JOHN J at TRAIN.MILWAUKEE.MED.VA.GOV  (KIDS) on THURSDAY, 06/20/02 at 16:27
+=============================================================================
+Run Date: JUN 25, 2002                     Designation: LA*5.2*61
+Package : LA - AUTOMATED LAB INSTRUMENTS     Priority: Mandatory
+Version : 5.2        SEQ #45                    Status: Released
+=============================================================================
+
+Associated patches: (v)LA*5.2*27   <<= must be installed BEFORE `LA*5.2*61'
+                    (v)LA*5.2*46   <<= must be installed BEFORE `LA*5.2*61'
+                    (v)LA*5.2*51   <<= must be installed BEFORE `LA*5.2*61'
+
+Subject: CORRECT VA STATION NUMBER IN LAB HL7 ORM MESSAGE
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description: 
+============
+
+ VISTA Laboratory Package patch LA*5.2*61 contains no changes to software
+ controlled by VHA DIRECTIVE 99-053, titled VISTA BLOOD BANK SOFTWARE.
+  
+ Patch LA*5.2*61 addresses several NOIS'es involving the Laboratory
+ Electronic Data Interchange (LEDI) software.
+  
+   ********************************************************************
+   *                                                                  *
+   * Collecting facilities: Upon host laboratory installation of this *
+   * patch, the HL7 Result (ORU) message will no longer contain the   *
+   * performing laboratory comment. See item #7 for instructions.     *
+   *                                                                  *
+   * Host facilities: Notify your collection facilities of scheduled  *
+   * patch installation.                                              *
+   *                                                                  *
+   ********************************************************************
+  
+ 1. NOIS HWH-0202-42779 and LAS-0402-61457 reported a problem in the
+ building of a HL7 Order (ORM) message. Under certain circumstances, the
+ software was passing the collecting facility station number instead of
+ an INSTITUTION file (#4) internal entry number to a Lab HL7 field building
+ routine. Construction of the collecting facility's HL7 Order (ORM) message
+ ORC segment's field ENTERING ORGANIZATION (ORC-17) placed the VA station
+ number in the field's second sub-component instead of the first
+ sub-component. This occurs when the collecting facility's VA station
+ number is alphanumeric. When processing the ORM message at the host
+ facility the building of the LAB PENDING ORDERS ENTRY file (#69.6)
+ either identified the wrong collecting facility or was unable to identify
+ a collecting facility. Option Referral Patient Multi-purpose Accession
+ [LRLEDI] is unable to extract the test orders from file #69.6 when the
+ host facility attempts to process the shipping manifest. Routine LA7VORM1
+ has been changed to pass a pointer for file #4 instead of the VA station
+ number to the ORC-17 field building routine.
+  
+ 2. During review of NOIS HWH-0202-42779 a problem with the "CH" and
+ "CH1" MUMPS cross-references on COLLECTING FACILITY (#.02) and HOST
+ FACILITY (#.03) fields respectively of the LAB SHIPPING CONFIGURATION
+ file (#62.9) was identified. Multiple entries in this cross-reference
+ pointed to the same entry in the file. The "KILL" logic for these cross-
+ references does not perform correctly, leaving incorrect entries in
+ the "CH" cross-reference. These two MUMPS cross-references are replaced
+ by a single new style FileMan Regular INDEX file cross-reference named
+ "CH". The cross-reference "ASC" on LAB MESSAGING LINK field (#.07) will
+ be removed due to its lack of use by the laboratory software.
+ The KIDS pre-install will delete these fields and cross-references
+ during patch installation. Patch LA*5.2*61 will install these fields with
+ the new cross-reference "CH" and re-index the "CH" cross-reference.
+  
+ 3. NOIS CON-0302-10181 reported the option Edit Shipping Configuration
+ [LA7S EDIT 62.9] was prompting the user to edit unexpected fields
+ within the TEST/PROFILE (#60) subfile, specifically fields ACCESSION
+ AREA (#.02) and SPECIMEN (#.03), when a host facility configures a
+ shipping configuration to receive specimens from a collecting facility.
+ It was determined that variables setup for a FileMan DIC API call to
+ select an entry in file #62.9 were later interacting with a FileMan DIE
+ API call to edit the selected entry. The routine LA7SCE has been modified
+ to kill required FileMan DIC input variables before making the FileMan
+ DIE call.
+  
+ 4. NOIS PHI-0302-20433 reported a problem with the setting of the "Q"
+ cross-reference on field STATUS (#2) in LA7 MESSAGE QUEUE file (#62.49).
+ The setting of the cross-reference could fail when other fields that the
+ cross-reference is dependent on have not been valued. A previous patch
+ changed lab code to use FileMan DBS calls instead of classic FileMan
+ calls. These DBS calls file data by field number. Previously FileMan
+ filed the fields in the order specified in the DR variable. This causes
+ the MUMPS cross-references to fail at times when the other fields the
+ cross-reference is dependent on, have not been filed or updated.
+ A similar problem potentially exists for the ORU cross-reference on this
+ same field. These two MUMPS cross-references are replaced by new style
+ FileMan Regular INDEX file cross-reference named "Q" and "AC" respectively.
+ The KIDS pre-install will delete these fields and cross-references during
+ patch installation. Patch LA*5.2*61 will install this field with the new
+ cross-references.
+  
+ 5. NOIS BHS-0302-10236 reported a problem with an accession/test building
+ multiples times on a shipping manifest. This was caused when a test is
+ specified multiple times on the shipping configuration but with different
+ specimen types. The logic to build the test onto the manifest was not
+ clearing a flag to indicate that a test should be added to the manifest
+ when checking the test for each of the possible specimens to build.
+ Routine LA7SM1 will now set and clear the flag to add a test when the
+ configuration specifies the same test for multiple specimens.
+  
+ 6. NOIS LON-0402-60012 reported a problem when a host facility uses "dummy"
+ tests to report patient results. These "dummy" results along with the
+ patient's actual test results were transmitted in an HL7 ORU Result message
+ to the collecting facility. These test results were encoded with the parent
+ test's result NLT and LOINC codes due to lack of proper result code mapping.
+ Routines LA7VOBX1 and LA7VHLU1 will now attempt to identify test results
+ which are associated with LABORATORY TEST file (#60) tests that are TYPE =
+ BOTH or OUTPUT to determine if a specific test result is returned to the
+ collecting facility.
+  
+ 7. NOIS BHS-0302-10236 reported a problem with the generation of the
+ performing laboratory comment that is automatically added to the HL7
+ Result (ORU) message. The name of the performing laboratory was based
+ on the name of the primary facility. This name is incorrect when testing
+ is performed by a division of an integrated facility. To correct this
+ problem the software will no longer generate a performing laboratory
+ comment.
+  
+ Collecting facilities wanting a comment indicating the name of the
+ performing laboratory should turn on the generation of the performing
+ laboratory comment when processing the results at the collecting facility.
+ To turn on the generation of the performing laboratory comment use the
+ option LEDI Setup [LA7V SETUP]. Under the host facility automated
+ instrument section for each test, enter a remark prefix in field REMARK
+ PREFIX (#19) and "YES" at the field STORE PRODUCER'S ID (#20). The
+ performing laboratory comment can then be generated based on field OBX-15
+ Producer's ID in the OBX segment for each test result found in the HL7
+ Result (ORU) message. The comment generated by the software will be
+ remark prefix_"results from "_name of performing institution from
+ INSTITUTION file (#4). If the REMARK PREFIX field is blank then the test
+ name of the corresponding test from LABORATORY TEST file (#60) is used.
+  
+ Example:
+      remark prefix="Theophylline "
+        institution="REGION 7 ISC,TX (DEMO)"
+  generated comment="Theophylline results from REGION 7 ISC,TX (DEMO)"
+  
+ 8. NOIS IND-0402-42261 reported a problem with building and sending HL7
+ Result (ORU) messages to the collecting facility. Accessions with UID's
+ that are alphanumeric were skipped during message building due to code
+ that was treating the UID as numeric. Routine LA7VMSG1 will now handle
+ alphanumeric UID's and return results to the collecting facility.
+  
+ 9. Due to changes to routine LA7VORU, which resulted in the routine size
+ exceeding the VA Vista Programming Standards and Conventions (SAC) of
+ 10,000 characters, the routine was split into two routines, LA7VORU
+ and LA7VORUA.
+  
+  
+ ASSOCIATED NOIS
+ ---------------
+  BHS-0302-10236
+  CON-0302-10181
+  HWH-0202-42779
+  IND-0402-42261
+  LAS-0402-61457
+  LON-0402-60012
+  PHI-0302-20433
+  
+  
+ TEST SITES
+ ----------
+  Boston HCS
+  Indianapolis VAMC
+  Lexington VAMC
+  Long Beach HCS
+  Louisville VAMC
+  Milwaukee VAMC
+  Philadelphia VAMC
+  Southern Nevada HCS
+  VA Heartland - East, VISN 15
+  VA Heartland - West, VISN 15
+  
+  
+ ROUTINE SUMMARY
+ ===============
+   The following routines are included in this patch.  The second line
+   of each of these routines now looks like:
+   <tab> ;;5.2;AUTOMATED LAB INSTRUMENTS;<patchlist>;Sep 27, 1994
+  
+                     Checksum       Checksum
+    Routine Name     Before Patch   After Patch    Patch List
+    ------------     ------------   -----------    ------------
+    LA61             N/A            9395003        **61** (Deleted by KIDS)
+    LA7QRY1          3509927        3555910        **46,61**
+    LA7SCE           11402708       11501726       **27,46,61**
+    LA7SM1           8553973        8587872        **27,46,61**
+    LA7VHLU1         2011157        2323481        **46,61**
+    LA7VHLU2         3873916        4100825        **46,61**
+    LA7VMSG1         8200340        8227296        **56,46,61**
+    LA7VOBX1         3799868        3981059        **46,61**
+    LA7VORM1         7601990        7594289        **27,51,46,61**
+    LA7VORU          8070282        6241961        **27,46,61**
+    LA7VORUA         N/A            2199285        **61**
+  
+  List of preceding patches: 46
+  Sites should use CHECK^XTSUMBLD to verify checksums.
+  
+ ************************************************************************
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+  
+   The install time for this patch is less than 10 minute. This patch
+   can be installed when Laboratory users are on the system.
+   Suggested time to install: non-peak requirement hours.
+  
+  
+ NOTE: Kernel patches must be current on the target system to avoid
+       problems loading and/or installing this patch.
+  
+       Patch installation needs to be coordinated with the Laboratory
+       Information Manager (LIM/ADPAC).
+  
+  
+   1.  If any of the above routines are mapped, disable mapping for them.
+  
+   2.  Use the 'INSTALL/CHECK MESSAGE' option of the PackMan menu.  This
+       option will load the KIDS patch onto your system.
+  
+   3.  On the 'Kernel Installation & Distribution System' Menu (KIDS),
+       select the 'Installation' menu.
+  
+   4.  Use the 'Verify Checksum in Transport Global' option and verify that
+       all routines have the correct checksums.
+  
+   5.  On the KIDS menu, under the 'Installation' menu, use the following
+       options:
+         Print Transport Global
+         Compare Transport Global to Current System
+         Backup a Transport Global
+  
+   6.  Perform the following steps if applicable:
+       All Lab LEDI (LA7V*) related HL v1.6 LLPs should be shutdown.
+       Use the HL menu option Start/Stop Links [HL START] to shutdown
+       these LLPs if they are running.
+  
+  
+   7.  Use the 'Install Package(s)' option under the 'Installation' menu
+       and select the package 'LA*5.2*61'.  When prompted "Want KIDS to
+       Rebuild Menu Trees Upon Completion of Install? YES//', choose 'NO'
+       When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+       YES//', choose 'NO'.  When prompted 'Want to DISABLE Scheduled
+       Options, Menu Options, and Protocols? YES//', choose 'YES'.
+  
+       All LA7V* protocols should be placed out of service during the install.
+       This can be accomplished by answering the KIDS install questions:
+  
+         Want to DISABLE Scheduled Options, Menu Options, and Protocols?
+         YES//', choose 'YES'.
+  
+         Enter options you wish to mark as 'Out Of Order': <RET>
+  
+         Enter protocols you wish to mark as 'Out Of Order': LA7V*
+  
+  
+       Note: KIDS will disable the following options during installation.
+        Edit Shipping Configuration [LA7S EDIT 62.9]
+        Enter/verify/modify data (manual) [LRENTER]
+        Enter/verify data (auto instrument) [LRVR]
+        Enter/verify data (Work list) [LRVRW]
+        Enter/verify data (Load list) [LRVRW2]
+        Referral Patient Multi-purpose Accession [LRLEDI]
+  
+   8. On a mapped system, rebuild your map set.
+  
+  Note: Routine LA61 will be deleted after successful patch installation.
+  
+  
+ POST-INSTALLATION INSTRUCTIONS:
+ ===============================
+  
+ 1. Restart any LA7V* HL v1.6 LLP's shutdown as part of the patch
+ installation process. Use the Start LLP [HL START] option to restart
+ LA7V* HL v1.6 LLP's.
+  
+ 2. LEDI Host laboratories should notify their LEDI collecting facilities
+ of removal of performing laboratory comment from HL7 Result (ORU) messages.
+ See item #7 in patch description above for actions collecting facilities
+ should take.
+  
+  
+ ************************************************************************
+ Installation example:
+  
+ Select Installation Option: 6  Install Package(s)
+ Select INSTALL NAME:  LA*5.2*61  Loaded from Distribution  4/23/02@10:39:43
+      => LA*5.2*61
+  
+ This Distribution was loaded on Apr 23, 2002@10:39:43 with header of
+    LA*5.2*61
+    It consisted of the following Install(s):
+       LA*5.2*61
+ Checking Install for Package LA*5.2*61
+ Will first run the Environment Check Routine, LA61
+  
+  
+                         --- Environment Check is Ok ---
+  
+ Install Questions for LA*5.2*61
+  
+ Incoming Files:
+  
+  
+    62.49     LA7 MESSAGE QUEUE  (Partial Definition)
+ Note:  You already have the 'LA7 MESSAGE QUEUE' File.
+  
+  
+    62.9      LAB SHIPPING CONFIGURATION  (Partial Definition)
+ Note:  You already have the 'LAB SHIPPING CONFIGURATION' File.
+  
+ Want KIDS to Rebuild Menu Trees Upon Completion of Install? YES// NO
+  
+  
+ Want KIDS to INHIBIT LOGONs during the install? YES// NO
+ Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES//
+  
+ Enter options you wish to mark as 'Out Of Order':
+  
+ Enter protocols you wish to mark as 'Out Of Order': LA7V*
+  
+ Enter protocols you wish to mark as 'Out Of Order':
+  
+ Delay Install (Minutes):  (0-60): 0//
+  
+ Enter the Device you want to print the Install messages.
+ You can queue the install by enter a 'Q' at the device prompt.
+ Enter a '^' to abort the install.
+  
+ DEVICE: HOME//  TELNET VIRTUAL
+  
+  
+  Install Started for LA*5.2*61 :
+                Apr 23, 2002@10:44:07
+  
+ Build Distribution Date: Apr 23, 2002
+  
+  Installing Routines:...........
+                Apr 23, 2002@10:44:07
+  
+  Running Pre-Install Routine: PRE^LA61.
+  
+                Sending install started alert to mail group G.LMI
+  
+                           *** Pre install started ***
+  
+        *** Removing COLLECTING FACILITY (#.02), HOST FACILITY (#.03), ***
+  
+                   *** and LAB MESSAGING LINK (#.07) fields ***
+  
+               *** from LAB SHIPPING CONFIGURATION file (#62.9) ***
+  
+              *** These fields will be reinstalled by this patch ***
+  
+     *** Removing STATUS (#2) field from LA7 MESSAGE QUEUE file (#62.49) ***
+  
+               *** This field will be reinstalled by this patch ***
+  
+                          *** Pre install completed ***
+  
+  Installing Data Dictionaries: ...
+                Apr 23, 2002@10:44:09
+  
+  Installing PACKAGE COMPONENTS:
+  
+  Installing OPTION.......
+                Apr 23, 2002@10:44:09
+  
+  Running Post-Install Routine: POST^LA61.
+  
+                           *** Post install started ***
+  
+ *** Deleting "ASC" cross-reference on LAB SHIPPING CONFIGURATION file (#62.9) **^ *
+  
+ *** Deleting "CH" cross-reference on LAB SHIPPING CONFIGURATION file #62.9) ***
+  
+ *** Building "CH" cross-reference on LAB SHIPPING CONFIGURATION file (#62.9) ***
+  
+                           *** Completed reindexing ***
+  
+    *** Deleting "ORU" cross-reference on LA7 MESSAGE QUEUE file (#62.49) ***
+  
+     *** Building "AC" cross-reference on LA7 MESSAGE QUEUE file (#62.49) ***
+  
+                           *** Completed reindexing ***
+  
+                          *** Post install completed ***
+  
+               Sending install completion alert to mail group G.LMI
+  
+  Updating Routine file......
+  
+  Updating KIDS files.......
+  
+  LA*5.2*61 Installed.
+                Apr 23, 2002@10:44:10
+  
+  Install Message sent #XXXXX
+  
+ Select Installation Option:
+
+Routine Information:
+====================
+
+Routine Name:
+  - LA61
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VORM1
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7SCE
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7SM1
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VMSG1
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VHLU1
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VOBX1
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VORU
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VORUA
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7QRY1
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VHLU2
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : MCCORMACK,JOHN                 Date Entered : MAR 05, 2002
+Completed By: ELIJAH,VICKEY                 Date Completed: JUN 25, 2002
+Released By : SCOTT,JEAN M                 Date Released : JUN 25, 2002
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

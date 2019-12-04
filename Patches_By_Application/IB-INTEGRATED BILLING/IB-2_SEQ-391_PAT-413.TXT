@@ -1,0 +1,950 @@
+$TXT Created by WINTERTON,STEVEN B at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 09/03/09 at 12:05
+=============================================================================
+Run Date: DEC 11, 2009                     Designation: IB*2*413
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #391                      Status: Released
+                  Compliance Date: JAN 11, 2010
+=============================================================================
+
+Associated patches: (v)IB*2*359    <<= must be installed BEFORE `IB*2*413'
+                    (v)IB*2*399    <<= must be installed BEFORE `IB*2*413'
+                    (v)IVM*2*135   <<= must be installed BEFORE `IB*2*413'
+
+Subject: INSURANCE CAPTURE BUFFER APIs
+
+Category: 
+  - Enhancement (Mandatory)
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ This patch provides three new APIs for the Insurance Capture Buffer 
+ application. There are two APIs that are to be used to move Insurance 
+ Buffer (#355.33) file data to other Integrated Billing files or reject 
+ this data. These APIs provide a front end into the existing ACCEPT and 
+ REJECT Insurance Buffer APIs which suppresses all write statements and 
+ interactive fileman calls within the existing code.
+  
+ The Insurance Buffer (#355.33) file data is moved to the following files: 
+      Insurance Company (#36) file
+      Group Insurance Plan (#355.3) file
+      Patient Insurance Type (#2.312) subfile
+  
+ There is also an API (UPDTICB) which will allow for fields that are not 
+ stored in the insurance buffer to be updated into the IB Insurance Files.
+  
+ These APIs are documented in Integration Control Registration (ICR) 
+ #5353, (Accept/Reject Insurance Buffer data APIs).
+  
+ This patch removes the Traditional Regular type "B" cross-reference on the
+ TYPE OF PLAN (#355.1) file since this cross-reference only contains the
+ first 30 characters of the NAME (#.01) field. This cross-reference
+ limitation may create problems when using the Fileman DBS calls. A New
+ Style Regular "B" cross-reference will be added that will contain all
+ characters to the field limit of 40 characters. In a post install the
+ patch will build the new "B" cross-reference on the file.
+  
+  
+ Detailed info on the three new APIs follows.
+        
+ ACCEPAPI(RESULT,IBBUFDA,DFN,IBINSDA,IBGRPDA,IBPOLDA,IBMVINS,IBMVGRP,IBMVPO
+ L,IBNEWINS,IBNEWGRP,IBNEWPOL,IVMREPTR)
+  
+    API to be called by the Insurance Capture Buffer (ICB)
+    application to move buffer data to Insurance Files then
+    cleanup. Usage of this entry will suppress write statements
+    and interactive fileman calls. In addition to this, the      
+    following are some differences that will only occur when this 
+    API is used:
+  
+       1. Allows a new insurance group to be updated into
+          an existing patient policy entry. If this is
+          done there is cleanup logic that will delete
+          obsolete Individual Plans, Repoint Insurance
+          Reviews if Insurance Company changes, and
+          Remove any Old Benefits Used.
+       2. The PAT^IBCNBMI will not be called.
+  
+    VARIABLES:  
+       RESULT   - Returned Parameter Array with IENS of new        
+                  entries and/or errors/warnings.
+            RESULT(0) = -1 ^ error message
+            RESULT(0) =  0          -Move worked
+            RESULT(0) =  0 ^ warning message ^ warning message
+                         ^ warning message ^ warning message
+                     - Move worked but there may be zero to 4 warning
+                       messages
+            RESULT(1) = "IBINSDA^" IEN of new Insurance Company (#36)
+            RESULT(1,"ERR",#) - Array with any FM errors when data updated
+                                from file 355.33 to 36.
+            RESULT(2) = "IBGRPDA^" IEN of new GROUP INSURANCE PLAN (#355.3)
+                        File
+            RESULT(2,"ERR",#) - Array with any FM errors when data updated
+                                from file 355.33 to 355.3.
+            RESULT(3) = "IBPOLDA^" IEN of new INSURANCE TYPE (#2.312) 
+                        sub-file  of PATIENT (#2) IEN
+            RESULT(3,"ERR",#) - Array with any FM errors when data updated
+                                from file 355.33 to 2.312.
+            RESULT(4) contains the results of the call to UPDPOL^IBCNICB
+                      which is used to update a new group into an existing
+                      patient policy entry when applicable.
+            RESULT(4) = -1 ^ error message
+            RESULT(4) = 0 ^ message that process was successful or was not
+                            required
+       IBBUFDA  - INSURANCE BUFFER (#355.33) file internal entry number
+                  (IEN). (Required)
+       DFN      - PATIENT (#2) file IEN. (Required)
+       IBINSDA  - INSURANCE COMPANY (#36) File IEN if not adding new entry.
+                  (Optional)
+       IBGRPDA  - GROUP INSURANCE PLAN (#355.3) File IEN if not adding new
+                  entry. (Optional)
+       IBPOLDA  - INSURANCE TYPE (#2.312) sub-file of PATIENT (#2) IEN if
+                  not adding new entry. (Optional)
+       IBMVINS  - Move Type for INSURANCE. (Required)
+              1=Merge, 2=Overwrite, 3=Replace
+       IBMVGRP  - Move Type for GROUP. (Optional)
+              1=Merge, 2=Overwrite, 3=Replace
+       IBMVPOL  - Move Type for POLICY. (Optional)
+              1=Merge, 2=Overwrite, 3=Replace
+       IBNEWINS - Add new INSURANCE COMPANY flag (non-zero means add).
+       IBNEWGRP - Add new GROUP INSURANCE PLAN flag (non-zero means add).
+       IBNEWPOL - Add new patient insurance policy (non-zero means add).
+       IVMREPTR - IVM REASONS FOR NOT UPLOADING (#301.91) File internal
+                  entry number.  (Optional)
+  
+  
+ REJECAPI(RESULT,IBBUFDA,IVMREPTR) 
+     API to be called by the Insurance Capture Buffer (ICB)                
+     application to reject buffer entry. Usage of this entry will
+     suppress write statements and interactive fileman calls.
+  
+    VARIABLES:  
+       RESULT   - Returned parameter variable with errors messages if
+                  problems with the reject processing. Format for array.
+  
+          REJECT = -1 ^ error message
+          REJECT =  0         - Reject worked
+          REJECT =  0 ^ warning message   - Reject process worked but there
+                    is a warning message
+  
+       IBBUFDA  - INSURANCE BUFFER (#355.33) file internal entry number.
+                  (required)
+       IVMREPTR - IVM REASONS FOR NOT UPLOADING (#301.91) File internal
+                  entry number. (Optional)
+  
+ UPDTICB(RESULT,DFN,IBPOLDA,IBGRPDA,IBPOLCOM,IBPOLBIL,IBPLAN,IBELEC,IBGPCOM
+ ,IBFTF,IBFTFVAL)
+      The UPDTICB^IBCNICB API provides functionality to update   
+      the following data elements:
+  
+          Patient INSURANCE TYPE (#2.312) subfile:
+             COMMENT - PATIENT POLICY (#1.08) field
+             POLICY NOT BILLABLE (#3.04) field
+  
+          GROUP INSURANCE PLAN (#355.3) file:
+             PLAN FILING TIME FRAME (#.13) field
+             ELECTRONIC PLAN TYPE  (#.15) field
+             PLAN STANDARD FTF (#.16) field
+             PLAN STANDARD FTF VALUE (#.17) field
+             COMMENTS (#11) word-processing field
+  
+    VARIABLES:  
+      RESULT   - Returned Parameter Array with results of call 
+         RESULT = 0 ^ No data to update
+         RESULT(1) = -1 ^ error with Insurance Type (#2.312) file update
+         RESULT(1) = 0                 - Insurance Type update worked
+         RESULT(2) = -1 ^ error with GROUP INSURANCE PLAN (#355.3) file
+                     update
+         RESULT(2) = 0                 - Group Insurance Plan update worked
+  
+       DFN      - PATIENT (#2) file Internal Entry Number. (Required if
+                  IBPOLCOM or IBPOLBIL variables
+                            passed)
+       IBPOLDA  - INSURANCE TYPE (#2.312) sub-file of PATIENT (#2) internal
+                  entry number.  (Required if IBPOLCOM or IBPOLBIL
+                  variables passed)
+       IBGRPDA  - GROUP INSURANCE PLAN (#355.3) File internal entry number 
+                  (Required if IBPLAN, IBELEC, IBGPCOM,IBFTF, or IBFTFVAL
+                  variables passed)
+       IBPOLCOM - Data to be filed into the COMMENT - PATIENT POLICY 
+                  (#1.08) file of the 2.312 sub-file.  (Optional)
+       IBPOLBIL - Data to be filed into the POLICY NOT BILLABLE (#3.04)
+                  field of the 2.312 sub-file. (Optional)
+  
+                  Corresponds to the Internal codes in 3.04 field of 2.312 
+                  sub-file:
+                       '0' FOR NO
+                       '1' FOR YES
+       IBPLAN   - Data to be filed in PLAN FILING TIME FRAME (#.13) field
+                  of 355.3 file.  (Optional)
+       IBELEC   - Data to be file in ELECTRONIC PLAN TYPE 
+                  (#.15) field of 355.3 file.  (Optional)
+  
+                  Corresponds to the Internal Codes in .15 field of 355.3
+                  file:
+  
+                    '16' FOR HMO MEDICARE;
+                    'MX' FOR MEDICARE A or B;
+                    'TV' FOR TITLE V;
+                    'MC' FOR MEDICAID;
+                    'BL' FOR BC/BS;
+                    'CH' FOR TRICARE;
+                    '15' FOR INDEMNITY;
+                    'CI' FOR COMMERCIAL;
+                    'HM' FOR HMO;
+                    'DS' FOR DISABILITY;
+                    '12' FOR PPO;
+                    '13' FOR POS;
+                    'ZZ' FOR OTHER;
+       IBGPCOM  - Group Plan Comment array that contains the word
+                  processing data to be filed the COMMENTS (#11)
+                  word-processing field of  355.3 file. (Optional)
+  
+                  Example:
+                     IBGPCOM(1)="This is line 1"
+                     IBGPCOM(2)="This is line 2"
+       IBFTF    - Data to be filed in the PLAN STANDARD FTF (#.16) field of
+                  355.3 file.  (Optional)
+  
+                  Corresponds to the Internal Entry Number of the entry in
+                  the INSURANCE FILING TIME FRAME (#355.13) File.
+  
+                    1 - DAYS (Requires Plan Standard FTF Value)
+                    2 - MONTH(S) (Requires FTF Value)
+                    3 - YEAR(S) (Requires FTF Value)
+                    4 - DAYS PLUS ONE YEAR (Requires FTF Value)
+                    5 - DAYS OF FOLLOWING YEAR (Requires FTF Value)
+                    6 - MONTHS OF FOLLOWING YEAR (Requires FTF Value)
+                    7 - END OF FOLLOWING YEAR
+                    8 - NO FILING TIME FRAME LIMIT
+      IBFTFVAL - Data to be filed in the PLAN STANDARD FTF VALUE (#.17)
+                 field of 355.3 file (Optional - Calling application
+                 responsible to pass value if required for Plan Standard
+                 FTF)
+  
+  This patch addresses the following New Service Request (NSR):
+  -------------------------------------------------------------
+  N/A
+  
+  This patch addresses the following NOIS/Remedy Ticket(s):
+  ---------------------------------------------------------
+  N/A
+  
+  
+  Components Sent With Patch
+  --------------------------
+  
+  DATA DICTIONARY UPDATE:
+                                       UP    SEND  DATA                USER
+                                       DATE  SEC.  COMES   SITE  RSLV  OVER
+   FILE #      FILE NAME               DD    CODE  W/FILE  DATA  PTRS  RIDE
+   ------------------------------------------------------------------------
+   355.1       TYPE OF PLAN            YES   YES   NO                  NO
+   Partial DD: subDD: 355.1      fld: .01
+   
+  Test Sites:
+  -----------
+  North FLorida/South Georgia  (Gainesville) 
+  Bay Pines, FL            
+  Memphis,TN                
+  
+  
+         ================INSTALLATION INSTRUCTIONS =================
+  
+  If installed during the normal workday, it is recommended that the
+  following selection(s) in the OPTION (#19) file be disabled to prevent
+  possible conflicts while running the KIDS Install. Other VISTA users will
+  not be affected.
+  
+       Process Insurance Buffer [IBCN INSURANCE BUFFER PROCESS]     
+  
+  
+  Install Time - less than 5 minutes.   
+  
+  
+  1.  LOAD TRANSPORT GLOBAL
+      ---------------------
+      Choose the PackMan message containing this patch and invoke the
+      INSTALL/CHECK MESSAGE PackMan option.
+  
+  2.  START UP KIDS
+      -------------
+      Start up the Kernel Installation and Distribution System Menu
+      [XPD MAIN]:
+  
+           Edits and Distribution ...
+           Utilities ...
+           Installation ...
+  
+      Select Kernel Installation & Distribution System Option: INStallation
+                                                               ---
+           Load a Distribution
+           Print Transport Global
+           Compare Transport Global to Current System
+           Verify Checksums in Transport Global
+           Install Package(s)
+           Restart Install of Package(s)
+           Unload a Distribution
+           Backup a Transport Global
+  
+      Select Installation Option:
+  
+  3.  Select Installation Option:
+      ---------------------------
+      NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+             NAME, enter IB*2.0*413 ):
+  
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will not
+          backup any other changes such as DD's or templates.
+      b.  Compare Transport Global to Current System - This option will
+          allow you to view all changes that will be made when this patch
+          is installed.  It compares all components of this patch
+          (routines, DD's, templates, etc.).
+      c.  Verify Checksums in Transport Global - This option will allow
+          you to ensure the integrity of the routines that are in the
+          transport global.
+  
+  4.  Select Installation Option: Install Package(s)
+                                  ------------------
+      **This is the step to start the installation of this KIDS patch:
+  
+      a.  Choose the Install Package(s) option to start the patch
+          install.
+  
+      b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+          YES//' answer NO
+  
+      c.  When prompted 'Want to DISABLE Scheduled Options, Menu
+          Options, and Protocols? YES//' answer YES
+  
+      d.  When prompted 'Enter options you wish to mark as 'Out Of
+          Order':'  Enter the following options:
+             Process Insurance Buffer [IBCN INSURANCE BUFFER PROCESS]
+             Insurance Company Entry/Edit [IBCN INSURANCE CO EDIT]  
+  
+      e.  When prompted 'Enter protocols you wish to mark as 'Out Of
+          Order':' Enter the following protocols:
+             Accept Entry [IBCNB PROCESS ACCEPT] 
+             Reject Entry [IBCNB PROCESS REJECT]
+             Edit All [IBCNSC INS CO EDIT ALL]
+             (In)Activate Company [IBCNSC INS CO (IN)ACTIVATE COMPANY]
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;2.0;INTEGRATED BILLING;**[Patch List]**;21-MAR-94;Build 9
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: IB20P413
+    Before:       n/a   After:  B1885171  **413**
+ Description of Changes:
+  This routine contains the post install processing and will be deleted 
+  upon patch install completion.
+
+Routine Name: IBCNBAR
+    Before: B18909068   After: B41255372  **82,240,345,413**
+ Description of Changes:
+  The following subroutines were updated to suppress write statement and 
+  interactive calls when used by the ICB interfaces. Data updates are 
+  included in the RESULT array and returned to the calling routine so ICB 
+  has error messages or info on what was changed.
+   
+  ACCEPT subroutine
+   
+  Before;
+           ;    5) buffer entry status updated
+           ;
+           ;
+   
+  After:
+           ;    5) buffer entry status updated
+           ;
+           N RESULT,IBSUPRES
+           ;Set IBSUPRES to zero to not suppress I/O within Accept
+           S IBSUPRES=0
+           ;
+   
+  PROCESS subroutine
+   
+  Before;
+           ;
+           N IVMINSUP,IBNEW,IBCDFN S IBCDFN=IBPOLDA S:+IBNEWPOL IBNEW=1 D 
+  BEFORE^IBCNSEVT ; insurance event driver
+           ;
+           N DIR,X,Y,IBX,IBINSH,IBGRPH,IBPOLH S 
+  (IBINSH,IBGRPH,IBPOLH)="Updated" W "...",!
+           ;
+           I +IBNEWINS S IBINSDA=+$$NEWINS^IBCNBMN(IBBUFDA) G:'IBINSDA 
+  ACCPTQ  S IBINSH="Created"
+           I +IBNEWGRP S IBGRPDA=+$$NEWGRP^IBCNBMN(IBBUFDA,+IBINSDA) 
+  G:'IBGRPDA ACCPTQ  S IBGRPH="Created"
+           I +IBNEWPOL S 
+  IBPOLDA=+$$NEWPOL^IBCNBMN(IBBUFDA,+IBINSDA,+IBGRPDA) G:'I BPOLDA ACCPTQ  S
+  IBPOLH="Created"
+           ;
+           I +IBINSDA,+IBMVINS D INS^IBCNBMI(IBBUFDA,IBINSDA,+IBMVINS) W 
+  !,"Insurance Company "_IBINSH_"..."
+           I +IBINSDA,+IBMVGRP,+IBGRPDA D 
+  GRP^IBCNBMI(IBBUFDA,IBGRPDA,+IBMVGRP) W !,"Group/Plan "_IBGRPH_"..."
+           I +IBINSDA,+IBMVPOL,+IBGRPDA,+IBPOLDA D 
+  POLICY^IBCNBMI(IBBUFDA,IBPOLDA,
+  +IBMVPOL) W !,"Patient Policy "_IBPOLH_"..." ;
+   
+  After:
+           ; on buffer data. Entry point for ACCEPAPI^IBCNICB (patch 413)
+           ;
+           N IVMINSUP,IBNEW,IBCDFN S IBCDFN=IBPOLDA S:+IBNEWPOL IBNEW=1 D 
+  BEFORE^IBCNSEVT ; insurance event driver
+           ;
+           N DIR,X,Y,IBX,IBINSH,IBGRPH,IBPOLH S 
+  (IBINSH,IBGRPH,IBPOLH)="Updated" W:$G(IBSUPRES)'>0 " ...",!
+           ;
+           S RESULT(0)="-1^Add new INSURANCE COMPANY failed"
+           I +IBNEWINS S IBINSDA=+$$NEWINS^IBCNBMN(IBBUFDA) G:'IBINSDA 
+  ACCPTQ  S IBINSH="Created",RESULT(1)="IBINSDA^"_IBINSDA
+           ;
+           S RESULT(0)="-1^Add new GROUP INSURANCE PLAN failed"
+           I +IBNEWGRP S IBGRPDA=+$$NEWGRP^IBCNBMN(IBBUFDA,+IBINSDA) 
+  G:'IBGRPDA ACCPTQ S IBGRPH="Created",RESULT(2)="IBGRPDA^"_IBGRPDA
+           ;
+           S RESULT(0)="-1^Add new patient insurance policy failed"
+           I +IBNEWPOL S 
+  IBPOLDA=+$$NEWPOL^IBCNBMN(IBBUFDA,+IBINSDA,+IBGRPDA) G:'IBPOLDA ACCPTQ S 
+  IBPOLH="Created",RESULT(3)="IBPOLDA^"_IBPOLDA
+           ;
+           ;Only do this check for ICB ACCEPAPI^IBCNICB interface
+           S RESULT(0)="-1^Move TYPE parameter value="_IBMVINS_" is invalid"
+           I $G(IBSUPRES)>0,"^1^2^3^"'[("^"_IBMVINS_"^") Q
+           ;
+           S RESULT(0)="-1^Move buffer data to insurance files failed"
+           I +IBINSDA,+IBMVINS D 
+  INS^IBCNBMI(IBBUFDA,IBINSDA,+IBMVINS,.RESULT) W:$ G(IBSUPRES)'>0
+  !,"Insurance Company "_IBINSH_"..."
+           I +IBINSDA,+IBMVGRP,+IBGRPDA D
+           . D GRP^IBCNBMI(IBBUFDA,IBGRPDA,+IBMVGRP,.RESULT)
+           . ; For ICB Interface ensure INDIVIDUAL POLICY PATIENT (.1) field
+  is
+           . ; appropriate for IS THIS A GROUP POLICY? (.02) field
+           . I $G(IBSUPRES)>0 D
+           . . N IBFLDS,IBISGRP,IBPAT
+           . . S IBISGRP=$$GET1^DIQ(355.3,IBGRPDA,.02,"I")
+           . . S IBPAT=$$GET1^DIQ(355.3,IBGRPDA,.1,"I")
+           . . ;Quit if Group Policy and .1 field isn't populated
+           . . I IBISGRP>0,IBPAT'>0 Q
+           . . ;Quit if Individual Policy and .1 field is populated.
+           . . I IBISGRP'>0,IBPAT>0 Q
+           . . ;Delete .1 field if Group Policy
+           . . I IBISGRP>0 S IBFLDS(355.3,IBGRPDA_",",.1)="@"
+           . . I IBISGRP'>0 S IBFLDS(355.3,IBGRPDA_",",.1)=DFN
+           . . D FILE^DIE("","IBFLDS","IBERR")
+           . W:$G(IBSUPRES)'>0 !,"Group/Plan "_IBGRPH_"..."
+           I +IBINSDA,+IBMVPOL,+IBGRPDA,+IBPOLDA D 
+  POLICY^IBCNBMI(IBBUFDA,IBPOLDA, +IBMVPOL,.RESULT) W:$G(IBSUPRES)'>0
+  !,"Patient Policy "_IBPOLH_"..."
+           ;
+           ;Only do this update for ICB ACCEPAPI^IBCNICB interface
+           I $G(IBSUPRES)>0,+IBMVPOL,+IBGRPDA,+IBPOLDA,'IBNEWPOL D 
+  UPDPOL^IBCNICB(.RESULT,IBBUFDA,DFN,IBINSDA,IBGRPDA,IBPOLDA)
+           ;
+   
+  CLEANUP subroutine
+   
+  Before;
+           ;
+           I +IBPOLDA D PAT^IBCNBMI(DFN,IBPOLDA) 
+  ;                             update DOB&SSN of Pat Ins from Pat file
+           D POL^IBCNSU41(DFN) 
+  ;                                           update Tricare sponsor data
+           D COVERED^IBCNSM31(DFN) 
+  ;                                           upate 'Covered by Insurance'
+  field (2,.3192
+           I +IBSOURCE=3 D IVM(1,IBBUFDA) 
+  ;                                    update/notify IVM
+           I +IBINSDA,+IBPOLDA S IBX=$$DUPCO^IBCNSOK1(DFN,IBINSDA,IBPOLDA,1)
+  ; warning if duplicate policy added for patient
+           I +IBGRPDA S IBX=$$DUPPOL^IBCNSOK1(IBGRPDA,1) 
+  ;                     warning if duplicate plan was added
+           I +IBNEWPOL I +$$PTHLD^IBOHCR(DFN,1,1) W !!,"Patient's bills On 
+  Hold date updated due to new insurance."
+           I $$HOLD^IBCNBLL(DFN) W !!,"There are bills On Hold for this 
+  patient."
+           ;
+           W !! S DIR(0)="FO",DIR("A")="Press 'V' to view the changes or 
+  Return to continue" D ^DIR
+           I Y="V"!(Y="v") W !! D INS^IBCNBCD(IBBUFDA,IBINSDA),
+  WAIT^IBCNBUH,GRP^IBCNBCD(IBBUFDA,IBGRPDA),WAIT^IBCNBUH,POLICY^IBCNBCD
+  (IBBUFDA,IBPOLDA),WAIT^IBCNBUH
+           ;
+           ; update buffer file entry so only stub remains and status is 
+  changed
+   
+  After:
+           ;
+           ;Don't do PAT^IBCNBMI for ICB ACCEPAPI^IBCNICB interface
+           I $G(IBSUPRES)'>0,+IBPOLDA D PAT^IBCNBMI(DFN,IBPOLDA) ; update 
+  DOB&SSN of Pat Ins from Pat file
+           D POL^IBCNSU41(DFN) ; update Tricare sponsor data
+           D COVERED^IBCNSM31(DFN) ; update 'Covered by Insurance' field 
+  (2,.3192
+           I +IBSOURCE=3 D IVM(1,IBBUFDA,$G(IVMREPTR),$G(IBSUPRES)) ; 
+  update/notify IVM
+           ;Suppress Write in $$DUPCO^IBCNSOK1 if called from ICB Interface
+           I +IBINSDA,+IBPOLDA S 
+  IBX=$$DUPCO^IBCNSOK1(DFN,IBINSDA,IBPOLDA,$S($G(IBSUPRES)>0:0,1:1)) ; 
+  warning if duplicate policy added for patient
+           S RESULT(0)="0"_$S(IBX:"^Warning - Duplicate or inconsistent 
+  insurance data",1:"")
+           ;
+           ;Suppress Write in $$DUPPOL^IBCNSOK1 if called from ICB Interface
+           I +IBGRPDA S 
+  IBX=$$DUPPOL^IBCNSOK1(IBGRPDA,$S($G(IBSUPRES)>0:0,1:1)) ; warning if 
+  duplicate plan was added
+           S:IBX RESULT(0)=RESULT(0)_"^Warning - Duplicate or inconsistent 
+  policy data"
+           ;
+           ;Suppress Write in $$PTHLD^IBOHCR if called from ICB Interface
+           I +IBNEWPOL I +$$PTHLD^IBOHCR(DFN,1,$S($G(IBSUPRES)>0:0,1:1)) D
+           . W:$G(IBSUPRES)'>0 !!,"Patient's bills On Hold date updated due 
+  to new insurance."
+           . S RESULT(0)=RESULT(0)_"^Patient's bills On Hold date updated 
+  due to new insurance"
+           ;
+           I $$HOLD^IBCNBLL(DFN) D
+           . W:$G(IBSUPRES)'>0 !!,"There are bills On Hold for this 
+  patient."
+           . S RESULT(0)=RESULT(0)_"^There are bills On Hold for this 
+  patient"
+           ;
+           ;Suppress DIR call functionality for ICB ACCEPAPI^IBCNICB 
+  interface
+           D:$G(IBSUPRES)'>0
+           . W !! S DIR(0)="FO",DIR("A")="Press 'V' to view the changes or 
+  Return to continue" D ^DIR
+           . I Y="V"!(Y="v") W !! D 
+  INS^IBCNBCD(IBBUFDA,IBINSDA),WAIT^IBCNBUH,GRP^IBCNBCD(IBBUFDA,IBGRPDA),WAI
+  T^IBCNBUH,POLICY^IBCNBCD(IBBUFDA,IBPOLDA),WAIT^IBCNBUH
+           ;
+           ; update buffer file entry so only stub remains and status is 
+  changed
+   
+  Reject Subroutine
+   
+  Before;
+           ;    4) if patient has no other active insurance then release 
+  any patient bills On Hold
+           ;
+           N DFN S DFN=+$G(^IBA(355.33,+IBBUFDA,60))
+           ;
+           I +$P($G(^IBA(355.33,+IBBUFDA,0)),U,3)=3 D IVM(0,IBBUFDA)
+           ;
+           D STATUS^IBCNBEE(+IBBUFDA,"R",0,0,0),DELDATA^IBCNBED(+IBBUFDA) W 
+  " ...done."
+           ;
+           I +DFN,'$$INSURED^IBCNS1(DFN),'$$BUFFER^IBCNBU1(DFN) D
+           . I +$$PTHLD^IBOHCR(DFN,2,1) W !!,"Patient has no other active 
+  Insurance.",!,"All patient bills On Hold waiting for Insurance have been
+  released." D WAIT^IBCNBUH
+           ;
+           Q
+   
+  After:
+           ;    4) if patient has no other active insurance then release any
+  patient bills On Hold
+           ;
+           N IBSUPRES,RESULT
+           ;Set IBSUPRES to 0 to not suppress I/O within REJECT
+           S IBSUPRES=0
+           ;
+  REJPROC  ;Entry point for REJECAPI^IBCNICB (Patch 413)
+           ;
+           N DFN S DFN=+$G(^IBA(355.33,+IBBUFDA,60))
+           S RESULT="-1^PATIENT IEN MISSING FROM BUFFER ENTRY" Q:'$G(DFN)
+           I +$P($G(^IBA(355.33,+IBBUFDA,0)),U,3)=3 D 
+  IVM(0,IBBUFDA,$G(IVMREPTR),$G(IBSUPRES))
+           ;
+           S RESULT=0
+           D STATUS^IBCNBEE(+IBBUFDA,"R",0,0,0),DELDATA^IBCNBED(+IBBUFDA) 
+  W:$G(IBSUPRES)'>0 " ... done."
+           ;
+           I +DFN,'$$INSURED^IBCNS1(DFN),'$$BUFFER^IBCNBU1(DFN) D
+           . ;Suppress Write in $$PTHLD^IBOHCR if called from ICB Interface
+           . I +$$PTHLD^IBOHCR(DFN,2,$S($G(IBSUPRES)>0:0,1:1)) D
+           . . I $G(IBSUPRES)'>0 W !!,"Patient has no other active 
+  Insurance.",!," All patient bills On Hold waiting for Insurance to be
+  released." D WAIT^IBCNBUH
+           . . S RESULT=RESULT_"^Patient has no other active Insurance.  
+  All patient bills On Hold waiting for Insurance to be released."
+           ;
+           Q
+   
+  IVM Subroutine
+   
+  Before;
+  IVM(AR,IBBUFDA) ; IVM must be notified whenever a buffer entry that 
+  originated i
+  n IVM is accepted or rejected
+           ; this lets them clean up their files since they also have a 
+  buffer typ
+  e file of insurance uploaded from the IVM center
+           ; if rejected they then ask the user for a reason it was rejected
+           ; input:  AR = 1 if accepted, 0 if rejected
+           ;
+           N DFN,IBX,IBY I $P($G(^IBA(355.33,+IBBUFDA,0)),U,3)'=3 Q
+           ;
+           S DFN=+$G(^IBA(355.33,+IBBUFDA,60))
+           S 
+  IBX=$P($G(^IBA(355.33,+IBBUFDA,20)),U,1)_U_$P($G(^IBA(355.33,+IBBUFDA
+  ,21)),U,1)_U_$P($G(^IBA(355.33,+IBBUFDA,40)),U,3)
+           ;
+           S IBY=$$UPDATE^IVMLINS4(DFN,AR,IBX)
+           Q
+   
+  After:
+  IVM(AR,IBBUFDA,IVMREPTR,IBSUPRES) ; IVM must be notified whenever a 
+  buffer entry
+           ; that originated in IVM is accepted or rejected. This lets IVM 
+  clean up
+           ; its files since IVM also has a buffer type file of insurance 
+  uploaded
+           ; from the IVM center.
+           ; If rejected and Interactive Reads not suppressed, IVM then ask 
+  the
+           ; user for a reason it was rejected
+           ; input:  AR = 1 if accepted, 0 if rejected
+           ;    IBBUFDA = Internal Entry Number to 355.33 file
+           ;   IVMREPTR = Internal Entry Number to 301.91 file (Optional)
+           ;   IBSUPRES = If equals 1, suppress writes and interactive reads
+           ;
+           N DFN,IBX,IBY I $P($G(^IBA(355.33,+IBBUFDA,0)),U,3)'=3 Q
+           ;
+           S DFN=+$G(^IBA(355.33,+IBBUFDA,60))
+           S 
+  IBX=$P($G(^IBA(355.33,+IBBUFDA,20)),U,1)_U_$P($G(^IBA(355.33,+IBBUFDA,21))
+  ,U,1)_U_$P($G(^IBA(355.33,+IBBUFDA,40)),U,3)
+           ;
+           S IBY=$$UPDATE^IVMLINS4(DFN,AR,IBX,$G(IVMREPTR),$G(IBSUPRES))
+           Q
+
+Routine Name: IBCNBMI
+    Before: B54899476   After: B80184806  **82,184,246,251,299,345,361,
+                                           371,413**
+ Description of Changes:
+  INS subroutine updated to include RESULT Parameter so that error message 
+  with SET API will be returned back to the calling routine.
+    
+    Before:
+           INS(IBBUFDA,IBINSDA,TYPE) ;  move buffer insurance company data
+      (file 355.33) to existing Insurance Company (file 36)
+           ;
+           S IBBUFDA=IBBUFDA_",",IBINSDA=$G(IBINSDA)_","
+           D SET("INS",IBBUFDA,IBINSDA,TYPE)
+           Q
+    After:
+           INS(IBBUFDA,IBINSDA,TYPE,RESULT) ;  move buffer insurance company
+        data (file 355.33) to existing Insurance Company (file 36)
+           ;
+           S IBBUFDA=IBBUFDA_",",IBINSDA=$G(IBINSDA)_","
+           D SET("INS",IBBUFDA,IBINSDA,TYPE,.RESULT)
+           Q
+   
+  GRP subroutine updated to include RESULT Parameter so that error message
+  with SET and STUFF APIs will be returned back to the calling routine.
+   
+    Before:
+           GRP(IBBUFDA,IBGRPDA,TYPE) ;  move buffer insurance group/plan
+       data (file 355.33) to existing Group/Plan (file 355.33)
+           ;
+           S IBBUFDA=IBBUFDA_",",IBGRPDA=$G(IBGRPDA)_","
+           D SET("GRP",IBBUFDA,IBGRPDA,TYPE)
+           D STUFF("GRP",IBGRPDA)
+           Q
+    After:
+           GRP(IBBUFDA,IBGRPDA,TYPE,RESULT) ;  move buffer insurance 
+       group/plan data (file 355.33) to existing Group/Plan (file 355.33)
+           ;
+           S IBBUFDA=IBBUFDA_",",IBGRPDA=$G(IBGRPDA)_","
+           D SET("GRP",IBBUFDA,IBGRPDA,TYPE,.RESULT)
+           D STUFF("GRP",IBGRPDA,.RESULT)
+           Q
+   
+  POLICY subroutine updated to include RESULT Parameter so that error
+  message with SET, STUFF and POLOTH APIs will be returned back to the
+  calling routine.
+   
+    Before:
+           POLICY(IBBUFDA,IBPOLDA,TYPE) ;  move buffer insurance policy data
+      (file 3 55.33) to existing Patient Policy (file 2.312)
+           ;
+           N DFN S DFN=+$G(^IBA(355.33,+$G(IBBUFDA),60)) Q:'DFN
+           ;
+           S IBBUFDA=IBBUFDA_",",IBPOLDA=$G(IBPOLDA)_","_DFN_","
+           D SET("POL",IBBUFDA,IBPOLDA,TYPE)
+           D STUFF("POL",IBPOLDA)
+           D POLOTH(IBBUFDA,IBPOLDA)
+           Q
+    After:
+           POLICY(IBBUFDA,IBPOLDA,TYPE,RESULT) ;  move buffer insurance 
+       policy data (file 3 55.33) to existing Patient Policy (file 2.312)
+           ;
+           N DFN S DFN=+$G(^IBA(355.33,+$G(IBBUFDA),60)) Q:'DFN
+           ;
+           S IBBUFDA=IBBUFDA_",",IBPOLDA=$G(IBPOLDA)_","_DFN_","
+           D SET("POL",IBBUFDA,IBPOLDA,TYPE,.RESULT)
+           D STUFF("POL",IBPOLDA,.RESULT)
+           D POLOTH(IBBUFDA,IBPOLDA,.RESULT)
+           Q
+   
+  SET subroutine updated to filter out the new fields added for the ICB
+  project when the process isn't called via the ACCEPAPI^IBCNICB interface.
+  It also suppresses the delete of the new .01 field in file #36 which
+  produced a delete error message defined in the .01 field DD. Any error 
+  results of the FILE^DIE call will be returned to the calling routine.
+   
+    Before:
+          SET(SET,IBBUFDA,IBEXTDA,TYPE) ; move buffer data to insurance
+       files
+    After:
+          SET(SET,IBBUFDA,IBEXTDA,TYPE,RESULT) ; move buffer data to 
+       insurance files
+   
+    Before:
+           ;  to overwrite flds (or addr grp) in existing file)
+           ;
+    After:
+           ;  to overwrite flds (or addr grp) in existing file)
+           ; Output: RESULT - Passed array to return FM errror message if
+       there are
+           ;                  errors when filing the buffer data
+           ;
+   
+    Before:
+        I +$G(TYPE) S IBBUFFLD=0 F  S
+      IBBUFFLD=$O(BUFARR(355.33,IBBUFDA,IBBUFFLD)) Q:'IBBUFFLD  D
+        . ;
+        . S IBEXTFLD=$G(IBFLDS(IBBUFFLD)) Q:'IBEXTFLD
+   
+    After:
+        I +$G(TYPE) S IBBUFFLD=0 F  S
+      IBBUFFLD=$O(BUFARR(355.33,IBBUFDA,IBBUFFLD)) Q:'IBBUFFLD  D
+        . ;If not called by ACCEPAPI^IBCNICB API, don't update from these
+        . ;fields:
+        . ;   Insurance Company Name - #20.01, Reimburse? - 20.05
+        . ;   Is this a Group Policy - #40.01
+        . I $G(IBSUPRES)'>0,"^20.01^20.05^40.01^"[("^"_IBBUFFLD_"^") Q
+        . S IBEXTFLD=$G(IBFLDS(IBBUFFLD)) Q:'IBEXTFLD
+   
+    Before:
+           . S IBCHNG(EXTFILE,IBEXTDA,IBEXTFLD)=IBBUFVAL
+           . S IBCHNGN(EXTFILE,IBEXTDA,IBEXTFLD)=""
+           ;
+           I $D(IBCHNGN)>9 D FILE^DIE("E","IBCHNGN","IBERR")
+           I $D(IBCHNG)>9 D FILE^DIE("E","IBCHNG","IBERR")
+           Q
+    After:
+           . S IBCHNG(EXTFILE,IBEXTDA,IBEXTFLD)=IBBUFVAL
+           . ;For ACCEPAPI^IBCNICB do not delete the .01 field. This 
+       prevents a
+           . ;Data Dictionary Deletion Write message
+           . Q:IBEXTFLD=".01"
+           . S IBCHNGN(EXTFILE,IBEXTDA,IBEXTFLD)=""
+           ;
+           I $D(IBCHNGN)>9 D FILE^DIE("E","IBCHNGN","IBERR")
+           ;Removed delete errors and move FM errors to RESULT
+           D:$D(IBERR)>0 REMOVDEL(.IBERR),EHANDLE(SET,.IBERR,.RESULT)
+           K IBERR
+           I $D(IBCHNG)>9 D FILE^DIE("E","IBCHNG","IBERR")
+           ;Move FM errors to RESULT
+           D:$D(IBERR)>0 EHANDLE(SET,.IBERR,.RESULT)
+           Q
+   
+  Stuff subroutine updated any error results of the FILE^DIE call will be
+  returned to the calling routine.
+   
+    Before:
+           STUFF(SET,IBEXTDA) ; update fields in insurance files that should
+       be automatically set when an entry is edited
+           ; Input:  IBEXTDA - ifn of insurance entry to update (#36,356,2)
+           ;
+    After:
+           STUFF(SET,IBEXTDA,RESULT) ; update fields in insurance files that
+           ;should be automatically set when an entry is edited
+           ; Input:  IBEXTDA - ifn of insurance entry to update (#36,356,2)
+           ; Output: RESULT - Passed array to return FM errror message if 
+     there are
+           ;                  errors when filing the data buffer data
+           ;
+   
+    Before:
+           ;
+           D FILE^DIE("E","IBCHNGN","IBERR")
+           D FILE^DIE("E","IBCHNG","IBERR")
+           Q
+    After:
+           ;
+           D FILE^DIE("E","IBCHNGN","IBERR")
+           ;Move FM errors to RESULT
+           D:$D(IBERR)>0 EHANDLE(SET,.IBERR,.RESULT)
+           K IBERR
+           D FILE^DIE("E","IBCHNG","IBERR")
+           ;Move FM errors to RESULT
+           D:$D(IBERR)>0 EHANDLE(SET,.IBERR,.RESULT)
+           Q
+   
+  INSDR subroutine updated to add some new fields:
+   
+    Before:
+        ;;36^20.02:20.04;21.01:21.06^.131;.132;.133;.111:.116
+   
+    After:
+        ;;36^20.01:20.05;21.01:21.06^.01;.131;.132;.133;.111:.116;1
+   
+  INSFLD subroutine updated to add some new fields:
+   
+    Before:
+       ;;20.02^.131^Phone Number^           ; MM Phone Number
+       ;;20.03^.132^Billing Phone^          ; Billing Phone Number
+       ;;20.04^.133^Pre-Cert Phone^         ; Pre-Certification Phone Number
+       ;;21.01^.111^Street [Line 1]^1       ; MM Street Address [Line 1]
+   
+    After:
+       ;;20.01^.01^Insurance Company Name^  ; Name
+       ;;20.02^.131^Phone Number^           ; MM Phone Number
+       ;;20.03^.132^Billing Phone^          ; Billing Phone Number
+       ;;20.04^.133^Pre-Cert Phone^         ; Pre-Certification Phone Number
+       ;;20.05^1^Reimburse?^                ; Will Reimburse?
+       ;;21.01^.111^Street [Line 1]^1       ; MM Street Address [Line 1]
+   
+  GRPDR subroutine updated to add some new fields:
+   
+    Before:
+       ;;355.3^40.02:40.03;40.1;40.11;40.04:40.09;^.03:.04;6.02;6.03;.05:.09;.12
+    After:
+       ;;355.3^40.01:40.09;40.1;40.11;^.02:.09;6.02;6.03;.12
+   
+  GRPFLD subroutine updated to add some new fields:
+   
+    Before:
+       ;;40.02^.03^Group Name^              ; Group Name
+   
+    After:
+       ;;40.01^.02^Is This a Group Policy?^ ; Is this a Group Policy?
+       ;;40.02^.03^Group Name^              ; Group Name
+   
+  POLOTH subroutine updated any error results of the FILE^DIE call will be
+  returned to the calling routine.
+   
+    Before:
+           ;
+           I $D(IBCHNGN)>9 D FILE^DIE("I","IBCHNGN","IBERR")
+           I $D(IBCHNG)>9 D FILE^DIE("I","IBCHNG","IBERR")
+           Q
+    After:
+           ;
+           I $D(IBCHNGN)>9 D FILE^DIE("I","IBCHNGN","IBERR")
+           ;Move FM errors to RESULT
+           D:$D(IBERR)>0 EHANDLE("POL",.IBERR,.RESULT)
+           K IBERR
+           I $D(IBCHNG)>9 D FILE^DIE("I","IBCHNG","IBERR")
+           ;Move FM errors to RESULT
+           D:$D(IBERR)>0 EHANDLE("POL",.IBERR,.RESULT)
+           Q
+   
+  EHANDLE and REMOVDEL subroutines were added.
+
+Routine Name: IBCNICB
+    Before:       n/a   After:B105382395  **413**
+ Description of Changes:
+  New routine with APIs to support the ICB application.
+   
+  ACCEPAPI - API to allow the ACCEPT^IBCNBAR logic to work with no write 
+  statements or interactive reads. Adds some minor changes to existing logic
+  for when used by ICB Interface.
+   
+  REJECAPI - API to allow the REJECT^IBCNBAR logci to work with no write 
+  statements or interactive reads.
+   
+  UPDTICB - API for ICB application can call to update additional fields
+  that ICB is getting data for and are not included in the Insurance Buffer
+  file.
+   
+  UPDTPOL - Subroutine to be called in the ACCEPAPI process that allows
+  updating a new group into an existing patient policy entry for the ICB
+  interface. This logic will delete obsolete Individual Plans, repoint 
+  Insurance Reviews if Insurance Company changes, and remove any Old
+  Benefits Used.
+
+Routine Name: IBCNSM31
+    Before: B20632999   After: B20882944  **6,28,68,413**
+ Description of Changes:
+  In COVERED subroutine added code to suppress Write statement when called
+  via the ICB Interface.
+   
+  Before:
+  After:
+           .S DIE="^DPT(",DR=".3192////"_IBNCOV,DA=DFN D ^DIE
+           .I '$D(ZTQUEUED) W !!,"COVERED BY HEALTH INSURANCE changed
+        to'"_$S(IBNCOV="Y":"YES",IBNCOV="N":"NO",1:"UNKNOWN"),"'.",! H 3 .Q
+   
+  After:
+           .S DIE="^DPT(",DR=".3192////"_IBNCOV,DA=DFN D ^DIE
+           .I '$D(ZTQUEUED)&($G(IBSUPRES)'>0) W !!,"COVERED BY HEALTH 
+       INSURANCE changed to'"_$S(IBNCOV="Y":"YES",IBNCOV="N":"NO",1:
+       "UNKNOWN"),"'.",! H 3 .Q
+
+Routine Name: IBCNSM32
+    Before: B26481916   After: B26493430  **28,40,52,85,103,133,361,371,413**
+ Description of Changes:
+  Fix bug in CHPL subroutine where the incorrect variable IBDA is used 
+  instead of IBDAT.
+   
+  Before:
+           .W !!,"Deleting current Benefits Used... "
+           .S IBDAT="" F  S IBDA=$O(IBBU(IBDAT)) Q:IBDAT=""  D 
+        DBU^IBCNSJ(IBBU(IBDAT))
+           ;
+   
+  After:
+   
+           .W !!,"Deleting current Benefits Used... "
+           .S IBDAT="" F  S IBDAT=$O(IBBU(IBDAT)) Q:IBDAT=""  D 
+        DBU^IBCNSJ(IBBU(IBDAT))
+           ;
+
+Routine Name: IBTRCD1
+    Before: B26162223   After: B26536590  **10,359,413**
+ Description of Changes:
+  In LOCKED subroutine added code to suppress Write statement when called 
+  via the ICB Interface.
+   
+  Before:
+     LOCKED   ; -- write locked message
+           Q:$D(ZTQUEUED)
+           W !!,"Sorry, another user currently editing this entry."
+   
+  After:
+     LOCKED   ; -- write locked message
+           Q:$D(ZTQUEUED)
+           ;Suppress Writes & PAUSE^VALM1 call when used via ICB interface
+           Q:$G(IBSUPRES)>0
+           W !!,"Sorry, another user currently editing this entry."
+
+ 
+Routine list of preceding patches: 68, 359, 371
+
+=============================================================================
+User Information:
+Entered By  : WINTERTON,STEVEN              Date Entered  : JAN 15, 2009
+Completed By: LYNCH,MARY F.                 Date Completed: NOV 18, 2009
+Released By : GANUS,MAUNETTE                Date Released : DEC 11, 2009
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

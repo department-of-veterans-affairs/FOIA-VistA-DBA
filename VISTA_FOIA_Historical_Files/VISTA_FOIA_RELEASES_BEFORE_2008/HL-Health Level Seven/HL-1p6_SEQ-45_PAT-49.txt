@@ -1,0 +1,427 @@
+$TXT Created by DIMICELI,RON at KERNEL.ISC-SF.VA.GOV  (KIDS) on WEDNESDAY, 09/08/99 at 12:43
+=============================================================================
+Run Date: SEP 30, 1999                     Designation: HL*1.6*49
+Package : HL - HEALTH LEVEL SEVEN            Priority: Mandatory
+Version : 1.6        SEQ #45                    Status: Released
+=============================================================================
+
+Associated patches: (v)HL*1.6*14       install with patch       `HL*1.6*49'
+                    (v)HL*1.6*19       install with patch       `HL*1.6*49'
+                    (v)HL*1.6*35       install with patch       `HL*1.6*49'
+                    (v)HL*1.6*40       install with patch       `HL*1.6*49'
+                    (v)HL*1.6*43       install with patch       `HL*1.6*49'
+                    (v)HL*1.6*44       install with patch       `HL*1.6*49'
+                    (v)HL*1.6*47       install with patch       `HL*1.6*49'
+                    (v)HL*1.6*48       install with patch       `HL*1.6*49'
+
+Subject: LINK MANAGER
+
+Category: 
+  - Enhancement (Mandatory)
+  - Routine
+
+Description: 
+============
+
+  
+   This patch addresses the issue of reducing the number of required logical
+   links running as active concurrent processes.  Before this patch,
+   all possible HL7 TCP/IP Client Logical Links would have to be defined
+   and started as LLPs.  These LLPs would run and remain as active processes
+   on the system regardless of the frequency to deliver HL7 messages.
+   This was true with both persistent and non-persistent client
+   connection-type LLPs.
+   
+   After this patch is installed, non-persistent client LLPs
+   will still have to be started as they were before this patch.
+   To start an LLP, use the 'Start LLP' option.
+   To start an LLP automatically after a system reboot,
+   either use the Interface Workbench to edit Logical Links or use FileMan
+   to edit the AUTOSTART field(#4.5) of the HL LOGICAL LINK file(#870).
+   For each Logical Link that wish to start automatically after a re-boot
+   of the system, you must edit the AUTOSTART field to have a value
+   of ENABLED.  Do NOT simply enable the AUTOSTART field
+   for all Logical Links. Only select those that you wish start
+   that are both legitimate and appropriate for your site.
+   
+   Note, although you may have started a non-persistent LLP,
+   the system process representing this LLP does not actually start
+   until messages are in the associated message queue.  Once a process
+   is started, it will remain running on the system until the associated
+   queue is emptied and the associated Retention time has expired.
+   The Retention time is the time in seconds in which the LLP process
+   will wait while continually checking for messages in the associated
+   message queue.  If messages are found in the queue before the retention
+   time has expired, the LLP process will continue to de-queue messages
+   as before.  Otherwise, the LLP process will actually return back
+   to TaskMan's sub-manager and possibly terminate.  When this occurs,
+   a status of INACTIVE is indicated on the STATE column
+   of the system link monitor for this LLP.  
+   
+   
+  This patch also addresses the following issues: 
+     
+    1.  Fix allocation error in HLCSDR.
+        Related NOIS:        SFC-0599-60101
+                             SBY-0199-30725
+                             HIN-1298-40436
+        Actual error:  $ZE= INT+22^%ET:1, %DSM-E-ALLOC, allocation failure
+         Description:  This error was first seen after the introduction of
+                       patch HL*1.6*14.  This patch 14, utilized error
+                       trapping to trap disconnect errors so that processing
+                       may continue once the errors have passed.  However,
+                       if the associated port/device was bad/busy, the code
+                       would continually loop to the code that sets the trap.
+                       As the stack continues to grow, an allocation error
+                       would result in about 4 to 6+ hours after the logical
+                       link was started or when the device became bad/busy.
+                       This allocation error was seen associated with
+                       the applications using the serial HLLP protocol of
+                       the HL7 v1.6 (HLCSDR* routines).
+   
+    2.  Fix allocation error in HLCSMON.
+        Description:  If a user enters '?' and <RET> repeatedly at the
+                      command prompt of the Systems Link Monitor, an
+                      allocation error will be encountered after 6+ attempts.
+   
+    3.  Fix extraneous display of **STOP** on CACHE sites.
+        Related NOIS:        MAN-0799-11246
+        Description:  When the Restart All Links and Filers option is run,
+                      **STOP** is displayed after failing to connect to
+                      a listener.  This is now corrected by this patch.
+   
+  Routine Modifications: 
+  ======================
+  The following routines are included in this patch.  The second line of these
+  routines now looks like:
+   
+   ;;1.6;HEALTH LEVEL SEVEN;<patchlist>;29-Jan-97 14:25
+   
+  CHECK^XTSUMBLD results: 
+     
+   Routine Name   Before Patch    After Patch     Patch List 
+   ============   ============    ===========     ==========
+   HLCS2           7195833         8763479        14,40,43,49
+   HLCSDL          4198429         4174780        2,44,49
+   HLCSDR          3946224         3936049        2,14,49
+   HLCSLM          NEW             6276510        49
+   HLCSLNCH       11368535        12855635        6,19,43,49
+   HLCSLSM         NEW              154819        49
+   HLCSMM1         1462301         1445162        35,49
+   HLCSMON         9506155        10703763        34,40,48,49
+   HLCSMON1        3987859         5535017        15,40,49
+   HLCSTCP         4005742         4550642        19,43,49
+   HLCSTCP2        7436704         7773433        19,43,49
+   HLCSTERM        2560922         2618931        40,49
+   HLDTIW2A        4178875         4164880        14,49
+   HLDTIW2B        5012027         5250753        14,19,49
+   HLDTIWP1        8445958         8449802        14,49
+   
+   
+  Installation Instructions: 
+  ==========================
+    1.  Users are allowed to be on the system during the installation.  
+   
+    2.  DSM SITES: Review your mapped set.  If any of the routines listed in 
+        the Routine Summary section are mapped, they should be removed from 
+        the mapped set at this time.  
+   
+    3.  Shutdown all Logical Links and incoming and outgoing filers. Use the 
+        'Shut Down All Logical Links', 'Stop all incoming filers', and 'Stop 
+        all outgoing filers' options.
+   
+        For DSM sites ONLY, if you have an HL7 UCX Service associated
+        with the account(uci/directory) where you are installing this patch,
+        please disable this service.
+   
+    4.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This 
+        option will load the KIDS package onto your system.  
+   
+    5.  The patch has now been loaded into a Transport global on your 
+        system. You now need to use KIDS to install the Transport global.  
+        On the KIDS menu, under the 'Installation' menu, use the following 
+        options: 
+   
+           2 Verify Checksums in Transport Global 
+           3 Print Transport Global 
+           4 Compare Transport Global to Current System 
+           5 Backup a Transport Global 
+           6 Install Package(s) 
+               INSTALL NAME: HL*1.6*49
+                             =========
+           Answer 'NO' to 'Want to DISABLE Scheduled Options, Menu Options, 
+           and Protocols?'.  
+   
+    6.  Startup all Logical Links and incoming and outgoing filers. Use the 
+        'Restart All Links and Filers' option.  
+   
+        For DSM sites ONLY, if you previously disabled an HL7 UCX Service
+        for this installation, you may now enable it.
+   
+    7.  DSM Sites: Rebuild your mapped set if necessary.
+   
+    8.  Start Link Manager as follows:
+   
+   STEP 1:  HL7 Main Menu
+   STEP 2:  V1.6 OPTIONS
+   STEP 3:  Communications Server
+   STEP 4:  TCP/IP Link Manager Start/Stop
+   
+  Link Manager is NOT currently running!
+   
+   Would you like to start the Link Manager now? YES// 
+   Link Manager queued as task number 2712635
+   
+    9.  Create entry in OPTION SCHEDULING file as follows:
+   
+   In order to set up this option to startup when the system/TaskMan starts,
+   please find the following HL7 options to create an entry
+   in the OPTION SCHEDULING file:
+   
+   STEP 1:  Taskman Management ...  
+   STEP 2:  Schedule/Unschedule Options 
+   STEP 3 (Create the following entry): 
+   
+  Select OPTION to schedule or reschedule: HL AUTOSTART LINK MANAGER 
+    Are you adding 'HL AUTOSTART LINK MANAGER' as 
+      a new OPTION SCHEDULING (the 12TH)? No// Y 
+   
+   STEP 4 (From STEP 3 you will automatically enter the FileMan ScreenMan form 
+          as follows and you should edit the 'SPECIAL QUEUEING' field 
+          to have a value of 'Startup Persistent'): 
+   
+                            Edit Option Schedule
+      Option Name: HL AUTOSTART LINK MANAGER     
+      Menu Text: Autostart Link Manager                    TASK ID:
+    __________________________________________________________________________
+   
+    QUEUED TO RUN AT WHAT TIME:
+   
+  DEVICE FOR QUEUED JOB OUTPUT:
+   
+   QUEUED TO RUN ON VOLUME SET:
+   
+        RESCHEDULING FREQUENCY:
+   
+               TASK PARAMETERS:
+   
+              SPECIAL QUEUEING: Startup Persistent  
+   
+  _______________________________________________________________________________
+   
+   
+   
+   
+   
+  COMMAND:                                       Press <PF1>H for help    Insert 
+   
+  =============================================================================  
+  Data Dictionary Modifications: 
+  ============================== 
+   869.2  HL LOWER LEVEL PROTOCOL PARAMETER 
+   
+          400.05    RETENTION (NJ6,0), [400;5]  (new)
+   
+   869.3  HL COMMUNICATION SERVER PARAMETERS
+   
+          51        DEFAULT RETENTION (NJ6,0), [5;1]  (new)
+   
+          52        LINK MANAGER TASK NUMBER (NJ15,0), [5;2]  (new)
+   
+          53        STOP LINK MANAGER (S), [5;3]  (new)
+   
+          54        LM LAST KNOWN $H (F), [5;4]  (new)
+   
+   870    HL LOGICAL LINK
+   
+          3         LLP ONLINE (S), [0;4]  (old)
+   
+                changed to:
+   
+          3         DEVICE TYPE (S), [0;4]   (new)
+   
+  New Options:
+  ============================== 
+   'TCP/IP Link Manager Start/Stop'  Option name: HL START/STOP LINK MANAGER
+   'Autostart Link Manager'          Option name: HL AUTOSTART LINK MANAGER
+   
+  New for Systems Link Monitor:
+  ==============================
+   
+    1.  Status of whether TaskMan is currently running.
+    2.  Status of whether Link Manager currently running.
+    3.  Additional STATES for non-persistent client links:
+        o  ENABLED
+        o  INACTIVE
+    4.  New DEVICE TYPE column replaces DEVICE ON-LINE column.
+    5.  New DEVICE TYPES:
+                                PC -- Persistent TCP/IP Client
+                                NC -- Non-Persistent TCP/IP Client
+                                SS -- Single-threaded TCP/IP Server
+                                MS -- Multi-threaded TCP/IP Server
+                                SH -- Serial HLLP
+                                SX -- Serial X3.28
+                                MM -- MailMan
+   
+   
+  Configuration considerations:
+  ==============================
+   
+   The only configuration parameter is Retention.  
+   This may be edited per Logical Link using the Interface Workbench.  
+   Also, a Default Retention time may be edited 
+   using the 'Edit Communication Server parameters' option.  
+   
+   The order of precedence for Retention is as follows: 
+   
+             1.  Retention (Per Logical Link value overrides any defaults).
+             2.  Default Retention (System-wide account default.
+                                   If valued, this field is the default
+                                   per Logical Link when the Retention
+                                   field is left unvalued).
+             3.  15 seconds (System-wide account default.  This value
+                            is used when both Retention and Default
+                            Retention are left unvalued).
+   
+   You may wish to accept the system-wide default of 15 seconds for 
+   Retention of your non-persistent TCP/IP client Logical Links.  
+   Once you become more familiar with the frequency and load of each link, 
+   you may adjust these Retention values accordingly.  
+   
+  Troubleshooting information:
+  ============================
+   The HL7 Systems Link Monitor is a useful tool to help
+   you troubleshoot problems with either the Link Manager
+   or the individual Logical Links.  This tool will monitor
+   both TaskMan and Link Manager. When either of these
+   does not appear to be running, a warning will be
+   displayed on the Systems Link Monitor.
+   
+   
+   ALERT NOTIFICATION
+   
+   It highly recommended that sites establish a mail group
+   for HL7 related alerts.  Once this has been establish,
+   use the 'Edit Communication Server parameters' option
+   to identify the Mail Group for Alerts.
+   
+   If a mail group has been created and identified, the Link Manager
+   will use this mail group to send the following alert whenever
+   it finds a configuration problem between the links and TaskMan:
+   
+   HL7 Logical Link LLname shutdown due to TaskMan unable to process task request
+   
+   The most likely cause for receiving such an alert is having TaskMan running
+   in non-DCL context and having a Logical Link with an associated
+   STARTUP NODE other than where TaskMan is currently running.  This applies
+   to both the AXP and AVANTI sites.
+   
+   After receiving this alert, make the needed corrections and restart
+   the Logical Link if necessary.
+  
+
+Routine Information:
+====================
+
+Routine Name:
+  - HLCS2
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSDL
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSDR
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSLNCH
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSMM1
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSMON
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSMON1
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSTCP
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSTCP2
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSTERM
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLDTIW2A
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLDTIW2B
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLDTIWP1
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSLM
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSLSM
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : CHAN,ALAN                      Date Entered : MAR 09, 1999
+Completed By: HSU,RAYMOND JL               Date Completed: SEP 28, 1999
+Released By : SINGH,GURBIR                  Date Released : SEP 30, 1999
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

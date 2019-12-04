@@ -1,0 +1,274 @@
+
+=============================================================================
+Run Date: JAN 28, 2004                     Designation: IVM*2*96
+Package : IVM - INCOME VERIFICATION MATCH     Priority: EMERGENCY
+Version : 2        SEQ #78                      Status: Released
+                  Compliance Date: JAN 30, 2004
+=============================================================================
+
+Associated patches: (v)IVM*2*78    <<= must be installed BEFORE `IVM*2*96'
+
+Subject: FIX INCOME YEAR ISSUE W/Z09 BUILDER
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ **  This patch is classified as an emergency because billing is not
+ **  currently being reported accurately per Fiscal Year.
+  
+  
+  The software for this patch, IVM*2*96, and associated patch EAS*1*47,
+  are not being distributed through the National Patch Module.  These
+  patches are being distributed as a single KIDS software distribution
+  (host file).
+   
+  These two patches will change the way IVM Billing/Collection Data
+  Transmission (ORU~Z09) HL7 messages are sent to the HEC and to the EDB
+  (new Enrollment database).
+  
+  The Current process creates one Z09 per Veteran.  This Z09 will contain
+  one Income Year segment and may contain multiple billing segments
+  that span multiple Income Years.  This had an undesireable effect of
+  associating different years billing information with a single Income
+  Year.
+  
+  This patch will now sort the billing transactions by Income Year of
+  the Primary Completed Mean Test in force for that transaction.  The
+  billing transaction field BILL FROM (#.05) from the IVM BILLING
+  TRANSMISSION file (#301.61), will be used to associate this transaction
+  with the proper Means Test.
+  
+  A veteran may now have a separate Z09 for each Income Year represented by
+  the billing transactions being sent to the HEC or EDB.
+  
+  
+  This patch addresses the following E3R(s):
+  ------------------------------------------
+  There are no E3Rs associated with this patch
+  
+  
+  This patch addresses the following NOIS message(s):
+  
+  ---------------------------------------------------
+  There are no NOIS's associated with this patch
+  
+  
+       ================INSTALLATION INSTRUCTIONS =================
+  
+ *** SEE PATCH DESCRIPTION EAS*1.0*47 FOR INSTRUCTIONS ON INSTALLING THIS
+ *** PATCH.  THIS PATCH IS INCLUDED IN THAT PATCH AS A HOST FILE INSTALL.
+  
+   1.   COMPONENTS SENT WITH PATCH
+        --------------------------
+  
+  ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;2.0;INCOME VERIFICATION MATCH;**[patch list]**;21-OCT-94
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  IVM2096                    N/A               886463             96
+  IVMPTRN5               6783101              7000096        1,9,24,34,69
+                                                                 78,96
+      Total number of routines:  2
+  
+  DATA DICTIONARY SUMMARY 
+  =======================
+  The following fields were modified in the IVM BILLING TRANSMISSION file 
+  (#301.61):
+  
+  .02    PATIENT
+  .05    BILL FROM
+  .12    TRANSMIT BILL
+  
+  The following cross references were modified or added new:
+  ATR, ATR1, ATR2 (new)
+  
+  The Data Dictionary for the IVM BILLING TRANSMISSION file was changed to
+  accomplish the splitting of billing Charges by Income Year.  Two existing
+  cross references were modified for two fields and a new cross reference
+  was added to another existing field.
+  
+  The cross reference "ATR" on the PATIENT field (.02) was modifed to 
+  include Income Year.  The cross reference "ATR1", on the TRANSMIT BILL 
+  field (.12), was modified to update the "ATR" cross reference with Income
+  Year.  A new cross reference, "ATR2", was added to the BILL FROM field 
+  (.05) to also update the "ATR" cross reference with Income Year.  All 
+  of these cross refences are now Mumps style Cross references.
+  
+  old cross reference:
+  --------------------
+  
+   CROSS REF NAME:   ATR
+             TYPE:   MUMPS
+       Node: 1       I $P($G(^IVM(301.61,DA,0)),"^",12) S 
+                     ^IVM(301.61,"ATR",X,DA)=""
+       Node: 2       K ^IVM(301.61,"ATR",X,DA)
+  
+                     This cross reference lists all billing transmission
+                     records, by patient,
+                     which need to be transmitted to the IVM Center.  The 
+                     'ATR1' cross
+                     reference on the TRANSMIT BILL (#.12) field is the
+                     companion to this
+                     cross reference.
+  
+  
+   CROSS REF NAME:   ATR1
+             TYPE:   MUMPS
+       Node: 1       I X=1,$P($G(^IVM(301.61,DA,0)),"^",2) S 
+                     ^IVM(301.61,"ATR",$P(^(0),"^",2),DA)=""
+       Node: 2       I $P($G(^IVM(301.61,DA,0)),"^",2) K 
+                     ^IVM(301.61,"ATR",$P(^(0),"^",2),DA)
+  
+                     This cross reference is used to list all billing
+                     transmission records,
+                     by patient, which need to be tranmitted to the IVM 
+                     Center.
+                     The 'ATR'
+                     cross reference on the PATIENT (#.02) field is the
+                     companion to this
+                     cross reference.
+  
+  
+  modified cross reference:
+  -------------------------
+  
+   CROSS REF NAME:   ATR
+             TYPE:   MUMPS
+       Node: 1       D SETATR^EASUFNC3(DA,X)
+       Node: 2       D KILLATR^EASUFNC3(DA,X)
+  
+                     This cross reference lists all billing transmission
+                     records, by patient
+                     & Income Year billing occurred in, which need to be
+                     transmitted to the
+                     IVM Center.  The 'ATR1' cross reference on the 
+                     TRANSMIT BILL (#.12) field
+                     is the companion to this cross reference.
+  
+  
+   CROSS REF NAME:   ATR1
+             TYPE:   MUMPS
+       Node: 1       D SETATR^EASUFNC3(DA,$P(^IVM(301.61,DA,0),"^",2))
+       Node: 2       D KILLATR^EASUFNC3(DA,$P(^IVM(301.61,DA,0),"^",2))
+  
+                     This cross reference is used to list all billing
+                     transmission records,
+                     by patient & Income Year billing occurred in, which 
+                     need to be transmitted
+                     to the IVM Center.  The 'ATR' cross reference on the
+                     PATIENT (#.02) field
+                     is the companion to this cross reference.
+  
+  
+   CROSS REF NAME:   ATR2
+             TYPE:   MUMPS
+       Node: 1       D SETATR^EASUFNC3(DA,$P(^IVM(301.61,DA,0),"^",2))
+       Node: 2       D KILLATR^EASUFNC3(DA,$P(^IVM(301.61,DA,0),"^",2))
+  
+                     This cross reference is used to list all billing
+                     transmission records,
+                     which need to be tranmitted to the IVM Center.  The 
+                     'ATR' cross reference
+                     on the PATIENT (#.02) field is the companion to this 
+                     cross reference.
+
+Routine Information:
+====================
+
+Routine Name:
+  - IVM2096
+
+
+Routine Checksum:
+
+Routine Name:
+  - IVMPTRN5
+
+ This routine was modified to $O through the new format of the cross 
+ reference "ATR" that now include Income Year.
+  
+ Old code:
+ =========
+ ***1***
+  
+ 37       S DFN=0 F  S DFN=$O(^IVM(301.61,"ATR",DFN)) Q:'DFN  D
+ 38       .I $$WHERETO^EASPTRN1(DFN) Q               ;Do not send EDB Z09's
+ 39       .I IVMCT=0,$G(IVMGTOT) D FILE^HLTF
+  
+ ***2***
+  
+ 63       .S IVMTDA=$O(^IVM(301.61,"ATR",DFN,0))
+ 64       .S IVMMTDT=$S(IVMTDA:$P($G(^IVM(301.61,IVMTDA,0)),"^",5),1:DT)
+  
+ ***3***
+  
+ 70       .S IVMTDA=0 F  S IVMTDA=$O(^IVM(301.61,"ATR",DFN,IVMTDA)) Q:'IVMT
+ DA  D
+ 71       ..S IVMCT=IVMCT+1,^TMP("HLS",$J,IVMCT)=$$FT1^IVMUFNC3(IVMTDA)
+  
+ ***4***
+  
+ 95       D FILE^IVMPTRN3
+ 96       K DFN,IVMPID,IVMTDA,IVMMTDT,IVMN,IVMSTOP,IVMEVENT,IVMHZIC,VAFPID
+ ,DGREL,
+ 97       D CLEAN^IVMUFNC
+ 98       Q
+  
+  
+  
+ New code:
+ =========
+  
+ 40       S ICYR=0                                   ;IVM*2*96
+ 41       F  S ICYR=$O(^IVM(301.61,"ATR",ICYR)) Q:'ICYR  D
+ 42       . D BLDZ09(ICYR)
+ 43       D FILE^IVMPTRN3
+ 44       K DFN,IVMPID,IVMTDA,IVMMTDT,IVMN,IVMSTOP,IVMEVENT,IVMHZIC,VAFPID
+ ,DGREL,
+ 45       D CLEAN^IVMUFNC
+ 46        Q
+ 47       ;
+ 48  BLDZ09(ICYR)    ;create the Z09 per DFN
+ 49       S DFN=0
+ 50       F  S DFN=$O(^IVM(301.61,"ATR",ICYR,DFN)) Q:'DFN  D
+ 51       .I $$WHERETO^EASPTRN1(ICYR,DFN) Q          ;Do not send EDB Z09's
+ 52       .I IVMCT=0,$G(IVMGTOT) D FILE^HLTF
+  
+ ***2***
+  
+ 76       .S IVMTDA=$O(^IVM(301.61,"ATR",ICYR,DFN,0))
+ 77       .S IVMMTDT=$S(IVMTDA:$P($G(^IVM(301.61,IVMTDA,0)),"^",5),1:DT)
+  
+ ***3***
+  
+ 83       .S IVMTDA=0 F  S IVMTDA=$O(^IVM(301.61,"ATR",ICYR,DFN,IVMTDA)) Q
+ :'IVMTD
+ 84       ..S IVMCT=IVMCT+1,^TMP("HLS",$J,IVMCT)=$$FT1^IVMUFNC3(IVMTDA)
+  
+ ***4***
+ 108      Q
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : NAPOLIELLO,GREG               Date Entered  : DEC 17, 2003
+Completed By: MULLER,RICHARD                Date Completed: JAN 23, 2004
+Released By : GANUS,MAUNETTE                Date Released : JAN 28, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

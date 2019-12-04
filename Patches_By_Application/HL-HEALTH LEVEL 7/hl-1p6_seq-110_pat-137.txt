@@ -1,0 +1,332 @@
+$TXT Created by MOORE,JIM at NXT.KERNEL.FO-OAKLAND.MED.VA.GOV  (KIDS) on Wednesday, 08/15/07 at 07:34
+=============================================================================
+Run Date: APR 30, 2008                     Designation: HL*1.6*137
+Package : HL - HEALTH LEVEL SEVEN             Priority: Mandatory
+Version : 1.6       SEQ #110                    Status: Released
+                  Compliance Date: MAY 31, 2008
+=============================================================================
+
+Associated patches: (v)HL*1.6*136  <<= must be installed BEFORE `HL*1.6*137'
+
+Subject: HLO SEQUENCE QUEUES
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ This patch provides an enhancement to the HLO (HL7 Optimized) software.  
+ It provides for strict control of HL7 message sequencing which was not 
+ previously available, and is still not available to messaging that doesn't
+ use HLO.  HLO-based HL7 messages transmit many times faster than pre-HLO
+ TCP-based HL7 messages.  For these reasons, application developers are
+ encouraged to develop HLO-based HL7 interfaces.  This patch does NOT affect
+ messaging applications that do not utilize HLO.
+  
+ Applications may use the new HLO functionality to insure that their
+ HL7 messages are received by remote applications in the same order that
+ the messages are generated on the local system. An application should
+ consider using this new functionality only if it requires that it's
+ messages are processed in a particular order AND if the VIE will be
+ utilized, otherwise it is not necessary.
+    
+ The new sequencing functionality uses 'Sequence Queues' and application 
+ acknowledgments to order messages.  When an application generates
+ a message, it may specify that it should be placed on a particular
+ sequence queue.  If it does so, the application must also request that
+ an accept acknowledgement and an application acknowledgment be returned.
+ HLO will insure that a message that is placed on a sequence queue will
+ NOT be transmitted until the application acknowledgment for the preceding
+ message placed on the same sequence queue is received.  That will guarantee
+ that the remote application receives messages in the same order as they are
+ generated on the local system.
+    
+     
+ Changes to the HLO System Monitor:
+     
+ 1.   A count of messages pending on all sequence queues will be
+      displayed on the status screen.  When HLO moves a message
+      off of a sequence queue the count is decremented.  The
+      message is then placed on the out-going queue for
+      transmission, and so the count of out-going messages is incremented.
+      
+ 2.   A new screen has been added to display the count of messages
+      pending on each sequence queue. To make room for the new
+      Sequence Queue  action, the  Scroll Mode  action was removed
+      from the protocol menu.  The new Sequence Queue screen provides
+      an action for manually advancing a sequence queue in the event
+      that it hangs due to an application acknowledgment not being returned. 
+      Sequence queues should NOT be manually advanced unless the
+      situation has first been thoroughly investigated using
+      guidelines provided by the application.
+      
+      
+ Instructions for Application Developers
+      
+ To use a sequence queue, an application developer needs to take these
+ additional steps in building their messaging application: 
+         
+ 1.   The application must request both an accept acknowledgment and an
+      application acknowledgement. 
+   
+ 2.   The application must specify the name of a sequence queue to place the
+      message on.  The queue is created dynamically as needed, and disappears
+      once it is empty.  The name of the queue can be up to 30 characters and
+      MUST BE NAMESPACED by the application.  It is passed as an input
+      parameter to any of the HLO message sending APIs by specifying
+      HLPARM("SEQUENCE QUEUE").  The input parameter must be
+      passed-by-reference.
+ 
+     Example:
+        HLMSG() is a message that has been created using the HLO API's but
+        hasn't been sent yet. To send it to a single destination using the
+        new sequence queue the setup might be as follows:
+                S WHOTO("RECEIVING APPLICATION")=<reciving application name>
+                S WHOTO("FACILITY LINK NAME")=<link name>
+                S PARMS("SENDING APPLICATION")="MPI"  (or whatever)
+                S PARMS("ACCEPT ACK TYPE")="AL"   <-- required
+                S PARMS("APP ACK TYPE")="AL"      <-- required
+      new  -->  S PARMS("SEQUENCE QUEUE")="MPI-ADT1"  <-- must be namespaced
+                D SENDONE^HLOAPI1(.HLMSG,.PARMS,.WHOTO,.ERROR)
+ 
+ 
+ 3. The application must provide an exception handler for HLO to invoke if a
+    sequence queue waits too long for an application acknowledgment to be
+    returned.  Typically, the exception handler will serve to notify the
+    operations staff to investigate why the remote application has not returned
+    the application acknowledgement. The queue may be manually advanced if it
+    is determined to be the appropriate action.
+    
+ 4. There are new parameters that must be entered for the sending
+     application in the HLO Application Register file.
+ 
+    SEQUENCE TIMEOUT - The number of minutes to wait for an application
+             acknowledgment before calling the application's sequence
+             exception routine.
+    SEQUENCE EXCEPTION ROUTINE  and SEQUENCE EXCEPTION TAG   Together these
+              two fields specify an M <tag>^<routine> to call when a the 
+              timeout period expires while waiting for an application
+              acknowledgment.
+ 
+ Example:
+ 
+    APPLICATION NAME: MPI                   SEQUENCE EXCEPTION TAG: EXCAPP
+   SEQUENCE EXCEPTION ROUTINE: MPI24H2   SEQUENCING TIMEOUT: 5  <-- in minutes 
+ 
+  Test Sites:
+  ===========
+  Oklahoma City
+  CMOP-NAT
+  Montana 
+  
+   
+  REMEDY:  
+  =====
+  none
+  
+      
+ ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+     
+      <tab>;;1.6;HEALTH LEVEL SEVEN;**[patch list]**;Oct 13, 1995;Build 21
+     
+                           CHECK^XTSUMBLD results
+  Routine name    Before Patch        After Patch         Patch List
+  ============    ============        ===========         ==========
+  HLOAPI1              7877437            9547314       126,132,134,137
+  HLOAPI2             10839368           12958604     126,131,133,134,137
+  HLOAPI3             12013888           12014989       126,133,134,137
+  HLOAPP               3264280            3472042         126,132,137
+  HLOCLNT             16766048           20326330     126,130,131,134,137
+  HLOCLNT1             7920089            7908480     126,130,131,134,137
+  HLOCLNT2            10007952            9669281     126,130,131,133,134
+                                                              137
+  HLOCLNT3             3389793            3355370       126,130,134,137
+  HLOCNRT              4764482            4995774       126,132,134,137
+  HLOF778              8973279            8964969         126,134,137
+  HLOF778A            11866005           12150223         126,134,137
+  HLOFILER             8567833            8557152       126,131,134,137
+  HLOMSG               9889362           10214559         126,134,137
+  HLOPOST              5873385            6115292       126,134,136,137
+  HLOPRE                   N/A             626290         134,136,137
+  HLOPURGE             8199644            7830527       126,134,136,137
+  HLOQUE               1867168           11291203       126,132,134,137
+  HLOSRVR             19611852           20352364     126,130,131,134,137
+  HLOSRVR1            18851341           18961657     126,130,131,133,134
+                                                              137
+  HLOSRVR2             5344305            1895587           131,137
+  HLOTCP              10464163           10771777       126,131,134,137
+  HLOUSR              18887479           19633916       126,130,134,137
+  HLOUSR1             12580710           13318579         126,134,137
+  HLOUSR2             12815737           10740855         126,134,137
+  HLOUSR4                  N/A            3896236             137
+     
+  Number of Routines = 25
+ 
+      
+ INSTALLATION INSTRUCTIONS
+  =========================
+  
+    1.  Users are allowed to be on the system during the installation.
+  
+    2.  Disable the HL7 TCPIP services for the HLO multi-listener running on 
+        all nodes in the cluster. For example, at the VMS prompt
+        in your production account:
+          ISC6A1> TCPIP          <-- at the VMS prompt
+          TCPIP> DISABLE SERVICE HLS5001CACHE  
+  
+          In your test account:
+          ISC6A1> TCPIP          <-- at the VMS prompt
+          TCPIP> DISABLE SERVICE HLS5026CACHE  
+   
+         You could also do this from the M programmer's prompt as 
+         follows:
+  
+         VISTA> D ^%CLI   <-- at the M programmer's prompt                       
+  
+         CLI command: TCPIP                 
+         TCPIP> DISABLE SERVICE HLS5001CACHE  
+  
+    3.  Use the STOP HLO action of the HLO System Monitor option to
+        temporarily stop the transmission of HLO messages. Wait several
+        minutes to insure that all HLO processes have terminated.
+  
+        NOTE: There is a pre-install routine that will abort the installation
+              if any HLO process is still running.  If the installation
+              is aborted, verify that HLO is stopped, and restart the
+              installation.
+    
+    4.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This
+        option will load the KIDS package onto your system.
+  
+    5.  This patch is now loaded into a transport global on your system.
+        The next step is to use KIDS to install the Transport global.  On
+        the KIDS menu, under the 'Installation' menu, use the following
+        options:
+  
+           Verify Checksums in Transport Global
+           Print Transport Global 
+           Compare Transport Global to Current System 
+           Backup a Transport Global
+           Install Package(s) 
+  
+        When using the Install Package(s) menu option to install the 
+        patch build, you will be asked several questions.  The questions,
+        and the answers you should supply, are shown below.
+  
+        INSTALL NAME: <HL*1.6*137>
+        Want KIDS to INHIBIT LOGONS during the install?  <NO>
+        Want to DISABLE Scheduled Options, Menu Options,
+          and Protocols?  <NO>
+ 
+      A pre-install routine will verify that all HLO processes have been
+      stopped before the installation will complete.
+  
+ 
+    6. Enable the HL7 TCPIP services for the multi-listeners
+          For example, in a production account at the VMS prompt:
+          ISC6A1> TCPIP             <-- at the VMS prompt
+          TCPIP> ENABLE SERVICE HLS5001CACHE 
+  
+          For example, in a test account:
+          ISC6A1> TCPIP             <-- at the VMS prompt
+          TCPIP> ENABLE SERVICE HLS5026CACHE 
+  
+         You could also do this from the M programmer's prompt as 
+         follows:
+  
+         VISTA> D ^%CLI   <-- at the M programmer's prompt                       
+  
+         CLI command: TCPIP                 
+         TCPIP> ENABLE SERVICE HLS5001CACHE   
+  
+    7. Use the START HLO action of the HLO System Monitor option to 
+       resume transmission of HLO messages in your production account.
+       This step is optional in test systems.
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;1.6;HEALTH LEVEL SEVEN;**[Patch List]**;Oct 13, 1995;Build 21
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: HLOAPI1
+    Before: B48519291   After: B49595357  **126,132,134,137**
+Routine Name: HLOAPI2
+    Before: B37390174   After: B49752437  **126,131,133,134,137**
+Routine Name: HLOAPI3
+    Before: B45861231   After: B45863930  **126,133,134,137**
+Routine Name: HLOAPP
+    Before:  B9133319   After: B11107696  **126,132,137**
+Routine Name: HLOCLNT
+    Before: B59494519   After: B73473677  **126,130,131,134,137**
+Routine Name: HLOCLNT1
+    Before: B31098132   After: B31047007  **126,130,131,134,137**
+Routine Name: HLOCLNT2
+    Before: B38024388   After: B38024848  **126,130,131,133,134,137**
+Routine Name: HLOCLNT3
+    Before:  B5680444   After:  B5637938  **126,130,134,137**
+Routine Name: HLOCNRT
+    Before: B11469805   After: B12168721  **126,132,134,137**
+Routine Name: HLOF778
+    Before: B31810576   After: B31789914  **126,134,137**
+Routine Name: HLOF778A
+    Before: B38921929   After: B40119510  **126,134,137**
+Routine Name: HLOFILER
+    Before: B28742582   After: B28701660  **126,131,134,137**
+Routine Name: HLOMSG
+    Before: B46053749   After: B49107650  **126,134,137**
+Routine Name: HLOPOST
+    Before: B13205173   After: B14791326  **126,134,136,137**
+Routine Name: HLOPRE
+    Before:   B871663   After:   B892063  **134,136,137**
+Routine Name: HLOPURGE
+    Before: B33703423   After: B32660278  **126,134,136,137**
+Routine Name: HLOQUE
+    Before:  B5560431   After: B51452458  **126,132,134,137**
+Routine Name: HLOSRVR
+    Before: B71398107   After: B73015635  **126,130,131,134,137**
+Routine Name: HLOSRVR1
+    Before: B71810026   After: B72751153  **126,130,131,133,134,137**
+Routine Name: HLOSRVR2
+    Before: B13997562   After:  B4335684  **131,137**
+Routine Name: HLOTCP
+    Before: B45604114   After: B46987670  **126,131,134,137**
+Routine Name: HLOUSR
+    Before: B88986165   After: B94026654  **126,130,134,137**
+Routine Name: HLOUSR1
+    Before: B71059198   After: B73632267  **126,134,137**
+Routine Name: HLOUSR2
+    Before: B50803948   After: B44868025  **126,134,137**
+Routine Name: HLOUSR4
+    Before:       n/a   After: B13499402  **137**
+ 
+Routine list of preceding patches: 136
+
+=============================================================================
+User Information:
+Entered By  : MOORE,CHARLES J               Date Entered  : JUN 06, 2007
+Completed By: MURPHY,ELISA                  Date Completed: APR 17, 2008
+Released By : APOLONIO,AUGUSTO              Date Released : APR 30, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,222 @@
+$TXT Created by NAPOLIELLO,GREG S at LAWVAA.FO-BIRM.MED.VA.GOV  (KIDS) on Monday, 01/24/05 at 15:06
+=============================================================================
+Run Date: MAR 22, 2005                     Designation: PSO*7*186
+Package : PSO - OUTPATIENT PHARMACY           Priority: Mandatory
+Version : 7       SEQ #174                      Status: Released
+                  Compliance Date: APR 22, 2005
+=============================================================================
+
+Associated patches: (v)PSO*7*35    <<= must be installed BEFORE `PSO*7*186'
+                    (v)PSO*7*152   <<= must be installed BEFORE `PSO*7*186'
+                    (v)PSO*7*180   <<= must be installed BEFORE `PSO*7*186'
+
+Subject: ALLERGY LOOKUP AND CS REFILL LOGIC
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch will correct two Drug Enforcement Agency (DEA) Special 
+ Handling issues.  One problem occurs while completing the prescription via
+ the Patient Prescription Processing [PSO LM BACKDOOR ORDERS] option, and
+ one while refilling a prescription via the Barcode Batch Prescription
+ Entry [PSO BATCH BARCODE] option on the PSO BARCODE MENU.  This patch will
+ also correct a null subscript error while verifying a prescription via the
+ Patient Prescription Processing [PSO LM BACKDOOR ORDERS] option.
+  
+  
+ 1. NOIS: SBY-0204-32205     ERROR - OERR+5^PSOVER
+  
+ Problem:
+ --------
+ While performing the Patient Prescription Processing [PSO LM BACKDOOR
+ ORDERS] option, a null subscript was encountered when trying to verify a
+ non-verified prescription order.  This only happens following the scenario
+ below:
+  
+   1. While editing a non-verified prescription order, select the hidden
+      option PI to view patient information.
+   2. Select DD to view Detailed Allergies.
+   3. Select an item from the Allergy list.
+   4. Quit until you are at the prescription display and enter the hidden
+      option VF to verify this drug.  The null subscript error occurs here.
+   5. Follow the same steps as above in 1-4, but instead of one drug,
+      use the speed method of entering multiple drugs to verify. This may 
+      not produce the null subscript error, but may produce unpredictable
+      results.  When returning from the Allergy list, a different drug
+      could be displayed for verifying instead of the original drug chosen
+      prior to the PI option.
+  
+ Resolution:
+ -----------
+ The routine has been corrected to keep track of the order number it is
+ on when going between verifying an order and viewing the Detailed
+ Allergy/ADR List of items.
+  
+  
+ 2. NOIS: BOI-0904-52115 Dr. able to order T-3 with 1 yr's refill from CPRS
+  
+ Problem:
+ --------
+ An error occurs when the prescription is completed/finished after 
+ receiving an order comes from Computerized Patient Records System (CPRS)
+ for a controlled substance drug in which the DEA, SPECIAL HDLG field (#3)
+ in the DRUG file (#50) is coded as 3AB.  The Days supply is set to 90 with
+ 3 refills.  The prescription is allowed to be completed with the 3 refills
+ and a 90 Day Supply, i.e. a year supply.  In this example the drug should
+ have been restricted to 1 refill at the 90 day supply.
+  
+ Schedule 3-5 controlled substances should be restricted to a total of 6 
+ months supply or 5 maximum refills, whichever comes first.  Schedule 2 
+ does not allow refills at all and other drugs with DEA containing an "F" 
+ should also not allow refills.
+  
+ Resolution:
+ -----------
+ The Finishing routine has been corrected to properly check the DEA field
+ in concert with the Days supply value and apply restrictions accordingly.
+  
+  
+ 3. NOIS: PAL-1004-60171     REFILLED RX WITH NO REILL LEFT
+        & BOI-1204-51334     Prescriptions with negative refills remaining
+  
+ Problem:
+ --------
+ The Barcode Batch Prescription Entry [PSO BATCH BARCODE] option would
+ allow refills for drugs whose DEA, SPECIAL HDLG (#3) field in the DRUG
+ (#50) file contained "F".  The "F" in that field should have prevented the
+ drug from being refilled.
+  
+ Resolution:
+ -----------
+ The routine has been corrected to properly check the DEA field and apply 
+ restrictions accordingly.  This is to insure that a drug will not be 
+ refilled based on changes that may have been made to the DEA field to 
+ prevent this.
+  
+  
+ Associated NOIS:
+ ================
+ SBY-0204-32205 (HD67895) ERROR - OERR+5^PSOVER
+ BOI-0904-52115 (HD68300) Dr. able to order T-3 with 1 yr's refill from 
+                          CPRS
+ PAL-1004-60171 (HD68311) REFILLED RX WITH NO REILL LEFT
+ BOI-1204-51334 (HD68557) Prescriptions with negative refills remaining
+  
+  
+ Associated E3R(s):
+ ==================
+ N/A
+  
+  
+ Test Sites:
+ ===========
+ Oklahoma City, OK
+ Salisbury, NC
+ Spokane, WA 
+ Boise, ID
+  
+ Routine Summary
+ ===============
+ The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;7.0;OUTPATIENT PHARMACY;**[patch list]**;DEC 1997
+  
+                       CHECK^XTSUMBLD results
+ Routine name      Before Patch       After Patch         Patch List
+ ============      ============        ===========     ================
+ PSOORDA            22896958            22998864        44,139,152,186
+ PSOORFI1           34693914            33392972         7,15,23,27,32
+                                                        44,51,46,71,90
+                                                        108,131,152,186
+ PSOREF0            17034842            17546687        14,152,180,186
+ PSOUTLA1           20648372            21916991            35,186
+  
+           Total number of routines - 4
+  
+  
+  
+ Installation Instructions:
+ ==========================
+ It is recommended that this patch be installed after normal business 
+ hours while no Outpatient Pharmacy users are processing orders.
+  
+ Installation will take less than 2 minutes.
+  
+ 1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+  
+ 2. Review your mapped set. If the routines are mapped, they should be
+    removed from the mapped set at this time.
+  
+ 3. From the Kernel Installation & Distribution System menu, select the 
+    Installation menu.
+  
+ 4. From this menu, you may select to use the following options: (when     
+    prompted for INSTALL NAME, enter PSO*7.0*186)
+  
+    a. Backup a Transport Global - this option will create a backup 
+       message of any routines exported with the patch. It will NOT 
+       backup any other changes such as DDs or templates.
+  
+    b. Compare Transport Global to Current System - this option will 
+       allow you to view all changes that will be made when the patch 
+       is installed. It compares all components of the patch (routines, 
+       DDs, templates, etc.) 
+  
+    c. Verify Checksums in Transport Global - this option will ensure 
+       the integrity of the routines that are in the transport global
+  
+ 5. Use the Install Package(s) option and select the package PSO*7.0*186. 
+  
+ 6. When Prompted "Want KIDS to INHIBIT LOGONs during the install? 
+    YES//" respond NO. 
+  
+ 7. When Prompted "Want to DISABLE Scheduled Options, Menu Options, and 
+    Protocols? YES//" respond NO.
+  
+ 8. If Routines were unmapped as part of step 2, they should be   
+    returned to the mapped set once the installation has run to 
+    completion. 
+
+Routine Information:
+====================
+
+Routine Name:
+  - PSOORDA
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOORFI1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOREF0
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOUTLA1
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : NAGRECHA,VARSHA               Date Entered  : AUG 12, 2004
+Completed By: CROSSMAN,PAM                  Date Completed: MAR 21, 2005
+Released By : CONSENTINO,ALBERT             Date Released : MAR 22, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

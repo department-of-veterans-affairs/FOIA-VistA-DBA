@@ -1,0 +1,383 @@
+$TXT Created by CRUZ,ORLANDO at DEVFEX.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 03/09/06 at 09:56
+=============================================================================
+Run Date: APR 27, 2006                     Designation: IB*2*323
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #304                      Status: Released
+                  Compliance Date: MAY 28, 2006
+=============================================================================
+
+Associated patches: (v)IB*2*155    <<= must be installed BEFORE `IB*2*323'
+
+Subject: MRA STATION NUMBER BUG FIX
+
+Category: 
+  - Routine
+  - Other
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ This patch will address several bugs related to e-MRA (Medicare Remittance
+ Advice) as described in their respective Remedy Tickets.
+  
+ In various locations of the Integrated Billing (IB) package, e-MRA is
+ retrieving the site number incorrectly using the $$SITE^VASITE function.
+ As a result, numerous claims using e-MRA have been rejected. This patch
+ will modify code that uses this function incorrectly.
+  
+ Two changes to the e-MRA process have been requested by the Chief 
+ Business Office. One change will prevent syntax errors in the
+ VistA-to-Austin transmissions of certain MRA secondary claims. The other
+ change will enable MRA's to be automatically turned into authorized
+ secondary claims without user intervention.
+  
+ Change request 1: 
+ -----------------
+ Round the value of LCOB-12 (PAID UNITS) to the nearest integer value.  
+ Currently VistA can send a number with decimals to Austin. Austin can only
+ accept integers (all numeric).
+  
+ Change request 2:  
+ -----------------
+ Add MRA adjustment PR-122 (psych. reduction) to the list of valid
+ adjustment group and reason codes to be automatically converted into an
+ MRA secondary claim.
+  
+ MRA claims have been rejected at various location because 
+ e-MRA(Trailblazer software) cannot accept punctuation characters in 
+ city fields of an address. This patch modifies code for output formatters
+ so that any punctuation in an address is stripped off.
+  
+ BCBS Anthem is denying/not paying MRA secondary professional claims
+ printed at express bill because the secondary Provider ID is manually 
+ entered on screen 3 <2> of the MRA claim. The Provider ID is not copied
+ over to secondary claim when the system automatically creates the claims
+ after receiving the MRA from Trailblazer (TB). This patch will modify
+ ^IBCU routine to prevent manual deletion or change of the Provider ID 
+ when one exist for the primary MRA claim.
+  
+ When there are 2 MRAs for a claim, and both are split MRAs, (one denied
+ and one is processed), the Balance Due calculation for the MRA secondary
+ claim to the secondary payer is incorrect because of the way the claim
+ Total Charges is retrieved. The Balance Due being sent to the secondary
+ payer is much higher than it should be in these cases.
+  
+  
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+ There is no NSR associated with this patch.
+  
+  
+ This patch addresses the following Remedy Tickets:
+ --------------------------------------------------
+ 1. 100796       Box 24K for e-MRA
+ 2. 101145       e-MRA problem
+ 3. 104366       Problem:  MEDICAL CENTER DIVISION & INSTITUTION Files
+ 4. 64696        LCOB-12 Paid Units
+ 5. 92303        CBO Requested Changes to e-MRA
+ 6. 63312        Rejects from Winston-Salem Domain
+ 7. 105527       BCBS/Anthem Secondary Bills Done by Authorized IB
+ 8. 129137       Balance Due bug fix for split MRA claims
+  
+  
+ Overview of Remedy Ticket(s):
+ -----------------------------
+ 1. 100796       Box 24K for e-MRA
+  
+ Problem:
+ --------
+ Data is incorrectly displayed in the Site Number field of the IBCE EDI
+ VIEW/PRINT EXTRACT option screen because the data is being extracted from 
+ the INSTITUTION file (#4) instead of the STATION NUMBER file (#389.9).
+  
+ Resolution:
+ -----------
+ Modify the EXTRACT CODE (#1) field of the IB DATA ELEMENT DEFINITION 
+ (#364.5) file IEN# 134 N-SITE NUMBER to extract the data from the piece
+ [3] of the results of the function $$SITE^VASITE.
+  
+  
+ 2. 101145       e-MRA problem
+  
+ Problem:
+ --------
+ The site number was wrong in block 24k on the HCFA 1500 which resulted
+ in billing errors/rejects.
+  
+ Resolution:
+ -----------
+ Modify FORMAT CODE (#1) field of the IB FORM FIELD CONTENT (#364.7) file 
+ and EXTRACT CODE (#1) field in the IB DATA ELEMENT DEFINITION (#364.5) 
+ file IENS# 116, 117, 118, 119, 155 and 231.This output formatter will
+ extract data from the piece [3] of the $$SITE^VASITE function.
+  
+  
+ 3. 104366       Problem:  MEDICAL CENTER DIVISION & INSTITUTION Files
+  
+ Problem:
+ --------
+ The station number is being incorrectly retrieved from the database in 
+ certain places related to the IB MRA project. 
+  
+ Resolution:
+ -----------
+ Modify code in $$MCR24k^IBCEU, $$CLMPRNT^IBCEMRAA and $$HDR^IBCEMRAB 
+ functions to extract piece[3] of $$SITE^VASITE function.
+  
+  
+ 4. 64696        LCOB-12 Paid Units
+  
+ Problem:
+ --------
+ The FORMAT CODE (#1) field in the IB FORM FIELD CONTENT (#364.7) file for 
+ IEN# 965 COB Line Paid Units data element does not round to the nearest
+ integer.
+  
+ Resolution:
+ -----------
+ Modify FORMAT CODE (#1) field in the IB FORM FIELD CONTENT (#364.7) file 
+ for IEN# 965 COB Line Paid Units data element so that it does round to 
+ the nearest integer.
+  
+  
+ 5. 92303        CBO Requested Changes to e-MRA
+  
+ Problem:
+ --------
+ PR-122 not currently in list for MRA adjustment authorized for secondary
+ claim. 
+  
+ Resolution:
+ -----------
+ Add MRA adjustment PR-122 (psych, reduction) to the existing adjustment 
+ category group code - "PR" in routine OKCOMBO^IBCEMQC. 
+  
+  
+ 6. 63312        Rejects from Winston-Salem Domain
+  
+ Problem:
+ --------
+ MRA Claims being rejected by Emdeon because address fields in the IB 837
+ form transmission cannot contain punctuation characters.
+  
+ Resolution:
+ -----------
+ Modify FORMAT CODE (#1) field of the IB FORM FIELD CONTENT(#364.7) file 
+ and EXTRACT CODE (#1) field in the IB DATA ELEMENT DEFINITION (#364.5) 
+ file in IENS# 5,22,55,128,146,151,358, 390,457. These output formatter
+ will remove any punctuation from any city field.
+  
+  
+ 7. 105527       BCBS/Anthem Secondary Bills Done by Authorized IB
+  
+ Problem:
+ --------
+ Prevent the billing Provider ID on billing screen 3 from being deleted or
+ changed when the claim is turned into an MRA secondary claim. 
+  
+ Resolution:
+ -----------
+ Modify code in the $$PRVNUM^IBCU function so that when MRA is being 
+ processed into an MRA secondary claim and the billing provider# already
+ exists, then leave it alone. 
+  
+  
+ 8. 129137       Balance Due bug fix for split MRA claims
+  
+ Problem:
+ --------
+ The claim's total charges are being retrieved from the EXPALANATION OF 
+ BENEFITS (#361.1) file rather than from the BILLS/CLAIMS (#399) file.
+  
+ Resolution:
+ -----------
+ Modify code in IBCCCB routine to retrieve charges from TOTAL CHARGES 
+ (#201) field in the BILLS/CLAIMS (#399) file.
+  
+  
+ Components Sent With Patch
+ --------------------------
+  
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;2.0;INTEGRATED BILLING;**[patch list]**;21-MAR-94
+  
+                             CHECK^XTSUMBLD results
+  
+  Routine         Before Patch        After Patch         Patch List
+  -------         ------------        -----------         ----------
+  IBCCCB            18946749            18929796          80,106,51,151
+                                                          137,182,155,323
+  IBCEMQC           8894519             8898283           155,323
+  IBCEMRAA          12519053            12531469          155,323
+  IBCEMRAB          14094662            14172459          155,323
+  IBCEU3            12557344            12588880          51,137,155,323
+  IBCU              14555083            14584383          52,106,51,191,232
+                                                          323
+  IBY323PR             N/A              deleted           **
+  
+  
+  Number of Routines = 7
+  
+  ** Pre-init routine IBY323PR will be automatically deleted.
+  
+  
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;2.0;INTEGRATED BILLING;**[patch list]**;21-MAR-94
+  
+                             CHECK1^XTSUMBLD results
+  
+  Routine         Before Patch        After Patch         Patch List
+  -------         ------------        -----------         ----------
+  IBCCCB            57071055            57002902          80,106,51,151
+                                                          137,182,155,323
+  IBCEMQC           29727908            29766412          155,323
+  IBCEMRAA          61733871            61799153          155,323
+  IBCEMRAB          51933708            52079518          155,323
+  IBCEU3            42120644            42203561          51,137,155,323
+  IBCU              36886371            37317111          52,106,51,191,232
+                                                          323
+  IBY323PR             N/A              deleted           **
+   
+  
+  Number of Routines = 7
+  
+  ** Pre-init routine IBY323PR will be automatically deleted.
+  
+  
+ The following is a list of files included in this patch:
+ --------------------------------------------------------
+  
+                                      UP   SEND  DATA
+                                      DATE SEC.  COMES   SITE   RSLV
+ FILE #  NAME                         DD   CODE  W/FILE  DATA   PTS
+ --------------------------------------------------------------------
+ 364.5   IB DATA ELEMENT DEFINITION   NO     NO    YES   OVER   YES
+         File entry numbers sent: 177,258,319
+ 364.7   IB FORM FIELD CONTENT        NO     NO    YES   OVER   YES
+         File entry numbers sent: 5,22,55,128,146,187,188,358  
+                                  390,457,472,799,965,1032
+  
+  
+  
+ TEST SITES:
+ -----------
+ Northern Indiana HCS
+ Salem
+ Salisbury
+ Upstate New York HCS
+ West Palm Beach
+  
+  
+  
+        ================INSTALLATION INSTRUCTIONS =================
+  
+ This patch may be installed during the day, but it is important that this 
+ patch is NOT installed at the same time that your site transmits 
+ electronic claims. To determine when your site transmits electronic 
+ claims, follow this menu path:
+  
+     MCCR System Definition Menu
+      SITE - MCCR Site Parameter Display/Edit
+       IB Site Parameters
+        Set# [15]
+         Hours to Auto-Transmit
+  
+ Alternatively, you could inquire to IB SITE PARAMETERS (#350.9) file,
+ field (#8.06). Avoid the listed times for patch installation.
+  
+ Install Time - 2 minutes or less.
+  
+  
+ 1. LOAD TRANSPORT GLOBAL
+    ---------------------
+    Choose the PackMan message containing this patch and invoke the
+    INSTALL/CHECK MESSAGE PackMan option.
+  
+ 2. START UP KIDS
+    -------------
+    Start up the Kernel Installation and Distribution System Menu
+    [XPD MAIN]:
+  
+         Edits and Distribution ...
+         Utilities ...
+         Installation ...
+  
+  
+    Select Kernel Installation & Distribution System Option: INStallation
+                                                             ---
+    1      Load a Distribution
+    2      Verify Checksums in Transport Global
+    3      Print Transport Global
+    4      Compare Transport Global to Current System
+    5      Backup a Transport Global
+    6      Install Package(s)
+           Restart Install of Package(s)
+           Unload a Distribution
+  
+  
+    Select Installation Option:
+  
+ 3. Select Installation Option:
+    ---------------------------
+    NOTE: The following are OPTIONAL (When prompted for the INSTALL NAME,
+          enter IB*2.0*323):
+  
+    a. Backup a Transport Global - This option will create a backup message
+       of any routines exported with this patch. It will not backup any 
+       other changes such as DD's or templates.
+    b. Compare Transport Global to Current System - This option will allow 
+       you to view all changes that will be made when the patch is
+       installed. It compares all components of this patch (routines, DD's,
+       templates, etc.).
+    c. Verify Checksums in Transport Global - This option will allow you to
+       ensure the integrity of the routines that are in the transport 
+       global.
+  
+ 4. Select Installation Option: Install Package(s) 
+                                ------------------
+     **This is the step to start the installation of this KIDS patch: 
+  
+    a. Choose the Install Package(s) option of the Installation menu to 
+       start the patch install.
+    b. When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+       YES//' answer NO.
+    c. When prompted 'Want to DISABLE Scheduled Options and Menu Options?
+       YES//', answer NO.
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: IBCCCB
+    Before: B57071055  After: B57002902  **80,106,51,151,137,182,155,323**
+Routine Name: IBCEMQC
+    Before: B29727908  After: B29766412  **155,323**
+Routine Name: IBCEMRAA
+    Before: B61733871  After: B61799153  **155,323**
+Routine Name: IBCEMRAB
+    Before: B51933708  After: B52079518  **155,323**
+Routine Name: IBCEU3
+    Before: B42120644  After: B42203561  **51,137,155,323**
+Routine Name: IBCU
+    Before: B36886371  After: B37317111  **52,106,51,191,232,323**
+Routine Name: IBY323PR
+    Before:       n/a  After:   B330612  **323**
+
+=============================================================================
+User Information:
+Entered By  : GUSTAFSON,ERIC S              Date Entered  : JUL 29, 2005
+Completed By: ROBBINS,BRADLEY               Date Completed: APR 21, 2006
+Released By : WARREN,BRENDA A               Date Released : APR 27, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

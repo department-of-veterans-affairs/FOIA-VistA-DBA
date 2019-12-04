@@ -1,0 +1,271 @@
+$TXT Created by SMITH,BOB at DEV.DEV.FO-HINES.MED.VA.GOV  (KIDS) on Friday, 05/06/05 at 14:19
+=============================================================================
+Run Date: JUL 12, 2005                     Designation: PSD*3*48
+Package : PSD - CONTROLLED SUBSTANCES         Priority: Mandatory
+Version : 3        SEQ #47                      Status: Released
+                  Compliance Date: AUG 12, 2005
+=============================================================================
+
+Associated patches: (v)PSD*3*39    <<= must be installed BEFORE `PSD*3*48'
+                    (v)PSD*3*45    <<= must be installed BEFORE `PSD*3*48'
+
+Subject: PROBLEMS WITH RETURNED TO STOCK FUNCTION AND CS PACKAGE
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch will correct the problems that are encountered
+ when a controlled substance is returned and then reissued.
+  
+ ASSOCIATEDREMEDY/NOIS:
+ ================ 
+ HD67789/REN-1103-61394 PSD*3*39 does not fix REN-0702-61572 problem
+ HD67821/AMA-1203-71815 Problems with RTS function and CS package
+ HD68203/WPB-0804-31282 REFILL THAT WAS PREVIOUSLY RTS WONT RELEASE
+ HD68569/PUG-1204-51558 Need help tracking down Controlled Sub. 
+ HD68146/SPO-0704-51891 Rx Returned To Stock then Filled again won't Release 
+ HD68603/WPB-0105-30179 cs rx was rts but record shows released on that day
+ 
+ ASSOCIATED E3RS:
+ ================
+ N/A
+  
+ PARTICIPATING TEST SITES
+ ========================
+ PUGET SOUND HCS
+ INDIANAPOLIS, IN (C) 
+ DUBLIN, GA 
+  
+ NOIS OVERVIEW:
+ ==============
+ 1)HD67789/REN-1103-61394 PSD*3*39 does not fix REN-0702-61572 problem
+ 2)HD67821/AMA-1203-71815 Problems with RTS function and CS package
+ 3)HD68203/WPB-0804-31282 REFILL THAT WAS PREVIOUSLY RTS WONT RELEASE
+ 4)HD68569/PUG-1204-51558 Need help tracking down Controlled Sub. 
+ 5)HD68146/SPO-0704-51891 Rx Returned To Stock then Filled again won't Release
+ 6)HD68603/WPB-0105-30179 cs rx was rts but record shows released on that day
+ 
+ Problem:
+ --------
+ When a Controlled Substance refill that has been returned to stock
+ is processed, the user receives the message "This fill has already
+ been released".  The application then continues with the processing
+ of the prescription with out updating the Controlled Substance
+ inventory.  This leads to inaccurate inventory counts and the
+ supervisor needs to do balance adjustments to correct it.
+  
+ Resolution:
+ -----------
+ To correct this, PSDOPT0 & PSDOPT2 will be modified to check
+ and see if the drug has been returned.  If it has it will check
+ and see if the current request has been released in the
+ PRESCRIPTION file (#52).  If is has not been released, the
+ posted flag will be removed and allow the user to complete the
+ transaction including updating all the necessary control fields.
+  
+ TECHNICAL
+ =========
+  
+ Routine: PSDOPT
+ * OLD *  PSDOPT ;BIR/JPW,LTL,BJW-Outpatient Rx Entry ; 21 JAN 99
+ * NEW *  PSDOPT ;BIR/JPW,LTL,BJW-Outpatient Rx Entry ; 2/5/04 12:15pm
+ * OLD *   ;;3.0; CONTROLLED SUBSTANCES ;**10,11,15,21,30,39**;13 Feb 97
+ * NEW *   ;;3.0; CONTROLLED SUBSTANCES ;**10,11,15,21,30,39,48**;13 Feb 97
+ * OLD *   ;refills made in April 1999
+ * NEW *   ;refills made in April 1999 
+ * OLD *   ..I $D(PSDRET("RF",X1)),PSDRET("RF",X1)<$P(PSDSEL("RF",X1),"^") S CNT=$G(CNT)+1,DIR(0)=$S($G(CNT)=1:"S^1:Refill #"_X1,1:DIR(0)_CNT_":Refill #"_X1)_";" Q
+ * NEW *   ..I $D(PSDRET("RF",X1)),(PSDRET("RF",X1)\1)=$P(PSDSEL("RF",X1),"^") D RTSDTC^PSDOPT2 Q
+ * OLD *   ..I '$D(PSDRET("RF",X1)) S CNT=$G(CNT)+1,DIR(0)=$S($G(CNT)=1:"S^1:Refill #"_X1,1:DIR(0)_CNT_":Refill #"_X1)_";" Q
+ * NEW *   ..I $D(PSDRET("RF",X1)),PSDRET("RF",X1)<$P(PSDSEL("RF",X1),"^") D CLLDIR2 Q
+ * ADD *   ..I '$D(PSDRET("RF",X1)) D CLLDIR2 Q
+ * DEL *   ;
+ * ADD *  CLLDIR2 S CNT=$G(CNT)+1,DIR(0)=$S($G(CNT)=1:"S^1:Refill #"_X1,1:DIR(0)_CNT_":Refill #"_X1)_";"
+ * ADD *   Q
+  
+  Routine: PSDOPT0
+ * OLD *  PSDOPT0 ;BIR/JPW,LTL,BJW-Outpatient Rx Entry (cont'd) ; 22 Jun 98
+ * NEW *  PSDOPT0 ;BIR/JPW,LTL,BJW - Outpatient Rx Entry (cont'd) ; 22 Jun 98
+ * OLD *   ;;3.0; CONTROLLED SUBSTANCES ;**10,30,37,39,45**;13 Feb 97
+ * NEW *   ;;3.0; CONTROLLED SUBSTANCES ;**10,30,37,39,45,48**;13 Feb 97
+ * ADD *   D RTSMUL
+ * ADD *   S PSD1=0
+ * ADD *   S:$D(PSDXXX) PSD1=PSDXXX-.1
+ * ADD *   K PSD1MUL,PSDMUL,PSDXXX
+ * OLD *   S PSD1=0 F  S PSD1=$O(^PSD(58.81,"AOP",PSDRX,PSD1)) Q:PSD1'>0  S DATA=$G(^PSD(58.81,PSD1,0)),DATA6=$G(^PSD(58.81,PSD1,6)) D
+ * NEW *   F  S PSD1=$O(^PSD(58.81,"AOP",PSDRX,PSD1)) Q:PSD1'>0  S DATA=$G(^PSD(58.81,PSD1,0)),DATA6=$G(^PSD(58.81,PSD1,6)) D
+ * ADD *  RTSMUL ; Setup local array of refills in reverse order
+ * ADD *   S PSD1=0 F  S PSD1=$O(^PSD(58.81,"AOP",PSDRX,PSD1)) Q:PSD1'>0  S DATA6=$G(^PSD(58.81,PSD1,6)) D
+ * ADD *   .S PSDXXX=PSD1
+ * ADD *   .S PSD1MUL=PSD1*-1
+ * ADD *   .S PSDMUL(PSD1MUL)=$P(DATA6,"^",2)
+ * ADD *   Q
+  
+  Routine: PSDOPT2
+ * OLD *   ;;3.0; CONTROLLED SUBSTANCES ;**30,39**;13 Feb 97
+ * NEW *   ;;3.0; CONTROLLED SUBSTANCES ;**30,39,48**;13 Feb 97
+ * DEL *   I $G(PSDDATE3)="" G QTY
+ * DEL *   I $G(PSDTYPE)="OR",$P($G(^PSRX(PSDRX,2)),"^",15)="" K PSDRET("OR",PSDRETN) G QTY
+ * DEL *   I $G(PSDTYPE)="RF",$D(^PSRX(PSDRX,1,PSDRETN,0)) S PSDDATE4=$P(^PSRX(PSDRX,1,PSDRETN,0),"^") I PSDDATE4>PSDDATE3 K PSDRET("RF",PSDRETN) G QTY
+ * DEL *   I $G(PSDTYPE)="PR",$D(^PSRX(PSDRX,"P",PSDRETN,0)) S PSDDATE4=$P(^PSRX(PSDRX,"P",PSDRETN,0),"^") I PSDDATE4>PSDDATE3 K PSDRET("PR",PSDRETN) G QTY
+ * OLD *   W " (RTS)"
+ * NEW *   I $G(NODE3)'="" W " (RTS)"
+ * ADD *   I $G(PSDDATE3)="" G QTY
+ * ADD *   I $G(PSDTYPE)="OR",$P($G(^PSRX(PSDRX,2)),"^",15)="" K PSDRET("OR",PSDRETN) G QTY
+ * ADD *   I $G(PSDTYPE)="RF",$D(^PSRX(PSDRX,1,PSDRETN,0)) S PSDDATE4=$P(^PSRX(PSDRX,1,PSDRETN,0),"^") I PSDDATE4>PSDDATE3 K PSDRET("RF",PSDRETN) G QTY
+ * ADD *   I $G(PSDTYPE)="PR",$D(^PSRX(PSDRX,"P",PSDRETN,0)) S PSDDATE4=$P(^PSRX(PSDRX,"P",PSDRETN,0),"^") I PSDDATE4>PSDDATE3 K PSDRET("PR",PSDRETN) G QTY
+ * ADD *   ;; PSD*3*48 RJS ; CHECK TO SEE IF RELEASED.
+ * ADD *   I $G(NODE3),$G(^PSRX(PSDRX,1,PSDRETN,0)),$P(^PSRX(PSDRX,1,PSDRETN,0),"^",18)="" S $P(PSDRX(PSDTYPE,PSDRETN),"^",3)=""
+ * OLD *  PSDRTS ;PSD*3.0*39
+ * NEW *  PSDRTS ;PSD*3.0*39 ; The next 10 lines are original code commented out for patch PSD*3*45  (this subroutine was duplicated then modified for testing)
+ * OLD *   W !,?10,PSDTYPE(1)_$S($G(PSDTYPE)="OR":"",1:(" #"_PSDRETN))_" was returned to stock on "_$G(PSDDATE3(1)),!?10,"The prescription shows it re-issued on "_$G(PSDDATE4(1))
+ * NEW *   W !,?10,PSDTYPE(1)_$S($G(PSDTYPE)="OR":"",1:(" #"_PSDRETN))_" was returned to stock on "_$G(PSDDATE3(1)),!?10,"The prescription shows it re-issued on"_$G(PSDDATE4(1))
+ * OLD *    .W !!,"The issue date of the fill is the same day as the return to stock date.",!,"The program believes the fill has been re-issued since being returned to stock."
+ * NEW *   .W !!,"The issue date of the fill is the same day as the return to stock date.",!,"The program believes the fill has been re-issued since being returned to stock."
+ * ADD *  RTSDTC ;; PSD*3*48  ADDED LOGIC FOR WHEN AN RTS IS REISSUED ON THE SAMEDAY.
+ * ADD *   N AN
+ * ADD *   I (PSDRET("RF",X1)\1)'=DT D CLLDIR2^PSDOPT Q
+ * ADD *   W !,?10,PSDTYPE(1)_$S($G(PSDTYPE)="OR":"",1:(" #"_PSDRETN))_" was returned to stock on "_$G(PSDDATE3(1)),!?10,"The prescription shows it re-issued today"
+ * ADD *   W !!,"Was the fill re-issued AFTER being returned to stock? YES// "
+ * ADD *   R AN:DTIME Q:AN["^"
+ * ADD *   S:AN="" AN="Y" S AN=$E(AN)
+ * ADD *   I AN="Y"!(AN="y") D CLLDIR2^PSDOPT
+ * ADD *   Q
+  
+ ROUTINE SUMMARY:
+ ================
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+  
+           ;;3.0; CONTROLLED SUBSTANCES ;**[Patch List]**;13 Feb 97
+  
+                             CHECK^XTSUMBLD results
+ Routine name      Before Patch          After Patch         Patch List
+ ============      ============          ===========         ==========
+ PSDOPT                30727637             30300296         10,11,15,
+                                                             21,30,39,48
+ PSDOPT0               26350620             26675919         10,30,37,
+                                                             39,45,48
+ PSDOPT2               10421573             12413202         30,39,48
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+ This patch can be installed at any time.  Users do not need to be off
+ the system. Installation will take less than 2 minutes.
+  
+  1.  Choose the PackMan message containing this patch and invoke the
+      INSTALL/CHECK MESSAGE PackMan option.
+  
+  2.  (DSM for Open VMS sites only) Disable routine mapping on all systems
+      for the routines listed in the Routine Summary.
+  
+      NOTE:  If the routines included in this patch are not currently
+      in your mapped routine set, please skip this step.
+  
+  3.  Start up the Kernel Installation and Distribution System Menu
+      [XPD MAIN]:
+  
+           Edits and Distribution ...
+           Utilities ...
+           Installation ...
+  
+     Select Kernel Installation & Distribution System Option: INStallation
+           Load a Distribution
+           Print Transport Global
+           Compare Transport Global to Current System
+           Verify Checksums in Transport Global
+           Install Package(s)
+           Restart Install of Package(s)
+           Unload a Distribution
+           Backup a Transport Global
+  
+  4.  From this menu, you may elect to use the following options
+      (when prompted for the INSTALL NAME, enter PSD*3.0*48):
+  
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will not
+          backup any other changes such as DD's or templates.
+      b.  Compare Transport Global to Current System - This option will
+          allow you to view all changes that will be made when this patch
+          is installed.  It compares all components of this patch
+          (routines, DD's, templates, etc.).
+      c.  Verify Checksums in Transport Global - This option will allow
+          you to ensure the integrity of the routines that are in the
+          transport global.
+  
+  5.  Use the Install Package(s) option and select the package PSD*3.0*48.
+  
+    a.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+        YES//', answer NO.
+    b.  When prompted 'Want to DISABLE Scheduled Options, Menu Options,
+        and Protocols? YES//', answer NO.
+  6.  (DSM for Open VMS sites only) Optional - Include the routines
+      distributed with this patch in the mapped routine set.
+  
+      NOTE: This step is only necessary if you performed step 2 or if
+      you wish to include the routines in your mapped set.
+      
+ INSTALLATION EXAMPLE
+ ====================
+ Enter the Device you want to print the Install messages.
+ You can queue the install by enter a 'Q' at the device prompt.
+ Enter a '^' to abort the install.
+ 
+ DEVICE: HOME//   TCP
+ 
+         PSD*3.0*48                                  
+  
+  Install Started for PSD*3.0*48 : 
+                May 19, 2005@14:28:29
+  
+ Build Distribution Date: May 06, 2005
+  
+  Installing Routines:
+                May 19, 2005@14:28:29
+  
+  Updating Routine file...
+  
+  Updating KIDS files...
+  
+  PSD*3.0*48 Installed. 
+                May 19, 2005@14:28:30
+  
+  Install Message sent #18625
+ 
+ Install Completed
+
+Routine Information:
+====================
+
+Routine Name:
+  - PSDOPT0
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSDOPT2
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSDOPT
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : SMITH,ROBERT J                Date Entered  : MAY 04, 2004
+Completed By: ANDERSON,MAXINE               Date Completed: JUL 11, 2005
+Released By : CONSENTINO,ALBERT             Date Released : JUL 12, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

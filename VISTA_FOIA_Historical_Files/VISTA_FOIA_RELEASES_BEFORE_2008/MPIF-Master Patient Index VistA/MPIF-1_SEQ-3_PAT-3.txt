@@ -1,0 +1,312 @@
+$TXT Created by CHESNEY,CHRISTINE M at VAB-RAD.ISC-SF.VA.GOV  (KIDS) on FRIDAY, 07/07/00 at 11:53
+=============================================================================
+Run Date: JUL 07, 2000                     Designation: MPIF*1*3
+Package : MPIF - MASTER PATIENT INDEX VISTA Priority: Mandatory
+Version : 1         SEQ #3                     Status: Released
+=============================================================================
+
+Associated patches: (v)MPIF*1*1    <<= must be installed BEFORE `MPIF*1*3'
+                    (v)HL*1.6*64   <<= must be installed BEFORE `MPIF*1*3'
+
+Subject: DIRECT CONNECT, INACTIVATE ICN, LOAD TO MPI, LOCAL ICN
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+  Required Builds:  Master Patient Index Vista 1.0 - This is a controlled 
+  release.  If you have not installed this package and are not on the 
+  installation schedule for CIRN 1.0 and MPI 1.0, contact your VISN
+  Implementation Manager for CIRN.
+  
+  1.)  MPIFAPI - Modified code to include the ability to delete
+  the SUBSCRIPTION CONTROL NUMBER (#991.05) field on the MPI node of
+  the PATIENT (#2) file if an "@" is passed, as well as delete the
+  corresponding entry in the SUBSCRIPTION CONTROL (#774) file.
+  Modified code to prevent the LOCALLY ASSIGNED ICN (#991.04) field
+  in the PATIENT (#2) file from being deleted if the Integration
+  Control Number (ICN) being edited is a local ICN.  This check was
+  moved to the end of the module in case the ICN is being edited. 
+  Locks were also moved outside of the FOR loop.  This addresses
+  the problem that prevented users from using the Single Patient
+  Initialization to MPI [MPIF IND MPI LOAD] option on patients with
+  a local ICN.  Line tag MPIQ was modified to pass IEN of the CMOR in 
+  the call to $$CHANGE^MPIF001 to avoid conflicts with institution 
+  entries that have the same name.
+   
+  2.)  MPIFBT3   Modified code to stop processing of multiple Row
+  Data Table (RDT) segments from the Master Patient Index (MPI).  
+  A change was made to adhere to the following business rule.
+  Upon connecting to the MPI, a national ICN is issued and the site
+  is added as an INSTITUTION (#.02) in the TREATING FACILITY LIST
+  (#391.91) file for the patient.  This information is broadcast to
+  the CIRN Master of Record (CMOR).  The CMOR adds the site to its
+  Treating Facility list for the patient and updates all other shared
+  sites and the MPI.  Modified code to prevent a national ICN from being
+  overwritten by a local ICN.  This was done by reversing the order
+  of two lines in the VRFY module.  This prevents the routine from
+  logging an invalid processing error and quitting prematurely.
+  Also, changed the way treating facility messages are triggered to 
+  support patch DG*5.3*261, if present.
+  
+  3.)  An undefined error was reported in routine MPIFDEL by Charleston,
+  SC in NOIS CHA-0400-30083 and CHA-0500-30237, when using the Inactivate
+  Patient from MPI [MPIF PAT INACT] option. This error only occurs when
+  the site is not the CMOR and the Station Number and IEN in the 
+  Institution (#4) file are not the same.  This has been corrected.
+  The messages displayed to the user letting them know that they could
+  not inactivate a patient from the MPI have been modified to provide
+  more information as to why the action could not take place. Line tag
+  PAT was updated to remove the associated treating facilities.
+  
+  The Option Inactivate Patient from MPI [MPIF PAT INACT] is being sent out
+  with this patch to update the description to include inactivating
+  patients when duplicate entries are found to exist on the MPI.
+  
+  4.)  MPIFQ0 and MPIFSAQ   Set the HLP("ACKTIME") array to 300 seconds
+  to increase the acknowledgment timeout time during the Single Patient
+  Initialization to MPI [MPIF IND MPI LOAD] and Display Only Query [MPIF
+  DISPLAY ONLY QUERY TO MPI] options.  This allows more time for the
+  MPI to return potential matches on common names (e.g., John Smith)or
+  when SSN is not available or date of birth is not an exact date using 
+  these options.  In MPIFQ0, code was added to check for the existence of 
+  HLP("ACKTIME"). If it is already set, that means it is in Display Only 
+  Query or Single Patient Initialization, and the variable value should
+  remain.  If it is not present, the variable is set to 30 seconds.  When
+  these options are invoked, the user may see an additional display stating
+  that this may take some time due to the lack of SSN or inexact DOB.
+  Also, update text displayed when connection can't be made to include
+  'or timed out' before noting assigning Local ICN.  When text is displayed
+  noting assigning of a Local ICN, updated text to include '(if not already
+  assigned)' to concern with what is actually happening.
+  
+  MPIFQ0 was also modified in line tag DECIDE to check the ICN instead
+  of the name and SSN returned in the RDT segments to determine if these
+  patients are the same but with additional Treating Facilities.  Also, 
+  changed the way treating facility messages are triggered to support
+  patch DG*5.3*261, if present.
+  
+  MPIFQ0 has been updated to have the user confirm that the patient
+  returned from the MPI is the correct patient when only one entry
+  is returned and the names do not match.  
+  
+  5.)  MPIFQUE3 - Modified code to stop the exception message, "Error
+  Setting Up HL7: Error Returned in GENERATE^HLMA 8", from occurring
+  during the Begin CMOR Comparison [MPIF CMOR COMP BATCH] option.
+  The exception occurred if there were no patients to batch for a site.
+  The corrected code will insure there are actually messages to be sent
+  for a particular site.  Code was also modified to calculate a new
+  CMOR Activity Score if the score calculation date or the score itself
+  is null.
+   
+  6.)  MPIFQUE4   Removed EN+15 and EN+16 and the MAILB subroutine to
+  eliminate the "MPIF CMOR COMPARE COMPLETE" messages sent to the CIRN
+  EXCEPTION MGT mail group on FORUM.  Updated the NTE module to include
+  the ICN of the patient being processed at the time of the exception.
+  Modified the error comment at line PID+4 to include the HL7 message
+  number.  Replaced code in the CHANGE module to use the Kernel $$LKUP^
+  XUAF4() call, added more information to the exception and also passed
+  in the IEN instead of the text value.  Modified code in the LINK module
+  to correct a problem with the sending site not getting updated if it is
+  not in the subscription list.  Added code in the CHKSUB module to prevent
+  a site from adding a subscription for itself.  Code was modified to
+  calculate a new CMOR Activity Score if the score calculation date or
+  the score itself is null at the site where the message is being 
+  processed. If the score sent in the HL7 message is null, the variable 
+  holding this value is set to zero before processing the message, instead
+  of not processing the message.
+  
+  7.) MPIFBT2 - It was noted that when an exception occurs when looking up
+  a patient during the Local/Missing ICN Resolution job [MPIF LOC/MIS ICN
+  RES]or the Initialization process, the exception condition is not being 
+  checked before determining if the process should continue or not.  This 
+  was reported by a CIRN developer while addressing another issue.  It was
+  noted that if an ICN already exists for a patient returned in a "load" 
+  message that the counter is not advanced past the RDT segments to the 
+  next MSH.  This results in exception messages being generated until the
+  MSH segment is found.  This was found during a resent site installation
+  weekend but had no impact on the weekend or the site as these exception
+  messages go directly to a FORUM mail group.
+  
+  8.)  MPIF001 and MPIFPST3 - The Local ICN flag was not being properly set
+  in one API.  This was reported in NOIS MAC-0300-61786.  The post init  
+  routine MPIFPST3 will look for local ICNs where the locally assigned ICN
+  field is not set and set it.  It will also make sure that the CIRN MASTER
+  OF RECORD field is set for these Local ICNs.  Line tag SETICN in MPIF001 
+  was also modified to prevent a Local ICN from overwriting a National  
+  ICN.  Also, if the ICN being updated is a Local, the CMOR is set to be
+  the site making the update to be sure the correct value is stored. This 
+  is instead of relying on the CMOR being passed in a variable. Local ICNs
+  overwriting National ICNs is also being addressed in patch DG*5.3*261.
+  
+  9.) MPIFPST3 - The post-init will also change the mail group associated
+  with exceptions 219, 223, 226 and 229 to MPIF EXCEPTIONS instead of
+  RG CIRN DEMOGRAPHICS.  This change will send the messages to the remote
+  members in the MPIF EXCEPTIONS mail group as they are the appropriate
+  people to handle these exception types.
+  
+  Installation Instructions:
+  ==========================
+  This patch should be loaded during non-peak hours to minimize
+  disruption to users.  Installation will take less than 15 minutes.
+  The post-init routine, MPIFPST3, will be updating the AICNL cross-
+  reference in the PATIENT (#2) file.  The number of local ICNs and ICNs
+  you have will determine how long the post-init will take to complete.
+   
+  
+   1.  Users are allowed on the system during patch installation.
+   
+   2.  Stop Inbound HL7 filer(s) via the "Monitor, Start, Stop Filers"
+       option on the "Filer and Link Management" menu which can be found on
+       the "HL7 Main Menu".  
+  
+   3.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu. [Note:
+       TEXT PRINT/DISPLAY option in the PackMan menu will display the patch
+       text only.
+  
+   4.  TaskMan does not need to be stopped or placed in a wait state. 
+  
+   5.  From the Kernel Installation and Distribution System Menu, select
+       the Installation menu.  
+  
+   6.  From this menu, you may elect to use the following options:
+       a.  Backup a Transport Global - this option will create a backup
+           message of any routines exported with the patch.  It will NOT
+           backup any other changes such as DDs or templates.
+       b.  Compare Transport Global to Current System  - this option will
+           allow you to view all changes that will be made when the patch
+           is installed.  It compares all components of the patch
+           (routines, DDs, templates, etc.).
+       c.  Verify Checksums in Transport Global - this option will allow
+           you to ensure the integrity of the routines that are in the
+           transport global.
+       d.  Print Transport Global - this option will allow you to view the
+           components of the KIDS build.
+  
+   7.  Use the Install Package(s) option and select the package MPIF*1*3.
+  
+   8.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+       Protocols? YES//', respond Yes.  Please put the following options
+       out of order:
+  
+         Single Patient Initialization to MPI     
+         Display Only Query 
+         Inactivate Patient from MPI 
+         Local/Missing ICN Resolution Background Job
+  
+   8. KIDS has been instructed to delete the post init routine, MPIFPST3, 
+      at the end of the installation process.
+  
+   9.  Restart HL7 Inbound filers via the same option as in step #2.
+  
+  Test Sites:
+  ===========
+  Charleston, SC
+  Cheyenne, WY
+  Cleveland, OH
+  Columbia, MO
+  Nashville, TN
+  Northampton
+  
+  Routine Summary:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+   
+  <TAB>;;1.0; MASTER PATIENT INDEX VISTA ;**[Patch List]**;30 Apr 99
+  CHECK^XTSUMBLD results:
+   
+  Routine       Before Patch       After Patch       Patch List
+  --------      ------------       ------------      ----------
+  MPIF001         7469920             8244358           1,3
+  MPIFAPI         3215332             3491607           1,3
+  MPIFBT2        19899819            19899819 **        1,3
+  MPIFBT3        12716122            12876100           1,3
+  MPIFDEL         4514446             5633273           1,3
+  MPIFPST3            NEW             1466168           3
+  MPIFQ0         13972321            17230342           1,3
+  MPIFQUE3       14526420            14532041           1,3
+  MPIFQUE4       13609081            15181298           1,3
+  MPIFSAQ        16446978            17244335           1,3
+  
+ ** The routine has changed even though the checksums remain the same, the
+ second line will reflect 1,3 for the patch designation, where the previous
+ version of the routine will only reflect 1 for the patch designation.
+
+Routine Information:
+====================
+
+Routine Name:
+  - MPIFAPI
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFBT3
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFDEL
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFQ0
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFQUE3
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFQUE4
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFSAQ
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFPST3
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFBT2
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIF001
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : CHESNEY,CHRISTINE M           Date Entered : MAR 22, 2000
+Completed By: CLEMENS,JOHN                  Date Completed: JUL 07, 2000
+Released By : MCKIM,MARY ANN               Date Released : JUL 07, 2000
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,271 @@
+$TXT Created by FRANCE,VENESSA at VMPDEV20.FO-BAYPINES.MED.VA.GOV  (KIDS) on Monday, 06/18/07 at 16:09
+=============================================================================
+Run Date: JUN 26, 2007                     Designation: PSO*7*249
+Package : PSO - OUTPATIENT PHARMACY           Priority: Mandatory
+Version : 7       SEQ #235                      Status: Released
+                  Compliance Date: JUL 27, 2007
+=============================================================================
+
+Associated patches: (v)PSO*7*200   <<= must be installed BEFORE `PSO*7*249'
+                    (v)PSO*7*239   <<= must be installed BEFORE `PSO*7*249'
+                    (v)PSO*7*243   <<= must be installed BEFORE `PSO*7*249'
+                    (v)PSO*7*244   <<= must be installed BEFORE `PSO*7*249'
+
+Subject: CANCEL DATE, SCRIPTALK, FILEMAN API
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ This patch will correct the following issues:
+ 1.  The Cancel Date is not always being filled in when a prescription is
+     Discontinued.
+ 2.  Scriptalk labels do not always agree with local labels on Drug name.
+ 3.  The FileMan Database Server API GETS^DIQ fails with a MUMPS error for
+     some entries in the PRESCRIPTION file (#52).
+  
+  
+ Associated Remedy Tickets:
+ ==========================
+ HD68703  - INACCURACY OF THE CANCEL DATE FIELD
+ Duplicate: HD146836
+ HD151723 - Inconsistency with ScriptTalk Medications
+ HD137333 - Fileman API failing with MUMPS error
+  
+ 
+ Participating Test Sites:
+ =========================
+ ERIE, PA
+ NEW YORK HCS
+ OKLAHOMA CITY, OK
+ SALISBURY, NC
+ 
+ 
+ DATA DICTIONARY CHANGES:
+ ========================
+ The change to the PRESCRIPTION file (#52) data dictionary in this patch is
+ required so the Last Dispensed Date data will not be lost when discontinuing
+ a prescription.  The new field being added is LAST DISPENSED DATE HOLDER 
+ (#127).  This field will be used to store the Last Dispensed Date when a 
+ prescription is discontinued so if the same prescription is later re-instated,
+ this data will be restored into the LAST DISPENSED DATE field (#101).
+ 
+ New field being added:
+ STANDARD DATA DICTIONARY #52 -- PRESCRIPTION FILE   
+ 
+ DATA          NAME                  GLOBAL        DATA
+ ELEMENT       TITLE                 LOCATION      TYPE
+ ----------------------------------------------------------------------------
+ 
+ 52,127        LAST DISPENSED DATE HOLDER 3;10 DATE
+ 
+               INPUT TRANSFORM:  S %DT="EX" D ^%DT S X=Y K:Y<1 X
+               LAST EDITED:      JUL 13, 2006 
+               DESCRIPTION:      This field is a holder for the last dispensed
+                                 date.  
+ 
+ 
+  
+ Remedy Overview:
+ ================
+  
+ I. HD68703   INACCURACY OF THE CANCEL DATE FIELD
+  
+ Cancel Date Problem:
+ --------------------
+ The Cancel Date field is not always updated when a prescription is
+ discontinued and without the history of the prescription, the data is
+ inaccurate.
+  
+ Patch PSO*7.0*223 installed:
+ With the installation of patch PSO*7.0*223, last dispensed date was being 
+ populated into the cancel date field.  If no last dispensed date existed, 
+ today's date (DT) would be set into the cancel date field instead.
+  
+ Reinstate Problem:
+ ------------------
+ Last Dispensed date field not being populated during 'Date of Death'.
+  
+  
+ Resolution Cancel Date:
+ -----------------------
+ This patch will correct this issue by setting the cancel date 
+ field equal to today's date (DT).
+  
+ Resolution Reinstates:
+ ----------------------
+ This patch will fix reinstates (un-D/C) set equal to last dispensed date.
+ A new field has been added to PRESCRIPTION file (#52), field (#127) LAST
+ DISPENSED DATE HOLDER.  At reinstate time, the last dispensed date holder
+ will be set back into last dispensed date.
+  
+  
+ II. HD151723   Inconsistency with ScriptTalk Medications
+  
+ Problem:
+ --------
+ There is an inconsistency with the printing of the Scriptalk labels.  
+ Prescriptions entered for the brand name medications in Scriptalk label 
+ only lists the generic medications and not the information from the 
+ trade/brand field.
+  
+  
+ Resolution:
+ -----------
+ With this patch installed, the Scriptalk labels will now print the
+ brandname/tradename when a tradename has been entered.
+  
+  
+ III. HD137333   Fileman API failing with MUMPS error
+  
+ Problem:
+ --------
+ When editing patient instructions (SIG) in [PSO LM BACKDOOR ORDERS],for
+ already existing active order, the second piece of  ^PSRX(D0,"SIG1",0)
+ gets overwritten.The following is an example
+ '^PSRX(654840,"SIG1",0)=^52.04A^1^1'. Thus when the code 'D
+ GETS^DIQ(52,654840,"**",,"ZZ")' gets invoked, an error occurs.
+  
+  
+ Resolution:
+ -----------
+ When an edit occurs to a SIG, the line tag UPDSIG+1 in routine PSOORED3
+ is invoked.  Code has been added to set piece 2 to "52.04A".  
+ This will fix the problem with the MUMPs error.
+  
+  
+  
+ Installation Instructions:
+ ==========================
+ It is recommended that this patch be installed after normal business
+ hours while no Outpatient Pharmacy users are processing orders.
+  
+  Installation will take about 5 minutes.
+  
+    1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+  
+    2. From the Kernel Installation & Distribution System menu, select
+      the Installation menu.
+  
+    3. From this menu, you may select to use the following options
+       (when prompted for INSTALL NAME, enter PSO*7.0*249)
+     a. Backup a Transport Global - this option will create a backup
+        message of any routines exported with the patch. It will NOT
+        backup any other changes such as DDs or templates.
+     b. Compare Transport Global to Current System - this option will
+        allow you to view all changes that will be made when the patch
+        is installed. It compares all components of the patch (routines,
+        DDs, templates, etc.).
+     c. Verify Checksums in Transport Global - this option will ensure
+        the integrity of the routines that are in the transport global. 
+                         
+    4. Use the Install Package(s) option and select the package PSO*7.0*249
+  
+    5. When prompted "Want KIDS to INHIBIT LOGONs during the install?
+       YES//" respond NO.
+  
+    6. When prompted "Want to DISABLE Scheduled Options, Menu Options, and
+       Protocols? YES//" respond NO.
+  
+  
+ Routine Summary:
+ ================
+  
+  The following is a list of the routines included in this patch.  The
+  second line of each of these routines now look like:
+  
+   <TAB>;;7.0;OUTPATIENT PHARMACY;**[Patch List]**;DEC 1997
+  
+   Using new logic for Integrity Checking tools:
+                             CHECK^XTSUMBLD results
+  
+     Routine      Before Patch    After Patch   Patch List
+   ============   ============    ===========   ===========
+   PSOAUTOC       28064278        27869094   3,24,30,36,88,146,
+                                             132,223,148,249
+   PSOCAN3        29716397        30354954   15,24,27,32,36,94,
+                                             88,117,131,146,139,
+                                             132,223,235,148,249
+   PSOFUNC        5854018         5464053    146,223,249
+   PSOHLDC        18394644        18136762   111,121,146,223,148,
+                                             249
+   PSOHLNEW       36821032        36934255   1,7,15,46,71,98,111,
+                                             124,117,131,146,132,
+                                             143,223,235,148,239,
+                                             249
+   PSOORED1       25733459        25740226   5,23,46,78,114,117,
+                                             131,146,223,148,244,
+                                             249
+   PSOORED3       22446437        22603258   46,78,99,117,133,148,
+                                             249
+   PSOORUTL       21653619        21668018   14,46,146,132,118,199,
+                                             223,148,249
+   PSOPKIV1       11365205        11185736   131,146,223,148,249
+   PSOTALK        19610200        19539353   135,182,211,200,249
+   PSOVERC        7821030         7523907    146,223,148,249
+  
+ TOTAL ROUTINES MODIFIED: 11
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;7.0;OUTPATIENT PHARMACY;**[Patch List]**;DEC 1997;Build 9
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PSOAUTOC
+    Before: B66351677   After: B66090393  **3,24,30,36,88,146,132,223,148,249**
+Routine Name: PSOCAN3
+    Before: B71670516   After: B73551199  **15,24,27,32,36,94,88,117,131,
+                                           146,139,132,223,235,148,249**
+Routine Name: PSOFUNC
+    Before:  B6987842   After:  B6545033  **146,223,249**
+Routine Name: PSOHLDC
+    Before: B35362366   After: B34921764  **111,121,146,223,148,249**
+Routine Name: PSOHLNEW
+    Before: B77391528   After: B77643201  **1,7,15,46,71,98,111,124,117,
+                                           131,146,132,143,223,235,148,
+                                           239,249**
+Routine Name: PSOORED1
+    Before: B67696730   After: B67707631  **5,23,46,78,114,117,131,146,
+                                           223,148,244,249**
+Routine Name: PSOORED3
+    Before: B55877013   After: B56356282  **46,78,99,117,133,148,249**
+Routine Name: PSOORUTL
+    Before: B42520369   After: B42538902  **14,46,146,132,118,199,223,148,249**
+Routine Name: PSOPKIV1
+    Before: B25219791   After: B24905517  **131,146,223,148,249**
+Routine Name: PSOTALK
+    Before: B84758414   After: B84408343  **135,182,211,200,249**
+Routine Name: PSOVERC
+    Before:  B9313505   After:  B8973587  **146,223,148,249**
+ 
+Routine list of preceding patches: 200, 239, 244
+
+=============================================================================
+User Information:
+Entered By  : JACOBSON,PHIL                 Date Entered  : JUN 12, 2006
+Completed By: GOLDSMITH,JAMES H             Date Completed: JUN 25, 2007
+Released By : CONSENTINO,ALBERT             Date Released : JUN 26, 2007
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

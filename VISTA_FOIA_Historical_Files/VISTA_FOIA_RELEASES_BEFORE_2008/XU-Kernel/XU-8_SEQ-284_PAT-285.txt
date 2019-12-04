@@ -1,0 +1,559 @@
+$TXT Created by IVEY,JOEL at PAT-XWB.FO-OAKLAND.MED.VA.GOV  (KIDS) on Monday, 08/09/04 at 11:34
+=============================================================================
+Run Date: AUG 13, 2004                     Designation: XU*8*285
+Package : XU - KERNEL                         Priority: Mandatory
+Version : 8       SEQ #284                      Status: Released
+                  Compliance Date: SEP 13, 2004
+=============================================================================
+
+
+Subject: Correct Alert Processing for Inactive User
+
+Category: 
+  - Routine
+  - Other
+  - Data Dictionary
+
+Description:
+============
+
+ Read the WARNING below carefully prior to installing this patch.
+  
+ This patch addresses a patient safety issue in which alerts sent to an
+ inactive user were not received by anyone.  If there are no active
+ recipients or surrogates among the list of specified recipients the alert
+ will be directed to the appropriate BACKUP REVIEWER as determined from the
+ PARAMETERS file.  If there is no identifiable BACKUP REVIEWER entry, the
+ alert will be sent to members of the "XQAL UNPROCESSED ALERTS" mail
+ group.  If there are no active members specified for that mail group, the
+ alert will be sent as a last resort to members of G.PATCH.
+  
+  
+ *************************** WARNING ************************************
+  
+ The number of alerts generated to inactive users may be very large.  Your
+ staff may need assistance in dealing with them and, in the case of unsigned
+ documents, (many of the alerts) someone available to sign them.  You will
+ not see alerts to inactive users from CPRS unless patch OR*3*200 (which will 
+ be released shortly after this patch) has been installed.
+  
+ *************************************************************************
+  
+ In the roll-and-scroll or List Manager environment, this patch causes
+ alerts which contain the text "CRITICAL" or "ABNORMAL IMA" are displayed in
+ reverse video to cause these alert to stand out in the midst of many other
+ alerts.
+  
+ It was found that sending an alert to a mail group, only the individual
+ members were identified.  This has been modified to include other mail
+ groups which are members of the mail group as well.
+  
+ The XQAL UNPROCESSED ALERTS mail group is created by this patch and during
+ the Post-Init phase the individual installing the patch will be set up as
+ a member of the mail group.  We recommend that this mail group be
+ populated with a few individuals who can forward otherwise undelivered
+ alerts on to a proper individuals.
+  
+ An option was earlier provided for establishing individuals as BACKUP
+ REVIEWER entries in the PARAMETER FILE, but the original option did not
+ provide an easy way in which to delete or edit the entry.  This has been
+ corrected in this patch.
+  
+ This patch also corrects undefined errors which occur sporadically at
+ DELETEA+7^XQALDEL and at DELA+1^XQALDEL.
+  
+ For Developers, a new input variable during generation of alerts is
+ XQADFN.  This value should contain the DFN value for the patient if the
+ alert is patient related.  Use of this variable will provide a more
+ reliable indicator of the patient than that previously used (the second
+ comma piece of the value of XQAID as used by CPRS).
+  
+  
+  
+ For Developers this patch adds the following APIs as Supported References:
+  
+ This patch creates a new entry point for setting up alerts. SETUP1^XQALERT
+ is now recommended for creation of an alert.  It is used in the form
+   S RETVAL=$$SETUP1^XQALERT
+ the value returned is a string with the first '^'-piece a 1 if the alert
+ was delivered to at least one valid recipient or 0 if the alert could not
+ be delivered.  In the latter case, the variable XQALERR will be defined
+ and contain a string explaining why the alert was not delivered.  The second
+ '^'-piece is the IEN in the Alert Tracking file for the alert and the third
+ '^'-piece is the complete value of XQAID for the alert.  The second or third
+ piece values may be used by an application to retain a reference to the
+ alert in the ALERT TRACKING file (#8992.1).
+  
+  
+ The original entry point SETUP^XQALERT for creating an alert did not
+ return any indication if an alert was not deliverable for any reason. This
+ entry point is still valid for backward compatibility, but no longer
+ recommended.
+  
+ $$ACTVSURO^XQALSURO(IENVALUE) - returns the currently active surrogate for
+ the user specified.  This includes potential surrogates of the current
+ surrogate. To determine the currently active surrogate for the user with
+ DUZ of IENVALUE, use
+    S ACTIVE=$$ACTVSURO^XQALSURO(IENVALUE)
+ If the returned value is greater than zero, it will indicate the active
+ surrogate.  If the returned value is not greater than zero (actually -1),
+ it will indicate that there are no currently active surrogates for the
+ user.
+  
+ $$CHEKUSER^XQALSET(IENVALUE) - Returns 0 if no valid user or surrogate,
+ otherwise returns IEN of user or his currently active surrogate
+  
+ Addition of the ALERT RECIPIENT TYPE file (#8992.2)
+ ---------------------------------------------------
+  
+ The ALERT RECIPIENT TYPE file was added to contain indicators as to why
+ an alert was sent.
+  
+ 8992.2,.01    NAME                   0;1 FREE TEXT (Required)
+  
+               INPUT TRANSFORM:  K:$L(X)>45!($L(X)<3)!'(X'?1P.E) X
+               LAST EDITED:      OCT 17, 2003
+               HELP-PROMPT:      Answer must be 3-45 characters in length.
+               DESCRIPTION:      This file is used to maintain a list of
+                                 recipient types for alerts.  It is used in
+                                 tracking for what reason a user was sent an
+                                 alert.
+  
+               CROSS-REFERENCE:  8992.2^B
+                                 1)= S ^XTV(8992.2,"B",$E(X,1,30),DA)=""
+                                 2)= K ^XTV(8992.2,"B",$E(X,1,30),DA)
+  
+  
+ The following is the global map structure of the new multiple:
+  
+ ^XTV(8992.2,D0,0)= (#.01) NAME [1F] ^
+  
+  
+  
+ Changes to the ALERT TRACKING file (#8992.1)
+ --------------------------------------------
+  
+ This patch adds the following three (3) multiples to the Alert Tracking
+ file.
+  
+  
+ 8992.11,1       RECIPIENT TYPE       1;0 POINTER Multiple #8992.111
+                                  (Add New Entry without Asking)
+  
+  
+ 8992.111,.01     RECIPIENT TYPE       0;1 POINTER TO ALERT RECIPIENT TYPE FILE
+                                    (#8992.2) (Required)
+  
+                   LAST EDITED:    OCT 20, 2003
+                   HELP-PROMPT:    This is a pointer to a file of different
+                                   recipient types (i.e., the reason someone
+                                   was sent the alert)
+                   DESCRIPTION:    This field is used to track how a specific
+                                   recipient was selected for receiving the
+                                   alert. The initial recipients are those to
+                                   whom the alert was initially directed
+                                   (INITIAL RECIPIENT).  Other recipients
+                                   may be the result of forwarding.
+                                   Recipients of the alert from forwarding
+                                   are noted by the type of forwarding involved
+                                   (FWD BY USER, EMAIL SURROGATE, CHIEF/
+                                   SUPERVISOR, BACKUP REVIEWER, or
+                                   LAST HOPE).
+  
+                                   Marked as a specific category are those to
+                                   whom the alert was directed, but who were
+                                   not available to receive an alert due to
+                                   lack of access (marked with the suffix
+                                   "-UNDELIVERABLE" added to the basis for the
+                                   alert being sent to the user).
+  
+                                   Those who have alerts forwarded to their
+                                   surrogate or receive the alert while acting
+                                   as a surrogate for another user are
+                                   indicated by entries in fields #.02 (SENT
+                                   TO SURROGATE) and #.03 (ACTING AS
+                                   SURROGATE) respectively. In addition,
+                                   those who are acting as surrogates are
+                                   identified in the current field by the
+                                   suffix "-SURROGATE" added to the basis
+                                   for the alert being received. Since the
+                                   recipient may be acting as surrogate for
+                                   more than one user, the actual users for
+                                   which the message was sent on a
+                                   surrogate basis are indicated in the
+                                   SURROGATE FOR sub-file (#8992.113)
+                                   under the RECIPIENT sub-file.
+  
+                                   The values stored for this field are
+                                   pointers to entries in the ALERT RECIPIENT
+                                   TYPE file (#8992.2).
+  
+                   CROSS-REFERENCE:8992.111^B
+                                1)= S ^XTV(8992.1,DA(2),20,DA(1),1,"B",$E(X,1,3
+                                0),DA)=""
+  
+                                2)= K ^XTV(8992.1,DA(2),20,DA(1),1,"B",$E(X,1,3
+                                0),DA)
+  
+  
+ 8992.111,.02      SENT TO SURROGATE  0;2 POINTER TO NEW PERSON FILE (#200)
+  
+                   LAST EDITED:  FEB 21, 2003
+                   HELP-PROMPT:  This is the individual that was sent the
+                                 alert in a surrogate capacity instead of the
+                                 originally specified recipient.
+                   DESCRIPTION:  This field is used to identify the surrogate
+                                 to whom the alert was sent instead of this
+                                 originally specified recipient.
+  
+  
+ 8992.111,.03      ACTING AS SURROGATE 0;3 SET
+  
+                                 'Y' FOR YES;
+                                 'N' FOR NO;
+                   LAST EDITED:  FEB 20, 2003
+                   HELP-PROMPT:  Enter Y (YES) if this recipient received the
+                                 alert acting as surrogate for another user.
+                   DESCRIPTION:  This field is used to identify those
+                                 recipients who were sent the alert
+                                 because they were selected as an active
+                                 surrogate for the originally intended
+                                 user.  In most cases only the Y (YES)
+                                 entries will be entered.
+  
+  
+ 8992.111,.04      ALERT DATE/TIME    0;4 DATE
+  
+                   INPUT TRANSFORM:S %DT="ESTXR" D ^%DT S X=Y K:Y<1 X
+                   LAST EDITED:  FEB 21, 2003
+                   HELP-PROMPT:  This is the date and time the alert was
+                                 sent/forwarded to the current recipient with
+                                 this recipient type
+                   DESCRIPTION:  This is the date and time the alert was
+                                 sent/forwarded to the current recipient with
+                                 this recipient type
+  
+ The following is the global map structure of the new multiple:
+  
+ ^XTV(8992.1,D0,20,D1,1,0)=^8992.111PA^^  (#1) RECIPIENT TYPE
+ ^XTV(8992.1,D0,20,D1,1,D2,0)= (#.01) RECIPIENT TYPE [1P] ^ (#.02) SENT TO
+                            ==>SURROGATE [2P] ^ (#.03) ACTING AS SURROGATE
+                            ==>[3S] ^ (#.04) ALERT DATE/TIME [4D] ^
+  
+  
+  
+ 8992.11,2       FORWARDED DATE/TIME  2;0 DATE Multiple #8992.112
+  
+                   LAST EDITED:  FEB 21, 2003
+  
+ 8992.112,.01      FORWARDED DATE/TIME  0;1 DATE (Multiply asked)
+  
+                     INPUT TRANSFORM:S %DT="ESTXR" D ^%DT S X=Y K:Y<1 X
+                     LAST EDITED:  FEB 21, 2003
+                     HELP-PROMPT:  This is the date/time that the alert was
+                                   forwarded to the current recipient
+                     DESCRIPTION:  This field is used to track the date/time of
+                                   forwarding of the alert to this recipient.
+                                   This is a multiple field to track instances
+                                   in which multiple copies of the alert may be
+                                   forwarded to a single recipient for various
+                                   reasons.  This multiple field will indicate
+                                   when it was forwarded and the basis for
+                                   forwarding of the alert.
+  
+                     CROSS-REFERENCE:8992.112^B
+                                1)= S ^XTV(8992.1,DA(2),20,DA(1),2,"B",$E(X,1,3
+                                0),DA)=""
+  
+                                2)= K ^XTV(8992.1,DA(2),20,DA(1),2,"B",$E(X,1,3
+                                0),DA)
+  
+  
+ 8992.112,.02      FORWARDING CATEGORY 0;2 POINTER TO ALERT RECIPIENT TYPE FILE
+                                 (#8992.2)
+  
+                     LAST EDITED: OCT 20, 2003
+                     HELP-PROMPT:This field points to a file containing the
+                                 different reasons for forwarding.
+                     DESCRIPTION:This field is used to track the basis on which
+                                 the alert is forwarded to the current
+                                 recipient.  The alert might be forwarded
+                                 to the recipient by a user directly, or by
+                                 programmed forwarding related to alerts not
+                                 being processed within a specified time to
+                                 EMAIL SURROGATE, CHIEF/SUPERVISOR; BACKUP
+                                 REVIEWER, or LAST RESORT.
+  
+                                 Entries for this field are pointers to the
+                                 values in the ALERT RECIPIENT TYPE file
+                                 (#8992.2).
+  
+  
+ 8992.112,.03      FORWARDED BY OR FOR 0;3 POINTER TO NEW PERSON FILE (#200)
+  
+                     LAST EDITED: APR 04, 2003
+                     HELP-PROMPT:This is the individual that forwarded the
+                                 alert, or the alert was forwarded for.
+                     DESCRIPTION:This is a record of the individual who
+                                 forwarded the alert, or on whose behalf the
+                                 alert was forwarded if it was forwarded
+                                 automatically.
+  
+  
+ 8992.112,1.01     FORWARDING COMMENT 1;1 FREE TEXT
+  
+                     INPUT TRANSFORM:K:$L(X)>240!($L(X)<1) X
+                     LAST EDITED: FEB 20, 2003
+                     HELP-PROMPT:Answer must be 1-240 characters in length.
+                     DESCRIPTION:This is the comment which was sent to the
+                                 recipient along with the forwarded alert.
+  
+ The following is the global map structure of the new multiple:
+  
+ ^XTV(8992.1,D0,20,D1,2,0)=^8992.112D^^  (#2) FORWARDED DATE/TIME
+ ^XTV(8992.1,D0,20,D1,2,D2,0)= (#.01) FORWARDED DATE/TIME [1D] ^ (#.02)
+                            ==>FORWARDING CATEGORY [2P] ^ (#.03) FORWARDED BY
+                            ==>OR FOR [3P] ^
+ ^XTV(8992.1,D0,20,D1,2,D2,1)= (#1.01) FORWARDING COMMENT [1F] ^
+  
+  
+  
+  
+ 8992.11,3       SURROGATE FOR        3;0 POINTER Multiple #8992.113
+  
+  
+ 8992.113,.01      SURROGATE FOR        0;1 POINTER TO NEW PERSON FILE (#200)
+                                    (Multiply asked)
+  
+                       LAST EDITED: FEB 20, 2003
+                       HELP-PROMPT:Enter the NEW PERSON entry for which the
+                                   current recipient is acting as surrogate on
+                                   this alert.
+                       DESCRIPTION:This field is used to track which user or
+                                   users the current recipient is receiving the
+                                   current alert while acting as surrogate.
+  
+                       CROSS-REFERENCE:8992.113^B
+                                1)= S ^XTV(8992.1,DA(2),20,DA(1),3,"B",$E(X,1,3
+                                0),DA)=""
+  
+                                2)= K ^XTV(8992.1,DA(2),20,DA(1),3,"B",$E(X,1,3
+                                0),DA)
+  
+  
+ 8992.113,.02      DATE/TIME - SURROGATE FOR 0;2 DATE
+  
+                       INPUT TRANSFORM:S %DT="ESTXR" D ^%DT S X=Y K:Y<1 X
+                       LAST EDITED: FEB 20, 2003
+                       HELP-PROMPT:Enter the date/time that this alert was
+                                 received while acting as a surrogate for the
+                                 intended recipient.
+                       DESCRIPTION:
+                                 This field has the date/time when the alert
+                                 was sent to the current recipient while
+                                 acting as a surrogate for the originally
+                                 intended recipient.
+  
+ The following is the global map structure of the new multiple:
+  
+ ^XTV(8992.1,D0,20,D1,3,0)=^8992.113P^^  (#3) SURROGATE FOR
+ ^XTV(8992.1,D0,20,D1,3,D2,0)= (#.01) SURROGATE FOR [1P] ^ (#.02) DATE/TIME -
+                            ==>SURROGATE FOR [2D] ^
+                            
+                            
+ NOISs
+ MON-0902-51640
+ LEX-1102-41218
+ OKL-0902-71635
+ HEH-0303-40570
+ DAY-0903-42005
+ NYH-1003-11010
+ MWV-1003-22265
+ MWV-1003-22662
+ SBY-1003-30092
+ SBY-1003-32710
+ ASH-1203-30593
+ HVH-0304-12467
+ LEX-0803-41741
+ SFC-1201-60229
+ ANN-0304-40985
+ HIN-0604-40728
+ ISH-1202-41625
+ DAY-0903-40490
+ MAR-0304-20707
+  
+  
+  
+ E3Rs
+  
+ List of Test Sites
+ ==================
+ BIRMINGHAM, AL (Alpha/DSM) 
+ CLARKSBURG, WV  (VMS/Cache)
+ DAYTON, OH  (Alpha/DSM)
+ FARGO, ND  (Alpha/ISM (NT))
+ LEXINGTON, KY  (Alpha/DSM)
+ NORTHERN CALIFORNIA HCS  (Alpha/DSM)
+ TOMAH,WI  (VMS/Cache)
+  
+  
+ Routine Summary:
+ The following routines are included in this patch.  The second
+ line of each of these routines now looks like:
+  
+      <tab>;;8.0;KERNEL;**[patch list]**;Jul 10, 1995
+  
+ Checksums:
+ ==========
+ Checksums obtained using CHECK^XTSUMBLD
+  
+  Rtn Nm    Chksum Before   Chksum After    Patch List
+  ------    -------------   ------------    ----------
+  XQAL285P            N/A        3472855    **285**
+  XQALBUTL        8443097       23353614    **114,125,171,285**
+  XQALDATA        3525117        3637657    **207,285**
+  XQALDEL        26334655       21668304    **6,24,65,114,174,285**
+  XQALERT         5560549        8063898    **1,65,125,173,285**
+  XQALERT1       30919356       32870507    **20,65,114,123,125,164,173,285**
+  XQALFWD        10746790       13242253    **6,65,91,111,114,128,129,285**
+  XQALSET        16240502       29403670    **1,6,65,75,114,125,173,207,285**
+  XQALSET1            N/A        1679250    **285**
+  XQALSURO       12681484       14207055    **114,125,173,285**
+  
+  
+ List of preceding patches: 129,171,173,174,207
+  
+  
+ Blood Bank Clearance:
+ =============================
+ Clearance - Mar. 19, 2004
+ EFFECT ON BLOOD BANK FUNCTIONAL REQUIREMENTS: Patch XU*8*285 
+ contains changes to a package referenced in VHA IO SEPG SOP 192-023 
+ "Review of VISTA Patches for Effects on VISTA Blood Bank Software . This 
+ patch does not alter or modify any VistA Blood Bank software design 
+ safeguards or safety critical elements functions.
+  
+ RISK ANALYSIS: Changes made by patch XU*8*285 have no effect on Blood 
+ Bank software functionality, therefore RISK is none.
+  
+  
+ Installation Instructions:
+  
+      1.   Users ARE allowed to be on the system during the
+      installation.
+  
+      2.   DSM sites - Some of these routines are usually mapped,
+      so you will need to disable mapping for the affected routines.
+  
+      3.   Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu.
+      This option will load the KIDS (Kernel Installation and Distribution
+      System) package onto your system.
+  
+      4.   You DO NOT need to stop TaskMan or the background filers.
+  
+      5.   The patch has now been loaded into a transport global on your
+      system.  On the KIDS menu, select the 'Installation' menu and use
+      the following options:
+            Verify Checksums in Transport Global
+            Print Transport Global
+            Compare Transport Global to Current System
+            Backup a Transport Global
+  
+            Return to Programmers Prompt and use "D ^XPDKRN":
+            Select KIDS OPTION: Install
+                                =======
+             Install Package(s)
+             Select INSTALL NAME: XU*8.0*285
+                                  ==========
+                                  
+         Enter the Coordinator for Mail Group 'XQAL UNPROCESSED ALERTS': 
+         username
+         ========
+         Want KIDS to INHIBIT LOGONs during the install? YES// NO
+                                                               ==
+         Want to DISABLE Scheduled Options, Menu Options, and Protocols?
+         YES// NO
+               ==
+  
+      6.  AXP Sites - Answer 'NO' to the question 'Want to MOVE
+      routines to other CPUs?'.
+  
+      7.  If the routines were unmapped as part of step 2, they should be
+      returned to the mapped set once the installation has run to
+      completion.
+
+Routine Information:
+====================
+
+Routine Name:
+  - XQALERT
+
+
+Routine Checksum:
+
+Routine Name:
+  - XQALERT1
+
+
+Routine Checksum:
+
+Routine Name:
+  - XQALDEL
+
+
+Routine Checksum:
+
+Routine Name:
+  - XQALSURO
+
+
+Routine Checksum:
+
+Routine Name:
+  - XQALBUTL
+
+
+Routine Checksum:
+
+Routine Name:
+  - XQALSET
+
+
+Routine Checksum:
+
+Routine Name:
+  - XQALFWD
+
+
+Routine Checksum:
+
+Routine Name:
+  - XQAL285P
+
+
+Routine Checksum:
+
+Routine Name:
+  - XQALDATA
+
+
+Routine Checksum:
+
+Routine Name:
+  - XQALSET1
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : IVEY,JOEL                     Date Entered  : FEB 03, 2003
+Completed By: SINGH,GURBIR                  Date Completed: AUG 09, 2004
+Released By : TILLIS,LEWIS                  Date Released : AUG 13, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

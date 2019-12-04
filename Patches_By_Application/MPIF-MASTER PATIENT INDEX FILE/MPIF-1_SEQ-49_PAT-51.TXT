@@ -1,0 +1,179 @@
+$TXT Created by DAVIS,PAULETTE T at DEVCRN.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 05/11/10 at 14:39
+=============================================================================
+Run Date: JUL 14, 2010                     Designation: MPIF*1*51
+Package : MPIF - MASTER PATIENT INDEX VISTA   Priority: Mandatory
+Version : 1        SEQ #49                      Status: Released
+                  Compliance Date: AUG 14, 2010
+=============================================================================
+
+Associated patches: (v)MPIF*1*41   <<= must be installed BEFORE `MPIF*1*51'
+                    (v)MPIF*1*44   <<= must be installed BEFORE `MPIF*1*51'
+
+Subject: IDENTITY MANAGEMENT ISSUES FOR HDR II / CDS
+
+Category: 
+  - Routine
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+  NOTE:  RG* and MPIF* patches should NOT be installed on legacy
+  systems to avoid issues with the legacy systems ending up as
+  Treating Facilities.
+   
+  MPIF*1.0*41 and MPIF*1.0*44 are required builds for patch MPIF*1*51.
+   
+  Issue #1:
+  On VistA, the VistA Duplicate Resolution System [XDR MAIN MENU] is used
+  to merge duplicate patient records.  When two patient records are merged,
+  and each has a national ICN, DFN, and Station Number, the final result
+  currently is the deletion of one DFN and Station Number and deprecation
+  of one ICN on the Master Patient Index (MPI).  Since the MPI is the
+  authoritative store for VistA national identifiers for the Health Data
+  Repository (HDR), this scenario orphans the deleted DFN and Station
+  Number for HDR. This problem will be corrected by retaining the
+  information about the deprecated DFN and Station Number on the MPI.
+   
+  A change has been made in routine MPIFA40, which is called by the VistA 
+  processing routine, RGDRM01.  Previously, the A40 merge notification 
+  message was not triggered unless both merging patient records had a
+  national ICN. The code will now send the A40 merge message to the MPI
+  after a duplicate record merge, regardless of whether the merging 
+  patient records do or do not have national ICNs. The MPI will store this
+  information and send it to Person Service Identity Management (PSIM) 
+  when there is an ICN involved, which will store it in the
+  Administrative Data Repository (ADR), which in turn will make it
+  available to HDR.
+  Routine: MPIFA40
+   
+  Issue #2:
+  The Health Data Repository (HDR) relies on the Master Patient Index
+  (MPI) and Person Service Identity Management (PSIM) to provide
+  national and correlated identifiers for patients.  The MPI does
+  not currently have data for patient records previously merged into
+  other patient records.
+   
+  Post-init routine, MPIF51P, will examine the records in the XDR 
+  REPOINTED ENTRY (#15.3) file.  For the PATIENT (#2) file entries, data 
+  will be extracted for the MERGED ENTRY (#.01) and MERGED TO ENTRY (#.02) 
+  fields.  This data will be sent in A24 HL7 messages to the MPI to update 
+  PSIM and the Administrative Data Repository (ADR), making it available 
+  to HDR.
+  
+  Occasionally a pair of PATIENT (#2) file entries are merged, then
+  later a merged-to entry is merged into a third DFN.  If the first
+  merge-to record is now a merge-from record having a -9 node, then
+  the current primary DFN for the pair is found in the XDR REPOINTED
+  ENTRY (#15.3) file.
+  Routines: MPIF51P and MPIFA24B
+   
+  Associated Remedy Ticket(s):
+  ============================
+  There are no associated Remedy Tickets.
+   
+  Associated New Service Request (NSR):
+  =====================================
+  There is no NSR associated with the patch.
+    
+  Test Sites:
+  ===========
+  Altoona, PA
+  Connecticut HCS
+  Madison, WI
+        
+  Post-Install Routine:
+  =====================
+  Post-init routine, MPIF51P, will be queued to run in the background.
+  When the task has successfully run to completion, the person installing
+  the patch will be notified via an e-mail message.  Upon notification,
+  the routine can be deleted from your system.
+     
+  Installation Instructions:
+  ==========================
+  This patch takes less than 2 minutes to install.  This patch should
+  be loaded during non-peak hours to minimize disruption to the users.
+   
+     IMPORTANT NOTE: Patch MPIF*1*51 should be installed when NO
+                     duplicate record merges are scheduled.
+   
+  Patch RG*1*51 can be installed immediately after the patch
+  MPIF*1*51 installation.  It is not necessary to wait for the
+  MPIF*1*51 post-init routine to run to completion.
+   
+  1.  Users are allowed on the system during patch installation.
+     
+  2.  The HL7 incoming filers should be stopped.  Use the Monitor,
+      Start, Stop Filers [HL FILER MONITOR] option on the Filer and
+      Link Management Options [HL MENU FILER LINK MGT] menu on the
+      HL7 Main Menu [HL MAIN MENU].
+     
+  3.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+      Note:  TEXT PRINT/DISPLAY option in the PackMan menu will display
+      the patch text only.
+     
+  4.  From the Kernel Installation and Distribution System Menu, select
+      the Installation menu.
+   
+  5.  From this menu, you may elect to use the following options:
+      (a)  Backup a Transport Global.
+      (b)  Compare Transport Global to Current System.
+      (c)  Verify Checksums in Transport Global.
+      (d)  Print Transport Global.
+   
+  6.  Use the Install Package(s) option and select the package MPIF*1.0*51.
+   
+  7.  When prompted 'Want KIDS to Rebuild Menu Trees Upon Completion of
+      Install? NO//', respond NO.
+   
+  8.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? NO//',
+      respond NO.
+   
+  9.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols? YES//', respond YES.  The following OPTIONS should be
+      disabled during the installation.
+      Register a Patient              [DG REGISTER PATIENT]
+      Load/Edit Patient Data          [DG LOAD PATIENT DATA]
+      Electronic 10-10EZ Processing   [EAS EZ 1010EZ PROCESSING]
+      MPI/PD Master Menu              [RGMGR]
+      Duplicate Resolution System     [XDR MAIN MENU]
+      
+  10. After patch installation has completed, restart the HL7 incoming
+      filers.  Use the Monitor, Start, Stop Filers [HL FILER MONITOR]
+      option on the Filer and Link Management Options [HL MENU FILER 
+      LINK MGT] menu on the HL7 Main Menu [HL MAIN MENU].
+   
+  11. Post-init routine, MPIF51P, will be queued to run in the
+      background.  When the task has successfully run to completion, the
+      person installing the patch will be notified via an e-mail message.
+      Upon notification, the routine can be deleted from your system.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;1.0; MASTER PATIENT INDEX VISTA ;**[Patch List]**;30 Apr 99;Build 3
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: MPIF51P
+    Before:       n/a   After: B31150065  **51**
+Routine Name: MPIFA24B
+    Before: B10894461   After: B11247511  **22,28,31,25,43,44,51**
+Routine Name: MPIFA40
+    Before: B11051193   After: B15017531  **22,41,51**
+ 
+Routine list of preceding patches: 41, 44
+
+=============================================================================
+User Information:
+Entered By  : CHESNEY,CHRISTINE M           Date Entered  : NOV 30, 2007
+Completed By: ALDERMAN,MATT S               Date Completed: JUN 29, 2010
+Released By : HEUER,CINDY                   Date Released : JUL 14, 2010
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

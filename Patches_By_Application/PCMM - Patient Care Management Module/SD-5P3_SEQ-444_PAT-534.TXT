@@ -1,0 +1,609 @@
+$TXT Created by WOLF,ED at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 09/11/08 at 10:25
+=============================================================================
+Run Date: JAN 15, 2009                     Designation: SD*5.3*534
+Package : SD - SCHEDULING                     Priority: Mandatory
+Version : 5.3       SEQ #444                    Status: Released
+                  Compliance Date: FEB 15, 2009
+=============================================================================
+
+Associated patches: (v)SD*5.3*180  <<= must be installed BEFORE `SD*5.3*534'
+                    (v)SD*5.3*241  <<= must be installed BEFORE `SD*5.3*534'
+                    (v)SD*5.3*297  <<= must be installed BEFORE `SD*5.3*534'
+
+Subject: PCMM, PAIT and SCHEDULING FIXES
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ This patch addresses several issues related to PCMM, PAIT and SCHEDULING,
+ as reported in the following Remedy tickets:
+  
+ ASSOCIATED REMEDY TICKETS:
+ ========================== 
+ 1)  HD0000000188897 - SD AMB PROC MGMT REPORT not accurate
+ 2)  HD0000000192037 - Truncated text in file 44, Appointment,
+                       Patient, OTHER fld 3
+     Duplicate: 
+     HD0000000238195 - FileMan Incorrectly Set Up Input Transform.
+  
+ 3)  HD0000000243629 - Incorrect person class
+     Duplicate:
+     HD0000000277789 - transmission errors with code 608M and no name
+  
+ 4)  HD0000000209762 - Rejection code 850 not in file 404.472
+     Duplicate: 
+     HD0000000230475 - AIT Rejections Greater Than 50 - Station #463
+                       Anchorage.
+ 5)  HD0000000271138 - Existing PAIT documentation updates.
+  
+ ASSOCIATED NSR(S):
+ ==================
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Muskogee, OK
+ Hines, IL
+ Memphis, TN
+  
+ REMEDY TICKET OVERVIEW:
+ =======================
+  
+ 1)  HD0000000188897 - SD AMB PROC MGMT REPORT not accurate
+  
+  
+ Problem:
+ ======= 
+ If more than one procedure of the same type is entered for a given patient in
+ CPRS then only one count is produced when running the Management for 
+ Ambulatory Procedures [SD AMB PROC MANAGEMENT REPORT] report. For example
+ a dentist found that the Management Report for Ambulatory Procedures
+ [SD AMB PROC MANAGEMENT REPORT] showed 1 tooth extraction (CPT D7140),
+ but the dentist performed 3 extractions. The V CPT file (#9000010.18) count
+ correctly populates a number of the same procedure in the QUANTITY field
+ (#.16) of the V CPT file (#9000010.18), if applicable, but it is not
+ reflected on the report.
+  
+  
+ Solution:
+ ========
+ Routine SDAMBMR1 was modified to properly reflect a quantity of the same
+ procedure if applicable. Totals of more than one procedure of the same type
+ are generated and printed correctly now in the Management for Ambulatory
+ Procedures [SD AMB PROC MANAGEMENT REPORT] report.
+  
+  
+ 2)  HD0000000192037 - Truncated text in file 44, Appointment,
+                          Patient, OTHER fld 3
+  
+ Problem:
+ =======
+ When an appointment is created a prompt for OTHER information allows entering
+ additional comments up to 150 characters in the OTHER field (#3) of 
+ the Patient multiple (#2) in the Appointment multiple (#1900) of the
+ Hospital Location file (#44).  However, anything exceeding 20 
+ characters was:
+    
+    a) truncated when printing a list of appointments with this field in 
+       FileMan, and
+    b) 60 characters of this message were displayed if the expanded view of
+       the appointment was requested on a screen by one of the following
+       actions:
+  
+         EP - Expand Entry in the Appointment Management Module
+         EP - Expand Appointment in the PCE Module 
+  
+  
+ Technical:
+ ==========
+   
+ The problems were caused by 
+  
+    a) the INPUT TRANSFORM of the OTHER field (#3) of the Patient multiple
+       (#2) in the Appointment multiple (#1900) in the Hospital Location
+       file (#44), and
+    b) routine SDAMEP1 restricting the display to a single line with 60 
+       characters.
+  
+ Up to 150 characters are stored in the OTHER field because the code does 
+ not invoke FileMan or the input transform, but instead writes the data 
+ directly into the global. The current INPUT TRANSFORM:
+  
+        FIELD NAME:       OTHER
+  
+        FLD NUMBER:       3               FLD TITLE:  
+        NODE;PIECE:       0;4            HELP FRAME:  
+  
+        DATA TYPE:       Free Text
+  
+        INPUT TRANSFORM:  K:$L(X)>20!($L(X)<1) X
+  
+        PROMPT MESSAGE:   ANSWER MUST BE 1-20 CHARACTERS IN LENGTH
+  
+        DESCRIPTION: Any other tests ordered in association with an
+                     appointment
+  
+ Solution:
+ ========
+ Routine SDAMEP1 was modified to display up to 150 characters 
+ of the OTHER field (#3) of the Patient multiple (#2) in the Appointment
+ multiple (#1900) of the Hospital Location file (#44). Two lines of the
+ display are available now if the following Actions are selected:
+  
+     EP - Expand Entry in the Appointment Management Module
+     EP - Expand Appointment in the PCE Module 
+  
+ The previous label: "Other Info:" was changed to "Other:" to make space
+ for containing 150 characters in two lines:
+  
+ Example:
+ --------
+  
+ Expanded Profile             Aug 11, 2008@13:55:45    Page:    1  of    5
+ Patient: TESTER,ED (0246P)                                 Outpatient
+ Appointment #: 1                                Clinic: CECELIA'S OPHTHAL
+                                                                                 
+                  *** Appointment Demographics ***
+  
+            Name: TESTER,ED                  Clinic: CECELIA'S OPHTHAL
+              ID: ***********P            Date/Time: JUL 29, 2008@12:00
+          Status: ACT REQ/CHECKED IN
+ Purpose of Vst.: SCHEDULED
+  Length of Appt: 45                          Appt Type: REGULAR
+             Lab:                          Elig of Appt: SC LESS THAN 50%
+           X-ray:                              Overbook: NO
+             EKG:                       Collateral Appt: NO
+           Other:YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY
+ UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUTTT        
+      
+ Enrolled in this clinic: NO
+  
+  
+ The INPUT TRANSFORM was corrected to 150 instead of 20 characters
+ and the whole comment will be displayed on a FileMan print request.
+  
+  
+ Technical:
+ ==========
+  
+ The INPUT TRANSFORM was modified as follows:
+  
+   FIELD NAME:       OTHER
+  
+   FLD NUMBER:       3               FLD TITLE:  
+   NODE;PIECE:       0;4            HELP FRAME:  
+  
+    DATA TYPE:       Free Text
+  
+   INPUT TRANSFORM:  K:$L(X)>150!($L(X)<1) X
+  
+   PROMPT MESSAGE:   Answer must be 1-150 characters in length.
+  
+   DESCRIPTION:      Any other tests ordered in association with an 
+                     appointment
+  
+  
+ Components:
+ ===========
+                                            UP    SEND  DATA                USER
+                                            DATE  SEC.  COMES   SITE  RSLV  OVER
+ FILE #      FILE NAME                      DD    CODE  W/FILE  DATA  PTRS  RIDE
+ -------------------------------------------------------------------------------
+  
+ 44          HOSPITAL LOCATION              YES   NO    NO                  NO
+ Partial DD: subDD: 44.003     fld: 3
+  
+  
+   
+ 3)  HD0000000243629 - Incorrect person class
+  
+ Problem:
+ =======
+ When PCMM 608M rejections were flagged for retransmission after the 
+ provider became inactive, the record would be rejected again even if the 
+ Person Class assignment date range correctly included the PCMM event 
+ transaction date (i.e., date of assignment or FTEE change).  The code did 
+ not recognize that inactive providers were previously active, and
+ completely omitted Person Class from the transmission. If the provider is 
+ inactive this could happen whether or not a 608M rejection previously 
+ occurred.
+  
+ For example if Person Class assignments for the provider are as follows:
+  
+ Person Class: Physicians (M.D. and D.O.)
+   Effective Date: MAR 29, 2000          Expiration Date: NOV 01, 2005
+  
+ Person Class: Allopathic and Osteopathic Physicians
+   Effective Date: NOV 01, 2005          Expiration Date: JUL 27, 2006
+  
+ and the rejected record is flagged for retransmission, then it will
+ be rejected again because no person class is sent this time at all.
+ This is due to a bug in routine SCMCHLP which does not try to find past
+ Person Class assignments for an inactive provider.
+  
+ Solution:
+ =========
+ If an older and/or rejected record is flagged for transmission or 
+ retransmission after the provider becomes inactive, the Person Class of 
+ the provider at the time of the PCMM event transaction will now be 
+ determined and transmitted.
+  
+  
+ Technical:
+ =========
+ The ORG segment of the HL7 message for an inactive provider now contains
+ the Person Class that applied to the provider at the time of the 
+ appointment:
+   
+   EVN^B02^20080603095051-0500^^^^20030218
+   
+   STF^^98707~~~USVHA~LR~632|131842348~~~USSA~SS^XXXXXXXXXX~YYYYYYYYY~~~~MD
+   ^^^^^^^^^^|
+    
+   ORG^1^632~NORTHPORT^^^^^^V111500~Physicians (M.D. and D.O.)
+    
+   ZFT^1^0^0
+  
+ Related Information:
+  
+ There may be an issue with an expired Person Class entered incorrectly 
+ for a provider. The current configuration of the Person Class multiple
+ (#8932.1) of the NEW PERSON file (#200) does not allow editing an inactive
+ (expired) Person Class assignment:
+  
+ For example:
+   
+  Select Person Class: Physicians (M.D. and D.O.)// ?
+      Answer with PERSON CLASS Person Class:
+     Physicians (M.D. and D.O.)   
+            
+          You may enter a new PERSON CLASS, if you wish
+          Don't allow Inactive entries to be selected.  <===
+  
+  
+ If an error involving an inactive provider has been addressed to the 
+ extent possible, but still appears on the report, it is possible to stop
+ it from appearing on the report through FileMan Edit of its entry in the
+ PCMM HL7 TRANSMISSION LOG file (#404.471). Its STATUS field (#4) can be
+ changed to RT: RE-TRANSMITTED, and the ERROR PROCESSING STATUS field
+ (#.06) of the ERROR CODE multiple field (#42) can be changed to CHECKED.
+  
+ Example: Editing an entry in the PCMM HL7 TRANSMISSION LOG file (#404.471)
+ to remove an obsolete 608M rejection error from the PCMM Transmission
+ Error reports:
+  
+ Select PCMM HL7 TRANSMISSION LOG MESSAGE CONTROL ID: `319990  632362679015
+ MESSAGE CONTROL ID: 632362679015// 
+ PATIENT: 
+ TRANSMISSION DATE/TIME: JUN 2,2008@16:56:51// 
+ STATUS: REJECTED// ?
+      Choose from: 
+        T        TRANSMITTED
+        A        ACCEPTED
+        RJ       REJECTED
+        M        MARKED FOR RE-TRANSMIT
+        RT       RE-TRANSMITTED
+ STATUS: REJECTED// RT  RE-TRANSMITTED
+ ACK RECEIVED DATE/TIME: JUN 3,2008@07:07:08// 
+ INCLUDED IN REJECT BULLETIN?: Y  YES
+ WORKLOAD EVENT POINTER:ATTENDING XXXXXX // 
+ PRACTITIONER: XXXXXXXXX.YYYYYYY// 
+ Select SEQUENCE: 
+ Select ERROR CODE: 608M// 
+   ERROR CODE: 608M// 
+   SEGMENT: ORG// 
+   SEQUENCE: 8// 
+   FIELD POSITION: 1// 
+   ZPC ID: 
+   ERROR PROCESSING STATUS: NEW// ?
+      Choose from: 
+        1        NEW
+        2        CHECKED
+   ERROR PROCESSING STATUS: NEW// 2  CHECKED
+  
+  
+  
+ 4)  HD0000000209762 - Rejection code 850 not in file 404.472
+  
+ Problem:
+ ========
+  
+ Austin can reject and assign error codes to appointments sent by the 
+ Patient Appointment Information Transmission (PAIT). In Vista, the error
+ codes reside in the PCMM HL7 ERROR CODE file (#404.472). Rejected
+ appointments and their errors can be listed by invoking option Rejected
+ Transmissions [SD-PAIT REJECTED]; however, the new error code 850 was
+ never added to the VistA PCMM HL7 ERROR CODE file, so appointments
+ rejected with that error code do not appear on the PAIT Rejected
+ Transmissions report. 
+  
+ Patch SD*5.3*446 added the transmission of a new 4-digit code representing
+ various combinations of Purpose of Visit and Appointment Type. See Table 
+ SD009 below for possible combinations and codes. At the same time, Austin
+ started assigning Error Code 850 if it detected a Problem with the 4-digit
+ code in the incoming PAIT data.
+  
+ *Note: Although the word "admit" is not usually associated with outpatient
+ activity, Austin refers to the 4-digit code as "Admit Type" in their 
+ programs and error text sent back to VistA.
+  
+  
+ Technical:
+ ==========
+ The PV1 segment of the PAIT HL7 messages sent to Austin contains the new
+ 4-digit code:
+  
+ PV1 - Patient Visit Segment
+ ----------------------------
+ SEQ    LEN     DT      TBL#   ELEMENT NAME       VISTA DESCRIPTION
+ ----------------------------------------------------------------------
+ 4      4       ID      0007   Admission Type     Refer to Table SD009
+                                                   (Purpose of Visit)
+  
+  
+ VistA uses the following table to determine the 4-digit code to transmit:
+  
+  Table SD009 - Purpose of Visit & Appointment Type
+ ----------------------------------------------------
+ Value denotes a combination of Purpose of Visit & Appointment Type. 
+  
+ VALUE     PURPOSE OF VISIT        APPOINTMENT TYPE 
+  
+ 0101           C&P                COMPENSATION & PENSION
+ 0102           C&P                CLASS II DENTAL 
+ 0103           C&P                ORGAN DONORS 
+ 0104           C&P                EMPLOYEE 
+ 0105           C&P                PRIMA FACIA 
+ 0106           C&P                RESEARCH 
+ 0107           C&P                COLLATERAL OF VET. 
+ 0108           C&P                SHARING AGREEMENT 
+ 0109           C&P                REGULAR 
+ 0111           C&P                SERVICE CONNECTED
+ 0201          10-10               COMPENSATION & PENSION
+ 0202          10-10               CLASS II DENTAL 
+ 0203          10-10               ORGAN DONORS 
+ 0204          10-10               EMPLOYEE 
+ 0205          10-10               PRIMA FACIA 
+ 0206          10-10               RESEARCH 
+ 0207          10-10               COLLATERAL OF VET. 
+ 0208          10-10               SHARING AGREEMENT 
+ 0209          10-10               REGULAR 
+ 0211          10-10               SERVICE CONNECTED
+ 0301       SCHEDULED VISIT        COMPENSATION & PENSION
+ 0302       SCHEDULED VISIT        CLASS II DENTAL 
+ 0303       SCHEDULED VISIT        ORGAN DONORS 
+ 0304       SCHEDULED VISIT        EMPLOYEE 
+ 0305       SCHEDULED VISIT        PRIMA FACIA 
+ 0306       SCHEDULED VISIT        RESEARCH 
+ 0307       SCHEDULED VISIT        COLLATERAL OF VET. 
+ 0308       SCHEDULED VISIT        SHARING AGREEMENT 
+ 0309       SCHEDULED VISIT        REGULAR 
+ 0311       SCHEDULED VISIT        SERVICE CONNECTED
+ 0401       UNSCHED. VISIT         COMPENSATION & PENSION
+ 0402       UNSCHED. VISIT         CLASS II DENTAL 
+ 0403       UNSCHED. VISIT         ORGAN DONORS 
+ 0404       UNSCHED. VISIT         EMPLOYEE 
+ 0405       UNSCHED. VISIT         PRIMA FACIA 
+ 0406       UNSCHED. VISIT         RESEARCH 
+ 0407       UNSCHED. VISIT         COLLATERAL OF VET. 
+ 0408       UNSCHED. VISIT         SHARING AGREEMENT 
+ 0409       UNSCHED. VISIT         REGULAR 
+ 0411       UNSCHED. VISIT         SERVICE CONNECTED
+  
+ The Austin program logic below was activated on 3/14/2006 and rejects PAIT
+ Records with error code 850 "Admit type is invalid (table SD009)" if the
+ 4-digit code in the PAIT message does not match an entry in table SD009:
+  
+ IF ADMIT_TYPE NOT IN ('0101','0102','0103','0104','0105','0106',
+         '0107','0108','0109','0111','0201','0202','0203','0204','0205',
+         '0206','0207','0208','0209','0211','0301','0302','0303','0304',
+         '0305','0306','0307','0308','0309','0311','0401','0402','0403',
+         '0404','0405','04Admit type is invalid (table SD009)06','0407','0408',
+         '0409','0411',' ')
+        THEN ERR_CODE = '850';
+  
+ That code was set up on 3/14/2006 but it has never been set up in VistA. 
+  
+ Solution:
+ =========
+  
+ A new entry was created in the PCMM HL7 ERROR CODE file (#404.472) for 
+ ERROR CODE 850.  It will be added to the PCMM HL7 ERROR CODE file 
+ (#404.472) by the post-init routine POST^SD53P534.
+  
+ Technical:
+ =========
+  
+ ^SCPT(404.472,70,0)                                     
+ ===============================================================================
+  
+ ERROR CODE................  1.) 850
+ SEGMENT...................  2.) PV1
+ FIELD.....................  3.) 4
+ SHORT DESCRIPTION.........  4.) Admit type is invalid (table SD009)
+  
+ The SD-PAIT REJECTED report will now include PAIT errors with rejection 
+ code '850'.
+  
+ OPTION:  SD-PAIT REJECTED     Rejected Transmissions
+ Rejected Transmissions
+ DEVICE:   UCX/TELNET    Right Margin: 80// 
+ PATIENT APPOINTMENT INFO LOG LIST              AUG 14,2008  16:32    PAGE 1
+ PATIENT                         APPT DATE
+                                                                     ERROR
+       SHORT DESCRIPTION                                             MESSAGE
+       CLINIC
+ --------------------------------------------------------------------------------
+  
+         RETENTION FLAG: YES - to be sent when 'Final'
+            ERROR MESSAGE: 850
+ KING,FEB                        APR 29,2008  08:00
+       Admit type is invalid (table SD009)                           850
+  
+  
+  
+ 5)  HD0000000271138 - Existing PAIT documentation updates.
+  
+ Problem:
+ =======
+  
+ Existing PAIT documentation in the Vista Documentation Library (VDL) is 
+ missing
+ updates to the HL7 transmission released in patch SD*5.3*446.
+  
+ Solution:
+ =========
+  
+ Two updates released in SD*5.3*446 have been added to the PAIT 
+ documentation in VDL:
+ -  Admission Type in segment PV1.4
+ -  Consult Request Date in segment SCH.11
+  
+ The existing release notes of PAIT patches will be updated to include the 
+ new data items in the Message Content table, and Table SD009 (see above)
+ will be added to the release notes.
+        
+ DOCUMENTATION RETRIEVAL:
+ ======================== 
+ The following documentation will be posted to the VDL immediately after
+ the release of this patch:
+  
+ - PCMM User Manual
+ - PAIT Release Notes Patch SD*5.3*333
+ - PAIT Release Notes Patch SD*5.3*349
+  
+ Sites may retrieve the draft documentation directly using FTP from the
+ ANONYMOUS.SOFTWARE directory at the following OI Field Offices:
+    
+                     Albany   : ftp.fo-albany.med.va.gov
+                     Hines    : ftp.fo-hines.med.va.gov
+               Salt Lake City : ftp.fo-slc.med.va.gov
+       First Available Server : download.vista.med.va.gov
+    
+ The following files will be available:
+    
+     File Name            Description
+     ---------            -----------
+  SD_53_P349_RN.PDF       Revised SD*5.3*349 release notes
+  SD_53_P333_RN.PDF       Revised SD*5.3*333 release notes
+  SD_53_P534_PCMMUG.PDF   Revised PCMM User Guide 
+  
+ * Note: Use Binary mode when transferring the .PDF files.  
+         The .PDF files can be read on a PC using the Adobe
+         Acrobat Reader program.
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ Users can be on the system during the installation of this patch.   
+ Because some heavily used Scheduling options will be out of order during
+ the install and post-init, it is recommended that it be installed in
+ off-peak hours.
+  
+ Installation time is less than five minutes.
+   
+ If necessary, the post-init can be executed by invoking POST^SD53P534 from
+ the programmer prompt. After confirming that the patch installation was
+ successful, you may delete post install routine SD53P534.
+   
+  1.  LOAD TRANSPORT GLOBAL
+      ---------------------
+      Choose the PackMan message containing this patch and invoke the
+      INSTALL/CHECK MESSAGE PackMan option.
+   
+  2.  START UP KIDS
+      [XPD MAIN]
+            Edits and Distribution ...
+            Utilities ...
+            Installation ...
+      Select Kernel Installation & Distribution System Option:  INStallation
+                                                           --- 
+      1     Load a Distribution
+      2     Verify Checksums in Transport Global
+      3     Print Transport Global
+      4     Compare Transport Global to Current System
+      5     Backup a Transport Global
+      6     Install Package(s)
+            Restart Install of Package(s)
+            Unload a Distribution
+   
+  3.  From this menu, you may elect to use the following options
+      (when prompted for INSTALL NAME, enter SD*5.3*534):
+   
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch.  It will NOT
+          backup any other changes such as DDs or templates.
+   
+      b.  Compare Transport Global to Current System - This option will
+          allow you to view all changes that will be made when the patch
+          is installed.  It compares all components of the patch
+          (routines, DDs, templates, etc.).
+   
+      c.  Verify Checksums in Transport Global - This option will ensure
+          the integrity of the routines that are in the transport global.
+   
+      d.  Print Transport Global - This option will allow you to view
+          the components of the KIDS build.
+   
+  4.  Use the Install Package(s) option and select the package SD*5.3*534.
+   
+      a.  When prompted "Want KIDS to INHIBIT LOGONS during the
+          install? NO//" respond NO.
+   
+      b.  When prompted "Want to DISABLE Scheduled Options, Menu Options,
+          and Protocols? YES//" respond YES.
+   
+          1) When prompted "Enter options you wish to mark as "Out of
+             Order":" enter the following option:
+   
+             Management Report for Ambulatory Procedures [SD AMB PROC
+             MANAGEMENT REPORT]
+             Appointment Management  [SDAM APPT MGT]
+             Make Appointment        [SDM]
+             Rejected Transmissions  [SD-PAIT REJECTED]
+             Manual Startup PAIT Transmission  [SD-PAIT MANUAL TRANSMISSION]
+             Taskman PAIT Transmission   [SD-PAIT TASKED TRANSMISSION]
+             Appointment List        [SDLIST]
+                    
+          2) When prompted "Enter protocols you wish to mark as "Out of
+             Order":" enter the following names:
+   
+             SDAM APPT MAKE
+             SDAM MENU 
+             SDAM APPOINTMENT EVENTS
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.3;Scheduling;**[Patch List]**;AUG 13, 1993;Build 8
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: SCMCHLP
+    Before: B27060859   After: B27099241  **272,297,534**
+Routine Name: SD53P534
+    Before:       n/a   After:  B2622276  **534**
+Routine Name: SDAMBMR1
+    Before: B27390212   After: B27463726  **28,132,180,534**
+Routine Name: SDAMEP1
+    Before: B22143181   After: B26683496  **20,241,534**
+ 
+Routine list of preceding patches: 180, 241, 297
+
+=============================================================================
+User Information:
+Entered By  : WOLF,ED                       Date Entered  : MAR 12, 2008
+Completed By: SESSLER,APRIL                 Date Completed: JAN 12, 2009
+Released By : HEUER,CINDY                   Date Released : JAN 15, 2009
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

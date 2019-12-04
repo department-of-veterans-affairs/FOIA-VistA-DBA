@@ -1,0 +1,186 @@
+$TXT Created by BEUSCHEL,GARY at NXT.KERNEL.ISC-SF.VA.GOV  (KIDS) on THURSDAY, 12/07/00 at 16:15
+=============================================================================
+Run Date: JAN 09, 2001                     Designation: HL*1.6*67
+Package : HL - HEALTH LEVEL SEVEN            Priority: Mandatory
+Version : 1.6        SEQ #58                    Status: Released
+=============================================================================
+
+Associated patches: (v)HL*1.6*66   <<= must be installed BEFORE `HL*1.6*67'
+
+Subject: Should I say HELO?
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Other
+  - Enhancement (Mandatory)
+
+Description: 
+============
+
+           * * * * * * * * * * * * * * * * * * *  * * * * * * * * * *
+                                    ATTENTION
+         Read this patch.  If you are a Cache/NT site, you MIGHT have to
+                              PERFORM MANUAL EDITS!
+           * * * * * * * * * * * * * * * * * * *  * * * * * * * * * *
+  
+ Patch HL*1.6*67
+  
+ NOIS: PUG-0800-52938
+ Test Site: Milwaukee, WI; Puget Sound HCS; Grand Junction, CO
+ When sending HL7 transactions to other VA sites over TCP links, Cache/NT
+ sites must send an initial HELO to overcome buffering issues.  However,
+ the initial HELO is not part of the HL7 standard, and may cause a reject
+ error when sent to a COTS system.
+  
+ This patch adds a new field, SAY HELO, to file 870, HL LOGICAL LINK,
+ so that for every logical link, the Cache/NT site can decide whether or
+ not to send the initial HELO.  The default will be NO, since it is not
+ part of the HL7 standard.
+  
+ The form HL7 LOGICAL LINK has been updated to include this field.  Only
+ Cache/NT sites should set it, since it does not apply to other sites,
+ and will be ignored at other sites.
+  
+ At Cache/NT sites with patch HL*1.6*39 (which distributed VA Logical Link
+ definitions) installed, the post-init will go through file 870,
+ HL LOGICAL LINK, and for every TCP link to a VA site (if the name of the
+ link starts with 'VA', OR if the link is 'MPIVA'), set SAY HELO to YES.
+ It will show you which links it has set.  You should review the list and
+ manually correct any which shouldn't have been set, or set any that were
+ missed.
+  
+ The post-init will NOT run at:
+ - Cache/NT sites which have not installed patch HL*1.6*39.
+ - non-Cache/NT sites.
+  
+ Here's the new field:
+  
+ STANDARD DATA DICTIONARY #870 -- HL LOGICAL LINK FILE
+ STORED IN ^HLCS(870,
+  
+ DATA        NAME                GLOBAL        DATA
+ ELEMENT     TITLE               LOCATION      TYPE
+ ---------------------------------------------------------------------------
+ 870,400.07  SAY HELO             400;7 SET
+  
+                             'Y' FOR YES; 
+                             'N' FOR NO; 
+             LAST EDITED:    NOV 02, 2000 
+             HELP-PROMPT:    Send initial HELO for Cache/NT TCP links? 
+             DESCRIPTION:    This field is applicable only to Cache/NT sites
+                             with TCP links.  If you are not a Cache/NT
+                             site, or this is not a TCP link, this field 
+                             does not apply, AND will be ignored.  
+  
+                             If this TCP link is for a VA site, answer YES.  
+                             If this TCP link is for a COTS system, answer
+                             NO.  This is the default.  
+  
+           TECHNICAL DESCR:  When sending HL7 transactions to other VA sites
+                             over TCP links, Cache/NT sites must send an
+                             initial HELO to overcome buffering issues. 
+                             However, the initial HELO is not part of the
+                             HL7 standard, and may cause a reject error when
+                             sent to a COTS system.  
+  
+ NOTE: This patch should be installed during off hours, when activity is at
+ a minimum.  It requires HL7 patch HL*1.6*66.
+ ============================================================================
+  
+ ROUTINES:
+ The second line of the routine now looks like:
+        ;;1.6;HEALTH LEVEL SEVEN;**[patch list]**;JUL 17,1995
+  
+              Before       After
+ Name         Checksum     Checksum     Patch List
+ ---------------------------------------------------------------------
+ HLCSTCP2     11334736     11552851     19,43,49,57,63,64,66,67
+ HLPAT67       * new *      2870677     67
+ * Checksums produced by CHECK^XTSUMBLD
+  
+ This patch introduces the following new routine:
+ HLPAT67 is a post-init and has no user-callable entry points.
+ ============================================================================
+  
+ INSTALLATION:
+ NOTE: This patch should be installed during off hours, when activity is at
+ a minimum.  It requires HL7 patch HL*1.6*66.
+ 1. Users may be on the system during the installation of this patch.
+ 2. DSM Sites: If any of these routines is mapped, disable mapping for the
+    affected routine(s).
+ 3. You do not need to stop TaskMan.
+    Shutdown all Logical Links and incoming and outgoing filers, and
+    the Link Manager. Use the options:
+  
+      Filer and Link Management Options -> 
+          SA     Stop All Messaging Background Processes
+          LM     TCP/IP Link Manager Start/Stop
+  
+ 4. DSM sites: Disable all HL7 UCX Services for this installation.
+ 5. Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu to load the
+    KIDS package into a Transport global on your system.  
+ 6. On the KIDS:Installation menu, use the following options to install the
+    Transport Global:
+          2 Verify Checksums in Transport Global 
+          3 Print Transport Global 
+          4 Compare Transport Global to Current System 
+          5 Backup a Transport Global 
+          6 Install Package(s) 
+  Select INSTALL NAME: HL*1.6*67     Loaded from Distribution  <date/time>
+                       =========
+  Install Questions for HL*1.6*67
+  
+  Want KIDS to INHIBIT LOGONS during the install? YES// NO
+                                                        ==
+  Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// NO
+                                                                        ==
+  Enter the Device you want to print the Install messages.
+  You can queue the install by enter a 'Q' at the device prompt.
+  Enter a '^' to abort the install.
+  
+  DEVICE: HOME// <Do NOT queue it!>
+                 ------------------
+ 7. Cache/NT sites: Once the patch is installed, review the list of 
+ HL LOGICAL LINKs whose SAY HELO field was set to YES by the post-init, and
+ make sure they were all links to VA sites, and that no TCP links to VA sites
+ were left out.  (If the name started with 'VA' it was considered a VA site.)
+ 8. Startup all Logical Links and incoming and outgoing filers. Use the 
+  
+      Filer and Link Management Options ->
+          RA     Restart/Start All Links and Filers
+    (Note: Links which do not have "autostart" enabled will need to
+           be restarted manually)
+    
+ 9. DSM Sites: If you previously disabled an HL7 UCX Service for this
+    installation, you may now enable it.
+ 10. DSM Sites: Rebuild your mapped set if necessary.
+ 11. Start Link Manager using the option: "TCP/IP Link Manager Start/Stop."
+
+Routine Information:
+====================
+
+Routine Name:
+  - HLCSTCP2
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLPAT67
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : BEUSCHEL,GARY                  Date Entered : NOV 01, 2000
+Completed By: MURPHY,MINAO J.              Date Completed: JAN 08, 2001
+Released By : SINGH,GURBIR                  Date Released : JAN 09, 2001
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

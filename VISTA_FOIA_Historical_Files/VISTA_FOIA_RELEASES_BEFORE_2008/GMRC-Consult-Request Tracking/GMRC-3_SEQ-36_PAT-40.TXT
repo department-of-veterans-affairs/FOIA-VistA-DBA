@@ -1,0 +1,219 @@
+$TXT Created by PHELPS,TY at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 02/28/05 at 10:42
+=============================================================================
+Run Date: APR 29, 2005                     Designation: GMRC*3*40
+Package : GMRC - CONSULT/REQUEST TRACKING     Priority: Mandatory
+Version : 3        SEQ #36                      Status: Released
+                  Compliance Date: MAY 30, 2005
+=============================================================================
+
+Associated patches: (v)GMRC*3*16   <<= must be installed BEFORE `GMRC*3*40'
+
+Subject: SERVICE AS A SUB SUB-SERVICE ERROR
+
+Category: 
+  - Data Dictionary
+  - Routine
+
+Description:
+============
+
+ This patch addresses the problem where a consult service can become a
+ subservice within its own subservice hierarchy and the allocation error
+ PROC+12^GMRCASV. 
+  
+ ASSOCIATED E3R(s):
+ ==================
+ N/A
+  
+ ASSOCIATED NOIS:
+ ================
+ 1. BIR-1204-30673= Remedy ticket # 68505   
+           STORE errors produced by GMRCASV
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Altoona,PA
+ Biloxi,MS
+ Birmingham,AL
+ Salt Lake City,UT
+  
+ NOIS OVERVIEW:
+ ==============
+ 1. BIR-1204-30673     STORE errors produced by GMRCASV
+  
+    Problem:
+    --------
+    The problem is an endless loop which is caused by creating a consult
+    service sub-service which is already a parent service within the
+    consult service hierarchy.  A service is already prevented from being
+    a direct sub-service to itself, but is allowed to be a sub-service to
+    one of its sub-services.  An example of a bad hierarchy listing would
+    be:
+  
+       ALL SERVICES  (Grouper Only)
+         INPATIENT SERVICES  (Grouper Only)
+           ANESTHESIA
+             ALL SERVICES  (Grouper Only)   <<< ALL SERVICES is within a
+                                                hierachy which eventually
+                                                leads back to itself as a
+                                                parent service
+  
+    Resolution:
+    -----------
+    This patch will prevent a service from becoming a sub-service any
+    where within its own service hierarchy.  This will prevent the endless
+    looping that this situation creates.
+  
+ TECHNICAL:
+ ==========
+ The Input Transform for the SUB-SERVICE/SPECIALTY (#.01) field of the
+ SUB-SERVICE (#123.51) file which is the sub-file for the SUB-SERVICE
+ (#10) field of the REQUEST SERVICES (#123.5) file will be modified.
+  
+ Old:
+ ----
+ SUB-SERVICE/SPECIALTY INPUT TRANSFORM: S Y=X I Y=DA D EN^DDIOL("A
+  SERVICE CAN NOT BE A SUBSERVICE OF ITSELF","","!!?12") K:Y=DA X
+  
+ New:
+ ----
+ SUB-SERVICE/SPECIALTY INPUT TRANSFORM: S GMRCDA=+$G(DA(1)) D INPUT^GMRCSRVS(.X,GMRCDA)
+  
+ GMRCSRVS;SLC/DCM,JFR - Add/Edit services in File 123.5. ;6/14/00 12:00
+         .
+         .
+         .
+ INPUT(X,GMRCDA) ; INPUT TRANSFORM FOR THE SUB-SERVICE/SPECIALTY (#.01) FIELD
+         ; OF THE SUB-SERVICE (#123.51) FILE WHICH IS A SUB-FILE OF THE
+         ; SUB-SERVICE (#10) FIELD OF THE REQUEST SERVICES (#123.5) FILE.
+         ;
+         ; X = INTERNAL VALUE OF USER SELECTED SUB-SERVICE (IEN OF SERVICE
+         ;     IN FILE 123.5)
+         ; GMRCDA = IEN OF INITIAL PARENT SERVICE IN FILE 123.5
+         ;
+         I +$G(X)=0 K X Q
+         I GMRCDA<1 D  Q:'$D(X)
+         . S GMRCDA=+$G(D0)
+         . I GMRCDA<1 K X
+         N GMRPARNT,GMRCHILD,GMRQ,GMRCNT
+         K ^TMP("GMRC INPUT",$J) ;MAKE SURE INPUT PARENT LOG GLOBAL IS BLANK
+         I X=GMRCDA S GMRQ=1 G INPUTQ ;NOT ALLOW SERVICE AS A SUB-SERVICE TO ITSELF
+         S ^TMP("GMRC INPUT",$J,"B",GMRCDA)="" ;USED TO PREVENT DUPLICATE CHECKING OF PARENTS
+         S ^TMP("GMRC INPUT",$J,0)=1 ;USED TO FIND NEXT NUMBER FOR TMP GLOBAL ENTRY
+         S ^TMP("GMRC INPUT",$J,1)=GMRCDA ;PARENT IEN STORED TO BE USED AS CHILD
+         S (GMRCNT,GMRQ)=0
+         F  S GMRCNT=$O(^TMP("GMRC INPUT",$J,GMRCNT)) Q:'GMRCNT  D  Q:GMRQ=1
+         . S GMRCHILD=$G(^TMP("GMRC INPUT",$J,GMRCNT))
+         . S GMRPARNT=0
+         . F  S GMRPARNT=$O(^GMR(123.5,"APC",GMRCHILD,GMRPARNT)) Q:GMRPARNT=""  D  Q:GMRQ=1
+         .. I GMRPARNT=X S GMRQ=1 Q  ;NOT ALLOW SERVICE AS A SUB-SERVICE WITHIN IT'S SUB-SERVICE HIERARCHY
+         .. I '$D(^TMP("GMRC INPUT",$J,"B",GMRPARNT)) D  ;IF NOT IN LIST ADD
+         ... S ^TMP("GMRC INPUT",$J,"B",GMRPARNT)="" ;ADD TO "B" CROSS-REFERENCE
+         ... S ^TMP("GMRC INPUT",$J,0)=$G(^TMP("GMRC INPUT",$J,0))+1 ;INCREASE LAST NUMBER BY 1
+         ... S ^TMP("GMRC INPUT",$J,$G(^TMP("GMRC INPUT",$J,0)))=GMRPARNT ;ADD NEW PARENT SERVICE TO GLOBAL SO IT CAN BE CHECKED AS A CHILD ENTRY TO FIND IT'S PARENTS
+         K ^TMP("GMRC INPUT",$J)
+ INPUTQ  I GMRQ=1 D EN^DDIOL("A SERVICE CAN NOT BE A SUBSERVICE OF ITSELF","","!!?12") K X Q
+         Q
+  
+  
+ ROUTINE SUMMARY: 
+ ===============
+ The following is a list of the routines included in this patch.  
+ The second line of each of these routines now looks like: 
+  
+   <tab>;;3.0;CONSULT/REQUEST TRACKING;**[patch list]**;DEC 27, 1997
+  
+                        CHECK^XTSUMBLD results
+ Routine name      Before Patch        After Patch       Patch List
+ ============      ============        ===========       ===========
+  GMRCSRVS             10459438           13926518       1,16,40
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ =========================
+ This patch can be loaded with users in the system.  Installation time
+ will vary. In most cases, will take less than 5 minutes.
+  
+  1.  Choose the PackMan message containing this patch and invoke the 
+      INSTALL/CHECK MESSAGE PackMan option.  
+  
+  2.  (DSM for Open VMS sites only) Disable routine mapping on all systems
+      for the routines listed in the Routine Summary.
+  
+      NOTE:  If the routines included in this patch are not currently
+      in your mapped routine set, please skip this step.
+  
+  3.  Start up the Kernel Installation and Distribution System Menu
+      [XPD MAIN]: 
+  
+           Edits and Distribution ...  
+           Utilities ...  
+           Installation ...  
+  
+      Select Kernel Installation & Distribution System Option: Installation
+                                                               ---
+           1      Load a Distribution
+           2      Verify Checksums in Transport Global
+           3      Print Transport Global
+           4      Compare Transport Global to Current System
+           5      Backup a Transport Global
+           6      Install Package(s)
+                  Restart Install of Package(s)
+                  Unload a Distribution
+  
+  4.  From this menu, you may elect to use the following options
+      (When prompted for the INSTALL NAME, enter GMRC*3.0*40):
+      
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will
+          not backup any other changes such as DD's or templates.
+      b.  Compare Transport Global to Current System - This option
+          will allow you to view all changes that will be made when
+          this patch is installed.  It compares all components of this
+          patch (routines, DD's, templates, etc.).
+      c.  Verify Checksums in Transport Global - This option will
+          allow you to ensure the integrity of the routines that are
+          in the transport global.
+  
+  5.  Use the Install Package(s) option and select the package
+      GMRC*3.0*40.
+  
+      a.  When prompted "Want KIDS to INHIBIT LOGONs during the
+          install? YES//", answer NO.
+      b.  When prompted "Want to DISABLE Scheduled Options and Menu 
+          Options and Protocols? YES//", answer YES.
+      c.  When prompted "Enter options you wish to mark as 'Out Of Order':",
+          enter the following options:
+  
+             Set up Consult Services [GMRC SETUP REQUEST SERVICES]
+  
+      d.  When prompted "Enter protocols you wish to mark as 'Out Of Order':",
+          press <return>.
+  
+  6.  (DSM for Open VMS sites only) Optional - Include the routines
+      distributed with this patch in the mapped routine set.
+  
+      NOTE: This step is only necessary if you performed step 2 or if
+      you wish to include the routines in your mapped set.
+
+Routine Information:
+====================
+
+Routine Name:
+  - GMRCSRVS
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : PHELPS,TY                     Date Entered  : DEC 14, 2004
+Completed By: ILUSTRISIMO,LUCY              Date Completed: APR 20, 2005
+Released By : SPIVEY,RICHARD J              Date Released : APR 29, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

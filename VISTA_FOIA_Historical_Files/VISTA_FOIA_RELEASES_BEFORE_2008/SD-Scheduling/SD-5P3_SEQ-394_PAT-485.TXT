@@ -1,0 +1,265 @@
+$TXT Created by HOUTCHENS,THOMAS at CARVDD.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 10/03/06 at 11:39
+=============================================================================
+Run Date: OCT 03, 2006                     Designation: SD*5.3*485
+Package : SD - SCHEDULING                     Priority: EMERGENCY
+Version : 5.3       SEQ #394                    Status: Released
+                  Compliance Date: OCT 05, 2006
+=============================================================================
+
+Associated patches: (v)SD*5.3*263  <<= must be installed BEFORE `SD*5.3*485'
+                    (v)SD*5.3*273  <<= must be installed BEFORE `SD*5.3*485'
+                    (v)SD*5.3*417  <<= must be installed BEFORE `SD*5.3*485'
+
+Subject: EWL CORRECTION FOR ENROLLEE STATUS CALCULATION.
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ 
+  
+ VistA patch SD*5.3*270, released on December 2, 2002, provided the
+ functionality to transmit SD Electronic Wait List (EWL) data to the 
+ Austin Automation Center (AAC).  Sites were instructed to set the 
+ SD WAIT LIST TRANS TO AAC option to run bi-monthly via Task Manager
+ on the 1st and 15th of every month. All patients currently in the 
+ SD Wait List file (409.3) are transmitted. Transmissions include a
+ message if no clinics or services are set up in the Wait List parameter
+ files (SD WL Service/Specialty [#409.31] and SD WL Clinic Location 
+ [#409.32]). Another message is transmitted for clinics and services
+ that are set up and have no patients currently waiting for that clinic
+ or service. If there are no entries in the Wait List parameter files,
+ the software will still transmit any entries in the Primary Care 
+ Management Module (PCMM) Wait list.
+  
+ Recently, questions have arisen about the transmission of the EWL 
+ Enrollee Status to Austin and its relative validity.  Research conducted
+ by members of the PCMM / EWL team found the algorithm used to retrieve
+ the last treatment date from the Treating Facility List file (#391.91)
+ needed a correction. The application used the last entry with a valid
+ date, which is the last internal number. This patch will determine EWL
+ enrollment status in a more accurate fashion. A change to the way the
+ program utilizes the Treating Facility (TF) List file will be made.
+ Rather than looking at the last TF List entry in the file, the program
+ will look at all entries that provide care, look at all of the Date 
+ Last Treated fields for those true treating facilities, and determine
+ which is indeed the latest date.  
+  
+ The EWL Enrollee Status is static, and not dynamic in nature.  This is
+ a one-time determination that is made when the patient is placed on the
+ Wait List. This functionality was introduced when the original patch 
+ for EWL (SD*5.3*263) was released in November 2002. An important fact
+ to keep in mind is that the system determines the EWL Enrollee Status
+ when the EWL entry is first created for the patient. This status is 
+ not updated, i.e., if a patient was placed on the Wait List in December
+ of 2005 (and the system calculated his EWL Enrollee Status as Prior,
+ for example) and then subsequently treated 3 months later, the status
+ of "Prior" will not be updated.  He was calculated as a "Prior" upon
+ creation of the EWL entry in December of 2005.
+  
+   
+  
+ The following documentation will be available: 
+ ==============================================
+  
+ NA 
+  
+ This patch addresses the following New Service Requests (NSR): 
+ =============================================================
+  
+ There is no NSR associated with this patch.  
+  
+ This patch addresses the following Remedy Ticket(s): 
+ ====================================================
+  
+ HD00000000140794 - EWL issue with calculation of enrollment status when 
+                    treating facility is "HDR (available soon)".  
+  
+ Overview of Remedy Ticket(s): 
+ =============================
+  
+ HD00000000140794 - Problem:    Miscalculating the patient's enrollment date 
+                                due to use of the last internal entry or
+                                using a facility which is not a 
+                                treating facility.  
+  
+                    Resolution: Creating an array with all treatment dates 
+                                from all valid treatment facilities and then 
+                                selecting the most current treatment date to 
+                                calculate the enrollment status.  
+  
+ Components Sent with Patch: 
+ ===========================
+  
+ ROUTINES: SDWLE11
+           SDWLE111 
+           SDWLRP1
+           SDWLRP4
+ 
+ DATA DICTIONARY UPDATES: EWL PATIENT file (#409.3) 
+  
+ This patch will include two new data fields: 
+  
+ 409.3,27.1    EWL ENROLLEE DATE USED 1;3 DATE 
+  
+               INPUT TRANSFORM:  S %DT="E" D ^%DT S X=Y K:Y<1 X 
+  
+  
+ 409.3,27.2    EWL ENROLLEE DATABASE FILE 1;4 SET 
+  
+                                 '0' FOR NONE; 
+                                 '1' FOR TREATING FACILITY; 
+                                 '2' FOR PATIENT ENROLLMENT; 
+                                 '3' OUTPATIENT ENCOUNTER
+                                 '4' KLF DOWNLOAD
+  
+ For Routines: 
+ =============
+  
+ The following is a list of the routines included in this patch.  The second
+ line of each of these routines now looks like: 
+  
+       ;;Version;Package;**[patch list]**;Package Release Date 
+  
+                         CHECK^XTSUMBLD results 
+  
+ Routine             Before Patch       After Patch       Patch List 
+ -------             ------------       -----------       ----------
+ SDWLE11               2360208             3527351          263,485
+ SDWLE111              5171846             5497403        263,273,280
+                                                          394,417,485
+ SDWLRP1               9825684            11277725        263,273,485
+ SDWLRP4              12504936            13558115          263,485              
+  
+ Total number of routines - 4
+  
+                         CHECK1^XTSUMBLD results (new method) 
+  
+ Routine             Before Patch       After Patch       Patch List 
+ -------             ------------       -----------       ----------
+ SDWLE11                4195699            7184572          263,485
+ SDWLE111              13272665           13857185        263,273,280
+                                                          394,417,485
+ SDWLRP1               52288379           62309635        263,273,485
+ SDWLRP4               36581660           42653534          263,485 
+  
+ The following is a list of files included in this patch: 
+  
+  
+                                         UP    SEND  DATA                USER
+                                         DATE  SEC.  COMES  SITE   RSLV  OVER
+ FILE #      NAME                        DD    CODE  W/FILE DATA   PTS   RIDE
+ ----------------------------------------------------------------------------
+  
+ 409.3       SD WAIT LIST                YES   YES   NO                  NO
+ Partial DD: subDD: 409.3      fld: 27.1 
+                               fld: 27.2 
+   DATA SCREEN: 
+  
+ The following is a list of new fields included in this patch: 
+  
+ Field Name                           (Number) 
+ ----------                           --------
+ EWL ENROLLEE DATE USED                 27.1 
+ EWL ENROLLEE DATABASE FILE             27.2 
+  
+ Test Sites: 
+ ===========
+     
+ Bay Pines VAMC
+ North Florida / South Georgia HCS
+ Philadelphia VAMC
+  
+ INSTALLATION INSTRUCTIONS 
+ =========================
+  
+ This patch can be installed during business hours, but because some options
+ will be out of service during the installation process it is suggested that
+ it be queued for non-peak hours.Installation will take less than 5 minutes.
+  
+  
+ 1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu. [Note: 
+    TEXT PRINT/DISPLAY option in the PackMan menu will display the 
+    patch text only].  
+      
+ 2. From the Kernel Installation and Distribution System (KIDS) 
+    menu, select the Installation menu.  
+  
+ 3. From this menu, you may elect to use the following options: 
+    (when prompted for INSTALL NAME, enter SD*5.3*485).  
+     
+    a.  Backup a Transport Global - this option will create a backup 
+        message of any routines exported with the patch.  It will 
+        NOT backup any other changes such as DDs or templates.  
+    b.  Compare Transport Global to Current System  - this option 
+        will allow you to view all changes that will be made when 
+        the patch is installed.  It compares all components of the 
+        patch (routines, DDs, templates, etc.).  
+    c.  Verify Checksums in Transport Global - this option will 
+        allow you to ensure the integrity of the routines that are 
+        in the transport global.  
+    d.  Print Transport Global - this option will allow you to view 
+        the components of the KIDS build.  
+     
+ 4. Use the Install Package(s) option and select the package 
+    SD*5.3*485.  
+     
+ 5. When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+    YES//', respond NO.  
+     
+ 6. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and 
+    Protocols? YES//', respond YES 
+  
+ 7. When prompted to select the options you would like to place out 
+    of order, enter the following: 
+  
+        Enter/Edit Wait List (Sch/PCMM)      SD WAIT LIST ENTER/EDIT 
+  
+ 8. When prompted to select the protocols you would like to place out 
+    of order, enter the following: 
+  
+        Wait List Entry                      SD WAIT LIST ENTRY 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: SDWLE11
+    Before:  B4195699  After:  B7184572  **263,485**
+Routine Name: SDWLE111
+    Before: B13272665  After: B13857185  **263,273,280,394,417,485**
+Routine Name: SDWLRP1
+    Before: B52288379  After: B62309635  **263,273,485**
+Routine Name: SDWLRP4
+    Before: B36581660  After: B42653534  **263,485**
+
+=============================================================================
+User Information:
+Entered By  : HOUTCHENS,THOMAS              Date Entered  : MAY 08, 2006
+Completed By: TAPPER,BRIAN                  Date Completed: OCT 03, 2006
+Released By : LANDRIE,LARRY                 Date Released : OCT 03, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,340 @@
+$TXT Created by OSTRANDER,ROBIN at DEVCUR.FO-SLC.MED.VA.GOV  (KIDS) on Monday, 02/24/03 at 07:29
+=============================================================================
+Run Date: MAR 11, 2003                     Designation: TIU*1*149
+Package : TIU - TEXT INTEGRATION UTILITIES   Priority: Mandatory
+Version : 1       SEQ #139                       Status: Released
+                  Compliance Date: APR 11, 2003
+=============================================================================
+
+Associated patches: (v)TIU*1*124   <<= must be installed BEFORE `TIU*1*149'
+                    (v)TIU*1*146   <<= must be installed BEFORE `TIU*1*149'
+
+Subject: FIX PROBLEM OF TIU DOCUMENTS LINKED TO DIFFERENT PATIENT'S VISIT
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+ This patch will fix the problem of TIU documents being linked to a
+ different patient's visit via the queued task in TIU that links a visit to
+ a document.
+  
+ The patch also contains two post-install routines.  The first routine, 
+ TIUP149, contains an entry point to search the TIU DOCUMENT file (#8925)
+ to clean up documents linked to a different patient's visit.  The second
+ routine, TIUP149P, contains an entry point to print a detailed list of the
+ results.
+  
+ The clean up will search ALL entries in the TIU Document file (#8925) to
+ link or unlink documents associated with a different patient's visit that
+ meet the following criteria:
+  
+ - Addenda or components where the parent points to the correct visit will
+   be linked, otherwise the addenda or components will be unlinked if they
+   are associated with an incorrect visit different than the parent.
+  
+ - Documents where the capture method is converted and a visit
+   exists will be linked, otherwise the document will be unlinked
+   from the incorrect visit.
+  
+ - Documents where the reference date is prior to 10/1/98 will
+   be unlinked from the incorrect visit.
+  
+ - Documents that are Discharge Summaries will be unlinked
+   from the incorrect visit.
+  
+ Details for invoking the routines associated with this patch can be found 
+ in the post-installation instruction.
+  
+  
+ PROBLEMS RESOLVED:
+ ==================
+   
+ 1. Routine: TIUPXAP1                                   NOIS MAN-0602-10892
+             TIUPXAP2                                        NOL-0702-70250
+  
+ Problem: TIU documents can be linked to a different patient's visit. This
+ problem can happen when a new note is created for Patient A for a new
+ visit.  The new note for Patient A then gets deleted before the visit is
+ actually created and filed with Patient A's note.  Within seconds a new
+ note is  entered for Patient B.  Patient B's note ends up being assigned
+ the same internal entry number of Patient A's deleted note.  Since there
+ are no checks, the visit for Patient A gets filed with the note for
+ Patient B.
+  
+ Solution: When filing a visit with a document via the queued task, check
+ to make sure the document and the visit are associated with the same
+ patient, visit date/time and visit location before filing the visit with
+ the document.
+  
+  
+ ROUTINE SUMMARY:
+ ================
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+  
+      <tab>;;1.0;TEXT INTEGRATION UTILITIES;**[patch list]**;Jun 20, 1997
+  
+                             CHECK^XTSUMBLD results
+  Routine name  Before Patch  After Patch       Patch List
+  ============  ============  ===========       ==========
+  TIUP149                N/A     10825276            149
+  TIUP149P               N/A      8397183            149
+  TIUPXAP1           9543425      9751734   15,29,20,89,82,107,117,126,
+                                            124,149
+  TIUPXAP2           8388888      8388878   20,67,82,107,126,124,149
+  
+  
+ INSTALLATION INSTRUCTIONS: 
+ ==========================
+ This patch may be installed with users on the system; however, it should
+ be installed at a non-peak time to minimize disruption to the users.
+ Installation of this patch will take less than 2 minutes.
+  
+ 1. Use the INSTALL/CHECK MESSAGE option on the Packman Menu.  
+   
+ 2. Review your mapped set.  If any of the routines listed in this 
+    patch are mapped, they should be removed from the mapped set at 
+    this time.  
+  
+ 3. From the Kernel Installation and Distribution System (KIDS) Menu, 
+    select the Installation menu.  
+  
+ 4. From the Installation menu, you may elect to use the following 
+    options (when prompted for INSTALL NAME, enter TIU*1.0*149): 
+  
+    a.  Backup a Transport Global 
+    b.  Compare Transport Global to Current System 
+    c.  Verify Checksums in Transport Global 
+  
+ 5. Use the Install Package(s) option and select the package TIU*1.0*149.
+  
+ 6. When prompted 'Want KIDS to INHIBIT LOGONs during the install? YES//',
+    respond NO.
+  
+ 7. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and 
+    Protocols? YES//', respond YES, and DISABLE the TIU* Options and
+    Protocols.
+  
+ 8. When prompted 'Delay Install (Minutes):  (0-60): 0//', respond '0'.
+  
+ 9. If routines were unmapped as part of step 2, they should be returned 
+    to the mapped set once the installation has run to completion.
+  
+  
+ POST-INSTALLATION INSTRUCTIONS:
+ ===============================
+ 1. The patch installation does not invoke the routine EN^TIUP149.  The
+ routine needs to be invoked from programmer mode.  When running the
+ routine, the following recommendations are made:
+  
+ - Users may be on the system and options enabled
+  
+ - The job should be queued to run during off-hours
+  
+ - The job should be run at a time that does not conflict with a system
+   backup
+  
+ - Processing times for this task will vary considerably, depending on
+   the load on your system and the number of entries processed in the TIU
+   DOCUMENT file.
+  
+   The following list shows the processing times and number of entries in
+   the TIU Document file (#8925) at some of the test sites:
+  
+     Time          Number of entries in TIU Document file (#8925)
+   -------------   ----------------------------------------------
+    0 hr 36 min      946545
+    1 hr 56 min     5356674
+    0 hr 52 min     1878059
+    2 hrs 18 min    3221403
+    7 hrs 31 min    6737601
+      
+   Running the task in your mirror (test) account will provide you
+   with the best estimate for how long it will take in your Production
+   account, but only if the mirror account has been recently re-created.
+  
+ - Only one job should be processed at a time.  This is to support the
+   start/stop feature in taskman.  If multiple jobs are started it will be
+   necessary to stop all jobs and invoke the routine again.
+  
+ - The global ^XTMP("TIUP149", will be set as records are processed but the
+   size of the global will be relatively small.
+  
+  
+ 2. To invoke the post-init routine from Programmer Mode type:
+  
+    D EN^TIUP149
+  
+ A sample of invoking the routine is as follows:
+ ==============================================
+  
+ DEV,CUR>D EN^TIUP149
+  
+  
+ PATCH TIU*1*149
+  
+ Search ALL entries in the TIU Document file (#8925) to link or
+ unlink documents associated with a different patient's visit that
+ meet the following criteria:
+  
+ - Addenda or components where the parent points to the correct visit will
+   be linked, otherwise the addenda or components will be unlinked if they
+   are associated with an incorrect visit different than the parent.
+  
+ - Documents where the capture method is converted and a visit
+   exists will be linked, otherwise the document will be unlinked
+   from the incorrect visit.
+  
+ - Documents where the reference date is prior to 10/1/98 will
+   be unlinked from the incorrect visit.
+  
+ - Documents that are Discharge Summaries will be unlinked
+   from the incorrect visit.
+  
+ Requested Start Time: NOW//  (DEC 04, 2002@06:33:45)
+  
+ A task has been queued in the background and a bulletin will be sent
+ to you upon completion of the task or if the task is stopped.
+  
+ The task number is 5150829.
+  
+  
+ 3. A bulletin will be sent when the job is finished.  The bulletin will 
+ provide a summary of the results and instructions on how to print the
+ results.  The bulletin is sent to the user who queued the job and to the
+ PATIENT SAFETY NOTIFICATIONS mail group.
+  
+ A sample of the bulletin is as follows:
+ ======================================
+  
+ Subj: TIU*1*149 TIU Document Clean up for Different Patient's Visit
+ [#57445] 12/04/02@06:34  16 lines
+ From: PATCH TIU*1*149 TIU DOCUMENT CLEAN-UP RESULTS  In 'IN' basket.   
+ Page 1 *New*
+ --------------------------------------------------------------------------
+ Clean up TIU Documents linked to a different patient's visit.
+  
+ Task Started: Dec 04, 2002@06:33:47
+ Task   Ended: Dec 04, 2002@06:34:13
+  
+ Number of entries linked to Correct Visit: 0
+  
+ Number of entries not corrected because Entry in Use: 0
+  
+ Number of entries unlinked from Incorrect Visit: 0
+  
+ TOTAL Number of entries processed: 11086
+  
+ Task COMPLETED successfully.
+  
+ To print a detailed listing of the clean up invoke D PRINT^TIUP149P.
+  
+  
+ 4. Attention Integrated Sites:
+  
+ Due to an integration issue, you may get a number of documents in the 
+ report that are unrelated to documents linked to a different patient's 
+ visit.  These records will be identified on the report and bulletin as
+ 'NDBI Fix Needed'. When printing the report you will be prompted whether
+ or not to exclude these records from the report.  The NDBI team is
+ addressing this issue.  If you are an integrated site and have this 
+ issue, the NVS CLIN2 team has requested you log a NOIS to TIU so a member 
+ of their team can assist you with this issue.
+  
+  
+ 5. The printout includes all records in the TIU Document file (#8925) that
+ are linked to a different patient's visit and meet the criteria 
+ identified in step 2.  For each record the following information will be
+ printed:
+  
+ - Patient field #.02 from file #8925 with (Last 4 PID)
+ - Document IEN from file #8925
+ - Title field #.01 from file #8925
+ - Visit/Admit Date&Time field #.01 from file #9000010
+ - Hospital Location field #.22 from file #9000010
+ - The Linked column reflects Yes and the Visit IEN from file #9000010 if 
+   the document was linked, otherwise No - Unlinked Visit or No - NDBI Fix
+   Needed or No - Entry in Use
+  
+ A sample of invoking the routine is as follows:
+ ==============================================
+  
+ DEV,CUR>D PRINT^TIUP149P
+  
+  
+ This routine will print the results of the clean up routine in patch
+ TIU*1*149 which provides a clean up for documents pointing to a different
+ patient's visit in the TIU DOCUMENT file (#8925).
+  
+ This report requires a column width of 132.
+  
+ DEVICE: HOME// ;P-DEC
+  
+  
+ 6. After the patch has been installed successfully and the post-install
+ routines have been invoked successfully, sites may delete the post-install
+ routines, TIUP149*, after verification of the checksums.
+  
+  
+ 7. Option Clean old Job Nodes in XUTL [XQ XUTL $J NODES] will 
+ automatically delete the ^XTMP("TIUP149") global nodes created by running 
+ EN^TIUP149 approximately 3 months from the last date the routine is run.
+  
+  
+ 8. After running the post-install for this patch, sites should run the 
+ TIUP146* routines as described in patches TIU*1*146 and TIU*1*147 to see 
+ what documents remain that require manual correction.  Sites should 
+ continue to run the TIUP146* routines periodically to see if the problem 
+ still occurs.
+  
+  
+ 9. This patch is identifying corrupt data, it may not be easily corrected
+ via menu options and the data may not have been corrected by the clean-up.
+ For example, visits associated with Discharge Summaries cannot be 
+ corrected through options.
+  
+ If you are unable to correct the visit please log a NOIS and a member of
+ the NVS CLIN2 team will assist you.  
+
+Routine Information:
+====================
+
+Routine Name:
+  - TIUPXAP1
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUP149
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUP149P
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUPXAP2
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : OSTRANDER,ROBIN                Date Entered : OCT 08, 2002
+Completed By: ASKEW,DENEEN                  Date Completed: MAR 11, 2003
+Released By : TASTROM,JOSEPH E             Date Released : MAR 11, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

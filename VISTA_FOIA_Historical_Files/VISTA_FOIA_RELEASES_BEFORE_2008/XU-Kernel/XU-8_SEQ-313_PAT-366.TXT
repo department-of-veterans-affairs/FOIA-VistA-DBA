@@ -1,0 +1,328 @@
+$TXT Created by IVEY,JOEL at PAT-XWB.FO-OAKLAND.MED.VA.GOV  (KIDS) on Wednesday, 09/07/05 at 11:14
+=============================================================================
+Run Date: SEP 29, 2005                     Designation: XU*8*366
+Package : XU - KERNEL                         Priority: Mandatory
+Version : 8       SEQ #313                      Status: Released
+                  Compliance Date: OCT 30, 2005
+=============================================================================
+
+
+Subject: RETURN ALERTS FROM SURROGATE
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+  Patch XU*8*366 (RETURN ALERTS FROM SURROGATE) resolves a patient safety
+  issue (PSI-04-036) by modifying the handling of alerts sent to surrogates
+  to return unprocessed alerts to the originally intended recipient of the
+  alert after a surrogacy period ends.  As a byproduct of the changes made,
+  it is now possible to schedule multiple different (temporal) surrogate
+  periods in advance.
+  
+  Alerts are sent to the specified surrogate, or surrogates if there is a
+  sequence of consecutive periods of surrogacy.  When a user requests a
+  listing of alerts AND THERE ARE NO CURRENT SURROGATES (either due to the
+  end of the surrogacy period or removal of the last surrogate) alerts which
+  were sent to the surrogate(s) and have not been processed by the surrogate
+  are returned to the user as new alerts with a comment indicating they were
+  returned from the surrogate.  If the surrogate was not an intended
+  recipient of the alert(s), either as an initially specified recipient or
+  by receiving the alert by forwarding from another recipient, the alert will
+  be deleted from the surrogate.  If the surrogate was an intended recipient
+  of the alert it will also remain with the surrogate.
+  
+  A consequence of the modifications made to track the periods of surrogacy
+  is the ability to add multiple surrogate periods with different start times.
+  The  most recent active start time determines which of the surrogate periods
+  is active.  Therefore, the termination date/time for a given period of
+  surrogacy, if specified, only determines the end of the surrogacy if no
+  other surrogacy period starts prior to that time.  It does not determine
+  the actual end time if another period of surrogacy starts before the
+  specified end time (or there was no end time specified).  A pair of
+  users can be specified in advance as mutual surrogates with opposite rolls,
+  as long as the periods of surrogacy do not overlap resulting in a circular
+  relationship.
+  
+  In the Roll and Scroll environment, selection of Surrogate processing will
+  list current surrogate(s) and give the option to remove one or more of the
+  surrogates, and the option to add a surrogate, which if it is a later start
+  date/time than a currently active or scheduled surrogate, will become active
+  at the date/time specified.
+  
+  A new supported reference (SUROLIST^XQALSURO) has been added to provide a
+  list of current and scheduled surrogates for a user.
+  
+  D SUROLIST^XQALSURO(XQAUSER,.XQALIST)
+  
+  where XQALIST is passed by reference.  On return XQALIST contains the
+  number of entries returned, and an array containing the current and
+  scheduled surrogates with '^'-separated values for internal entry number in
+  the NEW PERSON file (#200), the value for the NAME field (#.01) from the
+  NEW PERSON file (#200), the start date/time for the surrogacy period and the
+  end date/time for the surrogacy period.  If a surrogate has no end date/time
+  value and is followed by another surrogate, the first surrogate will show an
+  end date/time value equal to the start date/time of the following surrogate.
+  
+  returns  XQALIST=count
+           XQALIST(1)=IEN2^NEWPERSON,USER2^STARTDATETIME^ENDDATETIME
+           XQALIST(2)=3^NAME,USER3^3050407.1227^3050409
+  
+  The supported reference to remove surrogates (REMVSURO^XQALSURO) has been
+  modified to add two additional OPTIONAL arguments which specify the IEN of
+  a surrogate and the start date/time for that surrogate session to be removed
+  (these values can be obtained with the SUROLIST^XQALSURO call described
+  above).  If these two optional arguments are not specified, the call to
+  REMVSURO^XQALSURO will remove the current or next scheduled surrogate entry
+  (as it has in the past).
+  
+  These features will become active in windowed applications, such as CPRS,
+  only after the applications implement code changes to take advantage of the
+  new functionality included in this patch.
+  
+  The following field (and sub-file) was added to the ALERT file (#8992):
+  
+  8992,2        SURROGATE              2;0 DATE Multiple #8992.02
+  
+                DESCRIPTION:      This field is a multiple based on the start
+                                  date/time for a surrogate relationship.  This
+                                  will permit multiple surrogate relationships
+                                  to be scheduled.
+  
+                                  Since a start date/time for the surrogate
+                                  relationship is required, if the user does
+                                  not enter one, then the NOW as the
+                                  current date/time will be used.
+  
+  
+  8992.02,.01     SURROGATE START DATE/TIME 0;1 DATE(Required)(Multiply asked)
+  
+                  INPUT TRANSFORM:  S %DT="ESTX" D ^%DT S X=Y K:Y<1 X
+                  LAST EDITED:      NOV 12, 2004
+                  HELP-PROMPT:   This is the START DATE/TIME for the surrogate
+                  DESCRIPTION:      This is the starting date and time for a
+                                    surrogate relationship.
+  
+                  CROSS-REFERENCE:  8992.02^B
+                                    1)= S ^XTV(8992,DA(1),2,"B",$E(X,1,30),DA)=
+                                    ""
+                                    2)= K ^XTV(8992,DA(1),2,"B",$E(X,1,30),DA)
+  
+  
+  8992.02,.02     SURROGATE USER         0;2 POINTER TO NEW PERSON FILE (#200)
+                                     (Required)
+  
+                  LAST EDITED:      NOV 12, 2004
+                  HELP-PROMPT:      This is the user who will be the surrogate
+                                    during the time period specified
+                  DESCRIPTION:      This is a pointer to the user in the NEW
+                                    PERSON file who will be acting as the
+                                    surrogate for the time period specified.
+  
+  
+  8992.02,.03     END DATE TIME          0;3 DATE
+  
+                  INPUT TRANSFORM:  S %DT="ESTX" D ^%DT S X=Y K:Y<1 X
+                  LAST EDITED:      NOV 12, 2004
+                  HELP-PROMPT:      This is an optional date/time for when the
+                                    surrogate relationship will be terminated.
+                  DESCRIPTION:      This is an optional date/time for when the
+                                    surrogate relationship will be terminated.
+                                    If there is no value entered, then the
+                                    relationship will continue until it is
+                                    specifically terminated.
+  
+  
+  8992.02,.04     NEEDS RETURN           0;4 SET
+  
+                                    '1' FOR YES;
+                                    '0' FOR NO;
+                  LAST EDITED:      MAR 16, 2005
+                  HELP-PROMPT:      This is a flag which is used to determine
+                                    whether alerts have been returned to the
+                                    intended recipient or not
+                  DESCRIPTION:      This field is used as a flag to indicate
+                                    whether the alerts have been returned to
+                                    the intended recipient or not.
+  
+                  CROSS-REFERENCE:  8992.02^AC
+                            1)= S ^XTV(8992,DA(1),2,"AC",$E(X,1,30),DA)=
+                             ""
+  
+                                    2)= K ^XTV(8992,DA(1),2,"AC",$E(X,1,30),DA)
+                                  3)= This x-ref is used to track alerts
+                                  needing return from surrogates
+                                  This cross reference is used to identify
+                                  periods for which any alerts forwarded to a
+                                  surrogate have not been returned to the
+                                  intended recipient.
+  
+  
+  The following field was added to the sub-file for the SURROGATE FOR field
+  (#3) of the ALERT TRACKING file (#8992.1):
+  
+  
+  
+  8992.113,.03      DATE-TIME RETURNED 0;3 DATE
+  
+                        INPUT TRANSFORM:S %DT="ESTXR" D ^%DT S X=Y K:Y<1 X
+                        LAST EDITED: MAR 16, 2005
+                        HELP-PROMPT:This is the date-time that the alert was
+                                  returned to the originally intended recipient
+                        DESCRIPTION:
+                                 This field is a record for the date-time that
+                                 an alert for which this recipient was acting
+                                 as a surrogate was returned to the origin-
+                                 ally intended recipient of the alert.
+  
+  
+  In addition the AUD cross-reference was added to the ALERT DATE/TIME field
+  (#.04) the sub-file associated with the RECIPIENT TYPE field (#1) of the
+  ALERT TRACKING file (#8992.1).
+  
+  
+  NOISs
+  MIW-0704-40544       TIU ALERTS FOR ADDITIONAL SIGNER NOT REGENERATED
+  ALT-0104-20049       Surrogate Setting
+  
+  E3Rs
+    #19537, MULTIPLE SURROGATES
+    #19178, DATE CHECK FOR SURROGATE ASSIGNMENT
+    #17330, ALLOW MULTIPLE SURROGATES
+    #16711, MULTIPLE SURROGATES FOR ALERT
+    #16237, SELECTIVE SURROGATE DESIGNATION BY END-USER
+  
+  
+  List of Test Sites
+  ==================
+ CLARKSBURG, WV
+ PORTLAND, OR (C)
+ PUGET SOUND HCS
+ SALISBURY, NC
+ WEST PALM BEACH, FL
+  
+  
+  Routine Summary:
+  The following routines are included in this patch.  The second
+  line of each of these routines now looks like:
+  
+       <tab>;;8.0;KERNEL;**[patch list]**;Jul 10, 1995
+  
+  Checksums:
+  ==========
+  Checksums obtained using CHECK^XTSUMBLD
+  
+   Rtn Nm    Chksum Before   Chksum After    Patch List
+   ------    -------------   ------------    ----------
+   XQA366PO            N/A        1270650    **366**
+   XQALERT         8063898        8345286    **1,65,125,173,285,366**
+   XQALERT1       32870507       32133568    **20,65,114,123,125,164,173,285,
+   366**
+   XQALSUR1            N/A       24977392    **366**
+   XQALSUR2            N/A        4795616    **366**
+   XQALSURO       14207055       21906288    **114,125,173,285,366**
+  
+  Checksums obtained using CHECK1^XTSUMBLD from XT*7.3*94 (new style)
+  
+   Rtn Nm    Chksum Before   Chksum After    Patch List
+   ------    -------------   ------------    ----------
+   XQA366PO            N/A        1749690    **366**
+   XQALERT        15349948       16208814    **1,65,125,173,285,366**
+   XQALERT1       79355953       77322571    **20,65,114,123,125,164,173,285,
+   366**
+   XQALSUR1            N/A       65103748    **366**
+   XQALSUR2            N/A        6279756    **366**
+   XQALSURO       42941175       62950995    **114,125,173,285,366**
+  
+  List of preceding patches: 285
+  
+  Blood Bank Clearance:
+  =============================
+  Clearance - Apr. 21, 2005
+  
+  EFFECT ON BLOOD BANK FUNCTIONAL REQUIREMENTS: Patch XU*8*366 contains
+  changes to a package referenced in VHA OI SEPG SOP 192-023 Review of VISTA
+  Patches for Effects on VISTA Blood Bank Software. This patch does not
+  alter or modify any VistA Blood Bank software design safeguards or safety
+  critical elements functions.
+  
+  RISK ANALYSIS: Changes made by patch XU*8*366 have no effect on Blood Bank
+  software functionality, therefore RISK is none.
+  
+  
+  Installation Instructions:
+  
+       1.   Users ARE allowed to be on the system during the
+       installation.
+  
+       2.   DSM sites - Some of these routines are usually mapped,
+       so you will need to disable mapping for the affected routines.
+  
+       3.   Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu.
+       This option will load the KIDS (Kernel Installation and Distribution
+       System) package onto your system.
+  
+       4.   You DO NOT need to stop TaskMan or the background filers.
+  
+       5.   The patch has now been loaded into a transport global on your
+       system.  On the KIDS menu, select the 'Installation' menu and use
+       the following options:
+             Verify Checksums in Transport Global
+             Print Transport Global
+             Compare Transport Global to Current System
+             Backup a Transport Global
+  
+             Return to Programmers Prompt and use "D ^XPDKRN":
+             Select KIDS OPTION: Install
+                                 =======
+              Install Package(s)
+              Select INSTALL NAME: XU*8.0*366
+                                   ==========
+  
+          Want KIDS to INHIBIT LOGONs during the install? YES// NO
+                                                                ==
+          Want to DISABLE Scheduled Options, Menu Options, and Protocols?
+          YES// NO
+                ==
+  
+       6.  AXP Sites - Answer 'NO' to the question 'Want to MOVE
+       routines to other CPUs?'.
+  
+  
+       7.  If the routines were unmapped as part of step 2, they should be
+       returned to the mapped set once the installation has run to
+       completion.
+
+Routine Information:
+====================
+The checksum's below are the new checksums.
+ These can be checked with CHECK1^XTSUMBLD
+
+Routine Name: XQA366PO
+
+Routine Name: XQALERT
+
+Routine Name: XQALERT1
+
+Routine Name: XQALSURO
+
+Routine Name: XQALSUR1
+
+Routine Name: XQALSUR2
+
+=============================================================================
+User Information:
+Entered By  : IVEY,JOEL                     Date Entered  : OCT 21, 2004
+Completed By: SINGH,GURBIR                  Date Completed: SEP 28, 2005
+Released By : TILLIS,LEWIS                  Date Released : SEP 29, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

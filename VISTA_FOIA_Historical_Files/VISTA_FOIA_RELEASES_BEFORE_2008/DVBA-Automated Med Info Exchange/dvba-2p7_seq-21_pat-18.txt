@@ -1,0 +1,219 @@
+$TXT Created by PAJERSKI,JAN at MNTVBB.ISC-ALBANY.VA.GOV  (KIDS) on MONDAY, 04/27/98 at 09:56
+=============================================================================
+Run Date: AUG 05, 1998                     Designation: DVBA*2.7*18
+Package : DVBA - AUTOMATED MED INFO Priority: Mandatory
+Version : 2.7        SEQ #21                    Status: Released
+=============================================================================
+
+Associated patches: (v)DVBA*2.7*6  <<= must be installed BEFORE `DVBA*2.7*18'
+
+Subject: CORRECT PROBLEMS WITH EXAM TRANSFERS
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+   The routine modifications included in this patch have been made to 
+   address issues raised in the following NOIS entries: 
+   
+   BUT-0198-21352
+   NIN-1196-41963
+   TOP-1097-42734
+   
+   These issues involve the transfer of AMIE C&P exam requests between 
+   medical centers.  The revisions will prevent (1) duplicate entries from
+   being made to the PATIENT file (#2) of the target site, (2) erroneous 
+   overwrite of patient demographic data at the target site, and (3) entry
+   of 2507 REQUEST (file #396.3) records without accompanying entries in 
+   the 2507 EXAM file (#396.4) at the target site.
+    
+   (1) Routine DVBCXFRC has been revised as follows:
+   
+       (a) Any update or addition to the PATIENT file (#2), the 2507 
+           REQUEST file (#396.3), and the 2507 EXAM file (#396.4) is 
+           prevented unless a primary division at the target medical 
+           center has been found.
+    
+       (b) Any update or addition to the PATIENT file (#2), the 2507 
+           REQUEST file (#396.3), and the 2507 EXAM file (#396.4) is 
+           prevented unless a unique station# for the Regional Office
+           of the requesting site can be found in the INSTITUTION file
+           (#4) of the target site.
+   
+       (c) Before any update to the PATIENT file (#2) is allowed, the 
+           "SSN" index will be checked for an exact match to the SSN 
+           of the patient contained in the exam request.
+   
+           If more than one exact match is found, then no update is made
+           and a special error bulletin is returned to the requesting
+           site.
+           
+           If one exact match to the SSN is found, but the name and/or
+           DOB do not coincide with the patient name and DOB contained 
+           in the exam request, then no update is made to file #2 and 
+           a special error bulletin is returned to the requesting site.
+           
+           If no match is found, then a new entry is made to file #2 
+           for the patient contained in the exam request.
+           
+       (d) If for any reason the exams contained in the transfer request 
+           cannot be added to the 2507 EXAM file (#396.4), then 
+           the request that had just been entered in the 2507 REQUEST 
+           file (#396.3) is deleted, and a special error bulletin is 
+           sent to the requesting site.
+    
+   (2) Routine DVBCXFRD has been revised as follows:
+       
+       (a) If the exam request transfer has failed because a primary 
+           division at the target medical center could not be found, 
+           then an error bulletin is returned to the requesting site
+           stating:
+             
+           Reason for failure:
+           Addition of C&P request record at target site failed.
+           Could not determine primary medical center division.
+   
+       (b) If the exam request transfer has failed because a unique
+           Regional Office station number could not be found at the 
+           target medical center, then an error bulletin is returned
+           to the requesting site stating:
+              
+           Reason for failure:
+           Addition of C&P request record at target site failed.
+           Your Regional Office station # (xxx) is not unique
+           in the Institution file of the target site.
+    
+           Or
+    
+           Reason for failure:
+           Addition of C&P request record at target site failed.
+           Your Regional Office station # (xxx) could not be found
+           in the Institution file of the target site.
+   
+           (Where 'xxx' is the Regional Office station #.)
+  
+       (c) If the exam request transfer failed because more that one 
+           record in the PATIENT file (#2) matched the SSN in the exam 
+           request, then an error bulletin is returned to the requesting 
+           site stating: 
+    
+           Reason for failure:
+           Update of patient data at target site failed.
+           More than one entry matches the value 'nnnnnnnnn'.
+           
+           (Where 'nnnnnnnnn' is the patient SSN.)
+    
+       (d) If the exam request transfer failed because only one record
+           in the PATIENT file (#2) matched the SSN in the exam request,
+           but the name or DOB did not match, then an error bulletin
+           is returned to the requesting site stating:
+              
+           Reason for failure:
+           Update of patient data at target site failed for SSN nnnnnnnnn.
+           Patient name and/or DOB at target site does not match transfer
+           request.
+           At target site --
+           Name: LAST,FIRST NAME   DOB: MAR 6, 1928
+   
+       (e) If the exam request transfer failed because of a problem in
+           filing new entries to the 2507 EXAM file (#396.4), then an error 
+           bulletin is returned to the requesting site stating:
+   
+           Reason for failure:
+           Addition of C&P exams for request record at target site failed.
+           Therefore, the C&P request record was deleted.
+   
+       The specific information contained in these bulletins should ease
+       resolution of identified problems.  If any of these bulletins is
+       received by the requestor, it should be discussed immediately with
+       appropriate personnel at the target site.
+   
+   
+   ROUTINE SUMMARY:
+   ================
+   The following is a list of the routine(s) included in this patch.  The
+   second line of each of these routine(s) will look like:
+   
+       <tab>;;2.7;AMIE;**[patch list]**;Apr 10, 1995
+   
+                              CHECK^XTSUMBLD results
+   
+   Routine name        Before Patch       After Patch      Patch List
+   ============        ============       ===========      ==========
+   DVBCXFRC              14874737           15946846         1,6,18
+   DVBCXFRD               5143029            7841942             18
+   
+   
+   INSTALLATION INSTRUCTIONS:
+   ==========================
+   
+   This patch can be loaded with users on the system.  However, it would be
+   preferable to perform the installation at a time when it is less likely
+   that AMIE C&P exam requests are being transferred to your facility.
+   
+   Installation will take less than 2 minutes.  
+    
+   1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu to unload
+       the KIDS distribution included with this message.
+     
+   2.  Review your mapped set.  If any of the routines listed in the
+       ROUTINE SUMMARY section are mapped, they should be removed
+       from the mapped set at this time.
+   
+   3.  From the Kernel Installation and Distribution System Menu, select 
+       the Installation menu.  
+    
+   4.  From this menu, you may elect to use the following options
+       (when prompted for INSTALL NAME, enter DVBA*2.7*18):
+       a. Backup a Transport Global - This option will create a backup 
+          message of any routines exported with this patch. It will not 
+          backup any other changes such as DD's or templates.  
+       b. Compare Transport Global to Current System - This option will 
+          allow you to view all changes that will be made when this patch 
+          is installed. It compares all components of this patch 
+          (routines, DD's, templates, etc.).  
+       c. Verify Checksums in Transport Global - This option will allow 
+          you to ensure the integrity of the routines that are in the 
+          transport global.  
+    
+   5.  Use the Install Package(s) option and select the package DVBA*2.7*18.
+   
+   6.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+       Protocols? YES//', respond YES.  When prompted to select the options
+       you would like to place out of order, enter the following:
+      
+            Process C&P Mail Message  [DVBA C PROCESS MAIL MESSAGE]
+   
+   7.  If routines were unmapped as part of step 2, they should be returned
+       to the mapped set once the installation has run to completion.
+   
+
+Routine Information:
+====================
+
+Routine Name:
+  - DVBCXFRC
+
+
+Routine Checksum:
+
+Routine Name:
+  - DVBCXFRD
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : PAJERSKI,JAN                   Date Entered : FEB 26, 1998
+Completed By: RUBIN,ALICE                   Date Completed: JUL 16, 1998
+Released By : BROCKERT,JUDY                 Date Released : AUG 05, 1998
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

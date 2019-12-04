@@ -1,0 +1,298 @@
+
+=============================================================================
+Run Date: OCT 22, 2003                     Designation: IVM*2*79
+Package : IVM - INCOME VERIFICATION MATCH     Priority: Mandatory
+Version : 2        SEQ #76                      Status: Released
+                  Compliance Date: NOV 22, 2003
+=============================================================================
+
+Associated patches: (v)IVM*2*73    <<= must be installed BEFORE `IVM*2*79'
+                    (v)IVM*2*74    <<= must be installed BEFORE `IVM*2*79'
+                    (v)IVM*2*75    <<= must be installed BEFORE `IVM*2*79'
+
+Subject: INTERIM ADDRESS ENHANCEMENTS
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Other
+
+Description:
+============
+
+  PROJECT OVERVIEW
+  ================
+  In January 2003, the Registration, Enrollment, and Eligibility Group (REEG)
+  released software to support the Geographic Means Test (GMT) initiative. Part
+  of that release included address enhancements designed to provide a more
+  accurate and cleaner address for use in comparison against a newly instituted
+  geographic-based monetary threshold. Specifically, the enhancements allowed
+  for the automatic population of city, state, and county based on entry of a
+  zip code, automatic update of "recent" address changes throughout VA Medical
+  Centers (VAMCs) and the Health Eligibility Center (HEC), and the addition of
+  two new files - one for county and one for postal codes.
+  
+  The Interim Address Enhancements (IAE) project addresses the following
+  issues and requirements:
+  
+  VistA Enrollment/Registration:
+       1. Patient Permanent Mailing Address  update 
+            a. Allow review and manual accept/reject of patients permanent
+               mailing address using IVM Demographic Upload Functionality
+               for patients receiving pharmacy mailout prescriptions 
+            b. Allow automatic upload of "new" patients permanent mailing
+               address to the site(s) if the Bad Address Indicator (BAI) is
+               set AND/OR there are no active pharmacy prescriptions AND the
+               address being sent is newer than the one on file at the site(s)
+            c. Allow automatic upload of "new" patients permanent mailing
+               address if the site hasn't taken any action to review and accept
+               or reject the address change after 14 days 
+            d. Allow city selection for multiple cities per zip code
+       2. Reporting on changes to patient's permanent mailing address
+            a. Create a report containing changed addresses
+            b. Create a report containing the addresses to be auto-uploaded
+       3. IVM Demographics Upload Cleanup for address fields
+       4. Periodic cleanup of IVM Demographic Upload File for non-address
+          fields
+       5. Filter the outbound HL7 message from VistA to ignore sending "bad"
+          addresses to HEC
+  
+  Infrastructure and Security Services (ISS):
+       1. Add entries for other cities to the USPS Postal Codes File 
+       2. Add longitude and latitude values to County File
+       3. Provide an API that will return the valid city or cities name(s)
+          for a given ZIP Code
+       4. Modify MFN~M05 message to include new postal code fields
+  
+  FUNCTIONAL DESCRIPTION
+  ======================
+  The functional changes that will be introduced with this patch include:
+  
+       1. Patient Permanent Mailing Address  update 
+            a. Allow review and manual accept/reject of patient's permanent
+               mailing address for patients receiving pharmacy mailout
+               prescriptions using IVM Demographic Upload Functionality
+            b. Allow automatic upload of "new" patient's permanent mailing
+               address to the site(s) if the Bad Address Indicator (BAI) is
+               set AND/OR there are no active pharmacy scripts AND the address
+               being sent is newer than the one on file at the facility
+            c. Allow automatic upload of "new" patient's permanent mailing
+               address if the site hasn't taken any action to review and accept
+               or reject the address change after 14 days
+       2. A new report containing the addresses to be automatically uploaded
+          can be accessed using the IVM ADDR UPDT PENDING REVIEW menu option.
+          It is suggested to task this menu option to run nightly to a printer.
+       3. A one-time cleanup will be tasked to clean up outdated IVM 
+          demographics upload data.
+       4. A periodic cleanup of non-address related IVM upload data will delete
+          data that has not been manually uploaded after 30 days.  The
+          following fields will NOT be auto-deleted: 
+              DATE OF BIRTH
+              DATE OF DEATH (if one does not exist in the Patient file)
+              SEX
+       5. A filter has been added to the outbound Z07 messages from VistA to
+          prevent sending "bad addresses" to HEC in any of the following
+          scenarios:
+              > The address contains 'UNKNOWN', 'HOMELESS', or 'ADDRESS'
+              > The first two characters of the address are equal to '**'
+              > The address is NULL
+              > The zip code is NULL
+             
+  
+  TEST SITES
+  ==========
+  Bay Pines, FL
+  Martinez, CA
+  Clarksburg, WV
+  Reno, NV
+  Salisbury, NC
+  
+  TECHNICAL DESCRIPTION
+  =====================
+  The following is a summary of the changes included in this patch.  For a 
+  detailed description of these changes, please refer to the Interim Address
+  Enhancements (IAE) Software Design Document, which can be found in TSPR at:
+  
+  http://tspr.vista.med.va.gov/warboard/anotebk.asp?proj=764
+  
+  FILE SUMMARY
+  ============
+  IVM PATIENT (#301.5) - This file is being modified to add a new field to the
+       DEMOGRAPHIC UPLOAD DATA (#301.511) subfile as shown below:
+  
+       FIELD NAME:       DATE/TIME RECEIVED
+       FLD NUMBER:       .03     
+       FLD TITLE:        DATE/TIME DEMOGRAPHIC DATA RECEIVED
+       NODE;PIECE:       0;3
+       ACCESS:           RD:    DEL:    WR: @
+       DATA TYPE:        Date-valued
+       INPUT TRANSFORM:  S %DT="ESTX" D ^%DT S X=Y K:X<1 X
+       PROMPT MESSAGE:   (No range limit on date)
+       DESCRIPTION:      This field contains the Date and Time that the
+                         Demographic field was received.
+  
+  IVM DEMOGRAPHICS UPLOAD FIELDS (#301.92) - Three new entries have been added
+     to this file to provide additional information to the user while reviewing
+     the demographics upload.  The following new entries are added during the
+     pre-install process:
+  
+       ADDRESS CHANGE DT/TM
+       ADDRESS CHANGE SOURCE
+       ADDRESS CHANGE SITE
+  
+  OPTION SUMMARY
+  ==============
+  The following new menu option has been added to the system:
+  
+   IVM Address Updates Pending Review [IVM ADDR UPDT PENDING REVIEW] 
+   -----------------------------------------------------------------
+   PLEASE NOTE: It is recommended that this menu option should be tasked
+                to run daily. 
+  
+    This report will display information related to patient
+    address data received from HEC for patient with active pharmacy
+    prescriptions.  The report also lists the date on which the
+    address information will be automatically uploaded if it has
+    not yet been reviewed manually. 
+  
+  ROUTINE SUMMARY
+  ===============
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;2.0;INCOME VERIFICATION MATCH;**[patch list]**; 21-OCT-94
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  IVM279P                    N/A              5870339             79
+  IVMLDEM6               9862405             12913082        10,58,73,79
+  IVMLDEM7               4645596              5335531            10,79
+  IVMLDEM9                   N/A              8688296             79
+  IVMLDEMC                   N/A              4669490             79
+  IVMPREC6               7993544              7804883        3,4,12,17,34
+                                                                 58,79
+  IVMPREC8               7031164              7454076        5,6,12,58,73
+                                                                  79
+  IVMPTRN                7518053              7634560        1,9,11,12,17
+                                                              28,34,74,79
+  IVMPTRN8              11570846             11578004        9,11,19,12,21
+                                                            17,24,36,37,47
+                                                            48,42,34,77,76
+                                                                 75,79
+  IVMPTRN9               9276147              9698515        9,11,19,12,21
+                                                            17,46,50,53,34
+                                                               49,58,79 
+  
+  
+  SOFTWARE AND DOCUMENTATION RETRIEVAL
+  ====================================  
+  The software for this patch is being distributed in the DG_53_P522.KID
+  host file.
+   
+  Please refer to the 'Software and Documentation Retrieval' section of the
+  DG*5.3*522 patch description for instructions on how to acquire the software
+  and documentation associated with this patch. Both the IVM User and Technical
+  Manuals have been updated with this release.
+  
+  
+  INSTALLATION INSTRUCTIONS
+  =========================  
+  Please refer to the 'Installation Instructions' section of the DG*5.3*522 
+  patch description for instructions on how to install the patch software.
+  
+  
+  POST-INSTALLATION INFORMATION
+  ==============================
+  Upon installation of this patch, a one-time cleanup job will be tasked to
+  run 30 days in the future.  The following will be displayed on the screen:
+   
+        WARNING: This clean-up will delete DEMOGRAPHIC UPLOAD DATA
+                 from the IVM PATIENT (#301.5) file when it runs.
+  
+        Please notify the appropriate personnel to take action on any
+        outstanding demographics uploaded data from HEC, if your site
+        processes IVM DEMOGRAPHICS UPLOADs on a regular basis.
+  
+        Task #xxxx has been queued to run on [today + 30 days]@18:00.
+        This task can be rescheduled for an earlier date if desired.
+  
+  Please note that the task # is stored with the Install and it can be 
+  rescheduled to an earlier date/time if needed to better correspond to the
+  needs of the staff that review IVM Demographic Uploads.
+
+Routine Information:
+====================
+
+Routine Name:
+  - IVMPREC8
+
+
+Routine Checksum:
+
+Routine Name:
+  - IVM279P
+
+
+Routine Checksum:
+
+Routine Name:
+  - IVMLDEM6
+
+
+Routine Checksum:
+
+Routine Name:
+  - IVMLDEM7
+
+
+Routine Checksum:
+
+Routine Name:
+  - IVMLDEM9
+
+
+Routine Checksum:
+
+Routine Name:
+  - IVMLDEMC
+
+
+Routine Checksum:
+
+Routine Name:
+  - IVMPREC6
+
+
+Routine Checksum:
+
+Routine Name:
+  - IVMPTRN
+
+
+Routine Checksum:
+
+Routine Name:
+  - IVMPTRN8
+
+
+Routine Checksum:
+
+Routine Name:
+  - IVMPTRN9
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : MORGAN,BRIAN                  Date Entered  : MAY 21, 2003
+Completed By: CURTIN,EDNA                   Date Completed: OCT 17, 2003
+Released By : GANUS,MAUNETTE                Date Released : OCT 22, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

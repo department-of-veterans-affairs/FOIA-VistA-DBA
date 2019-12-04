@@ -1,0 +1,488 @@
+$TXT Created by VILLELLA,ROSS at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Friday, 06/24/05 at 11:20
+=============================================================================
+Run Date: AUG 09, 2005                     Designation: PX*1*153
+Package : PX - PCE PATIENT CARE ENCOUNTER     Priority: Mandatory
+Version : 1       SEQ #125                      Status: Released
+                  Compliance Date: SEP 09, 2005
+=============================================================================
+
+
+Subject: CLEAN UP ENCOUNTERS W/O VISIT
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch has been created to provide a routine utility to remove 
+ Encounters that have missing Visits. The missing Visits cause a problem
+ where the Encounters can not be checked out. We've discovered that the 
+ reason the visit is not being created is that there are some file 
+ discrepancies between the Patient (2) file and the IHS/Patient (9000001) 
+ file. The routines that create the visit use the IHS/Patient file for 
+ lookup purposes and because of missing entries it can not find the 
+ patient thus causing the appointment and encounter to be created and the 
+ visit not created because it thinks the patient is not there. This 
+ utility will clean up the encounter and also perform a check that will 
+ correct the missing entries in the IHS/Patient file as needed. This will 
+ then allow the user to go back in and perform the Check Out process which 
+ will properly create both the Encounter and the Visit.
+  
+ The utility provided in this patch is a temporary solution. Patch
+ PX*1.0*173, currently under development, will address the scenario that
+ causes the problem. When initially running this utility, enter date 
+ range(s) wide enough to cover the first day of use on the system through 
+ the current date. Until PX*1.0*173 is released it is recommended that you 
+ run the utility periodically; once every couple of weeks is suggested. 
+ Once PX*1.0*173 is installed this utility will no longer be needed.
+  
+ ASSOCIATED NOIS:
+ ===============
+ GRJ-0504-51652 =REMEDY #63948   UNABLE TO CHECK OUT ENCOUNTERS
+ Duplicate:
+ CPH-0604-41631 =REMEDY #64000   CANNOT CHECK PATIENT OUT
+  
+ ASSOCIATED E3R(s):
+ =================
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ ========================
+ Grand Junction,CO
+ Portland,OR
+ VA Greater Los Angeles HCS
+  
+ NOIS OVERVIEW:
+ =============
+  
+ 1. GRJ-0504-51652  UNABLE TO CHECK OUT ENCOUNTERS.
+  
+  
+ Problem:
+ -------
+ There is an existing problem where only the Encounter gets created for 
+ an appointment. The associated Visit does not exist. 
+  
+ Resolution:
+ ----------
+ This patch will provide the user with a utility to correct the existing
+ issues by cleaning up the encounter with no visit and performing a check 
+ to make sure there are no missing pointers between the Patient (2) file 
+ and the IHS/Patient (9000001) file. This will allow the users to perform 
+ the Check Out process with no problems.
+  
+  
+ TECHNICAL:
+ =========
+ The routine PXDELENC has been created to provide the user with a tool for 
+ identification and reporting of the Encounters with missing Visits. The 
+ routine PXDELFIX has been created to provide the user with a tool to fix 
+ the Encounters in question.
+  
+ This routine utility will be in the menu tree:
+         PCE Coordinator Menu  [PX PCE COORDINATOR MENU]
+           TBL PCE Table Maintenance ...
+             DEWO PCE Delete Encounters W/O Visit
+  
+ Please note that the process that builds a list of encounters without
+ visits may take a significant amount of time depending on the 
+ encounter date range selected, so it is queued rather than run 
+ interactively. The user will have the option of queuing the process
+ immediately or scheduling the process at a later time.
+  
+ Once the Build process is complete a Mailman message will be sent to the 
+ user informing them that the process has been completed. At this point the
+ user can continue to the Report and Fix options.
+  
+ The list is built into the ^XTMP global array documented below. There is 
+ no specific time frame to run the reporting and fix options after the 
+ list is created. However, please note that the ^XTMP nodes will be 
+ cleaned up after a period of 120 days from the creation date.
+  
+    Example of Mail message:
+    
+    Subj: PCE Delete Encounters W/O Visit...Build Completed..  [#1876438]
+    08/03/04@10:54  3 lines
+    From: POSTMASTER  In 'IN' basket.   Page 1  *New*
+    
+ --------------------------------------------------------------------------
+  
+    PCE DELETE ENCOUNTER W/O VISIT is ready to report & fix.
+    Build routine PXDELENC for missing visits has completed
+    Start time: AUG 03, 2004@10:54:52 End time: AUG 03, 2004@10:54:53
+  
+    Enter message action (in IN basket): Ignore// 
+  
+  
+ This routine utility will consist of four (4) options.
+  
+         Below is a Menu snap shot and the Help text for this utility.
+  
+         Select one of the following:
+  
+           1         BUILD
+           2         REPORT
+           3         FIX ALL BUILD ERRORS
+           4         FIX INDIVIDUAL
+  
+         Enter response: ?
+  
+         Please note: Options 2-3 work directly from the temporary
+         file created by date range under Option 1 - BUILD.
+         While Option 4 works with the individual patient selected.
+         Option 4 may show different results than the Build Report which
+         displays all existing problem encounters by patient.
+  
+         Please enter 1, 2, 3, or 4.
+  
+  
+         (1) Option 1 - BUILD
+  
+ The Build will scan the Patient file to review the Patient Encounters. 
+ Upon the occurrence of an appointment with no visit, a build will
+ be created for the Patient and Encounter. Upon selection of this
+ option, a display will inform the user of the last build date and time
+ along with the date range the build was run for. It will also inform the
+ user if there are any remaining items to be fixed. The user will have the
+ option of continuing with the new build or reporting and fixing the
+ remaining items if necessary.
+  
+ It is estimated that this utility will process in the neighborhood of 
+ 10,000 appointments every 3-5 minutes.
+  
+             Example:
+  
+             
+ Select PCE Table Maintenance Option: DEWO  PCE Delete Encounters W/O  
+ Visit
+  
+             Select one of the following:
+  
+                  1         BUILD
+                  2         REPORT
+                  3         FIX ALL
+                  4         FIX INDIVIDUAL
+  
+             Enter response: 1  BUILD
+  
+             Last Build completed on AUG 03, 2004@10:00
+             using a date range of JUL 24, 2004 thru AUG 03, 2004
+             Do you wish to continue with NEW Build? ? NO// YES
+             Enter Begin date for build: T-300  (OCT 08, 2003)
+             Enter Ending date for build: T  (AUG 03, 2004)
+  
+  
+             Requested Start Time: NOW//  (AUG 03, 2004@10:54:51)
+             Request Queued!
+  
+             Enter RETURN to continue:
+  
+  
+         (2) Option 2  REPORT
+  
+ This option is for the reporting of occurrences found in the Build (1) 
+ option. The reporting option contains the functionality to allow
+ the user to queue the report for printing at a later time. Note that the 
+ report will also contain associated secondary encounters. Secondary 
+ encounters are used for internal purposes of collecting the Credit Stop 
+ code. We are reporting them here as they will also be cleaned up during 
+ the fix process. There is a slight possibility that a secondary encounter 
+ will exist without the primary encounter. When this is the case the 
+ report is slightly different as seen in EXAMPLE 2 below. EXAMPLE 3 below 
+ shows the display when no missing visits are found.
+  
+             Example:
+  
+ Select PCE Table Maintenance Option: DEWO  PCE Delete Encounters W/O 
+ Visit
+  
+             Select one of the following:
+  
+                  1         BUILD
+                  2         REPORT
+                  3         FIX ALL
+                  4         FIX INDIVIDUAL
+  
+             Enter response: 2  REPORT
+             DEVICE: HOME//   UCX/TELNET
+  
+        ** EXAMPLE 1 **
+  
+        Missing Visit Report for Date Range of JAN 01, 1996 - SEP 15, 2004
+  
+  
+        Patient IEN - Name       Appt Date           Prim Enc  2nd Enc
+        ==================       =========           ========  =======
+  
+        489361 - TESTER,MILTON   JUL 22, 2004@12:00  20576     20577
+  
+  
+        ** EXAMPLE 2 **
+  
+        Missing Visit Report for Date Range of JAN 01, 1996 - SEP 15, 2004
+  
+  
+        Patient IEN - Name       Appt Date           Prim Enc  2nd Enc
+        ==================       =========           ========  =======
+  
+        489361 - TESTER,MILTON   JUL 22, 2004@12:00  20576     20577*
+  
+                    * Secondary Encounter exists without Primary!
+                Please note: Secondary Encounters can only be corrected
+                by the FIX ALL option as the FIX INDIVIDUAL option requires
+                the Primary Encounter to exist.
+  
+        ** EXAMPLE 3 **
+  
+                 Select one of the following:
+  
+                         1         BUILD
+                         2         REPORT
+                         3         FIX ALL BUILD ERRORS
+                         4         FIX INDIVIDUAL
+  
+                 Enter response: 2  REPORT
+  
+                 No missing visits found!
+  
+  
+         (3) Option 3 FIX ALL 
+  
+ This option will give the user the option of fixing all of the 
+ occurrences found with Option 1 above. The Report option should be run
+ prior to fixing so there is a record of what has been fixed.
+  
+                 Select one of the following:
+  
+           1         BUILD
+           2         REPORT
+           3         FIX ALL BUILD ERRORS
+           4         FIX INDIVIDUAL
+  
+ Enter response: 3  FIX ALL BUILD ERRORS
+  
+ There are 262 entries to correct.
+ Do you wish to continue? ? YES// YES
+  
+    Encounter: 4152 - TEST, PATIENT        Fixed!
+  
+  
+    Encounter: 9162 - TESTER, PATIENT      Fixed!
+  
+  
+    Encounter: 4286 - PATIENT, NAME        Fixed!
+  
+  
+    Encounter: 4284 - LASTNAME, FIRST      Fixed!
+  
+    etc.......
+  
+         (4) Option 4 FIX INDIVIDUAL 
+  
+ This option will allow the user to fix an individual Patient's Encounter
+ if already known to be a problem Encounter. It can be run for any Patient,
+ it does not have to be a Patient from the list generated with Option 1.
+   
+ Note that secondary encounters can not be fixed with this option as the
+ primary encounter is required. Secondary encounters will be fixed with the
+ FIX ALL option above. The problem encounters are listed from the latest
+ date to the current date. For example, a problem encountered for January
+ 1, 1995 will display first and a problem encountered February 7, 2002 will
+ display toward the end.
+  
+             Example:
+  
+ Select PCE Table Maintenance Option: DEWO  PCE Delete Encounters W/O  
+ Visit
+  
+             Select one of the following:
+  
+                  1         BUILD
+                  2         REPORT
+                  3         FIX ALL
+                  4         FIX INDIVIDUAL
+  
+ Enter response: 4  FIX INDIVIDUAL
+ Select PATIENT NAME: TESTER,AMIE
+    1   TESTER,AMIE        2-2-22    097341299       YES     SC 
+ VETERAN          
+   
+    2   TESTERIII,AMIE        1-1-10    107010110P       NO     SC 
+ VETERAN       
+      
+    3   TESTERIIII,AMIE        1-1-19    107010119P       YES     SC 
+ VETERAN     
+        
+ CHOOSE 1-3: 1  TESTER,AMIE        2-2-22    097341299       YES     SC 
+ VETERAN  
+           
+  
+ Processing....
+    Patient IEN - Name              Appt Date           Encounter
+    ==================              =========           =========
+    7170064 - TESTER,AMIE           MAY 05, 1994@08:00  3849
+    7170064 - TESTER,AMIE           MAY 15, 1994@08:00  4255
+  
+ This will fix all entries for this Patient. Continue? ? YES//
+  
+ Please note: The routine will not allow any of the options to 
+ be run while the build is executing.
+  
+ Select PCE Table Maintenance Option: DEWO  PCE Delete Encounters W/O
+ Visit
+  
+             Select one of the following:
+  
+                  1         BUILD
+                  2         REPORT
+                  3         FIX ALL
+                  4         FIX INDIVIDUAL
+  
+             Enter response: 2  REPORT
+  
+             Build is running, please wait until complete!
+  
+             Enter RETURN to continue:
+  
+  
+ The data collected from the Build process will be kept in 
+ ^XTMP("PXDELENC").
+ The layout for ^XTMP("PXDELENC") is as follows:
+         ^XTMP("PXDELENC",0)= purge date(create date + 120)^create date
+         ^XTMP("PXDELENC","START BUILD")= build start date and time
+         ^XTMP("PXDELENC","END BUILD")= build end date and time
+         ^XTMP("PXDELENC","PXENC","PXMAIL")= mail message number^duz
+         ^XTMP("PXDELENC","PXENC","PXCOUNT")= number of encounters 
+ remaining to be fixed
+         ^XTMP("PXDELENC","PXENC",0)= begin date range for build^end date 
+ range for build
+         ^XTMP("PXDELENC","PXENC",PATIENT EIN,APPT DATE & TIME,ENCOUNTER 
+ NUMBER)= SECONDARY ENCOUNTER NUMBER
+         ^XTMP("PXDELENC","FIXIND",PATIENT EIN,APPT DATE & 
+ TIME,ENCOUNTER)=NULL  (xref for Fix Individual option)
+  
+  
+ ROUTINE SUMMARY:
+ ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;1.0;PCE;**[patch list]**;Mar 11, 1996
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  PXDELENC                   N/A             11599642             153
+  PXDELFIX                   N/A              6136841             153
+  
+  
+ DOCUMENTATION DISTRIBUTION:
+ =========================== 
+ Sites may retrieve the change documentation directly via FTP (using 
+ BIN mode) from the ANONYMOUS.SOFTWARE directory at:
+  
+ Albany:             ftp.fo-albany.med.va.gov
+ Hines:              ftp.fo-hines.med.va.gov
+ Salt Lake City:     ftp.fo-slc.med.va.gov
+  
+ Files available
+ ===============
+ PX_1_P153_UM.pdf 
+ PX_1_P153_TM.pdf 
+  
+ The complete and updated User Manual and Technical Manual are on the VDL.
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+ This patch can be loaded with users in the system. Installation time will 
+ be less than 1 minute.
+  
+ 1. Choose the PackMan message containing this patch and invoke the 
+ INSTALL/CHECK MESSAGE PackMan option.
+  
+ 2. (DSM for Open VMS sites only) Disable routine mapping on all systems 
+ for the routines listed in the Routine Summary.
+  
+ NOTE: If the routines included in this patch are not currently in your 
+ mapped routine set, please skip this step.
+  
+ 3. Start up the Kernal Installation and Distribution System Menu [XPD 
+ MAIN]:
+        Edits and Distribution ...
+        Utilities ...
+        Installation ...
+  
+    Select Kernal Installation & Distribution System Option:  Installation
+                                                              ---
+  
+        1     Load a Distribution
+        2     Verify Checksums in Transport Global
+        3     Print Transport Global
+        4     Compare Transport Global to Current System
+        5     Backup a Transport Global
+        6     Install Package(s)
+              Restart Install of Package(s)
+              Unload a Distribution
+  
+ 4. From this menu, you may elect to use the following options
+    (When prompted for the INSTALL NAME. enter PX*1.0*153):
+  
+ a. Backup a Trasport Global - This option will create a backup 
+    message of any routines exported with this patch. It will not backup 
+    any other changes such as DD's or templates.
+  
+ b. Compare Transport Global to Current System - This option will 
+    allow you to view all changes that will be made when this patch is
+    installed. It compares all components of this patch (routines, DD's,
+    templates, etc..)
+   
+ c. Verify Checksums in Transport Global - This option will allow 
+    you to ensure the integrity of the routines that are in the Transport
+    global.
+  
+ 5. Use the Install Package(s) option and select the package
+    PX*1.0*153.
+  
+ a. When prompted 'Want KIDS to Rebuild Menu Trees Upon Completion 
+    of Install? YES//', answer NO.
+  
+ b. When prompted 'Want KIDS to INHIBIT LOGONs during the
+    install? YES//', answer NO.
+  
+ c. When prompted 'Want to DISABLE Scheduled Options and Menu 
+    Options and Protocols? YES//', answer NO.
+  
+ 6. (DSM for Open VMS sites only) Optional - Include the routines
+     distributed with this patch in the mapped routine set.
+  
+      NOTE: This step is only necessary if you performed step 2 or if
+      you wish to include the routines in your mapped set.
+
+Routine Information:
+====================
+
+Routine Name:
+  - PXDELENC
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXDELFIX
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : VILLELLA,ROSS                 Date Entered  : JUL 14, 2004
+Completed By: ILUSTRISIMO,LUCY              Date Completed: AUG 09, 2005
+Released By : HEUER,CINDY                   Date Released : AUG 09, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

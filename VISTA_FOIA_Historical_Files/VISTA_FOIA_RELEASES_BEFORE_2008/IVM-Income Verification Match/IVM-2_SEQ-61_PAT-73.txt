@@ -1,0 +1,220 @@
+$TXT Created by JANES,DAVID at MNTVMM.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 02/18/03 at 18:23
+=============================================================================
+Run Date: APR 22, 2003                     Designation: IVM*2*73
+Package : IVM - INCOME VERIFICATION MATCH    Priority: Mandatory
+Version : 2        SEQ #61                      Status: Released
+                  Compliance Date: MAY 23, 2003
+=============================================================================
+
+Associated patches: (v)IVM*2*58    <<= must be installed BEFORE `IVM*2*73'
+
+Subject: CORRECT AUTO UPLOAD OF ORU~Z05
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+ Developed in MNT,VMM.
+  
+ The patch addresses the following NOIS issues:
+        CHY-0203-50674 - Veteran hung up in IVM Upload Option   
+        CPH-0203-40485 - <NULLSUBSCR>AUTOADDR+34^IVMLDEM6:3             
+        MAD-0203-40238 - DEM UPLOAD SCREEN HAS BLANK ADDRESS    
+        MAD-0103-40092 - Demographic Upload w/NO data           
+        SBY-1202-31599 - Null Subscript at AUTOADDR+34^IVMLDEM6:3
+        HUN-0203-20067 - <UNDEF(ECODE)>DEFACK+3^HLCSIN:5
+  
+ All of these NOIS issues are related to the processing of the ORU~Z05 - 
+ Demographics Data Transmission from the HEC, and the auto uploading of the 
+ patient's address functionality introduced by the Geographic Means Test 
+ Phase I patches.
+  
+ The issues are:
+    1. When the address information is auto uploaded to the PATIENT (#2) 
+       file, an entry is left in the IVM PATIENT (#301.5) file with out any 
+       uploadable or non-uploadable fields.  This leaves an entry in the 
+       [IVM UPLOAD DEM] Demographics Upload option that requires the user 
+       to select the entry to clear it from the list.
+    2. As a result of an allocation error fixed by the patch, DG*5.3*496, 
+       null address data entries are remaining in the IVM CENTER DATA field
+       (#.02 of the DEMOGRAPHIC UPLOAD DATA (#301.511) multiple of the 
+       INCOMING SEGMENT (#301.501) multiple of the #301.5 file).  This also 
+       leaves an entry in the [IVM UPLOAD DEM] Demographics Upload option.
+       However, normal user processing may not clear this entry.
+    3. The PHONE NUMBER [RESIDENCE] field is excluded from the auto upload 
+       of the PATIENT file.  This field is not currently being compared to
+       the existing DHCP value for the PHONE NUMBER [RESIDENCE] field (#.311
+       of the #2 file) before storing the phone number as an uploadable 
+       field.
+    4. A <NULLSUBSCR>AUTOADDR+34^IVMLDEM6 error is sometimes generated as 
+       a result of an auto upload when no address data is available for 
+       filing.
+  
+ This patch will implement the following changes to address the NOIS issues:
+  
+    1. $$AUTOADDR^IVMLDEM6 is modified to check for the existence of 
+       uploadable or non-uploadable fields using the $$DEMO^IVMDLEM5 API.
+       If no fields are found, then the routine will call $$DELETE^IVMLDEM5
+       to delete the PID entry from the INCOMING SEGMENT multiple of the 
+       IVM PATIENT file.  This API is also modified to prevent the 
+       <NULLSUBSCR>AUTOADDR+34^IVMLDEM6 error.
+    2. DG*5.3*496 fixed the underlying cause of the allocation errors by 
+       removing the timestamp requirement on the ADDRESS CHANGE DT/TM 
+       (#.118) field of the PATIENT file.  The API $$RF1^IVMPREC8 is 
+       modified to add the initialization of the FDA and ERRMSG local 
+       arrays.
+    3. $$PID^IVMPREC8 is modified to compare the PHONE NUMBER [RESIDENCE] 
+       to the existing DHCP value.  The following special characters will
+       be excluding from the values when making the comparison (" ", ")",
+       "(", "/", "#", "\", and "-").
+  
+ The patch includes a post-install processor that will cleanup the following 
+ scenarios in the IVM PATIENT file.
+  
+    1. Execute the new PHONE NUMBER [RESIDENCE] field comparison logic, 
+       and delete any entries from the DEMOGRAPHIC UPLOAD DATA multiple
+       where the IVM CENTER DATA is the same as the DHCP data.
+    2. Remove any address field entries from the DEMOGRAPHIC UPLOAD DATA 
+       multiple that have a null IVM CENTER DATA field value.
+    3. Remove any PID entries from the INCOMING SEGMENT multiple that do 
+       not have any uploadable or non-uploadable fields.
+  
+ The post-install processor will generate a MailMan bulletin and send it to 
+ the person who installed the patch.  The message will contain the total 
+ number of records updated.  For each record updated, it will display the 
+ IEN of the PATIENT file, the IEN of the IVM PATIENT file, the SOCIAL 
+ SECURITY NUMBER field (#.09 of the #2 file), the NAME field (#.01 of the #2 
+ file), an Address flag to indicate a null address field was deleted from 
+ the IVM PATIENT file, and a Phone Number flag to indicate that a Phone 
+ Number field was deleted from the IVM PATIENT file.  If neither flag is 
+ set, then the IVM PATIENT entry was deleted because it did not contain any 
+ uploadable or non-uploadable fields.
+  
+ Here is an example of the bulletin:
+  
+ Subj: IVM PATIENT file Cleanup  [#17388] 02/18/03@14:12  183 lines
+ From: IVM EDIT PACKAGE  In 'IN' basket.   Page 1  *New*
+ -------------------------------------------------------------------------------
+ IVM PATIENT file cleanup
+   
+  
+  
+     Total IVM PATIENT Records Updated:            4
+  
+  
+   DFN      301.5        SSN           Name                    Addr?   Ph?
+ ==========================================================================
+   7170245  611          999999999     LAST,FIRST         
+   7170247  2160         888888888     PATIENT,NAME                    YES
+   7170294  6            777777777     ANOTHER,PATIENT          YES
+   7170361  2167         666666666     ONE,MORE                        YES
+ ===========================================================================
+  
+  ******** END OF MESSAGE ********
+  
+ ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;2.0;INCOME VERIFICATION MATCH;**[patch list]**; 21-OCT-94
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  IVM273A                    N/A              3956925             73
+  IVM273M                    N/A              2203612             73
+  IVMLDEM6               9285389              9862405          10,58,73
+  IVMPREC8               6335859              7031164        5,6,12,58,73
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+  
+ This patch can be loaded with users on the system. Installation could
+ take as long as 90 minutes.  Therefore, it is suggested that the installation 
+ of this patch be queued during off peak hours.
+  
+ 1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu. [Note:
+    TEXT PRINT/DISPLAY option in the PackMan menu will display the
+    patch text only].
+  
+ 2. Review your mapped set.  If any of the routines listed in the
+    ROUTINE SUMMARY section are mapped, they should be removed from
+    the mapped set at this time.
+  
+ 3. From the Kernel Installation and Distribution System (KIDS)
+    menu, select the Installation menu.
+  
+ 4. From this menu, you may elect to use the following options:
+    (when prompted for INSTALL NAME, enter IVM*2.0*73)
+     a.  Backup a Transport Global - this option will create a backup
+        message of any routines exported with the patch.  It will
+        NOT backup any other changes such as DDs or templates.
+    b.  Compare Transport Global to Current System  - this option
+        will allow you to view all changes that will be made when
+        the patch is installed.  It compares all components of the
+        patch (routines, DDs, templates, etc.).
+    c.  Verify Checksums in Transport Global - this option will
+        allow you to ensure the integrity of the routines that are
+        in the transport global.
+    d.  Print Transport Global - this option will allow you to view
+        the components of the KIDS build.
+    
+ 5. Use the Install Package(s) option and select the package IVM*2.0*73
+  
+ 6. When prompted 'Want KIDS to INHIBIT LOGONs during the install? YES//',
+    respond NO.
+  
+ 7. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+    Protocols? YES//', respond YES. 
+  
+    Select the following options to place out of order:
+        [IVM UPLOAD DEM]       Demographics Upload
+  
+ 8. If routines were unmapped as part of step 2, they should be
+    returned to the mapped set once the installation has run to
+    completion.
+  
+ 9. Reschedule any jobs that were unscheduled to install this patch.
+
+Routine Information:
+====================
+
+Routine Name:
+  - IVMLDEM6
+
+
+Routine Checksum:
+
+Routine Name:
+  - IVMPREC8
+
+
+Routine Checksum:
+
+Routine Name:
+  - IVM273M
+
+
+Routine Checksum:
+
+Routine Name:
+  - IVM273A
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : KEHOE,THOMAS C                Date Entered : DEC 23, 2002
+Completed By: JANES,DAVID                   Date Completed: APR 22, 2003
+Released By : GANUS,MAUNETTE                Date Released : APR 22, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

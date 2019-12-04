@@ -1,0 +1,278 @@
+$TXT Created by HUA,PATRICK at MNTVLL.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 10/29/08 at 13:41
+=============================================================================
+Run Date: OCT 30, 2008                     Designation: DG*5.3*789
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #698                    Status: Released
+                  Compliance Date: NOV 07, 2008
+=============================================================================
+
+Associated patches: (v)DG*5.3*689  <<= must be installed BEFORE `DG*5.3*789'
+
+Subject: UPDATE Z07 INCONSISTENT DATA ELEMENTS PER VHA DIRECTIVE 2008-031
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ ****************************************************************************
+  
+ NOTE:  The compliance date of this patch has been shortened to 
+ November 7, 2008 due to dependencies which exist with the
+ Enrollment VistA Changes (EVC) Release 2 project currently scheduled 
+ for release on November 15, 2008.  It is imperative that this patch
+ be installed no later than the compliance date.  Your understanding and
+ support is appreciated.
+  
+ ****************************************************************************
+  
+ This patch fixes a problem with the Inconsistent Data Elements Report
+ [DG CONSISTENCY PRINT] option. The Inconsistent Data Elements Report
+ [DG CONSISTENCY PRINT] option lists and retains patients although the 
+ Z07 Build Consistency Check [DG Z07 CONSISTENCY CHECK] option
+ indicates No Inconsistencies for the patients in question.
+ VHA Directive 2008-031, dated 6/10/2008, directed sites to change the value 
+ of the CHECK/DON'T CHECK field (#5) of the INCONSISTENT DATA ELEMENTS file
+ (#38.6) for a number of the Z07 Consistency Checks (CC) to a value of 
+ "DON'T CHECK". A copy of the directive can be found at the following link:
+  
+ http://vaww1.va.gov/vhapublications/ViewPublication.asp?pub_ID=1701
+  
+ The CHECK/DON'T CHECK field (#5) is used in conjunction with the
+ USE FOR Z07 CHECK field (#6) of the INCONSISTENT DATA ELEMENTS file
+ (#38.6) to determine if an HL7 Z07 (full data transmission) message
+ should be sent to the Health Eligibility Center (HEC). With the issuance
+ of the directive, some of the data elements had their values for the
+ CHECK/DON'T CHECK field (#5) reset from "CHECK" to "DON'T CHECK". This
+ allowed Z07 messages to be transmitted without first checking for
+ inconsistent data, potentially resulting in "bad" data being shared with
+ the Health Eligibility Center and the Enrollment System Redesign (ESR).
+  
+ This patch will be released in conjunction with patch IVM*2*132,
+ Z07 CONSISTENCY CHECKER MODIFICATION, to rectify this situation. These
+ patches have no hard dependencies and may be installed separately.
+  
+  
+ FUNCTIONAL DESCRIPTION:
+  
+ 1. The USE FOR Z07 CHECK field (#6) located in the INCONSISTENT DATA
+    ELEMENTS file (#38.6) can no longer be edited after the installation 
+    of this patch.
+  
+ 2. A pre-init routine, DG53789P, will run to ensure the USE FOR Z07 CHECK 
+    field (#6) of the INCONSISTENT DATA ELEMENTS file (#38.6) values match
+    those values mandated by VHA Directive 2008-031. The process will check
+    each value against the mandated values in the directive to ensure the
+    site's data values align with the directive. If the site values do not
+    match those values indicated by the directive, the site's values will
+    be reset to match the directive. The user installing the patch will see
+    a listing of those entries that were changed by this patch.
+  
+ 3. A change will be made to the routine, VADPT0, to prevent a subscript
+    error when a programmer uses the SVC^VADPT call and requests the result
+    to be returned in an array subscripted by the alpha characters. 
+    The SVC^VADPT call is a supported API call and is covered as a
+    component of DBIA #10061. Information on proper usage of the API can be
+    found in the PIMS v5.3 Technical Manual located on the VistA Document
+    Library (VDL):
+  
+ http://www.va.gov/vdl/documents/Clinical/Admis_Disch_Transfer_(ADT)/pimstm.pdf
+  
+  
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+ There is no NSR associated with this patch.
+   
+   
+ This patch addresses the following Remedy tickets:
+ ---------------------------------------------------------
+ Remedy tickets:
+ ---------------
+  
+ HD0000000260883 Z07 Build Consistency Check states no inconsistencies but
+                 Inconsistent Element Report still list patients:
+                 ( Original )
+  
+ HD0000000258258: Numerous Z07 CC for Person National ICN  ( duplicate )
+  
+ HD0000000237132: Z07 Messages Not Sent 
+  
+  
+ Problem:  
+ --------
+ Patients are listed on and remain on the Inconsistent Data Elements Report
+ for Z07 Messages but the Z07 Build Consistency Check states No
+ Inconsistency. Sites were directed to change the value of the CHECK/DON'T
+ CHECK field (#5) of the INCONSISTENT DATA ELEMENTS file (#38.6) for a
+ number of the Z07 Consistency Checks (CC) to a value of "DON'T CHECK". 
+ The CHECK/DON'T CHECK field (#5) is checked when sending a Z07 and if it
+ is set to "DON'T CHECK", the field USE FOR Z07 CHECK (#6) of the
+ INCONSISTENT DATA ELEMENTS file (#38.6) is never used to activate the
+ consistency checks for Z07 transmissions.
+  
+ Solution: 
+ ---------
+ Pre-init DG53789P was written to file the correct value for the USE
+ FOR Z07 CHECK field (#6) of the INCONSISTENT DATA ELEMENTS file (#38.6) to
+ correspond with the values stated in the VHA directive 2008-031. The 
+ USE FOR Z07 CHECK (#6) field of the INCONSISTENT DATA ELEMENTS file
+ (#38.6) was made un-editable so the users can not change the value of the
+ field. An Income Verification Match (IVM*2.0*132) patch was also created
+ to remove the check for the CHECK/DON'T CHECK field (#5) of the
+ INCONSISTENT DATA ELEMENTS File (#38.6) when sending a Z07.
+  
+  
+ HD0000000249058 Subscript error
+  
+ Problem:
+ --------
+ As a result of an oversight, when the OEF/OIF conflict data was added to
+ the programmer's call SVC^VADPT, it did not allow for a return of the
+ data using alpha subscripts. Now, when a programmer sets the variable
+ VAHOW = 1 to indicate the results should be returned using an alpha
+ subscript (rather than the default of numeric), an Undefined error is
+ encountered and the call fails.
+  
+ Solution:
+ ---------
+ The code will be fixed to return the subscript array without error. This 
+ particular problem may only be tested at a programmer's prompt using the 
+ following code because this feature is not used anywhere in the 
+ Registration/Enrollment code.
+  
+     >S VAHOW=1,DFN=nnn D SVC^VADPT  (where nnn=the internal entry number
+                        of the entry in the PATIENT file (#2))
+     >ZW VASV  will list the return array for the selected patient
+  
+  
+ Test Sites:
+ -----------
+ MARYLAND HCS
+ TOGUS, ME
+ ATLANTA 
+  
+ Data Dictionary:
+ ================
+ File #38.6  INCONSISTENT DATA ELEMENTS
+ Field #6    USE FOR Z07 CHECK
+  
+ Field changed to UNEDITABLE
+  
+ Before:
+  
+ 38.6,6        USE FOR Z07 CHECK      0;6 SET
+  
+                                 '0' FOR NO; 
+                                 '1' FOR YES; 
+               LAST EDITED:      OCT 13, 2005
+  
+ After:
+  
+ 38.6,6        USE FOR Z07 CHECK      0;6 SET
+  
+                                 '0' FOR NO; 
+                                 '1' FOR YES; 
+               LAST EDITED:      AUG 19, 2008 
+                                 UNEDITABLE
+  
+  
+        ================ INSTALLATION INSTRUCTIONS =================
+  
+ If installed during the normal workday, it is recommended that the
+ following selection in the OPTION (#19) file be disabled to prevent
+ possible conflicts while running the KIDS Install.
+  
+ IVM BACKGROUND JOB     [IVM BACKGROUND JOB]
+  
+ Install Time - less than 5 minutes
+  
+ 1.  LOAD TRANSPORT GLOBAL 
+     ---------------------
+ Choose the PackMan message containing this patch and invoke the
+ INSTALL/CHECK MESSAGE PackMan option.
+              
+ 2.  START UP KIDS 
+     -------------
+ Start up the Kernel Installation and Distribution System Menu [XPD MAIN]:
+    
+          Edits and Distribution ...  
+          Utilities ...  
+          Installation ...  
+    
+ Select Kernel Installation & Distribution System Option: INStallation
+                                                          
+          Load a Distribution 
+          Print Transport Global 
+          Compare Transport Global to Current System 
+          Verify Checksums in Transport Global 
+          Install Package(s) 
+          Restart Install of Package(s) 
+          Unload a Distribution 
+          Backup a Transport Global 
+    
+ Select Installation Option: 
+    
+ 3.  Select Installation Option: 
+     ---------------------------
+ NOTE:  The following are OPTIONAL - (When prompted for the INSTALL NAME,
+ enter DG*5.3*789):
+       
+ a.  Backup a Transport Global - This option will create a backup message
+     of any routines exported with this patch. It will not backup any other
+     changes such as DD's or templates.
+ b.  Compare Transport Global to Current System - This option will allow
+     you to view all changes that will be made when this patch is
+     installed. It compares all components of this patch (routines, DD's,
+     templates, etc.)
+ c.  Verify Checksums in Transport Global - This option will allow you to
+     ensure the integrity of the routines that are in the transport global.
+      
+ 4.  Select Installation Option: Install Package(s) 
+                                 ------------------
+ **This is the step to start the installation of this KIDS patch:
+    
+ a.  Choose the Install Package(s) option to start the patch install.
+ b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? YES//'
+     answer NO.
+ c.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+     Protocols? YES//' answer YES.
+ d.  When prompted 'Enter options you wish to mark as 'Out Of Order':'  
+     Enter the following options:
+  
+ IVM BACKGROUND JOB     [IVM BACKGROUND JOB]
+  
+ e.  When prompted 'Enter protocols you wish to mark as 'Out Of Order':'
+     press <Enter>.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.3;Registration;**[Patch List]**;JUL 28, 2008;Build 7
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: DG53789P
+    Before:       n/a   After:  B9748776  **789**
+Routine Name: VADPT0
+    Before: B12629835   After: B12664497  **343,342,415,489,498,528,689,789**
+ Description of Changes:
+   
+
+ 
+Routine list of preceding patches: 689
+
+=============================================================================
+User Information:
+Entered By  : FERRARESE,MARY ANN            Date Entered  : AUG 11, 2008
+Completed By: RUDINGER,NANCY L.             Date Completed: OCT 29, 2008
+Released By : GROOMS,ANTHONY E              Date Released : OCT 30, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

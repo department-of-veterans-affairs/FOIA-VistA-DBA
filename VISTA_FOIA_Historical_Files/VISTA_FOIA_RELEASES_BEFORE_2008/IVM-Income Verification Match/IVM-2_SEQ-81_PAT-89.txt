@@ -1,0 +1,531 @@
+$TXT Created by MULLER,RICHARD at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 03/11/04 at 09:33
+=============================================================================
+Run Date: APR 12, 2004                     Designation: IVM*2*89
+Package : IVM - INCOME VERIFICATION MATCH     Priority: EMERGENCY
+Version : 2        SEQ #81                      Status: Released
+                  Compliance Date: APR 14, 2004
+=============================================================================
+
+Associated patches: (v)IVM*2*79    <<= must be installed BEFORE `IVM*2*89'
+                    (v)IVM*2*81    <<= must be installed BEFORE `IVM*2*89'
+                    (v)IVM*2*85    <<= must be installed BEFORE `IVM*2*89'
+
+Subject: Fix Means Test Duplicate Transmissions
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch is being released as an EMERGENCY Patch to address the high 
+ volume of unnecessary IVM FULL DATA (ORU~Z07) HL7 Transmissions to the 
+ HEC.
+  
+ When the Income Test has had the effective date adjusted to the 
+ Centralized Anniversary Date (CAD) by the HEC, the return transmission 
+ from VistA is sending the current Primary test, and not the future dated 
+ test.  This is causing the test to be transmitted daily to and from the 
+ HEC.
+  
+ The process of building the IVM FULL DATA (ORU~Z07) HL7 Transmission has 
+ been modified by this patch (IVM*2.0*89).  The IVM PATIENT (#301.5) File 
+ contains a reference to the Income Year associated with the Income Test 
+ to be transmitted.  This association is used to validate which Income 
+ Test is used to build the ORU~Z07 message. 
+  
+  
+ When the effective date of a Future Dated Income Test has been reached, 
+ the IVM BACKGROUND JOB makes the test PRIMARY for the income year and 
+ transmits it to the HEC.  This process uses the FUTURE MEANS TEST ("AC") 
+ and FUTURE RX COPAY TEST ("AD") cross references in the IVM PATIENT 
+ (#301.5) File.  These cross reference entries were not deleted, causing 
+ the IVM BACKGROUND JOB to reprocess them daily.
+  
+ This patch (IVM*2.0*89) is updating the data dictionary for the FUTURE 
+ MEANS TEST (#.06) and FUTURE RX COPAY TEST (#.07) fields in the IVM 
+ PATIENT (#301.5) File.  These changes allow the cross reference entries 
+ to be deleted when the test is no longer future dated.
+  
+ A post install process will remove the FUTURE MEANS TEST ("AC") and 
+ FUTURE RX COPAY TEST ("AD") cross references that point to records that 
+ have either been deleted, or multiple entries caused by repeated 
+ transmissions from the HEC.
+  
+ This is an example of the MailMan message that will be delivered to the 
+ installer when the cleanup process has completed:
+  
+     Subj: IVM Patient File Xref Cleanup  [#1852654] 01/27/04@12:06
+     From: IVM CLEANUP PACKAGE  In 'IN' basket.   Page 1  *New*
+     ----------------------------------------------------------------
+             IVM Patient File Xref Cleanup
+             Patch IVM*2.0*89 Post Install
+     ==================================================
+      Recap of Purged Xrefs for Future Dated
+                 Income Tests
+     --------------------------------------------------
+       Xrefs pointing to deleted records:
+           Invalid 301.5 record pointers:  1,234
+          Invalid 408.31 record pointers:  5,678
+     Multiple entries for a 301.5 record:
+                  Duplicate xref entries:  2,345
+     --------------------------------------------------
+                     Total xrefs checked:  14,567
+                     Total xrefs deleted:   9,257
+     --------------------------------------------------
+  
+     Enter message action (in IN basket): Ignore//
+  
+  
+ This patch addresses the following E3R(s):
+ ------------------------------------------
+ There are no E3Rs associated with this patch.
+  
+  
+ This patch addresses the following NOIS message(s):
+ ---------------------------------------------------
+ MAD-0503-41984 - Multiple MT Uploads
+  
+  
+ Overview of NOIS Message(s):
+ ---------------------------
+ NOIS: MAD-0503-41984 - Multiple MT Uploads
+  
+ Problem:  The same Means Tests are being transmitted from the HEC to the 
+ sites daily.
+  
+ Resolution: The return transmission from VistA to the HEC will be updated 
+ to stop the recurring HL7 Transmissions.
+  
+  
+        ================INSTALLATION INSTRUCTIONS =================
+  
+ If installed during the normal workday, it is recommended that the
+ following menu options (File #19) and all of their descendants be
+ disabled to prevent possible conflicts while running the KIDS Install.
+ Other VISTA users will not be affected.
+  
+          [IVM BACKGROUND JOB]       IVM BACKGROUND JOB
+  
+ You may wish to stop the HL7 filers prior to the install to prevent
+ possible 'No Source Errors' from occurring. No transmissions will be lost
+ if the filers are not stopped first, they will be picked up once the
+ filers are restarted.
+  
+ The patch should be installed during non-peak hours.
+  
+ Install Time - 15 minutes
+  
+  
+   1.   LOAD TRANSPORT GLOBAL
+        ---------------------
+        Choose the PackMan message containing this patch and invoke the
+        INSTALL/CHECK MESSAGE PackMan option.
+  
+   2.   DISABLE ROUTINE MAPPING   (DSM for Open VMS sites only)
+        -----------------------
+        Disable routine mapping on all systems for the routines listed in
+        step 3 below.
+  
+ NOTE:  If the routines included in this patch are not currently in
+               your mapped routine set, please skip this step.
+  
+   3.   COMPONENTS SENT WITH PATCH
+        ------------------------
+        The following is a list of the routines included in this patch.
+        The second line of each of these routines now looks like:
+  
+            ;;2.0;INCOME VERIFICATION MATCH;**[patch list]**;21-OCT-94
+  
+                            CHECK^XTSUMBLD results
+  
+        Routine          Before Patch     After Patch    Patch List
+        -------          ------------     -----------    ----------
+        IVM289A          N/A              2928681        89
+        IVM289M          N/A              3348512        89
+        IVMCDD           1952668          2085856        17,89
+        IVMCZMT          14028257         13939904       17,53,49,58,81
+                                                         89
+        IVMPMTE          3511834          4911739        1,9,17,39,49
+                                                         89
+        IVMPTRN          7634560          9397270        1,9,11,12,17
+                                                         28,34,74,79,89
+        IVMPTRN8         11618968         11873091       9,11,19,12,21
+                                                         17,24,36,37,47
+                                                         48,42,34,77,76
+                                                         75,79,85,89
+  
+           Total number of routines - 7
+  
+   4.   START UP KIDS
+        -------------
+        Start up the Kernel Installation and Distribution System Menu
+        [XPD MAIN]:
+  
+             Edits and Distribution ...
+             Utilities ...
+             Installation ...
+  
+   Select Kernel Installation & Distribution System Option: INStallation
+                                                            ---
+             Load a Distribution
+             Print Transport Global
+             Compare Transport Global to Current System
+             Verify Checksums in Transport Global
+             Install Package(s)
+             Restart Install of Package(s)
+             Unload a Distribution
+             Backup a Transport Global
+  
+   Select Installation Option:
+  
+   5.   Select Installation Option:
+        --------------------------
+        NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+               NAME, enter IVM*2.0*89):
+  
+        a.  Backup a Transport Global - This option will create a backup
+            message of any routines exported with this patch. It will not
+            backup any other changes such as DD's or templates.
+        b.  Compare Transport Global to Current System - This option will
+            allow you to view all changes that will be made when this patch
+            is installed.  It compares all components of this patch
+            (routines, DD's, templates, etc.).
+        c.  Verify Checksums in Transport Global - This option will allow
+            you to ensure the integrity of the routines that are in the
+            transport global.
+  
+   6.   Select Installation Option: Install Package(s)
+                                    ----------------
+        **This is the step to start the installation of this KIDS patch:
+  
+       a.  Choose the Install Package(s) option to start the patch install.
+       b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+           YES//' answer NO (unless otherwise indicated)
+       c.  When prompted 'Want to DISABLE Scheduled Options, Menu
+           Options, and Protocols? YES//' answer YES (unless otherwise
+           indicated)
+       d.  When prompted 'Enter options you wish to mark as 'Out Of
+           Order':'  Enter the following options:
+  
+             IVM BACKGROUND JOB  [IVM BACKGROUND JOB]
+  
+       e.  When prompted 'Enter protocols you wish to mark as 'Out Of
+           Order':' press <return>.
+  
+   7.   REBUILD MAPPED ROUTINE(S)  (DSM for Open VMS sites only)
+        -------------------------
+        Optional - Include the routines distributed with this patch
+        in the mapped routine set.
+  
+        NOTE: This step is only necessary if you performed step 2 or
+              if you wish to include the routines in your mapped set.
+  
+   8.  When the installation is complete, be sure to re-start the filers
+       if you chose to stop them.
+
+Routine Information:
+====================
+
+Routine Name:
+  - IVMCZMT
+
+ LINE TAG:  FUTUREMT
+  
+ Before:
+   .F  S IVMPAT=$O(^IVM(301.5,"AC",FDATE,IVMPAT)) Q:'IVMPAT  D
+   ..S MTIEN=$O(^IVM(301.5,"AC",FDATE,IVMPAT,0))
+   ..Q:'MTIEN
+   ..K DATA S DATA(.06)="" I $$UPD^DGENDBS(301.5,IVMPAT,.DATA)
+   ..S DFN=+$G(^IVM(301.5,IVMPAT,0))
+   ..I DFN S NODE=$$LST^DGMTU(DFN,DT_.9999,1) I $E($P(NODE,"^",2),1,3)=
+ $E(DT,1,3),$P(NODE,"^",4)'="","R"'=$P(NODE,"^",4) Q
+   ..D MTPRIME^DGMTU4(MTIEN)
+   Q
+   ;
+  
+ After:
+   .F  S IVMPAT=$O(^IVM(301.5,"AC",FDATE,IVMPAT)) Q:'IVMPAT  D
+   ..S MTIEN=$O(^IVM(301.5,"AC",FDATE,IVMPAT,""),-1)
+   ..I '$$FUTURECK("AC",FDATE,IVMPAT,MTIEN) K ^IVM(301.5,"AC",FDATE,IVMPAT,
+ MTIEN)
+   ..K DATA S DATA(.06)="" I $$UPD^DGENDBS(301.5,IVMPAT,.DATA)
+   ..S DFN=+$G(^IVM(301.5,IVMPAT,0))
+   ..I DFN S NODE=$$LST^DGMTU(DFN,DT_.9999,1) I $E($P(NODE,"^",2),1,3)=
+ $E(DT,1,3),$P(NODE,"^",4)'="","R"'=$P(NODE,"^",4) K ^IVM(301.5,"AC",FDATE,
+ IVMPAT,MTIEN) Q
+   ..D MTPRIME^DGMTU4(MTIEN)
+   Q
+   ;
+  
+ LINE TAG:  FUTURERX
+  
+ Before:
+   .F  S IVMPAT=$O(^IVM(301.5,"AD",FDATE,IVMPAT)) Q:'IVMPAT  D
+   ..S MTIEN=$O(^IVM(301.5,"AD",FDATE,IVMPAT,0))
+   ..Q:'MTIEN
+   ..K DATA S DATA(.07)="" I $$UPD^DGENDBS(301.5,IVMPAT,.DATA)
+   ..S DFN=+$G(^IVM(301.5,IVMPAT,0))
+   ..I DFN S NODE=$$LST^DGMTU(DFN,DT_.9999,2) I $E($P(NODE,"^",2),1,3)=
+ $E(DT,1,3),$P(NODE,"^",4)'="" Q
+   ..D RXPRIME^DGMTU4(MTIEN)
+   Q
+  
+ After:
+   .F  S IVMPAT=$O(^IVM(301.5,"AD",FDATE,IVMPAT)) Q:'IVMPAT  D
+   ..S MTIEN=$O(^IVM(301.5,"AD",FDATE,IVMPAT,""),-1)
+   ..I '$$FUTURECK("AD",FDATE,IVMPAT,MTIEN) K ^IVM(301.5,"AD",FDATE,IVMPAT,
+ MTIEN)
+   ..K DATA S DATA(.07)="" I $$UPD^DGENDBS(301.5,IVMPAT,.DATA)
+   ..S DFN=+$G(^IVM(301.5,IVMPAT,0))
+   ..I DFN S NODE=$$LST^DGMTU(DFN,DT_.9999,2) I $E($P(NODE,"^",2),1,3)=
+ $E(DT,1,3),$P(NODE,"^",4)'="" K ^IVM(301.5,"AD",FDATE,IVMPAT,MTIEN) Q
+   ..D RXPRIME^DGMTU4(MTIEN)
+   Q
+  
+ New:
+   ;
+ FUTURECK(TYPE,FDATE,IVMPAT,MTIEN)  ;
+   ; Check the Future MT or CP xref for a valid income test entry,
+   ; and Delete all invalid xref entries.
+   N VALID,MTREC S VALID=1,MTREC=0
+   ;
+   ; Remove duplicate entries from cross reference, leaving last entry
+   F  S MTREC=$O(^IVM(301.5,TYPE,FDATE,IVMPAT,MTREC)) Q:(MTREC=MTIEN!
+ ('MTREC))  K ^IVM(301.5,TYPE,FDATE,IVMPAT,MTREC)
+   ;
+   I '$D(^IVM(301.5,IVMPAT,0)) S VALID=0 Q VALID
+   I '$D(^DGMT(408.31,MTIEN,0)) S VALID=0 Q VALID
+   I FDATE'=+(^DGMT(408.31,MTIEN,0)) S VALID=0 Q VALID
+   ;
+   Q VALID
+
+Routine Checksum:
+
+Routine Name:
+  - IVMPTRN
+
+ Before:
+   ;  LIMIT - (optional) if $G(LIMIT)=1 then this indicates that a test in
+   ;           a prior income year than indicated by the VAFMTDT parameter
+   ;           should NOT be returned in the ZMT segment
+  
+ After:
+   ;  LIMIT - (optional) if $G(LIMIT)=1 then this indicates that a test in
+   ;           an income year other than indicated in the IVM Patient File
+   ;           should NOT be returned in the ZMT segment
+  
+ New:
+   ;
+   ; Income Year requiring transmission from IVM Patient File (301.5)
+   S IVMIY=$S($D(IVMIY):IVMIY,1:(VAFMTDT-10000))
+   ;
+  
+ Before:
+   ; Check for a current Income Test
+   S MTIEN=+$$LST^DGMTU(DFN,VAFMTDT,$S($G(VAFTYPE):VAFTYPE,1:1))
+   I MTIEN S NODE=$G(^DGMT(408.31,MTIEN,0)),PRIM=$G(^("PRIM")),NODE2=
+ $G(^DGMT(408.31,MTIEN,2))
+   ;
+   ;if $$LST of ^DGMTU returned the wrong income yr, disregard it
+   I ($G(LIMIT)=1),$E(VAFMTDT,1,3)'=$E(+NODE,1,3) S 
+ (NODE,NODE2,MTIEN,PRIM)=""
+   ;
+   ; Check for a future dated Income Test
+   I 'MTIEN S MTIEN=+$$FUT^DGMTU(DFN,"",$S($G(VAFTYPE):VAFTYPE,1:1))
+   I MTIEN S NODE=$G(^DGMT(408.31,MTIEN,0)),PRIM=$G(^("PRIM")),NODE2=
+ $G(^DGMT(408.31,MTIEN,2))
+   ;
+   ;if $$FUT of ^DGMTU returned the wrong income yr, disregard it
+   I ($G(LIMIT)=1),$E(VAFMTDT,1,3)'=$E(+NODE,1,3) S 
+ (NODE,NODE2,MTIEN,PRIM)=""
+   ;
+  
+ After:
+   ; Check for a future dated Income Test
+   S MTIEN=+$$FUT^DGMTU(DFN,"",$S($G(VAFTYPE):VAFTYPE,1:1))
+   I MTIEN S NODE=$G(^DGMT(408.31,MTIEN,0)),PRIM=$G(^("PRIM")),NODE2=
+ $G(^DGMT(408.31,MTIEN,2))
+   ;
+   ;if $$FUT of ^DGMTU returned the wrong income yr, disregard it
+   I ($G(LIMIT)=1),($E(IVMIY,1,3)+1)'=$E(+NODE,1,3) S (NODE,NODE2,MTIEN,
+ PRIM)=""
+   ;
+   ; Check for a current Primary Income Test
+   I 'MTIEN S MTIEN=+$$LST^DGMTU(DFN,VAFMTDT,$S($G(VAFTYPE):VAFTYPE,1:1))
+ S:(NODE="") NODE=$G(^DGMT(408.31,MTIEN,0)),PRIM=$G(^("PRIM")),NODE2=
+ $G(^DGMT(408.31,MTIEN,2))
+   ;
+
+Routine Checksum:
+
+Routine Name:
+  - IVM289A
+
+ This is a post-install routine to remove invalid and duplicate entries 
+ from the FUTURE MEANS TEST ("AC") and FUTURE RX COPAY TEST ("AD") cross 
+ references in the IVM PATIENT (#301.5) File.
+
+Routine Checksum:
+
+Routine Name:
+  - IVM289M
+
+ This is a post-install routine to generate a MailMan message to report 
+ the results of the cross reference cleanup on the future dated income 
+ tests.
+
+Routine Checksum:
+
+Routine Name:
+  - IVMCDD
+
+ LINE TAG:  FUTMT
+  
+ Before:
+   Q:'$G(IVMPAT)
+   Q:'$G(MTIEN)
+   S ^IVM(301.5,"AC",+$G(^DGMT(408.31,MTIEN,0)),IVMPAT,MTIEN)=""
+   Q
+  
+ After:
+   Q:'$G(IVMPAT)
+   Q:'$G(MTIEN)
+   Q:+$G(^DGMT(408.31,MTIEN,0))'>DT
+   S ^IVM(301.5,"AC",+$G(^DGMT(408.31,MTIEN,0)),IVMPAT,MTIEN)=""
+   Q
+  
+ LINE TAG:  FUTRX
+  
+ Before:
+   Q:'$G(IVMPAT)
+   Q:'$G(MTIEN)
+   S ^IVM(301.5,"AD",+$G(^DGMT(408.31,MTIEN,0)),IVMPAT,MTIEN)=""
+   Q
+  
+ After:
+   Q:'$G(IVMPAT)
+   Q:'$G(MTIEN)
+   Q:'$G(IVMPAT)
+   S ^IVM(301.5,"AD",+$G(^DGMT(408.31,MTIEN,0)),IVMPAT,MTIEN)=""
+   Q
+  
+ LINE TAG:  AESET
+  
+ Before:
+   Q:'$G(IVMPAT)
+   Q:'$G(MTIEN)
+   Q:'(+$G(^DGMT(408.31,MTIEN,0)))
+   Q:'(+$G(^IVM(301.5,IVMPAT,0)))
+   S ^IVM(301.5,"AE",+$G(^IVM(301.5,IVMPAT,0)),+$G(^DGMT(408.31,MTIEN,0)),
+ MTIEN,IVMPAT)=""
+   Q
+  
+ After:
+   Q:'$G(IVMPAT)
+   Q:'$G(MTIEN)
+   Q:'(+$G(^IVM(301.5,IVMPAT,0)))
+   Q:'(+$G(^DGMT(408.31,MTIEN,0)))
+   S ^IVM(301.5,"AE",+$G(^IVM(301.5,IVMPAT,0)),+$G(^DGMT(408.31,MTIEN,0)),
+ MTIEN,IVMPAT)=""
+   Q
+  
+ LINE TAG:  AEKILL
+  
+ Before:
+ AEKILL(IVMPAT,MTIEN)  ;
+   ;Kill logic for the "AC" x-ref on the IVM Patient file
+   ;Input -
+  
+ After:
+ AEKILL(IVMPAT,MTIEN);
+   ;Kill logic for the "AE" x-ref on the IVM Patient file
+   ;Input -
+  
+ LINE TAG:  AFSET
+  
+ Before:
+   Q:'$G(IVMPAT)
+   Q:'$G(MTIEN)
+   Q:'(+$G(^DGMT(408.31,MTIEN,0)))
+   Q:'(+$G(^IVM(301.5,IVMPAT,0)))
+   S ^IVM(301.5,"AF",+$G(^IVM(301.5,IVMPAT,0)),+$G(^DGMT(408.31,MTIEN,0)),
+ MTIEN,IVMPAT)=""
+   Q
+  
+ After:
+   Q:'$G(IVMPAT)
+   Q:'$G(MTIEN)
+   Q:'(+$G(^DGMT(408.31,MTIEN,0)))
+   Q:'(+$G(^IVM(301.5,IVMPAT,0)))
+   Q:+$G(^DGMT(408.31,MTIEN,0))'>DT
+   S ^IVM(301.5,"AF",+$G(^IVM(301.5,IVMPAT,0)),+$G(^DGMT(408.31,MTIEN,0)),
+ MTIEN,IVMPAT)=""
+   Q
+
+Routine Checksum:
+
+Routine Name:
+  - IVMPMTE
+
+ Before:
+   D LOGDCD^IVMCUC(DFN,IVMMTDT)
+   ;
+ ENQ  ; Cleanup
+  
+ After:
+   D LOGDCD^IVMCUC(DFN,IVMMTDT)
+   ;
+   ; Quit when uploading Future Means Tests
+   Q:$G(IVM1)>DT
+   ;
+   ; Update cross references when editing Future Dated Tests
+   I $D(DGMTI),+$G(DGMT0)>DT,$D(IVMDA) D
+   .I DGMTYPT=1,$P(^IVM(301.5,IVMDA,0),U,6)'="",+DGMTA'>DT S DATA(.06)="" I
+ $$UPD^DGENDBS(301.5,IVMDA,.DATA) K 
+ DATA,^IVM(301.5,"AC",+DGMT0,IVMDA,DGMTI)
+   .I DGMTYPT=2,$P(^IVM(301.5,IVMDA,0),U,7)'="",+DGMTA'>DT S DATA(.07)="" I
+ $$UPD^DGENDBS(301.5,IVMDA,.DATA) K 
+ DATA,^IVM(301.5,"AD",+DGMT0,IVMDA,DGMTI)
+   ;
+ ENQ  ; Cleanup
+
+Routine Checksum:
+
+Routine Name:
+  - IVMPRTN8
+
+ Before:
+   S IVMCT=IVMCT+1,^TMP("HLS",$J,IVMCT)=$$EN^VAFHLZGD(DFN,"1,2,3,4,5,6
+ ,7,8",2)
+   ;
+   ;get the primary test for the income year
+   S TESTTYPE=$$GETTYPE^IVMPTRN9(DFN,IVMMTDT,.TESTCODE,.HARDSHIP,.ACTVIEN)
+   ;
+  
+ After:
+   S IVMCT=IVMCT+1,^TMP("HLS",$J,IVMCT)=$$EN^VAFHLZGD(DFN,"1,2,3,4,5,6
+ ,7,8",2)
+   ;
+   ; Income Year requiring transmission from IVM Patient File (301.5)
+   S IVMIY=$S($D(IVMIY):IVMIY,1:(IVMMTDT-10000))
+   N MTINFO S MTINFO=$$FUT^DGMTU(DFN)
+   I ($E(IVMIY,1,3)+1)=$E($P(MTINFO,U,2),1,3) S IVMMTDT=$P(MTINFO,U,2)
+   ;get the primary test for the income year
+   S TESTTYPE=$$GETTYPE^IVMPTRN9(DFN,IVMMTDT,.TESTCODE,.HARDSHIP,.ACTVIEN)
+   ;
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : HUA,PATRICK                   Date Entered  : SEP 16, 2003
+Completed By: MULLER,RICHARD                Date Completed: APR 12, 2004
+Released By : GANUS,MAUNETTE                Date Released : APR 12, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

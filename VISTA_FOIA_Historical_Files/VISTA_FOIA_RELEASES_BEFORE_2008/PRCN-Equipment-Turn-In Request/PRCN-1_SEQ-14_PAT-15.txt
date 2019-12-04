@@ -1,0 +1,479 @@
+$TXT Created by CURTIS,RICHARD L at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 04/01/04 at 08:21
+=============================================================================
+Run Date: APR 19, 2004                     Designation: PRCN*1*15
+Package : PRCN - EQUIPMENT/TURN-IN REQUEST    Priority: Mandatory
+Version : 1        SEQ #14                      Status: Released
+                  Compliance Date: MAY 20, 2004
+=============================================================================
+
+Associated patches: (v)PRCN*1*3    <<= must be installed BEFORE `PRCN*1*15'
+                    (v)PRCN*1*14   <<= must be installed BEFORE `PRCN*1*15'
+
+Subject: SEVERAL MENU OPTIONS NOT WORKING PROPERLY
+
+Category: 
+  - Routine
+  - Input Template
+
+Description:
+============
+
+ ****************************************************************
+ * IT IS RECOMMENDED THAT PATCH PRCN*1.0*14 AND PRCN*1.0*15     * 
+ * BE INSTALLED TOGETHER                                        *       
+ *                                                              *
+ ****************************NOTE********************************
+ *                                                              *
+ * Sites that are already using CoreFLS, rather than Equipment/ *
+ * Turn-In Request, should not install this patch as Equipment/ *
+ * Turn-In Request has been retired at your site and edits are  *
+ * not appropriate.                                             *
+ *                                                              *
+ ****************************************************************
+  
+ This patch addresses menu options which are not functioning completely 
+ as they should.
+  
+ ASSOCIATED E3R(s):
+ ==================
+ N/A
+  
+ ASSOCIATED NOIS
+ ===============
+ CHA-1003-32113 - Several Menu Options not working properly
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Big Spring,TX
+ Lexington,KY
+ Roseburg,OR
+ Beckley,WV
+  
+ NOIS/PROBLEM OVERVIEW
+ =====================
+ 1.  CHA-1003-32113  Several Menu Options not working properly
+  
+     Problem 1:
+     ----------
+     Approve Equipment Turn-In Requests (CMR)
+     During this process, if the Approving Official disapproves the
+     request, the status is not being changed.  Instead, it remains
+     "Pending CMR Official Approval" and nobody (including the 
+     initiator) can edit the request at this point.
+  
+     Resolution:
+     -----------
+     This patch adds modifications to input template PRCNTICMR so
+     that when a turn-in request is disapproved by the CMR Official
+     the status will be properly updated to "Returned by CMR
+     Official - Disapproved".  Editing can now be done at this point.
+     Additionally, a new line of code has been added to routine
+     PRCNTICM, which will correct the problem that was causing
+     double "??" to appear after a disapproval was entered.
+  
+     
+     Problem 2:
+     ----------
+     Final Turn-In Request Disposition (PPM)
+     When processing final disposition, if the PPM official selects any
+     number of items and processes disposition on those items, AMES/MERS
+     is updated even if the PPM official does not electronically sign
+     the Turn-In document.
+  
+     Resolution:
+     -----------
+     Current logic updates the AMES/MERS fields as the items are being
+     dispositioned.  This patch adds logic to collect and temporarily
+     store the existing values for the AMES/MERS fields.  Then, after
+     selecting items and processing disposition for them, a check is
+     made to see if the PPM official entered their electronic signature
+     before completing the disposition process.  If not entered, then
+     the AMES/MERS fields are reset as follows:  Disposition Date,
+     Disposition Method and Disposition Value are all set to null; CMR,
+     Use Status and Standard General Ledger (SGL) are reset to their
+     previous values and the Turn-In Request status remains "Pending PPM
+     Final Disposition".
+  
+     Problem 3:
+     ----------
+     Final Turn-In Request Disposition (PPM)
+     The PPM Official can finalize the disposition of a turn-in 
+     transaction without processing disposition of all line items
+     contained in the transaction.  If this occurs, the turn-in
+     request is set to Complete and no further action can be taken
+     on any line items not processed.  The PPM Official should not be
+     allowed to electronically sign the document until all items for
+     the transaction have been processed for final disposition or
+     removed.
+  
+     Resolution:
+     -----------
+     This patch adds logic so that prior to the PPM Official entering their
+     electronic signature, a check is made to insure all items on the
+     transaction have been processed for final disposition.  If any were
+     not, a message will be displayed to the PPM informing him/her that
+     final disposition could not be completed.  When applicable, the
+     following message will be displayed and the user will again be
+     prompted to enter a replacement item number:
+  
+     ********************************************************************
+     *SORRY.  THERE ARE ADDITIONAL LINE ITEMS FOR TRANSACTION:          *
+     *                                                                  *
+     *                       NNN-NNN-NN-NNNNN                           *
+     *                                                                  *
+     *THAT MUST BE DISPOSITIONED BEFORE THIS TRANSACTION CAN BE FINALIZED*
+     ********************************************************************
+  
+     Select REPLACEMENT ITEM NUMBER:
+  
+  
+     If the user fails to enter the additional item number(s), then the
+     AMES/MERS fields for all items for the transaction will be reset to
+     their previous values (as in 2 above) and the Turn-In Request status
+     will remain "Pending PPM Final Disposition".
+  
+ TECHNICAL:
+ ==========
+ First, the following line of code was added to routine PRCNTICM at
+ EN+6.  This will eliminate the problem which was causing the double "??"
+ to display after the CMR disapproved a turn-in request.
+  
+    I $D(^PRCN(413.1,DA,2)) S GLO=413.1 D MES
+  
+ Additionally, Input Template PRCNTICMR, for file 413.1, Turn-In Request,
+ was modified with new branching logic, as follows:
+  
+ FROM:
+  
+ NAME: PRCNTICMR//
+ READ ACCESS:
+ WRITE ACCESS:
+ EDIT WHICH FIELD: 9//  CMR OFFICIAL APPROVAL
+ THEN EDIT FIELD: I $E(X,1)="Y" S Y="@1"
+ THEN EDIT FIELD: D ES^PRCNUTL//
+ THEN EDIT FIELD: I $G(FAIL)<1 K FAIL S Y=""
+ THEN EDIT FIELD: 11//  CMR OFFICIAL EXPLANATION (word-processing)
+ THEN EDIT FIELD: I '$D(^PRCN(413.1,DA,2)) W $C(7)," ?? An explanation of
+   why this request was not approved is required" S Y=11
+ THEN EDIT FIELD: S GLO=413.1 D MES^PRCNTICM  **THIS LINE WAS REMOVED**
+ THEN EDIT FIELD: 6////^S X=4//  REQUEST STATUS
+ THEN EDIT FIELD: 7////^S X=DT//  STATUS DATE
+ THEN EDIT FIELD: S Y=""//
+ THEN EDIT FIELD: @1//
+ THEN EDIT FIELD: D ES^PRCNUTL//
+ THEN EDIT FIELD: I $G(FAIL)<1 K FAIL S Y=""
+ THEN EDIT FIELD: 6////^S X=6//  REQUEST STATUS
+ THEN EDIT FIELD: 7////^S X=DT//  STATUS DATE
+ THEN EDIT FIELD: 
+  
+  
+ TO:
+  
+ NAME: PRCNTICMR//
+ READ ACCESS:
+ WRITE ACCESS:
+ EDIT WHICH FIELD: 9//  CMR OFFICIAL APPROVAL
+ THEN EDIT FIELD: I $E(X,1)="Y" S Y="@2"
+ THEN EDIT FIELD: D ES^PRCNUTL//
+ THEN EDIT FIELD: I $G(FAIL)<1 K FAIL S Y=""
+ THEN EDIT FIELD: @1//
+ THEN EDIT FIELD: 11//  CMR OFFICIAL EXPLANATION (word-processing)
+ THEN EDIT FIELD: I '$D(^PRCN(413.1,DA,2)) W $C(7)," ?? An explanation of
+    why this request was not approved is required" S X="??"
+ THEN EDIT FIELD: I X="??" W !! S Y="@1"
+ THEN EDIT FIELD: 6////^S X=4//  REQUEST STATUS
+ THEN EDIT FIELD: 7////^S X=DT//  STATUS DATE
+ THEN EDIT FIELD: S Y="@3"
+ THEN EDIT FIELD: @2//
+ THEN EDIT FIELD: D ES^PRCNUTL//
+ THEN EDIT FIELD: I $G(FAIL)<1 K FAIL S Y=""
+ THEN EDIT FIELD: 6////^S X=6//  REQUEST STATUS
+ THEN EDIT FIELD: 7////^S X=DT//  STATUS DATE
+ THEN EDIT FIELD: @3//
+ THEN EDIT FIELD:
+  
+  
+ Second, routines PRCNTIPP, PRCNFAP and PRCNUTL have been modified as
+ shown below to resolve both problems 2 and 3 indicated above:
+  
+ PRCNTIPP:
+  
+    a) A new line of code was inserted at SELECT+1:
+  
+       N PRCNFLAG S PRCNFLAG=0
+  
+    b) Command S PRCNFLAG=PRCNFLAG+1 was added to SELECT+2.
+  
+    c) A new line of code was added at PR+5:
+  
+       . D:'POP RESET^PRCNUTL
+  
+ PRCNFAP:
+  
+    a) A new line of code was inserted at CK+1:
+  
+       K OLDVALUE
+  
+    b) A new line of code was added at CK+4:
+       . D:PRCNFLAG OVAL
+  
+    c) New subroutine OVAL was created to retrieve the previous CMR,
+       Use Status and SGL values for each transaction line item.
+  
+ PRCNUTL:
+  
+    a) New subroutine - CHECK - was created to check if all items
+       for the selected transaction have been dispositioned.
+  
+    b) New subroutine - DMSG - was created to display the message
+       indicated above, when applicable.
+  
+    c) New subroutine - RESET - was created to reset the applicable
+       AMES/MERS fields as indicated above, in Problem 2 Resolution.
+  
+ Finally, Input Template [PRCNTIPPM, for file 413.1, Turn-In Request,
+ was modified with new branching logic, etc., as follows:
+  
+ FROM:
+  
+ NAME: PRCNTIPPM// 
+ READ ACCESS: 
+ WRITE ACCESS: 
+ EDIT WHICH FIELD: 20//   TURN-IN LINE ITEM  (multiple)
+    EDIT WHICH TURN-IN LINE ITEM SUB-FIELD: D PRT^PRCNTIPP// 
+    THEN EDIT TURN-IN LINE ITEM SUB-FIELD: .01:// 
+       EDIT WHICH EQUIPMENT INV. FIELD: 20////^S X=4//   USE STATUS
+       THEN EDIT EQUIPMENT INV. FIELD: 22////^S X=DT//   DISPOSITION DATE
+       THEN EDIT EQUIPMENT INV. FIELD: 31//   DISPOSITION METHOD
+       THEN EDIT EQUIPMENT INV. FIELD: 32//   DISPOSITION VALUE
+       THEN EDIT EQUIPMENT INV. FIELD: 19///^S X="@"//   CMR
+       THEN EDIT EQUIPMENT INV. FIELD: 38///^S X="@"//   STANDARD GENERAL 
+ LEDGER
+       THEN EDIT EQUIPMENT INV. FIELD: 
+    THEN EDIT TURN-IN LINE ITEM SUB-FIELD: 
+ THEN EDIT FIELD: D ES^PRCNUTL// 
+ THEN EDIT FIELD: I $G(FAIL)<1 K FAIL S Y=""  Replace 
+ THEN EDIT FIELD: 6////^S X=24//   REQUEST STATUS
+ THEN EDIT FIELD: 7////^S X=DT//   STATUS DATE
+ THEN EDIT FIELD: 
+  
+  
+ TO:
+  
+ NAME: PRCNTIPPM// 
+ READ ACCESS: @// 
+ WRITE ACCESS: @// 
+ EDIT WHICH FIELD: @3// 
+ THEN EDIT FIELD: 20//   TURN-IN LINE ITEM  (multiple)
+    EDIT WHICH TURN-IN LINE ITEM SUB-FIELD: D PRT^PRCNTIPP// 
+    THEN EDIT TURN-IN LINE ITEM SUB-FIELD: .01:// 
+       EDIT WHICH EQUIPMENT INV. FIELD: S:X="" Y="@1"// 
+       THEN EDIT EQUIPMENT INV. FIELD: 20////^S X=4//   USE STATUS
+       THEN EDIT EQUIPMENT INV. FIELD: 22////^S X=DT//   DISPOSITION DATE
+       THEN EDIT EQUIPMENT INV. FIELD: 31//   DISPOSITION METHOD
+       THEN EDIT EQUIPMENT INV. FIELD: S:X="" Y="@1",POP=0 S:X'="" POP=1
+   Replace 
+       THEN EDIT EQUIPMENT INV. FIELD: 32//   DISPOSITION VALUE
+       THEN EDIT EQUIPMENT INV. FIELD: 19///^S X="@"//   CMR
+       THEN EDIT EQUIPMENT INV. FIELD: 38///^S X="@"//   STANDARD GENERAL 
+ LEDGER
+       THEN EDIT EQUIPMENT INV. FIELD: @1// 
+       THEN EDIT EQUIPMENT INV. FIELD: 
+    THEN EDIT TURN-IN LINE ITEM SUB-FIELD: 
+ THEN EDIT FIELD: S:'POP Y="@2"// 
+ THEN EDIT FIELD: D CHECK^PRCNUTL// 
+ THEN EDIT FIELD: S:'POP Y="@3"// 
+ THEN EDIT FIELD: D ES^PRCNUTL// 
+ THEN EDIT FIELD: I $G(FAIL)<1 K FAIL S Y="",POP=0  Replace 
+ THEN EDIT FIELD: 6////^S X=24//   REQUEST STATUS
+ THEN EDIT FIELD: 7////^S X=DT//   STATUS DATE
+ THEN EDIT FIELD: @2// 
+ THEN EDIT FIELD:
+  
+ NOTE: An environmental check routine will be used to check if CoreFLS
+ has been installed and Equipment/Turn-In Request shut down at the site
+ and if so, recommend that no further PRCN patches be installed.
+  
+  ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;1.0;PRCN;**[patch list]**;Sep 13, 1996
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  PRCNFAP                 883780              1341337           2,3,15
+  PRCNTIPP               4270210              4437283             15
+  PRCNUTL                3153793              4539450             15
+  PRCNTICM               1996286              2092761          2,3,14,15
+ *PRCNP14E               n/a                   682609            14,15
+  
+  *This routine should have been deleted with the successful install 
+ of PRCN*1.0*14 but will have a previous checksum if it was not deleted.
+  
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+  
+ *************************NOTE**********************************
+ *                                                             *
+ * Sites that are already using CoreFLS, rather than Equipment *
+ * Turn-In Request (PRCN), should not install this patch as    *
+ * PRCN has been retired at your site and edits are not        *
+ * appropriate.                                                *
+ *                                                             *
+ ***************************************************************
+  
+ If the patch is installed during the normal workday, it is recommended
+ that the following menu option(s) (File #19) and all of their
+ descendants be disabled to prevent possible conflicts while running the
+ KIDS install.  Other VISTA users will not be effected.
+  
+ Approve Equipment Turn-In Request (CMR) [PRCN TURN CMR APP]
+ Final Turn-In Request Disposition (PPM) [PRCN TURN DISP]
+  
+ Installation should take less than 5 minutes.
+  
+ 1.  LOAD TRANSPORT GLOBAL
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the
+     INSTALL/CHECK MESSAGE PackMan option.
+  
+ 2.  DISABLE ROUTINE MAPPING   (DSM for open VMS sites only)
+     -----------------------
+     Disable routine mapping on all systems for the routines listed in
+     the routine summary.
+     NOTE:  If the routines included in this patch are not currently in
+     your mapped routine set, please skip this step.
+  
+ 3.  START UP KIDS
+     -------------
+     Start up the Kernel Installation and Distribution System Menu
+     [XPD MAIN]:
+  
+           Edits and Distribution ...
+           Utilities ...
+           Installation ...
+  
+     Select Kernel Installation & Distribution System Option: INStallation
+                                                              ---
+  
+     1      Load a Distribution
+     2      Verify Checksums in Transport Global
+     3      Print Transport Global
+     4      Compare Transport Global to Current System
+     5      Backup a Transport Global
+     6      Install Package(s)
+            Restart Install of Package(s)
+            Unload a Distribution
+  
+ 4.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter PRCN*1.0*15):
+  
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with the patch.  It will NOT
+         backup any other changes such as DDs or templates.
+  
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when the patch
+         is installed.  It compares all components of the patch
+         (routines, DDs, templates, etc.)
+  
+     c.  Verify Checksums in Transport Global - This option will ensure
+         the integrity of the routines that are in the transport global.
+  
+ 5.  Use the Install Package(s) option and select the package PRCN*1.0*15.
+     
+     a.  When prompted "Want KIDS to Rebuild Menu Trees Upon Completion
+         of Install? YES//" respond NO.
+  
+     b.  When prompted "Want KIDS to INHIBIT LOGONs during the
+         install? YES//" respond NO.
+  
+     c.  When prompted "Want to DISABLE Scheduled Options, Menu
+         Options, and Protocols? YES//" respond YES.
+  
+         1) When prompted "Enter options you wish to mark as "Out of
+            Order":" enter the following options:
+  
+            PRCN TURN CMR APP
+            PRCN TURN DISP
+  
+         2) When prompted "Enter protocols you wish to mark as "Out of
+            Order":" just press <return>.
+  
+ 6.  REBUILD MAPPED ROUTINE(S)   (DSM for Open VMS sites only)
+     -------------------------
+     Optional - Include the routines distributed with this patch in
+     the mapped routine set.
+  
+     NOTE:  This step is only necessary if you performed step 2 or if
+     you wish to include the routines in your mapped set.
+  
+ 7.  DELETE ENVIRONMENTAL CHECK ROUTINE
+     ----------------------------------
+     Delete the environmental check routine PRCNP14E from your system after
+     successful installation of this patch.
+
+Routine Information:
+====================
+
+Routine Name:
+  - PRCNTICM
+
+ Changes to routine are detailed under Technical Information in Patch 
+ Description.
+
+Routine Checksum:
+2092761
+
+Routine Name:
+  - PRCNTIPP
+
+ Changes to routine are detailed under Technical Information in Patch 
+ Description.
+
+Routine Checksum:
+4437283
+
+Routine Name:
+  - PRCNFAP
+
+ Changes to routine are detailed under Technical Information in Patch 
+ Description.
+
+Routine Checksum:
+1341337
+
+Routine Name:
+  - PRCNUTL
+
+ Changes to routine are detailed under Technical Information in Patch 
+ Description.
+
+Routine Checksum:
+4539450
+
+Routine Name:
+  - PRCNP14E
+
+ Environmental check routine added. To be deleted after successful 
+ intallation of this patch.
+
+Routine Checksum:
+682609
+
+=============================================================================
+User Information:
+Entered By  : CURTIS,RICHARD                Date Entered  : NOV 24, 2003
+Completed By: BOWEN,MARY JANE               Date Completed: APR 19, 2004
+Released By : HUTCHINSON,PATRICIA ANN       Date Released : APR 19, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

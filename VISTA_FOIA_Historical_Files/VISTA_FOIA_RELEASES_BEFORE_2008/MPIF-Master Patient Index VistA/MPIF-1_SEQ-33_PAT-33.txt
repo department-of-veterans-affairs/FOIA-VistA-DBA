@@ -1,0 +1,294 @@
+$TXT Created by DAVIS,PAULETTE T at DEVCRN.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 06/28/04 at 09:19
+=============================================================================
+Run Date: JUL 01, 2004                     Designation: MPIF*1*33
+Package : MPIF - MASTER PATIENT INDEX VISTA   Priority: Mandatory
+Version : 1        SEQ #33                      Status: Released
+                  Compliance Date: AUG 01, 2004
+=============================================================================
+
+Associated patches: (v)MPIF*1*24   <<= must be installed BEFORE `MPIF*1*33'
+                    (v)MPIF*1*27   <<= must be installed BEFORE `MPIF*1*33'
+                    (v)MPIF*1*28   <<= must be installed BEFORE `MPIF*1*33'
+                    (v)MPIF*1*31   <<= must be installed BEFORE `MPIF*1*33'
+                    (v)DG*5.3*589  <<= must be installed BEFORE `MPIF*1*33'
+                    (v)RG*1*35     <<= must be installed BEFORE `MPIF*1*33'
+
+Subject: REMOVE SOME MPI SCREENS - MPI CHANGES ITERATION 2
+
+Category: 
+  - Routine
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+  NOTE:  RG* and MPIF* patches should NOT be installed on legacy
+  systems to avoid issues with the legacy systems ending up as
+  Coordinating Master of Records (CMORs) or Treating Facilities.
+  
+  DG*5.3*589, RG*1.0*35, MPIF*1.0*24, MPIF*1.0*27, MPIF*1.0*28,and
+  MPIF*1.0*31 are required builds for patch MPIF*1*33
+  
+  This patch is for the Master Patient Index/Patient Demographics
+  (MPI/PD) Changes Iteration 2 project.
+   
+  Issue 1:  The Local/Missing ICN Resolution Background Job [MPIF LOC/
+  MIS ICN RES] job needs to run more frequently to support getting
+  Integration Control Number (ICN) assignments for a patient as soon as
+  possible.  The job should be scheduled to run every 600 seconds instead
+  of once per day.  This is noted in Installation Instructions section,
+  step 11.
+   
+  Issue 2:  Prior to this patch, the following were not sent to the Master
+  Patient Index (MPI) for ICN assignment:
+      - patients with last names that begin with ZZ,
+      - patients that have 5 leading zeros for the social
+        security number,
+      - patients with last names that begin with "EEE, and
+      - patients with last names that begin with "Merging"
+        (for the patients in the process of being merged via the
+        Duplicate Record Merge software).
+   
+  As part of this patch, those data screens are being removed and these
+  patients will be sent to the MPI for ICN assignment.  This can be
+  confirmed by using the Patient MPI/PD Data Inquiry [RG EXCEPTION TF
+  INQUIRY] option to see that the entry has a national ICN.
+   
+  NOTE: DG*5.3*589 will remove the "AMPIZZ" and "ATSSN" cross-references
+  that automatically inactivate ICNs when existing patients are ZZ'd or
+  have the SSN changed to one with 5 leading zeros.
+   
+  Issue 3:  Currently patients that are missing the DATE OF BIRTH (#.03)
+  field in the PATIENT file (#2) aren't sent to the MPI for assignment of
+  an ICN.  As part of this patch, that screen is being removed and these
+  patients will be sent to the MPI.  There will no longer be an exception
+  on the MPI/PD exception handler noting these patients are missing a DATE
+  OF BIRTH (#.03), as an exception is now logged on the MPI.  Routines
+  involved include:  MPIFBT1, MPIFRES, MPIFQ0, and MPIFVTQ.
+   
+  Issue 4:  When two patients in the same VistA system attempt to have
+  the same ICN assigned, an exception is logged and a mail message sent
+  notifying members of the RG CIRN DEMOGRAPHIC ISSUES mail group of the
+  potential duplicate patient on their system.  The mail message has been
+  improved to provide the Name, Social Security Number and internal entry
+  number in the PATIENT (#2) file for each patient involved in the potential
+  duplicate pair as well as more detailed instructions on what should be
+  done.  Since this exception is logged from several locations, a common
+  entry point has been provided to log the exception and trigger the e-mail
+  message.  Routines involved include:  MPIF001, MPIF002, MPIFAPI, MPIFBT3,
+  MPIFQ0, and MPIFQ1.
+   
+  Issue 5:  In the past, if there was an exact match on the MPI, but the
+  sex was different and you used Single Patient Initialization to MPI
+  [MPIF IND MPI LOAD], it would automatically assign that ICN to your
+  patient.  That has been corrected.  Now you will get a list from
+  which to choose.  If you attempt to select that patient, the
+  software will not allow this because of the sex difference.
+     
+  Option:
+  -------
+  The Inactivate Patient from MPI [MPIF PAT INACT] option is being removed
+  from the Master Patient Index Menu [MPIF VISTA MENU].
+   
+  Post-Initialization Routine:
+  ----------------------------
+  This patch makes updates/changes to the CIRN HL7 EXCEPTION TYPE
+  (#991.11) file in post-init routine RGP35PST.  Exception 209,
+  "Required field(s) missing for patient sent to MPI", is updated to
+  make the text more generic.  Additionally, the RG CIRN DEMOGRAHIC ISSUES
+  mail group is removed from exception 227, "Multiple ICNs", MAIL GROUP
+  (#6) field.  This will prevent the exception handler from sending an
+  e-mail notification.  The e-mail will still be sent, just not from
+  within the exception handler.
+   
+  Test Sites:
+  ===========
+  Battle Creek, MI (Alpha/DSM)
+  Connecticut HCS (VMS/Cache)
+  El Paso, TX (Alpha/ISM (NT))
+  Manchester, NH (VMS/Cache)
+    
+  Routine Summary:
+  ================
+  The following is a list of the routine(s) included in this patch.
+  The second line of each of these routine(s) will look like:
+    
+  <TAB>;;1.0; MASTER PATIENT INDEX VISTA ;**[Patch List]**;30 Apr 99
+  CHECK^XTSUMBLD results:
+   
+  Routine       Before Patch       After Patch       Patch List
+  --------      ------------       ------------      ----------
+  MPIF001         11355374            9928854        1,3,9,16,18,21,
+                                                     27,33
+  MPIF002          2387468            6171097        20,27,33
+  MPIFAPI         21527254           19787098        1,3,14,16,17,21,
+                                                     27,28,33
+  MPIFBT1          9532891            8788572        17,28,33
+  MPIFBT3         15009375           17257173        1,3,10,17,21,24,
+                                                     28,31,33
+  MPIFP33          N/A                 N/A           33
+  MPIFQ0          23541889           22408197        1,3,8,14,13,16,17,
+                                                     21,20,24,26,28,31,33
+  MPIFQ1          17839410           15709676        1,8,12,16,17,21,23,
+                                                     24,28,31,33
+  MPIFRES          4766466            4745909        1,7,10,15,17,21,26,
+                                                     28,33
+  MPIFRPC2         7430748            5436926        20,24,33
+  MPIFVTQ         15731275           11758328        1,9,17,21,23,28,33
+     
+  Note: Routine MPIFP33 is deleted by the installation.  The
+  checksum prior to deletion is:
+           MPIFP33                    3010854
+   
+  Installation Instructions:
+  ==========================
+  This patch may be loaded with users on the system.  You may wish
+  to install it during non-peak hours to minimize disruption to the
+  users.  Installation will take less than 2 minutes.
+   
+  1.  Users are allowed on the system during patch installation.
+        
+  2.  TaskMan does not need to be stopped or placed in a wait state.
+   
+  3.  None of the routines in this package have been recommended for
+      routine mapping.
+  
+  4.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu. [Note:
+      TEXT PRINT/DISPLAY option in the PackMan menu will display the
+      patch text only.
+   
+  5.  From the Kernel Installation and Distribution System Menu, select
+      the Installation menu.
+  
+  6.  From this menu, you may elect to use the following options (when
+      prompted for the INSTALL NAME, enter MPIF*1.0*33).
+   
+      (a)  Backup a Transport Global - this option will create a backup
+           message of any routines exported with the patch.  It will NOT
+           backup any other changes such as DDs or templates.
+   
+      (b)  Compare Transport Global to Current System - this option will
+           allow you to view all changes that will be made when the
+           patch is installed.  It compares all components of the patch
+           (routines, DDs, templates, etc.).
+   
+      (c)  Verify Checksums in Transport Global - this option will allow
+           you to ensure the integrity of the routines that are in the
+           transport global.
+   
+      (d)  Print Transport Global - this option will allow you to view the
+           components of the KIDS build.
+   
+  7.  Use the Install Package(s) option and select the package MPIF*1.0*33.
+   
+  8.  When prompted 'Want KIDS to Rebuild Menu Trees Upon Completion of
+      Install? YES//', respond Yes if you wish to rebuild immediately.
+      However, keep in mind that this process takes some time.  If
+      your facility rebuilds menu trees on a scheduled basis, respond No
+      and rebuild according to your schedule.
+   
+  9.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? '
+      YES//', respond No.
+   
+  10. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols? YES//', respond Yes and enter the following options:
+  
+         Inactivate Patient from MPI                  [MPIF PAT INACT]
+         Single Patient Initialization to MPI         [MPIF IND MPI LOAD]
+         Display Only Query                 [MPIF DISPLAY ONLY QUERY TO MPI]
+         Local/Missing ICN Resolution Background Job  [MPIF LOC/MIS ICN RES]
+         Coordinating Master of Record (CMOR) Request [MPIF CMOR MGR]
+   
+         10-10T Registration             [DGRPT 10-10T REGISTRATION]
+         Register a Patient              [DG REGISTER PATIENT]
+         Load/Edit Patient Data          [DG LOAD PATIENT DATA]
+         Electronic 10-10EZ Processing   [EAS EZ 1010EZ PROCESSING]
+    
+  11. Via TaskMan, schedule the Local/Missing ICN Resolution Background
+      Job [MPIF LOC/MIS ICN RES] to run every 600 seconds.  The job was
+      previously scheduled to run just once a day.
+   
+  12. Routine MPIFP33 will be automatically deleted from your system
+      after successful installation of the patch.
+
+Routine Information:
+====================
+
+Routine Name:
+  - MPIF001
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFAPI
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFBT3
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFQ0
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFRPC2
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFVTQ
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFP33
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIF002
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFBT1
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFQ1
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFRES
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : CHESNEY,CHRISTINE M           Date Entered  : MAR 02, 2004
+Completed By: ALDERMAN,MATT S               Date Completed: JUN 28, 2004
+Released By : BURTS,WANDA                   Date Released : JUL 01, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

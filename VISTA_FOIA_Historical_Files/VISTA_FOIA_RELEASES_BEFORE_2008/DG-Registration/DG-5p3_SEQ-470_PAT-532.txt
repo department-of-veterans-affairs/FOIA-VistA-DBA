@@ -1,0 +1,218 @@
+$TXT Created by THEROUX,JOHN at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 07/23/03 at 13:39
+=============================================================================
+Run Date: SEP 11, 2003                     Designation: DG*5.3*532
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #470                    Status: Released
+                  Compliance Date: OCT 12, 2003
+=============================================================================
+
+Associated patches: (v)DG*5.3*244  <<= must be installed BEFORE `DG*5.3*532'
+
+Subject: FIX FOR VADPT API AND FOR PATIENT LOOKUPS
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch addresses a problem with IN5^VADPT returning old admission 
+ record pointers for outpatients. 
+ It also addresses two patient lookup problems:
+ a) system error when an entry begins with a number followed by letter "E" 
+ followed by a number, such as 3E2580, and b) when adding a new patient,
+ the user cannot up-arrow out if an SSN is entered that is already used
+ by another patient.   
+  
+ ASSOCIATED NOISes:
+ ==================
+ 1.  LON-0503-60051  DSS issues
+ 2.  SAJ-0603-70738  <NUMBER>CHKVAL+11^DPTLK1:1 error after DG*5.3*244 
+     duplicate:
+     NYH-0603-10617  'ILLEGAL NUMBER' error following installation of patch
+ 3.  DEN-1000-50369  SSN does not allow ^ as in past for Duplicate Patient
+     duplicate: 
+     TOG-1000-10783  SSN does not allow ^ 
+     PRO-0503-11208  Load/Edit problem 
+  
+ ASSOCIATED E3R:
+ ===============
+ N/A 
+  
+ NOIS OVERVIEW:
+ ==============
+  
+ 1)  LON-0503-60051  DSS issues
+  
+ Problem:
+ --------
+ The supported call, IN5^VADPT, is returning old admission records for 
+ outpatients when the following is true:
+  
+ a. Patient has had no admissions since 1989*
+ b. The latest pre-1989 admission has no time associated with the discharge
+ c. The admission date and discharge date occurred on the same calendar day
+  
+ This set of circumstances causes the "APID" cross-reference for the 
+ discharge record in the PATIENT MOVEMENT file (#405) to be sorted before
+ the admission record, as well as any other records associated with the 
+ admission.
+    
+ Resolution:
+ -----------
+ ^VADPT3 has been modified to account for out-of-order discharge records,
+ using the above criteria, when looking up the admission status of a 
+ patient.
+  
+ * Analysis of databases in test and development accounts did not show 
+ any records in file #405 without a time value in the DATE/TIME field 
+ beyond December 1987.  1989 was chosen as a conservative value, assuming 
+ that by then sites would have installed the functionality that stopped
+ allowing DATE/TIME values without a time component.
+  
+ 2) SAJ-0603-70738  <NUMBER>CHKVAL+11^DPTLK1:1 error after DG*5.3*244
+  
+ Problem:
+ --------
+ When looking up a patient using an entry of a number, followed by 
+ the letter "E", followed by another number, a system error occurs.
+ This occurs because the letter "E" is evaluated as an exponential 
+ reference, so that if the trailing number is a high one (Ex: 3E2580),
+ it results in an "illegal number".  
+  
+ Resolution:
+ -----------
+  
+ Routine DPTLK1 has been modified to check for the presence of
+ such entries so as to prevent the system error from occuring.
+  
+ 3) DEN-1000-50369  SSN does not allow ^ as in past for Duplicate Patient
+  
+ Problem:
+ --------
+ When registering a new patient, if the user enters an SSN that is 
+ already being used by another patient, the software will not allow
+ the user to up-arrow out.  
+  
+ Resolution:
+ -----------
+  
+ Routine DPTLK2 has been modified to allow the user to up-arrow out.
+ When doing so, the following message will display, indicating that
+ the stub record has been deleted.
+  
+    PATIENT SOCIAL SECURITY NUMBER: xxxxx4040  Already used by patient 
+ 'FLYNN,ER'?
+      SSN
+      Enter 9-digit SSN or 'P' for pseudo-SSN.
+    PATIENT SOCIAL SECURITY NUMBER: ^
+       <'patient name'> DELETED
+ Select PATIENT NAME: 
+  
+  
+  
+ PARTICIPATING TEST SITES:
+ =========================
+  
+ San Juan, PR
+ Manchester, NH
+ Long Beach, CA
+  
+  
+ ROUTINE SUMMARY:
+ ================
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+  
+     <tab>;;5.3;Registration;**[patch list]**;Aug 13, 1993
+  
+                            CHECK^XTSUMBLD results
+ Routine name      Before Patch          After Patch         Patch List
+ ============      ============          ===========         ==========
+ VADPT3                 6362248              6965765             532
+ DPTLK1                12893756             12955366     32,50,197,249,317,
+                                                         391,244,532
+ DPTLK2                14251761             14271821     32,197,214,244,532
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+  
+ This patch may be run with users on the system, but it is recommended 
+ that it be queued to run after normal business hours to minimize the
+ impact on users of the Registration package.
+  
+ Installation will take less than 2 minutes.
+  
+ 1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu to unload
+     the KIDS distribution included with this message.
+  
+ 2.  Review your mapped set.  If any of the routines listed in the ROUTINE   
+     SUMMARY section are mapped, they should be removed from the mapped set 
+     at this time.
+  
+ 3.  From the Kernel Installation and Distribution System Menu, select
+     the Installation menu.
+  
+ 4.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter DG*5.3*532):
+  
+     a.  Compare Transport Global to Current System  - this option will
+         allow you to view all changes that will be made when the patch
+         is installed.  It compares all components of the patch (routines,
+         DDs, templates, etc.).
+     b.  Verify Checksums in Transport Global - this option will
+         allow you to ensure the integrity of the routines that are in
+     c.  Print Transport Global - this option will allow you to view the
+         components of the KIDS build.
+   
+ 5.  Use the Install Package(s) option and select the package DG*5.3*532.
+  
+ 6.  When prompted ' Want KIDS to INHIBIT LOGONs during the install?
+     YES//', respond NO.
+  
+ 7.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+     Protocols? YES//', respond NO.
+         
+ 8.  If routines were unmapped as part of step 2, they should be returned
+     to the mapped set once the installation has run to completion.
+  
+  
+ POST INSTALLATION INSTRUCTIONS:
+ ===============================
+  
+ None
+
+Routine Information:
+====================
+
+Routine Name:
+  - VADPT3
+
+
+Routine Checksum:
+
+Routine Name:
+  - DPTLK1
+
+
+Routine Checksum:
+
+Routine Name:
+  - DPTLK2
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : DOWNING,TODD                  Date Entered  : JUN 13, 2003
+Completed By: BAUMAN,HELENE                 Date Completed: SEP 11, 2003
+Released By : FITCH,DONNA                   Date Released : SEP 11, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

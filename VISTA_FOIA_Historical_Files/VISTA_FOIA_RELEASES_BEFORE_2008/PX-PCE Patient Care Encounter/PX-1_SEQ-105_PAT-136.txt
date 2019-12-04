@@ -1,0 +1,238 @@
+$TXT Created by LUNDEN,JOHN at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 05/18/04 at 11:10
+=============================================================================
+Run Date: JUN 17, 2004                     Designation: PX*1*136
+Package : PX - PCE PATIENT CARE ENCOUNTER     Priority: Mandatory
+Version : 1       SEQ #105                      Status: Released
+                  Compliance Date: JUL 16, 2004
+=============================================================================
+
+Associated patches: (v)PX*1*11     <<= must be installed BEFORE `PX*1*136'
+                    (v)PX*1*112    <<= must be installed BEFORE `PX*1*136'
+                    (v)PX*1*121    <<= must be installed BEFORE `PX*1*136'
+                    (v)IB*2*257    <<= must be installed BEFORE `PX*1*136'
+
+Subject: FIX EM CODE PROMPTS IN CP PROTOCOL
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch addresses 2 problems.
+ PROBLEM 1:
+ In PCE, while running the CP (CPT Procedure) Protocol, the code does 
+ not check to see if the CPT code is an E&M code in file 357.69 (Type of 
+ Visit). An E&M code may only be placed on an encounter once with the
+ "Quantity" field only allowing a "1" unless the "Type of Visit" file is
+ set up to allow more than one (see IB*2.0*257). This business rule is,
+ therefore, not currently being enforced. 
+  
+ NOTE: the quantity flag in IB*2.0*257 can be set with the menu option
+ EDIT E&M CODE QUANTITY FLAG [IB EDIT E&M CODE QUNATITY FLAG] under the
+ mccr System Definition Menu [IB SYSTEM DEFINITION MENU] option. 
+ This option requires the IB SUPERVISOR key. 
+  
+ PROBLEM 2:
+ In the Check Out function of PCE the user is asked to enter an ICD9 
+ code. If the user enters a partial CPT code then the Check Out procedure 
+ will generate a list of codes that match. However, if one of the matching 
+ ICD9 codes has a blank Description field the program will error. Note - 
+ this error does not occur when adding an ICD9 code through the "DX  
+ Diagnosis (ICD 9)" protocol.
+  
+  
+ ASSOCIATED ER3(s):
+ ------------------
+ N/A
+  
+ ASSOCIATED NOIS:
+ ---------------
+ Problem 1: 
+     MEM-0903-70868 unable to enter multiple codes
+   
+     Duplicates:
+     POR-0903-50335 PX*1*112 cause problem with code 99355
+     SFC-0903-60644 Problem with PX*1*112
+     MAC-1203-62060 CPT code G0154 only allows quantity of 1  bdj
+     ECH-1003-50767 CPT QUANTITY
+  
+ Problem 2:
+     WPB-0104-30484 Null Subscript
+  
+     Duplicates:
+     SBY-0304-31638  FILTER+2^PXBGPOV2:1
+     MAD-0104-42144  FILTER+2~PXBGPOV2:1
+     MIA-0104-30914  <NULLSUBSCR>FILTER+2^PXBGPOV2
+  
+  
+ PARTICIPATING TEST SITES:
+ -------------------------
+ El Paso,TX
+ Portland,OR
+ Northern California HCS
+ Eastern Colorado HCS
+  
+ NOIS OVERVIEW:
+ --------------
+ PROBLEM 1:
+ In PCE, while running the CP (CPT Procedure) Protocol, the code does 
+ not check to see if the CPT code is an E&M code in file 357.69 (Type of 
+ Visit). An E&M code may only be placed on an encounter once with the
+ "Quantity" field only allowing a "1" unless the "Type of Visit" file is
+ set up to allow more than one (see IB*2.0*257). This business rule is,
+ therefore, not currently being enforced. 
+  
+ PROBLEM 2:
+ In the Check Out function of PCE the user is asked to enter an ICD9 
+ code. If the user enters a partial CPT code then the Check Out procedure 
+ will generate a list of codes that match. However, if one of the matching 
+ ICD9 codes has a blank Description field the program will error.
+  
+  
+ TECHNICAL:
+ ----------
+  
+ PROBLEM 1:
+ ----------
+ E&M code information is kept in file 357.69 (Type of Visit). The CP (CPT 
+ Procedure) protocol was not looking at this file when validating the 
+ user's input. In general an E&M code may only be added to an encounter 
+ once - and with a "quantity" of "1". There is an exception to this rule. 
+ There is a field in file 357.69 which serves as a flag to say that this 
+ particular code may be used more than once and with a quantity of more 
+ than one.
+  
+  
+ 357.69,.06    ALLOW QUANTITY GREATER THAN 1 0;6 SET
+  
+                                 'N' FOR NO; 
+                                 'Y' FOR YES; 
+               LAST EDITED:      MAY 13, 2004 
+               HELP-PROMPT:      Entry of YES allows more than one 
+                                 unit(quantity) be entered. 
+  
+  
+  
+  
+ Since the current code does not check this file, any CPT code entered may 
+ be used more than once and with a quantity greater than one.
+  
+ RESOLUTION 1:
+ Change the Check Out code so that it verifies the above information 
+ and prompts accordingly.
+  
+  
+ PROBLEM 2:
+ If the user has entered a partial ICD9 then the M code searches for 
+ matches based on this entry. It will internally arrange them in an array 
+ with the ICD9 description as one of the subscripts. If the description is 
+ null this results in a null subscript error. 
+  
+ RESOLUTION 2:
+ The array will always be set with the description concatonated to a hard
+ space. This will keep the ICD9 code in the array and not allow the error
+ to occur.
+  
+  
+  ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;1.0;PCE PATIENT CARE ENCOUNTER;**[patch list]**;Aug 12, 1996
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  PXBGPOV2               8957452              9019147         1,5,11,136
+  PXCECPT                8582092              8612097       14,27,73,89,112
+                                                                121,136
+  PXCEVFI1               6129759              5939124       23,73,112,136
+  
+ INSTALLATION INSTRUCTIONS: 
+ ==========================
+ This patch can be installed during business hours, but because some 
+ options will be out of service during the installation process it is 
+ suggested that it be queued for non-peak hours. Installation will take
+ less than 5 minutes.
+  
+ 1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu. [Note: TEXT 
+    PRINT/DISPLAY option in the PackMan menu will display the patch text
+    only].
+  
+ 2.  Review your mapped set.  If the routines are mapped, they should be
+     removed from the mapped set at this time.
+  
+ 3. From the Kernel Installation and Distribution System (KIDS) menu,
+    select the Installation menu.
+  
+ 4. From this menu, you may elect to use the following options:
+    (when prompted for INSTALL NAME enter PX*1.0*136)
+    
+    a. Backup a Transport Global - this option will create a backup message
+       of any routines exported with the patch. It will NOT backup any 
+       other changes such as DDs or templates.
+    b. Compare Transport Global to Current System - this option will allow
+       you to view all changes that will be made when the patch is 
+       installed. It compares all components of the patch (routines, DDs, 
+       templates, etc.).
+    c. Verify Checksums in Transport Global - this option will allow you
+       to ensure the integrity of the routines that are in the Transport
+       Global.
+    d. Print Transport Global - this option will allow you to view the
+       components of the KIDS build.
+  
+ 5. Use the Install Package(s) option and select the package PX*1.0*136.
+  
+ 6. When prompted 'Want KIDS to INHIBIT LOGONs during the install? YES//', 
+    respond NO
+  
+ 7. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+    Protocols? YES//', respond YES.
+  
+ 8. When prompted to select the options you would like to place out of
+    of order, enter the following:
+  
+         PXCE ENCOUNTER DATA ENTRY
+         PXCE ENCOUNTER ENTRY & DELETE
+         PXCE ENCOUNTER ENTRY NO DELETE
+         PXCE ENCOUNTER ENTRY SUPER
+  
+ 9. If routines were unmapped as part of step 2 (DSM for Open VMS sites
+    only), they should be returned to the mapped set once the installation
+    has run to completion.
+
+Routine Information:
+====================
+
+Routine Name:
+  - PXCECPT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCEVFI1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBGPOV2
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : LUNDEN,JOHN                   Date Entered  : JAN 06, 2004
+Completed By: ILUSTRISIMO,LUCY              Date Completed: JUN 15, 2004
+Released By : HEUER,CINDY                   Date Released : JUN 17, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

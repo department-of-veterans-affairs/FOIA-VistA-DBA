@@ -1,0 +1,274 @@
+$TXT Created by HOLLOWAY,THOMAS J at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 07/27/05 at 10:20
+=============================================================================
+Run Date: NOV 02, 2005                     Designation: IB*2*277
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #284                      Status: Released
+                  Compliance Date: DEC 03, 2005
+=============================================================================
+
+Associated patches: (v)IB*2*155    <<= must be installed BEFORE `IB*2*277'
+                    (v)IB*2*250    <<= must be installed BEFORE `IB*2*277'
+
+Subject: IENS FOR CPT CODES PRINT ON REPORT AND UNDEFINED ERROR
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch addresses two issues. The first issue is that the Re-
+ Generated Unbilled Amounts Report is printing the internal entry number
+ (IEN) of the CPT Code instead of the CPT Code itself. The second issue
+ is an undefined error received while using Assign Reason Not Billable. 
+    
+ ASSOCIATED REMEDY:
+ ================
+ 1. HD63852     IENs for CPT codes print on report
+      Duplicate: HD63880     iens on report rather than cpts-same as
+                           
+ 2. HD63592     stack error when using claims tracking menu
+    
+ ASSOCIATED E3R(s):
+ ==================
+ N/A
+    
+ PARTICIPATING TEST SITES:
+ =========================
+ Atlanta, GA
+ Long Beach, CA
+ Phoenix, AZ
+ West Palm Beach, FL
+    
+ REMEDY OVERVIEW:
+ ================
+ 1. HD63852     IENs for CPT codes print on report
+    
+    Problem:
+    --------
+    The Re-Generate Unbilled Amounts Report [IBT RE-GEN UNBILLED REPORT]
+    option is printing the IEN of the CPT Codes, in the OUTPATIENT UNBILLED
+    report, instead of the CPT Codes.  In many cases the IEN is the same
+    as the CPT code so that no difference is detected.  In the few cases 
+    where the IEN and CPT code are not equivalent, it is very noticeable
+    that the number on the report is not a CPT code.
+    
+    Resolution:
+    -----------
+    The Re-Generate Unbilled Amounts Report [IBT RE-GEN UNBILLED REPORT]
+    option has been modified to print the CPT Codes in the OUTPATIENT
+    UNBILLED report.
+    
+    
+ 2. HD63592     stack error when using claims tracking menu
+    
+    Problem:
+    --------
+    When using option Assign Reason Not Billable [IBT EDIT REASON NOT 
+    BILLABLE] an Undefined error occurs.
+    
+    Resolution:
+    -----------
+    In the routine where the error occurs, a check will be added to 
+    ensure that there is data that can be used.
+    
+ TECHNICAL:
+ ==========
+    
+ 1. RE:  HD63852      IENs for CPT codes print on report
+    A new variable "IBCPTNM" was added to the code by IB*2.0*155.
+    This patch takes advantage of that variable and substitutes it in
+    the appropriate spots where the program previously used the IEN
+    value from variable IBXX.
+    IBTUBO1
+      SETUB+16:+17
+      Before -
+   . I $S($G(IBINMRA):1,1:'$O(IBCPT("MRA",""))) S ^TMP($J,"IBTUB-OPT",IBNAME
+     _"@@"_DFN,IBDAY,IBX,IBXX)=+$G(IBCPT(IBXX,1))_U_+$G(IBCPT(IBXX,2))_U_IBCTF
+   . I $G(IBINMRA) S:$G(IBCPT("MRA",IBXX)) ^TMP($J,"IBTUB-OPT_MRA",IBNAME_
+     "@@"_DFN,IBDAY,IBX,IBXX)=1
+    
+      After  -
+   . I $S($G(IBINMRA):1,1:'$O(IBCPT("MRA",""))) S ^TMP($J,"IBTUB-OPT",IBNAME
+     _"@@"_DFN,IBDAY,IBX,IBCPTNM)=+$G(IBCPT(IBXX,1))_U_+$G(IBCPT(IBXX,2))_U
+     _IBCTF
+   . I $G(IBINMRA) S:$G(IBCPT("MRA",IBXX)) ^TMP($J,"IBTUB-OPT_MRA",IBNAME_
+     "@@"_DFN,IBDAY,IBX,IBCPTNM)=1
+   
+    IBTUBO3 - CPTS subroutine modified to handle alphanumeric CPT codes.
+    
+ 2. RE:  HD63592      Stack error when using claims tracking menu
+    Routine IBTRV was modified in two spots with the addition of $GET to
+    prevent the code from erroring out when global nodes were undefined.
+    
+    IBTRV
+      Before  -
+      DEFV+7    S IBX=0 F  S IBX=$O(^IBT(356,"ADFN"_DFN,IBX)) Q:'IBX  S
+      IBY=$O(^IBT(356,"ADFN"_DFN,IBX,0)) I $P(^IBT(356,+IBY,0),"^",20) D
+      DEFV+13   .I $P(^IBT(356,+IBY,0),"^",20) S X=$P(^(0),"^")
+    
+      After   -
+      DEFV+7    S IBX=0 F  S IBX=$O(^IBT(356,"ADFN"_DFN,IBX)) Q:'IBX  S
+      IBY=$O(^IBT(356,"ADFN"_DFN,IBX,0)) I $P($G(^IBT(356,+IBY,0)),"^",20) D
+      DEFV+13   .I $P($G(^IBT(356,+IBY,0)),"^",20) S X=$P(^(0),"^")
+    
+ ROUTINE SUMMARY 
+ ===============
+ The following is a list of the routines included in this patch.  
+ The second line of each of these routines now looks like: 
+    
+    <tab>;;2.0;INTEGRATED BILLING;**[PATCH LIST]**;21-MAR-94
+  
+                         CHECK^XTSUMBLD results
+ Routine name      Before Patch        After Patch    Patch List
+ ============      ============        ===========    ===========
+  IBTRV                10068047           10102813    40,121,124,250,277
+  IBTUBO1              11078005           11129561    19,31,32,91,123,159
+                                                           247,155,277
+  IBTUBO3               7908642            7935911    123,159,192,155,277
+    
+                         CHECK1^XTSUMBLD results
+ Routine name      Before Patch        After Patch    Patch List
+ ============      ============        ===========    ===========
+  IBTRV                28689559           28763805    40,121,124,250,277
+  IBTUBO1              45521783           45653349    19,31,32,91,123,159
+                                                           247,155,277
+  IBTUBO3              23248932           23289291    123,159,192,155,277
+    
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+ This patch can be loaded with users in the system.  Installation time
+ will be less than 2 minutes.
+    
+  1.  Choose the PackMan message containing this patch and invoke the 
+      INSTALL/CHECK MESSAGE PackMan option.  
+    
+  2.  Start up the Kernel Installation and Distribution System Menu
+      [XPD MAIN]: 
+           Edits and Distribution ...  
+           Utilities ...  
+           Installation ...  
+    
+      Select Kernel Installation & Distribution System Option: Installation
+                                                               ---
+           1      Load a Distribution
+           2      Verify Checksums in Transport Global
+           3      Print Transport Global
+           4      Compare Transport Global to Current System
+           5      Backup a Transport Global
+           6      Install Package(s)
+                  Restart Install of Package(s)
+                  Unload a Distribution
+    
+  3.  From this menu, you may elect to use the following options
+      (When prompted for the INSTALL NAME, enter IB*2.0*277):
+    
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will
+          not backup any other changes such as DD's or templates.
+      b.  Compare Transport Global to Current System - This option
+          will allow you to view all changes that will be made when
+          this patch is installed.  It compares all components of this
+          patch (routines, DD's, templates, etc.).
+      c.  Verify Checksums in Transport Global - This option will
+          allow you to ensure the integrity of the routines that are
+          in the transport global.
+    
+  4.  Use the Install Package(s) option and select the package
+      IB*2.0*277.
+    
+      a.  When prompted "Want KIDS to INHIBIT LOGONs during the
+          install? YES//", answer NO.
+      b.  When prompted "Want to DISABLE Scheduled Options and Menu 
+          Options and Protocols? YES//", answer YES.
+      c.  When prompted "Enter options you wish to mark as 'Out Of Order':",
+          enter the following options:
+    
+          Re-Generate Unbilled Amounts Report [IBT RE-GEN UNBILLED REPORT]
+          Assign Reason Not Billable [IBT EDIT REASON NOT BILLABLE]
+    
+      d.  When prompted "Enter protocols you wish to mark as 'Out Of 
+          Order':", press <return>.
+    
+ INSTALLATION EXAMPLE:
+ =====================
+    
+ Select Installation Option: 6  Install Package(s)
+ Select INSTALL NAME: IB*2.0*277       Loaded from Distribution  2/2/05@16:49:57
+      => IB*2*277
+    
+ This Distribution was loaded on Feb 02, 2005@16:49:57 with header of 
+   IB*2*277 
+   It consisted of the following Install(s):
+     IB*2.0*277
+  Checking Install for Package IB*2.0*277
+    
+  Install Questions for IB*2.0*277
+    
+    
+  Want KIDS to INHIBIT LOGONs during the install? YES// NO
+  Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// YES
+    
+  Enter options you wish to mark as 'Out Of Order': IBT RE-GEN UNBILLED REPORT
+    
+  Enter options you wish to mark as 'Out Of Order': IBT EDIT REASON NOT BILLABLE  
+       Assign Reason Not Billable
+    
+  Enter options you wish to mark as 'Out Of Order': 
+    
+  Enter protocols you wish to mark as 'Out Of Order': 
+    
+  Delay Install (Minutes):  (0-60): 0// 
+    
+  Enter the Device you want to print the Install messages.
+  You can queue the install by enter a 'Q' at the device prompt.
+  Enter a '^' to abort the install.
+    
+  DEVICE: HOME//   INCOMING TELNET
+    
+                                     IB*2.0*277                                   
+  --------------------------------------------------------------------------------
+    
+   Install Started for IB*2.0*277 : 
+                 Feb 02, 2005@17:30:04
+    
+  Build Distribution Date: Feb 02, 2005
+    
+   Installing Routines:
+                 Feb 02, 2005@17:30:04
+    
+   Updating Routine file...
+    
+   Updating KIDS files...
+    
+   IB*2.0*277 Installed. 
+                 Feb 02, 2005@17:30:05
+    
+   Install Message sent #3011
+    
+  --------------------------------------------------------------------------------
+            +------------------------------------------------------------+
+    100%    |             25             50             75               |
+  Complete  +------------------------------------------------------------+
+   
+ Install Completed
+
+Routine Information:
+====================
+Routine Name: IBTRV
+Routine Name: IBTUBO1
+Routine Name: IBTUBO3
+
+=============================================================================
+User Information:
+Entered By  : ARNOLD,ROBERT                 Date Entered  : JUN 07, 2004
+Completed By: DAWSON,TIM                    Date Completed: NOV 02, 2005
+Released By : GANUS,MAUNETTE                Date Released : NOV 02, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

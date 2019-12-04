@@ -1,0 +1,203 @@
+$TXT Created by DOWNING,TODD at DEVVJJ.FO-ALBANY.MED.VA.GOV  (KIDS) on TUESDAY, 05/06/03 at 11:27
+=============================================================================
+Run Date: JUL 11, 2003                     Designation: ACKQ*3*7
+Package : ACKQ - QUASAR                        Priority: Mandatory
+Version : 3         SEQ #5                     Status: Released
+                  Compliance Date: AUG 11, 2003
+=============================================================================
+
+Associated patches: (v)ACKQ*3*1    <<= must be installed BEFORE `ACKQ*3*7'
+                    (v)ACKQ*3*5    <<= must be installed BEFORE `ACKQ*3*7'
+
+Subject: FIX PROBLEM LIST UPDATE BUGS
+
+Category: 
+  - Routine
+  - Input Template
+
+Description: 
+============
+
+ This patch fixes problems related to the updating of the PCE Problem list 
+ with diagnosis codes when entering or editing A&SP Clinic Visits.
+ 
+ 
+ ASSOCIATED NOIS:
+ ==================
+ WAS-0303-21615
+ 
+ 
+ ASSOCIATED E3R:
+ ===============
+ N/A
+ 
+ 
+ NOIS OVERVIEW:
+ ==============
+ 
+ 1. FGH-0303-21615  Quasar is ~unverifying~ problem
+ 
+ Problem:
+ --------
+ 
+ As Reported:
+ ++++++++++++
+ When entering an encounter in CPRS and choosing to add a particular diagnosis 
+ to the Problem List in CPRS, the problem will automatically be verified if 
+ the user holds the appropriate key(s).  If the user then edits the 
+ encounter in QUASAR, the user automatically gets shown the "Update 
+ PCE Problem List with Diag. code ?" prompt.  Answering "YES" causes the 
+ existing problem on the patient's Problem List to become unverified even 
+ though it was verified before.
+ 
+ As Analyzed:
+ ++++++++++++
+ Anytime a Problem List update is sent through transmission to PCE it will 
+ be unverified if the VERIFY TRANSCRIBED PROBLEMS field (#1) in the PROBLEM 
+ LIST SITE PARAMETERS file (#125.99) is set to "YES" for the site.  This 
+ being the case, QUASAR does not do any checking to determine if a diagnostic 
+ code exists on the Problem List before prompting to add it to the list.
+ During transmission of the visit data to PCE, any diagnostic codes 
+ where the UPDATE PCE PROBLEM LIST field (#.13) of the DIAGNOSTIC CODE 
+ multiple (#3) of the A&SP CLINIC VISIT file (#509850.6) is set to "YES" 
+ will be updated in the Problem file (#9000011) via the PCE transmission and 
+ will have an unverified status.  The problem is compounded by the fact 
+ that the UPDATE PCE PROBLEM LIST field retains its current value until it is 
+ changed directly by the user.  What this means is that anytime the visit is 
+ re-edited in Quasar, causing another PCE transmission, the Problem List will 
+ be updated again for all diagnostic codes where the UPDATE PCE PROBLEM   
+ LIST is set to "YES", causing previously verified problems to become   
+ unverified once again.
+  
+ Resolution:
+ -----------
+ 
+ The input template, ACKQAS VISIT ENTRY, has been modified to skip the 
+ "Update PCE Problem List with Diag. code ?" prompt and the prompt for 
+ Diagnosis Provider if a verified problem exists in the Problem file 
+ (#9000011) for the diagnostic code.  These prompts will be presented only 
+ when the problem does not exist or if it exists with an inactive status.
+ 
+ The PCE transmission building logic has been modified to treat problems as 
+ follows:
+ 
+ 1.  If the UPDATE PCE PROBLEM LIST field (#.13) is set to "YES" for the 
+ DIAGNOSTIC CODE (#.01) in the DIAGNOSTIC CODE multiple (#3),
+ 
+     a) If the problem does not exist in the Problem file (#9000011), add 
+        the diagnostic code to the Problem List.
+     b) If the problem exists and is inactive, change the status to active.
+     c) If the problem exists and is active, do not send any update.
+ 
+ 2.  If the UPDATE PCE PROBLEM LIST field is set to "NO" do not sent any 
+ update to the Problem List.
+       
+ 
+ PARTICIPATING TEST SITES:
+ =========================
+ IRON MOUNTAIN, MI
+ WASHINGTON D.C.
+ 
+ 
+ INPUT TEMPLATE:
+ ===============
+ 
+ The input template, ACKQAS VISIT ENTRY, has been modified and is included 
+ in the KIDS build.  The "Update PCE Problem List with Diag. code?" and 
+ "DIAGNOSIS PROVIDER" prompts will now be skipped if the diagnosis exists  
+ in the Problem file (#9000011) and is currently active.
+ 
+ 
+ ROUTINE SUMMARY:
+ ================
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+ 
+      <tab>;;3.0;QUASAR;**[patch list]**;Feb 11, 2000
+ 
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  ACKQPCE1              10266188             10708369           1,2,5,7
+  ACKQUTL6               9427943              9933471             1,7
+ 
+ 
+ DISTRIBUTION:
+ =============
+ This patch is exported using KIDS.
+ 
+ 
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ 
+ This patch may be run with users on the system, but it is recommended 
+ that it be queued to run after normal business hours to minimize the
+ impact on users of the QUASAR package.
+ 
+ Installation will take less than 1 minute.
+ 
+ 1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu to unload
+     the KIDS distribution included with this message.
+ 
+ 2.  Review your mapped set.  If any of the routines listed in the ROUTINE   
+     SUMMARY section are mapped, they should be removed from the mapped set 
+     at this time.
+ 
+ 3.  From the Kernel Installation and Distribution System Menu, select
+     the Installation menu.
+ 
+ 4.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter ACKQ*3.0*7):
+ 
+     a.  Compare Transport Global to Current System  - this option will
+         allow you to view all changes that will be made when the patch
+         is installed.  It compares all components of the patch (routines,
+         DDs, templates, etc.).
+     b.  Verify Checksums in Transport Global - this option will
+         allow you to ensure the integrity of the routines that are in
+         the transport global.
+     c.  Print Transport Global - this option will allow you to view the
+         components of the KIDS build.
+   
+ 5.  Use the Install Package(s) option and select the package ACKQ*3.0*7.
+ 
+ 6.  When prompted ' Want KIDS to INHIBIT LOGONs during the install?
+     YES//', respond NO.
+ 
+ 7.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+     Protocols? YES//', respond YES. When prompted to select the options you 
+     would like to place out of order, enter the following:
+ 
+     ACKQAS VISIT EDIT        Edit an Existing Visit
+     ACKQAS VISIT ENTRY       New Clinic Visits
+             
+ 8.  If routines were unmapped as part of step 2, they should be returned
+     to the mapped set once the installation has run to completion.
+
+Routine Information:
+====================
+
+Routine Name:
+  - ACKQPCE1
+
+
+Routine Checksum:
+
+Routine Name:
+  - ACKQUTL6
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : DOWNING,TODD                   Date Entered : APR 17, 2003
+Completed By: PEREZ,CAROL                   Date Completed: JUL 11, 2003
+Released By : WILLIAMS,ELIZABETH ANNE      Date Released : JUL 11, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

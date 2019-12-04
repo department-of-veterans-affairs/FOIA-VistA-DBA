@@ -1,0 +1,228 @@
+$TXT Created by NABER,DAVID A at DEVCUR.FO-SLC.MED.VA.GOV  (KIDS) on MONDAY, 03/25/02 at 13:23
+=============================================================================
+Run Date: APR 03, 2002                     Designation: OR*3*138
+Package : OR - ORDER ENTRY/RESULTS REPORTING Priority: EMERGENCY
+Version : 3       SEQ #127                       Status: Released
+=============================================================================
+
+Associated patches: (v)OR*3*24     <<= must be installed BEFORE `OR*3*138'
+                    (v)OR*3*131    <<= must be installed BEFORE `OR*3*138'
+
+Subject: Database clean up of POE related problems
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+ When using the new dialog PS MEDS, there is a potential for the wrong 
+ package or display group to be assigned to an order.  Even if you aren't 
+ actively using the PS MEDS dialog, you may still have this problem, as
+ CPRS uses this dialog to process certain actions (transfer, et al.)
+ internally.  When the package is set incorrectly, orders will not print as
+ expected.  When the display group is set incorrectly, the orders will not 
+ group as expected when viewing orders.  This problem was fixed in patch
+ OR*3*131, GUI v18 update.  As a result of this problem being fixed by a 
+ GUI update it is important that you check to make sure that the latest 
+ version of the GUI is available on all workstations.  Failure to do so may
+ result in future problems with packages and display groups.
+  
+ Previously, it was possible for an order to not have an AE cross-reference
+ entered when the order was created.  This cross-reference is based on the 
+ stop date associated with the order and is used for expiring order
+ alerts.  Without the AE cross-reference present, the alert cannot be
+ fired.  This problem was fixed in patch OR*3*94, POE enhancements.
+  
+ Although the above described problems have been fixed, there are still 
+ potentially incorrect orders in the database that may replicate through 
+ certain actions.  As a result, a database clean-up is needed.
+  
+ While testing this patch, it was discovered that another scenario existed 
+ that could also cause an AE cross-reference to not be set.  If an order 
+ were reinstated, possibly as a result of MAS editing a movement, the order
+ would not have an AE cross-reference set.  It was also discovered that if
+ an order were reinstated that had previously had a change action applied
+ to it, the order would appear on the active order list with an incorrect
+ status.  This was due to the current action field not being correctly
+ updated.  Both of the above problems are fixed in this patch.
+  
+ In addition to the above, it was also discovered that pharmacy child 
+ orders were incorrectly being assigned Pharmacy Data Management as the 
+ package.  This, too, has been fixed in this patch.
+  
+ This patch contains a post-init that will scan the database and fix any
+ orders that have an incorrect package, incorrect display group, or missing
+ AE cross-reference.  Upon finishing, a mail message will be sent to the
+ initiator of the patch that will detail each changed order.  The listing
+ will be by patient name and within patient name by order number.  For each
+ order number, you will see the before and after values for the fields that
+ were changed.
+  
+ The post-init will also find any active orders that have an incorrect 
+ current action and update it to the correct action.  The post-init will 
+ not report any of these changes.
+  
+ The post-init will be queued to run immediately in the background upon 
+ installation of this patch.  If you DO NOT want the routine to run 
+ immediately,
+ you must queue the patch for later installation.  If for some
+ reason you need to run the clean-up from programmer's mode, you may do so 
+ by typing D ^ORY138 from the programmer's prompt.
+  
+ The test sites reported the following run times for the post-init.  In 
+ addition to the times, the total number of orders is also given.  Although
+ the post-init does not go through every order these numbers are given for
+ comparison purposes.
+  
+ VISN 2 - 20.5 million orders - 22 hours
+ Butler - 2 million orders - 1.5 hours
+ Beckley - 2.75 million orders - 2.5 hours
+  
+ You should check to be sure that the ORMTIME RUN option is regularly 
+ scheduled to run on your system.  This option expires old orders and 
+ activates scheduled orders.  In addition, you should also check to make 
+ sure that the PSO EXPIRE PRESCRIPTIONS option is scheduled to run daily.  
+ This option reviews outpatient medication orders and expires them as
+ appropriate.
+  
+ NOTE: If your site has not been running the PSO EXPIRE PRESCRIPTIONS
+ option, you may want to consider running the PSO MANUAL AUTO EXPIRE
+ option.  The PSO MANUAL AUTO EXPIRE option will compare the status of ALL
+ orders in outpatient pharmacy from the date of installation of v7 of
+ outpatient pharmacy with their corresponding order in CPRS. If the order 
+ should have expired, then the order will be expired both in pharmacy and 
+ CPRS.  This is the only status that this option reviews and changes. As
+ this option looks at a lot of orders, serious consideration needs to be
+ given before running this option.  If you need further assistance in
+ making this decision, please log a NOIS.
+  
+ NOIS CALLS
+ ==========
+  
+ BEC-0202-22749     NOW DOSE ORDERS NOT PRINTABLE
+ LIT-0302-70374     Label print disabled on transfer med
+ BUT-1201-22044     Medication order did not print to Pharmacy
+ LEB-0202-21394     Orders Tab sorting
+ ISA-0202-10578     corrupt data fields in file 100 at sites
+ BUT-0102-22662     Expiring med alert not generated for orders entered 
+                    pre POE
+ POR-0202-52582     Incorrect order displaying on orders tab
+  
+ The above calls include detailed information regarding the missing 
+ cross-references, as well as the incorrect display groups and packages.
+  
+ ROUTINE SUMMARY:
+ ================
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+  
+     <tab>;;3.0;ORDER ENTRY/RESULTS REPORTING;**[patch list]**;Dec 17, 1997
+  
+                            CHECK^XTSUMBLD results
+ Routine name         Before Patch          After Patch         Patch List
+ ============         ============          ===========         ==========
+ ORCSEND1                 17970734             18239345        4,29,45,61,79
+                                                                94,116,138
+ ORDD100A                  2576475              2448864           24,138
+ ORMPS                    17131967             17654042        3,54,62,86,92,
+                                                                94,116,138
+ ORY138                        N/A             22596156            138
+  
+ INSTALLATIONS INSTRUCTIONS:
+ ===========================
+ This patch should be loaded during non-peak hours to minimize disruption
+ to users who can remain on the system during installation. Installation
+ will take approximately 1 minute.  Systems with heavy user loads
+ or performance problems may take longer.
+  
+ **NOTE: This patch contains a post-init routine, ORY138, which will be
+ queued to run in the background upon installation.  This routine will fix
+ problems found in your database and send a message to the initiator upon
+ completion.
+  
+ Here are the approximate number of total orders and the approximate run 
+ times for the post-init from the test sites.  The post-init can run with 
+ users on.
+  
+ VISN 2 - 20.5 million orders - 22 hours
+ Butler - 2 million orders - 1.5 hours
+ Beckley - 2.75 million orders - 2.5 hours
+  
+ If you DO NOT want this to run immediately, you must queue the patch 
+ install to the time you'd like the background job to run.
+  
+ This patch cleans up problems that were previously fixed by the GUI v18 
+ update patch (OR*3*131).  Therefore, in order to avoid future problems 
+ you MUST make sure that the latest version of the executable has been 
+ placed on all workstations if that is how your site's configuration 
+ currently is.
+  
+ 1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+  
+ 2.  Review your mapped set.  If any of the routines listed in the ROUTINE 
+     SUMMARY section are mapped, they should be removed from the mapped 
+     set at this time.
+     
+ 3.  From the Kernel Installation and Distribution System (KIDS)
+     Menu, select the Installation menu.
+  
+ 4.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter OR*3.0*138):
+          a.  Backup a Transport Global
+          b.  Compare Transport Global to Current System
+          c.  Verify Checksums in Transport Global
+  
+ 5.  Use the Install Package(s) option and select patch OR*3.0*138.
+     
+ 6.  When prompted 'Want KIDS to INHIBIT LOGONS during install? YES//', 
+     respond "NO".
+  
+ 7.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+     Protocols? YES//', respond NO. 
+     
+ 8.  If routines were unmapped as part of step 2, they should be returned 
+     to the mapped set once the installation has run to completion.
+  
+ 9.  Routine ORY138 may be deleted after successful completion of the back
+     ground job.
+
+Routine Information:
+====================
+
+Routine Name:
+  - ORY138
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORMPS
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORDD100A
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORCSEND1
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : NABER,DAVID A                 Date Entered : FEB 15, 2002
+Completed By: GREEN,JOANN                   Date Completed: APR 02, 2002
+Released By : TASTROM,JOSEPH E             Date Released : APR 03, 2002
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

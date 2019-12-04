@@ -1,0 +1,410 @@
+$TXT Created by YORTY,M. ROBERT at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 08/04/03 at 15:35
+=============================================================================
+Run Date: OCT 15, 2003                     Designation: SD*5.3*303
+Package : SD - SCHEDULING                     Priority: Mandatory
+Version : 5.3       SEQ #278                    Status: Released
+                  Compliance Date: NOV 15, 2003
+=============================================================================
+
+Associated patches: (v)DG*5.3*539  <<= must be installed BEFORE `SD*5.3*303'
+
+Subject: Cancel/Restore Clinic Availability
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch addresses the ENDOFILE error received in the 'Cancel Clinic
+ Availability' [SDCANCEL] option when the user selects a printer without
+ queuing. It also addresses a problem with the 'Restore Clinic
+ Availability' [SDRESTORE] option in which an undefined variable (DH)
+ occurs due to missing appointment patterns.
+  
+  
+ This patch addresses the following NOIS message(s):
+ ---------------------------------------------------
+ CMO-0600-41899   CANCEL CLINIC AVAILABILITY GIVES END OF FILE ERROR
+ MAC-0200-60343   UNDEFINED SYMBOL, DH IN SDUNC ROUTINE.
+  
+  
+ Overview of NOIS message(s):
+ ----------------------------
+ CMO-0600-41899   CANCEL CLINIC AVAILABILITY GIVES END OF FILE ERROR  
+ Problem:  When canceling a clinic, if you choose to print your list to a 
+ printer without queuing, there exists a high chance of receiving an 
+ ENDOFILE error message.  This error occurs because, while you have 
+ assigned a print device, the code must execute all the protocols listed 
+ in the SDAM APPOINTMENT EVENTS protocol driver.  Since some of these
+ protocol items are interactive, if the variable ZTQUEUED is not defined
+ through queuing, the protocol routines may execute READ statements and
+ thus assume the print job is going to a CRT. When a non-queued print job
+ sent to a printer encounters a READ statement, an ENDOFILE error will
+ occur.
+  
+ Resolution:  If a printer is chosen, code is added to force queue your
+ print selection.  This will define the variable ZTQUEUED.
+  
+  
+ MAC-0200-60343   UNDEFINED SYMBOL, DH IN SDUNC ROUTINE
+ Problem: An undefined variable, DH, occurs when trying to restore a
+ clinic. This happens when the code is looking for an upcoming or
+ indefinite pattern in the 'day of week' global node of the clinic and one
+ does not exist.
+  
+ Resolution:  An error message will be added instructing the user to update
+ the clinic with an upcoming or indefinite pattern appointment.  Then it
+ will instruct the user to attempt restoring the clinic with the newly
+ added pattern.
+  
+ The following example will display the error created when the variable DH 
+ is undefined:
+  
+ 1).  Clinic is created. (5 days a week, Indefinite number of days).
+      Example of global setup:
+      ^SC(1510,"T3",0) = ^44.09A^^
+      ^SC(1510,"T3",9999999,0) = 9999999
+      ^SC(1510,"T3",9999999,1) = [1 1 1 1|1 1 1 1|1 1 1 1|1 1 1 1]   [1 1|1
+       1 1 1|1 1 1 1|1 1 1 1|1 1]
+      ^SC(1510,"T4",0) = ^44.08A^^
+      ^SC(1510,"T4",9999999,0) = 9999999
+      ^SC(1510,"T4",9999999,1) = [1 1 1 1|1 1 1 1|1 1 1 1|1 1 1 1]   [1 1|1
+       1 1 1|1 1 1 1|1 1 1 1|1 1]
+      ^SC(1510,"T5",0) = ^44.09A^^
+      ^SC(1510,"T5",9999999,0) = 9999999
+      ^SC(1510,"T5",9999999,1) = [1 1 1 1|1 1 1 1|1 1 1 1|1 1 1 1]   [1 1|1
+       1 1 1|1 1 1 1|1 1 1 1|1 1]
+      Global ^
+  
+ 2).  Next.  Clinic was made inactive for a future 9/1 date.
+      Example of global setup:
+      ^SC(1510,"T3",0) = ^44.09A^^
+      ^SC(1510,"T3",9999999,0) = 9999999
+      ^SC(1510,"T3",9999999,1) = 
+      ^SC(1510,"T4",0) = ^44.08A^^
+      ^SC(1510,"T4",9999999,0) = 9999999
+      ^SC(1510,"T4",9999999,1) = 
+      ^SC(1510,"T5",0) = ^44.09A^^
+      ^SC(1510,"T5",9999999,0) = 9999999
+      ^SC(1510,"T5",9999999,1) = 
+      ^SC(1510,"T6",9999999,0) = 9999999
+      ^SC(1510,"T6",9999999,1) = 
+      Global ^
+  
+ 3).  Next.  Clinic appointments for 8/18 was the cancelled. No rebook.
+      Example of canceling clinic:
+      Select OPTION NAME: SDCANCEL       Cancel Clinic Availability
+      Cancel Clinic Availability
+      Select CLINIC NAME:    YORTY'S CLINIC     DOCTOR,ONE
+      CANCEL 'YORTY'S CLINIC' FOR WHAT DATE: T+1  (AUG 18, 2003)
+           NO APPOINTMENTS SCHEDULED
+      WANT TO CANCEL THE WHOLE DAY? Y  (Yes)
+  
+      CANCELLED!
+  
+ 4).  Then, tried to restore the Clinic for 8/18 (T+1) and got the error:  
+      Example of restoring a clinic:
+      Select OPTION NAME: SDRESTORE       Restore Clinic Availability
+      Restore Clinic Availability
+  
+      Select CLINIC NAME:    YORTY'S CLINIC     DOCTOR,ONE
+      RESTORE 'YORTY'S CLINIC' FOR WHAT DATE: T+1  (AUG 18, 2003)
+      %DSM-E-UNDEF, undefined variable DH
+      -DSM-I-ECODE, MUMPS error code: M6
+      %DSM-I-ATLABEL, SDUNC+11^SDUNC:3       
+      D B Q:^SC(SC,"ST",SD,1)["X"&('$D(SDFR1)) S ^SC(SC,"ST",SD,0)=SD
+       ,^SC(SC,"ST",SD,1)=DH G N
+  
+  
+ The following will display the error message and corrective measures to 
+ restore the clinic in question:
+  
+ 1).  Using the above clinic in steps 1 and 2 above, clinic is inactive
+      after 9/1.  Clinic is then cancelled for 8/18 with no re-booking
+      appointments, leaving the global looking like step 2 above.
+  
+ 2).  Restore clinic for 8/18.
+      Example of restoring clinic:
+      Select OPTION NAME: SDRESTORE       Restore Clinic Availability
+      Restore Clinic Availability
+  
+      Select CLINIC NAME:    YORTY'S CLINIC           PETERSON,JAMES R
+      RESTORE 'YORTY'S CLINIC' FOR WHAT DATE: 8/18  (AUG 18, 2003)
+      NO UPCOMING OR INDEFINITE APPOINTMENT PATTERN EXISTS FOR DAY OF WEEK,
+      CREATE 'AVAILABILITY' PATTERN THRU 'CLINIC SETUP', THEN RESTORE AGAIN
+  
+      Select CLINIC NAME:
+  
+ 3).  Enter 'Set up a Clinic' option.  Scroll down to the AVAILABILITY 
+      field.  Important: enter an upcoming 'day of week' date (example: 
+      restore date + 7 days), or answer the clinic with an indefinite date 
+      range.
+      Example of Setting up a clinic:
+      Select OPTION NAME: SDBUILD       Set up a Clinic
+      Set up a Clinic
+  
+      Select CLINIC NAME:    YORTY'S CLINIC           PETERSON,JAMES R
+      NAME: YORTY'S CLINIC// 
+      ABBREVIATION: YC// 
+         ""
+      AVAILABILITY DATE: 8/25  (AUG 25, 2003)  <== (restore date + 7 days)
+  
+                                      MONDAY
+  
+  
+        TIME: 0800-1630   NO. SLOTS: 1//  
+  
+        TIME: 
+     [1 1 1 1|1 1 1 1|1 1 1 1|1 1 1 1|1 1 1 1|1 1 1 1|1 1 1 1|1 1 1 1|1 1]
+       ...PATTERN OK FOR MONDAYS  UNTIL SEP  8,2003? Y  (Yes)
+      ...HMMM, JUST A MOMENT PLEASE...
+      PATTERN FILED!
+  
+  
+      AVAILABILITY DATE: 
+  
+ 4).  Restore clinic.
+      Example of Restoring the clinic:
+      Select OPTION NAME: SDRESTORE       Restore Clinic Availability
+      Restore Clinic Availability
+  
+      Select CLINIC NAME:    YORTY'S CLINIC           PETERSON,JAMES R
+      RESTORE 'YORTY'S CLINIC' FOR WHAT DATE: 8/18  (AUG 18, 2003)
+      RESTORED!
+  
+  
+ Test Sites:
+ -----------
+ Bay Pines
+ Salisbury
+  
+  
+ =======================INSTALLATION INSTRUCTIONS==========================
+  
+ If installed during the normal workday, it is recommended that the 
+ following selections in the OPTION (#19) file, and all of their 
+ descendants be disabled to prevent possible conflicts while running the 
+ KIDS install.  Other VISTA users will not be affected.
+  
+         [SDCANCEL]      Cancel Clinic Availability
+         [SDRESTORE]     Restore Clinic Availability
+  
+ Install Time - 1 minute.
+  
+ Please ensure that your programming variables are set, 
+ including your DUZ(0)="@", otherwise installation will abort.
+  
+  
+ 1.   DISABLE ROUTINE MAPPING   (DSM for Open VMS sites only) 
+      -----------------------
+      Disable routine mapping on all systems for the routines listed in 
+      step 3 below.  
+       
+      NOTE:  If the routines included in this patch are not currently in 
+      your mapped routine set, please skip this step.
+  
+ 2.   LOAD TRANSPORT GLOBAL 
+      ---------------------
+      Choose the PackMan message containing this patch and invoke the 
+      INSTALL/CHECK MESSAGE PackMan option.  
+  
+ 3.   COMPONENTS SENT WITH PATCH 
+      --------------------------
+      The following is a list of the routines included in this patch.  
+      The second line of each of these routines now looks like:  
+  
+      <tab>;;5.3;Scheduling;**[patch list]**;Aug 13, 1993
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  SDC0                  14671704             14674200                303
+  SDUNC                 15114762             16053538             79,303
+  
+   Total number of routines - 2
+  
+ 4.   START UP KIDS 
+      -------------
+      Start up the Kernel Installation and Distribution System Menu 
+      [XPD MAIN]: 
+    
+           Edits and Distribution ...  
+           Utilities ...  
+           Installation ...  
+    
+ Select Kernel Installation & Distribution System Option: INStallation 
+                                                          ---
+           Load a Distribution 
+           Print Transport Global 
+           Compare Transport Global to Current System 
+           Verify Checksums in Transport Global 
+           Install Package(s) 
+           Restart Install of Package(s) 
+           Unload a Distribution 
+           Backup a Transport Global 
+    
+ Select Installation Option: 
+  
+ 5.   Select Installation Option: 
+      ---------------------------
+      NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+             NAME, enter SD*5.3*303):
+       
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will not
+          backup any other changes such as DD's or templates.
+      b.  Compare Transport Global to Current System - This option will
+          allow you to view all changes that will be made when this patch
+          is installed.  It compares all components of this patch
+          (routines, DD's, templates, etc.).
+      c.  Verify Checksums in Transport Global - This option will allow
+          you to ensure the integrity of the routines that are in the
+          transport global.
+      
+ 6.  Select Installation Option: Install Package(s)
+                                 ------------------
+     a. Choose the Install Package(s) option to start the patch install.
+  
+     b. When prompted "Want KIDS to Rebuild Menu Trees Upon Completion of 
+        Install? YES//", answer 'NO'.
+  
+     c. When prompted "Want KIDS to INHIBIT LOGONs during the install? 
+        YES//", answer 'NO'.
+  
+     d. When prompted "Want to DISABLE Scheduled Options, Menu Options, and
+        Protocols? YES//", answer 'YES'.
+  
+     e. When prompted 'Enter options you wish to mark as 'Out Of Order':' 
+        Enter the following options:
+  
+         [SDCANCEL]      Cancel Clinic Availability
+         [SDRESTORE]     Restore Clinic Availability
+  
+     f. When prompted 'Enter protocols you wish to mark as 'Out Of 
+        Order':' press <return>.
+  
+ 7.  REBUILD MAPPED ROUTINE(S)  (DSM for Open VMS sites only)
+     ==========================
+     NOTE: This step is only necessary if you performed step 1 or if you 
+     wish to include the routines in your mapped set.
+
+Routine Information:
+====================
+
+Routine Name:
+  - SDC0
+
+ ***********************
+   1)   SDC0      ;MAN/GRR,ALB/TMP/LDB - Continuation of SDC (cancel a 
+ clinic) ; 
+ 16 JUL 2003  1:27 pm
+   2)             ;;5.3;Scheduling;**303**;Aug 13, 1993
+   3)   CHKEND    G:NOAP END
+  
+ --------
+   1)   SDC0      ;MAN/GRR,ALB/TMP/LDB - Continuation of SDC (cancel a 
+ clinic) ; 
+ 20 MAY 85  1:27 pm
+   2)             ;;5.3;Scheduling;;Aug 13, 1993
+   3)   CHKEND    G:NOAP END
+  
+ ***************
+  
+ ***********************
+   17)            I '$D(SDLT) D FZIS^DGUTQ G:POP END
+   18)  START     U IO I ANS'["Y"&('$D(SDLT)) D:ALS["Y" APP D END Q
+  
+ --------
+   17)            I '$D(SDLT) D ZIS^DGUTQ G:POP END
+   18)  START     U IO I ANS'["Y"&('$D(SDLT)) D:ALS["Y" APP D END Q
+  
+ ***************
+  
+  
+ A total of 2 differences found.
+
+Routine Checksum:
+
+Routine Name:
+  - SDUNC
+
+ ***********************
+   1)   SDUNC     ;MAN/GRR - RESTORE CLINIC AVAILABILITY ; 24 JUL 2003  
+ 10:08 am
+   2)             ;;5.3;Scheduling;**79,303**;Aug 13, 1993
+   3)             D DT^DICRW S DIC=44,DIC(0)="MEQA",DIC("S")="I 
+ $P(^(0),""^"",3)=
+ ""C"",'$G(^(""OOS""))",DIC("A")="Select CLINIC NAME: " D ^DIC K 
+ DIC("S"),DIC("A"
+ ) Q:"^"[X  G:Y<0 SDUNC Q:'$D(^SC(+Y,"SL"))
+  
+ --------
+   1)   SDUNC     ;MAN/GRR - RESTORE CLINIC AVAILABILITY ; 04 APR 84  
+ 10:08 am
+   2)             ;;5.3;Scheduling;**79**;Aug 13, 1993
+   3)             D DT^DICRW S DIC=44,DIC(0)="MEQA",DIC("S")="I 
+ $P(^(0),""^"",3)=
+ ""C"",'$G(^(""OOS""))",DIC("A")="Select CLINIC NAME: " D ^DIC K 
+ DIC("S"),DIC("A"
+ ) Q:"^"[X  G:Y<0 SDUNC Q:'$D(^SC(+Y,"SL"))
+  
+ ***************
+  
+ ***********************
+   12)            D B I '$D(DH) G NOPAT
+   13)            Q:^SC(SC,"ST",SD,1)["X"&('$D(SDFR1))  S 
+ ^SC(SC,"ST",SD,0)=SD,^S
+ C(SC,"ST",SD,1)=DH G N
+   14)  NOWAY     W !,*7,"CLINIC HAS NOT BEEN CANCELLED FOR THAT DATE, SO 
+ IT CANN
+ OT BE RESTORED",*7 G SDUNC
+  
+ --------
+   12)            D B Q:^SC(SC,"ST",SD,1)["X"&('$D(SDFR1))  S 
+ ^SC(SC,"ST",SD,0)=S
+ D,^SC(SC,"ST",SD,1)=DH G N
+   13)  NOWAY     W !,*7,"CLINIC HAS NOT BEEN CANCELLED FOR THAT DATE, SO 
+ IT CANN
+ OT BE RESTORED",*7 G SDUNC
+  
+ ***************
+  
+ ***********************
+   15)  NOPAT     W !,*7,"NO UPCOMING OR INDEFINITE APPOINTMENT PATTERN 
+ EXISTS FO
+ R DAY OF WEEK,",!,"CREATE 'AVAILABILITY' PATTERN THRU 'CLINIC SETUP', 
+ THEN RESTO
+ RE AGAIN",*7 G SDUNC
+   16)  B         S X=SD D DOW^SDM0 S DOW=Y,SS=$N(^SC(SC,"T"_Y,X)) I 
+ $D(^(SS,1)),
+ ^(1)]"" S DH=$P("SU^MO^TU^WE^TH^FR^SA","^",DOW+1)_" 
+ "_$E(SD,6,7)_$J("",SI+SI-6)_
+ ^(1),DO=X+1,DA(1)=SC,HOLD=DH D FIX2
+  
+ --------
+   14)  B         S X=SD D DOW^SDM0 S DOW=Y,SS=$N(^SC(SC,"T"_Y,X)) I 
+ $D(^(SS,1)),
+ ^(1)]"" S DH=$P("SU^MO^TU^WE^TH^FR^SA","^",DOW+1)_" 
+ "_$E(SD,6,7)_$J("",SI+SI-6)_
+ ^(1),DO=X+1,DA(1)=SC,HOLD=DH D FIX2
+  
+ ***************
+  
+  
+ A total of 3 differences found.
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : YORTY,M ROBERT                Date Entered  : JUL 14, 2003
+Completed By: RUDINGER,NANCY L.             Date Completed: OCT 09, 2003
+Released By : ALEXANDER,DIANNE              Date Released : OCT 15, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

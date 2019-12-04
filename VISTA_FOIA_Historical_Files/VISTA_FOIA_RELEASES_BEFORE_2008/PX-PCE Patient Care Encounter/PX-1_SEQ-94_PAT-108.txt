@@ -1,0 +1,364 @@
+$TXT Created by WOLF,ED at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 12/05/02 at 11:58
+=============================================================================
+Run Date: JAN 13, 2003                     Designation: PX*1*108
+Package : PX - PCE PATIENT CARE ENCOUNTER   Priority: Mandatory
+Version : 1        SEQ #94                      Status: Released
+                  Compliance Date: FEB 13, 2003
+=============================================================================
+
+Associated patches: (v)PX*1*89     <<= must be installed BEFORE `PX*1*108'
+
+Subject: PROCEDURE LOOKUP MODIFICATION/PROPER EVALUATION OF ENCOUNTER PROVIDERS
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+ This patch addresses the evaluation of CPT code entry through Scheduling
+ and PCE applications. The lookup functionality will now properly evaluate
+ all formats of CPT codes including those with or without the leading zeros
+ as well as those codes that end in an alphabetic character. The modified
+ functionality applies to both single and multiple entry of procedures.
+ Additionally, procedures entered as multiple allow for entering providers
+ for each listed procedure. That feature was not available before.
+ 
+ Functional Overview:
+ ===================
+ 
+ 1. The following NOIS problem calls address inability of entering some
+    procedures, modifiers etc. and all those problems were addressed
+    by this patch.
+ 
+     HUN-0501-22742     MEM-0400-72523      PUG-0202-52693
+     NCH-0302-43102     NYH-0302-11971      ECH-0302-51477 
+         
+     BOS-1297-11311 addresses a problem with entering multiple procedures
+     separated by a comma. 
+ 
+ 2. Problem reported by Austin Automation Center: Occasionally
+    sequences with duplicate providers were identified in transmitted HL7
+    messages with an encounter data.
+  
+   The following NOIS call addresses this problem as well:
+ 
+       LIT-0602-71276  DUPLICATE PROVIDERS
+ 
+   A request may be sent to PCE to retrieve an array of existing providers
+   for an encounter. This patch includes modifications related to retrieval of
+   the provider list for a particular encounter. Duplicate entries, if any,
+   are eliminated in a return array. Provider entries are evaluated
+   against already existing ones on an encounter, and when detected they are
+   skipped from processing, eliminating the potential duplicate filing.
+ 
+    - no more duplicate providers are filed after the patch is installed.
+ 
+ NOTE: There is still an existing problem, that contributes to
+       the described provider duplicate issue. It occurs when different
+       INSTITUTIONs are passed for the same DATE/TIME, PATIENT NAME and
+       HOSPITAL LOCATION. More than one visit are created but all entries 
+       go only to the primary visit, generating duplicate entries.
+       An additionally created visit with the passed INSTITUTION does not have
+       any entries at all.
+       This problem will be addressed by the coming patches PX*1.0*96 and
+       SD*5.3*257. 
+  
+ 3. Additionally, this patch addresses the following NOIS call:
+   
+      ISL-0798-52081  DATA2PCE is changing who is the primary provider
+ 
+   When DATA2PCE was called with the primary provider but did not pass
+   the node ,("PROVIDER",n,"PRIMARY") DATA2PCE was changing the first 
+   provider for that encounter to primary, which may not have been the same
+   provider.
+ 
+      - when DATA2PCE is called with a provider that is already the primary
+       one, but the node indicating the PRIMARY provider is not passed there
+       is no change in designation of the primary provider.
+ 
+ TEST SITES
+ ==========
+ 
+   HUNTINGTON, WV                                    NEW YORK HCS              
+   NORTH CHICAGO, IL                                 PUGET SOUND HCS
+     
+ Technical:
+ =========
+ 1. Routines:
+ 
+    PXBPMOD      PXBDCPT      PXBPCPT1    PXBGCPT2    PXBGCPT4   PXBUTL0
+ 
+   were modified to both accept and display all formats of CPT codes from
+   CPT file (# 81). Those formats are as follows:
+   - five digits with or without leading '0'.
+   - five characters with the first ALPHA
+   - five characters with the last ALPHA
+              
+ 2, When a HL7 segment is built after retrieving a subscribed array of
+    providers for an encounter from PCE, that array is generated in
+    GETPRV^PXAPIOE and that subroutine was modified to eliminate potential
+    duplicate provider sequences before passing back the requested array.
+ 
+    Another call to PCE to extract all encounter data, including provider
+    related, is to DBIA1889-F with a call to ENCEVENT^PXKENC. That routine 
+    was modified accordingly.
+ 
+    Additionally related routines were modified, to exclude 
+    from filing process those providers that already existed on
+    an encounter.
+  
+          ================INSTALLATION INSTRUCTIONS =================
+ 
+ If installed during the normal workday it is recommended that the
+ following menu options (File #19) and all of their descendants be
+ disabled to prevent possible conflicts while running the KIDS Install.
+ Other VISTA users will not be affected.
+  
+      SDAM APPT CHECK IN/OUT         [Appointment Check In/Check Out]
+      PXCE ENCOUNTER DATA ENTRY      [PCE Encounter Data Entry]
+      PXCE ENCOUNTER ENTRY & DELETE  [PCE Encounter Data Entry and Delete]
+      PXCE ENCOUNTER ENTRY NO DELETE [PCE Encounter Data Entry without Delete]
+      PXCE ENCOUNTER ENTRY SUPER     [PCE Encounter Data Entry - Supervisor]
+  
+         Install Time - less than 3 minutes
+ 
+   1.   LOAD TRANSPORT GLOBAL 
+        ---------------------
+        Choose the PackMan message containing this patch and invoke the 
+        INSTALL/CHECK MESSAGE PackMan option.  
+              
+   2.   DISABLE ROUTINE MAPPING   (DSM for Open VMS sites only) 
+        -----------------------
+        Disable routine mapping on all systems for the routines listed in 
+        step 3 below.  
+       
+  NOTE:  If the routines included in this patch are not currently in 
+         your mapped routine set, please skip this step.
+   
+   3.   COMPONENTS SENT WITH PATCH 
+        --------------------------
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+ 
+      <tab>;;1.0;PCE PATIENT CARE ENCOUNTER;**[patch list]**;Aug 12, 1996
+ 
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  PXAICPT                5786211              5519586          19,73,108
+  PXAIPOV                6071707              6226914        28,73,69,108
+  PXAIPRV                4435883              5592599            5,108
+  PXAPIOE                2931434              3190137          39,73,108
+  PXBDCPT                7899666              7543587        11,73,89,108
+  PXBDPRV                9456096              9510534          7,11,108
+  PXBGCPT2               9227162              8927495          11,19,108
+  PXBGCPT4               6096045              6141481        11,73,43,108
+  PXBGPRV                8474999              8431390          7,11,108
+  PXBMCPT                4633428              4983572           11,108
+  PXBMCPT2               3364863              3589622       11,73,88,89,108
+  PXBMPOV                2702239              2896537          11,14,108
+  PXBMPRV                1822736              2027563           11,108
+  PXBPCPT1               5965191              5261618       7,73,88,89,108
+  PXBPMOD                1304631              1310690        73,88,89,108
+  PXBPPRV               13807972             13872712        1,7,11,19,108
+  PXBUTL                 7306146              7500444           32,108
+  PXBUTL0                8269509              8652920             108
+  PXKENC                 4415114              6230108        15,22,73,108
+                 
+   4.   START UP KIDS 
+        -------------
+        Start up the Kernel Installation and Distribution System Menu 
+        [XPD MAIN]: 
+    
+             Edits and Distribution ...  
+             Utilities ...  
+             Installation ...  
+    
+   Select Kernel Installation & Distribution System Option: INStallation 
+                                                            ---
+             Load a Distribution 
+             Print Transport Global 
+             Compare Transport Global to Current System 
+             Verify Checksums in Transport Global 
+             Install Package(s) 
+             Restart Install of Package(s) 
+             Unload a Distribution 
+             Backup a Transport Global 
+    
+   Select Installation Option: 
+    
+   5.   Select Installation Option: 
+        --------------------------
+       
+        a.  Backup a Transport Global - This option will create a backup
+            message of any routines exported with this patch. It will not
+            backup any other changes such as DD's or templates.
+        b.  Compare Transport Global to Current System - This option will
+            allow you to view all changes that will be made when this patch
+            is installed.  It compares all components of this patch
+            (routines, DD's, templates, etc.).
+        c.  Verify Checksums in Transport Global - This option will allow
+            you to ensure the integrity of the routines that are in the
+            transport global.
+      
+   6.   Select Installation Option: Install Package(s) 
+                                    ---------------- 
+    
+        a.  Select Install Name: PX*1.0*108 to start the patch install.
+        b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+            YES//' answer NO.
+        c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+            Options, and Protocols? YES//' answer YES.
+        d.  When prompted 'Enter options you wish to mark as 'Out Of
+            Order':'  Enter the following options:
+ 
+      SDAM APPT CHECK IN/OUT         [Appointment Check In/Check Out]
+      PXCE ENCOUNTER DATA ENTRY      [PCE Encounter Data Entry]
+      PXCE ENCOUNTER ENTRY & DELETE  [PCE Encounter Data Entry and Delete]
+      PXCE ENCOUNTER ENTRY NO DELETE [PCE Encounter Data Entry without Delete]
+      PXCE ENCOUNTER ENTRY SUPER     [PCE Encounter Data Entry - Supervisor]
+   
+ 
+        e.  When prompted 'Enter protocols you wish to mark as 'Out Of Order':'
+       press <return>.
+  
+   7.       REBUILD MAPPED ROUTINE(S)  (DSM for Open VMS sites only)
+           =========================
+           Optional - Include the routines distributed with this patch
+           in the mapped routine set.
+      
+           NOTE: This step is only necessary if you performed step 2 or 
+           if you wish to include the routines in your mapped set.
+ 
+   
+
+Routine Information:
+====================
+
+Routine Name:
+  - PXBGCPT2
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBPMOD
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBDCPT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBGCPT4
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXAIPOV
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBMPOV
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXAIPRV
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBMPRV
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXAPIOE
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBPCPT1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBPPRV
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBGPRV
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBUTL
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBMCPT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBUTL0
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBMCPT2
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXKENC
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXAICPT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBDPRV
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : TREAT,KENT                     Date Entered : JUN 13, 2001
+Completed By: RYAN,DOLORES G               Date Completed: JAN 13, 2003
+Released By : ALEXANDER,DIANNE              Date Released : JAN 13, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

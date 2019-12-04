@@ -1,0 +1,864 @@
+$TXT Created by HESTER,DON at DEVFEX.FO-ALBANY.MED.VA.GOV  (KIDS) on Friday, 11/21/03 at 10:24
+=============================================================================
+Run Date: NOV 21, 2003                     Designation: DG*5.3*533
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #482                    Status: Released
+                  Compliance Date: DEC 08, 2003
+=============================================================================
+
+Associated patches: (v)DG*5.3*425  <<= must be installed BEFORE `DG*5.3*533'
+                    (v)IB*2*214    <<= must be installed BEFORE `DG*5.3*533'
+                    (v)MPIF*1*31   <<= must be installed BEFORE `DG*5.3*533'
+
+Subject: REGISTER ONCE MESSAGING (ROM)
+
+Category: 
+  - Enhancement (Mandatory)
+  - Data Dictionary
+  - Routine
+
+Description:
+============
+
+  
+ This patch is to be installed on or before 12/08/2003.
+  
+ I.  Overview
+  
+ This enhancement patch provides the messaging structure for retrieving
+ patient demographic data from the last VA facility that treated a veteran
+ (referred to as the Last Site Treated or LST) when the veteran registers at
+ a new site for the first time.  The ROM LST query requires a National ICN
+ and Treating Facility List from the MPI and the patient should have a
+ treatment date at the last site.  The LST query is invoked during the
+ initial registration process after the HEC Enrollment and MPI queries are
+ completed and before the first registration screen is displayed.
+  
+ The user will be notified about the progress of the query when:
+    +  The National ICN is not available
+    +  The Treating Facility List is not available
+    +  The query times out after 60 seconds
+    +  The query completes successfully
+    +  When Confidential Address information is retrieved
+    +  When Sensitive Patient information is retrieved
+    +  When date of death is received (but not filed)
+  
+ The purpose of the patch is to retrieve data from the LST that is not
+ currently provided by the MPI or the HEC/EDB.  The Register Once initiative
+ is an interim solution designed to reduce the amount of manual data entry
+ needed for a new registration for veterans that have been treated somewhere
+ else in the VA system.  The veteran will not have to provide information
+ multiple times when registering at a new facility.
+  
+ The DGRO name space is used for the Register Once Messaging routines,
+ globals, and protocols.
+  
+ II.  Technical Components
+  
+ A.  File Changes:
+     =============
+  
+ a.  DG REGISTER ONCE FIELD DEFINITION file (#391.23)
+  
+ This new file defines the file and fields that are to be retrieved from the
+ LST and filed at the querying site.
+  
+   .01           NAME
+    1            FILE NUMBER
+    2            FIELD NUMBER
+    3            FIELD DESCRIPTION
+  
+ Note:  The retrieval of some data elements depends on special rules which
+        are presented in the following list.
+  
+ B.  File/Fields to be retrieved from LST
+     ====================================
+  
+ a.  Patient File (2)
+  
+ File/Field        Field Name
+ ==========        ==========
+ 2/.3111           EMPLOYER NAME
+ 2/.3116           EMPLOYER CITY
+ 2/.3119           EMPLOYER PHONE NUMBER
+ 2/.3117           EMPLOYER STATE
+ 2/.3113           EMPLOYER STREET [LINE 1]
+ 2/.3114           EMPLOYER STREET [LINE 2]
+ 2/.3115           EMPLOYER STREET [LINE 3]
+ 2/.2205           EMPLOYER ZIP+4
+ 2/.31115          EMPLOYMENT STATUS
+ 2/.07             OCCUPATION
+ 2/.258            SPOUSE'S EMP PHONE NUMBER
+ 2/.252            SPOUSE'S EMP STREET [LINE 1]
+ 2/.253            SPOUSE'S EMP STREET [LINE 2]
+ 2/.254            SPOUSE'S EMP STREET [LINE 3]
+ 2/.2206           SPOUSE'S EMP ZIP+4
+ 2/.251            SPOUSE'S EMPLOYER NAME
+ 2/.255            SPOUSE'S EMPLOYER'S CITY
+ 2/.256            SPOUSE'S EMPLOYER'S STATE
+ 2/.2515           SPOUSE'S EMPLOYMENT STATUS
+ 2/.2514           SPOUSE'S OCCUPATION
+  
+ Confidential Address Data Elements:
+  
+ 2/.14105          CONFIDENTIAL ADDRESS ACTIVE (Y/N)?
+ 2/.141/.01        CONFIDENTIAL ADDRESS CATEGORY
+ 2/.141/1          CONFIDENTIAL ADDRESS CATEGORY ACTIVE
+ 2/.14111          CONFIDENTIAL ADDRESS COUNTY
+ 2/.1418           CONFIDENTIAL ADDRESS END DATE
+ 2/.1411           CONFIDENTIAL ADDRESS LINE 1
+ 2/.1412           CONFIDENTIAL ADDRESS LINE 2
+ 2/.1413           CONFIDENTIAL ADDRESS LINE 3
+ 2/.1417           CONFIDENTIAL ADDRESS START DATE
+ 2/.1414           CONFIDENTIAL ADDRESS CITY
+ 2/.1415           CONFIDENTIAL ADDRESS STATE
+ 2/.1416           CONFIDENTIAL ADDRESS ZIP
+  
+ Special Rules for the retrieval of Confidential Address data elements:
+  
+  1.  Vista shall retrieve the patient's Confidential Address data elements
+      from the Last Site Treated when:
+         CONFIDENTIAL ADDRESS ACTIVE (Y/N) at the LST is Yes and
+         CONFIDENTIAL ADDRESS END DATE at the LST is Later Than or Equal To
+         the Date of Query (Not Expired).
+  
+  2.  Vista shall retrieve the patient's Confidential Address data elements
+      from the Last Site Treated When:
+         CONFIDENTIAL ADDRESS ACTIVE (Y/N) at the LST is Yes and
+         CONFIDENTIAL ADDRESS END DATE at the LST is Blank (Not Expired).
+  
+  3.  Vista shall retrieve the patient's Confidential Address data elements
+      from the Last Site Treated When:
+         CONFIDENTIAL ADDRESS ACTIVE (Y/N) at the LST is Yes and
+         CONFIDENTIAL ADDRESS START DATE at the LST is Later Than the Date
+         of Query (Active in Future).
+  
+  Note:  This requirement was defined due to the explicit rules of the VHA
+         privacy policy for HIPAA Confidential Communications.  This rule
+         mandates that the Patient's Confidential Address must be used if it
+         has been provided by the Patient.  The only exception for not using
+         the provided Confidential Address, is if the address is not valid.
+         A Confidential Address that is Active in the Future must be
+         considered valid and is eligible to be verified by the user.
+  
+  4.  Vista shall not retrieve the patient's Confidential Address data
+      elements from the Last Site Treated When:
+         CONFIDENTIAL ADDRESS ACTIVE (Y/N) at the LST is Yes and
+         CONFIDENTIAL ADDRESS END DATE at the LST is Earlier than the Date
+         of Query (Expired).
+  
+  5.  Vista shall not retrieve the patient's Confidential Address data
+      elements from the Last Site Treated When:
+         CONFIDENTIAL ADDRESS FLAG at the LST is No (Address Deleted)
+  
+ 2/.34011          D-WORK PHONE NUMBER 
+ 2/.33011          E-WORK PHONE NUMBER 
+ 2/.331011         E2-WORK PHONE NUMBER 
+ 2/.21011          K-WORK PHONE NUMBER 
+ 2/.211011         K2-WORK PHONE NUMBER 
+ 2/.346            D-CITY 
+ 2/.336            E-CITY 
+ 2/.3316           E2-CITY 
+ 2/.216            K-CITY 
+ 2/.2196           K2-CITY 
+ 2/.341            D-NAME OF DESIGNEE 
+ 2/.331            E-NAME 
+ 2/.3311           E2-NAME OF SECONDARY CONTACT 
+ 2/.211            K-NAME OF PRIMARY NOK 
+ 2/.2191           K2-NAME OF SECONDARY NOK 
+ 2/.349            D-PHONE NUMBER 
+ 2/.339            E-PHONE NUMBER 
+ 2/.3319           E2-PHONE NUMBER 
+ 2/.219            K-PHONE NUMBER 
+ 2/.2199           K2-PHONE NUMBER 
+ 2/.342            D-RELATIONSHIP TO PATIENT 
+ 2/.332            E-RELATIONSHIP TO PATIENT 
+ 2/.3312           E2-RELATIONSHIP TO PATIENT
+ 2/.212            K-RELATIONSHIP TO PATIENT 
+ 2/.2192           K2-RELATIONSHIP TO PATIENT 
+ 2/.347            D-STATE 
+ 2/.337            E-STATE 
+ 2/.3317           E2-STATE 
+ 2/.217            K-STATE 
+ 2/.2197           K2-STATE 
+ 2/.343            D-STREET ADDRESS [LINE 1]
+ 2/.333            E-STREET ADDRESS [LINE 1] 
+ 2/.3313           E2-STREET ADDRESS [LINE 1] 
+ 2/.213            K-STREET ADDRESS [LINE 1] 
+ 2/.2193           K2-STREET ADDRESS [LINE 1] 
+ 2/.344            D-STREET ADDRESS [LINE 2] 
+ 2/.334            E-STREET ADDRESS [LINE 2] 
+ 2/.3314           E2-STREET ADDRESS [LINE 2] 
+ 2/.214            K-STREET ADDRESS [LINE 2] 
+ 2/.2194           K2-STREET ADDRESS [LINE 2] 
+ 2/.345            D-STREET ADDRESS [LINE 3] 
+ 2/.335            E-STREET ADDRESS [LINE 3] 
+ 2/.3315           E2-STREET ADDRESS [LINE 3] 
+ 2/.215            K-STREET ADDRESS [LINE 3] 
+ 2/.2195           K2-STREET ADDRESS [LINE 3] 
+ 2/.348            D-ZIP CODE 
+ 2/.338            E-ZIP CODE 
+ 2/.3318           E2-ZIP CODE 
+ 2/.218            K-ZIP CODE 
+ 2/.2198           K2-ZIP CODE 
+  
+ Agent Orange Exposure Data Elements:
+  
+ 2/.3211           AGENT ORANGE REGISTRATION #
+ 2/.32109          AGENT ORANGE EXAM DATE
+ 2/.32107          AGENT ORANGE REGISTRATION DATE
+  
+ Special Rules pertaining to Agent Orange Data Elements
+  
+ The data element AGENT ORANGE EXPOSURE INDICATED? is received by the local
+ VistA sites from the HEC.  However, 3 other related AO data elements are
+ not received from the HEC.  The following business rules shall be applied
+ to correctly retrieve the 3 other related AO data elements from the LST.
+  
+  1.     VistA shall retrieve AO REGISTRATION DATE, AO REGISTRATION #, 
+         AO EXAM DATE from the Last Site Treated when:
+            AGENT ORANGE EXPOSURE INDICATED? at requesting site is Yes and
+            AO REGISTRATION DATE, AO REGISTRATION #, AO EXAM DATE are NULL
+            (not populated) and AGENT ORANGE EXPOSURE INDICATED? at the LST
+            is Yes
+  
+  2.     VistA shall not retrieve AO REGISTRATION DATE, AO REGISTRATION #,
+         AO EXAM DATE from the Last Site Treated when:
+            AGENT ORANGE EXPOSURE INDICATED? at requesting site is Yes or NULL 
+            and AO REGISTRATION DATE, AO REGISTRATION #, AO EXAM DATE are NULL 
+            (not populated) and AGENT ORANGE EXPOSURE INDICATED? at the LST
+            is No
+  
+  3.     VistA shall not retrieve AO REGISTRATION DATE, AO REGISTRATION #,
+         AO EXAM DATE from the Last Site Treated when:
+            AGENT ORANGE EXPOSURE INDICATED? at requesting site is Yes and 
+            AO REGISTRATION DATE, AO REGISTRATION #, AO EXAM DATE  are not
+            NULL (populated)
+  
+  4.     VistA shall not retrieve AO REGISTRATION DATE, AO REGISTRATION #,
+         AO EXAM DATE from the Last Site Treated when:
+            AGENT ORANGE EXPOSURE INDICATED? at requesting site is No
+  
+ 2/.5293           COMBAT FROM DATE
+ 2/.5291           COMBAT SERVICE INDICATED?
+ 2/.5292           COMBAT SERVICE LOCATION
+ 2/.5294           COMBAT TO DATE
+ 2/.3225           GRENADA FROM DATE
+ 2/.3224           GRENADA SERVICE INDICATED?
+ 2/.3226           GRENADA TO DATE
+ 2/.3222           LEBANON FROM DATE
+ 2/.3221           LEBANON SERVICE INDICATED?
+ 2/.3223           LEBANON TO DATE
+ 2/.3228           PANAMA FROM DATE
+ 2/.3227           PANAMA SERVICE INDICATED?
+ 2/.3229           PANAMA TO DATE
+ 2/.322011         PERSIAN GULF FROM DATE
+ 2/.32201          PERSIAN GULF SERVICE?
+ 2/.322012         PERSIAN GULF TO DATE
+  
+ POW Data Elements:
+  
+ 2/.527            POW FROM DATE
+ 2/.526            POW CONFINEMENT LOCATION
+ 2/.528            POW TO DATE
+  
+ Special Rules pertaining to POW Data Elements:
+  
+ The data element POW STATUS INDICATED? is received by the local VistA sites
+ from the HEC.  However, 3 other related POW data elements are not received
+ from the HEC.  The following business rules shall be applied to correctly
+ retrieve the 3 other related POW data elements from the LST.
+  
+  1.     VistA shall retrieve POW LOCATION, POW FROM DATE and POW TO DATE
+         from the Last Site Treated when:
+            POW STATUS INDICATED at requesting site is Yes or NULL and
+            POW STATUS INDICATED at the LST is Yes
+  
+  2.     VistA shall not retrieve POW LOCATION, POW FROM DATE and POW TO
+         DATE from the Last Site Treated when:
+            POW STATUS INDICATED at requesting site is Yes and 
+            POW STATUS INDICATED at the LST is No
+  
+  3.     VistA shall not retrieve POW LOCATION, POW FROM DATE and POW TO
+         DATE from the Last Site Treated when:
+            POW STATUS INDICATED at requesting site is No
+  
+ Radiation exposure data elements:
+  
+ 2/.3212           RADIATION EXPOSURE METHOD
+ 2/.32111          RADIATION REGISTRATION DATE
+  
+ Special Rules pertaining to Radiation Exposure data elements:
+  
+ The data element RADIATION EXPOSURE INDICATED? is received by the local
+ VistA sites from the HEC. However, 2 other related IR data elements are not
+ received from the HEC.  The following business rules shall be applied to
+ correctly retrieve the 2 other related IR data elements from the LST.
+  
+  1.     VistA shall retrieve RADIATION REGISTRATION DATE, RADIATION
+         EXPOSURE METHOD from the Last Site Treated when:
+            RADIATION EXPOSURE INDICATED? at requesting site is Yes or NULL 
+            and RADIATION REGISTRATION DATE, RADIATION EXPOSURE METHOD are 
+            NULL (not populated) and RADIATION EXPOSURE INDICATED? at the LST 
+            is Yes
+  
+  2.     VistA shall not retrieve RADIATION REGISTRATION DATE, RADIATION
+         EXPOSURE METHOD from the Last Site Treated when:
+            RADIATION EXPOSURE INDICATED? at requesting site is Yes and 
+            RADIATION REGISTRATION DATE, RADIATION EXPOSURE METHOD are NULL
+            (not populated) and RADIATION EXPOSURE INDICATED? at the LST is
+            No
+  
+  3.     VistA shall not retrieve RADIATION REGISTRATION DATE, RADIATION
+         EXPOSURE METHOD from the Last Site Treated when:
+            RADIATION EXPOSURE INDICATED? at requesting site is Yes and 
+            RADIATION REGISTRATION DATE, RADIATION EXPOSURE METHOD are not
+            NULL (populated) 
+  
+  4.     VistA shall not retrieve RADIATION REGISTRATION DATE, RADIATION
+         EXPOSURE METHOD from the Last Site Treated when:
+            RADIATION EXPOSURE INDICATED? at requesting site is No
+  
+ 2/.325            SERVICE BRANCH [LAST]
+ 2/.3296           SERVICE BRANCH [NNTL]
+ 2/.3291           SERVICE BRANCH [NTL]
+ 2/.324            SERVICE DISCHARGE TYPE [LAST]
+ 2/.3295           SERVICE DISCHARGE TYPE [NNTL]
+ 2/.329            SERVICE DISCHARGE TYPE [NTL]
+ 2/.326            SERVICE ENTRY DATE [LAST]
+ 2/.3297           SERVICE ENTRY DATE [NNTL]
+ 2/.3292           SERVICE ENTRY DATE [NTL]
+ 2/.328            SERVICE NUMBER [LAST]
+ 2/.3299           SERVICE NUMBER [NNTL]
+ 2/.3294           SERVICE NUMBER [NTL]
+ 2/.3285           SERVICE SECOND EPISODE?
+ 2/.327            SERVICE SEPARATION DATE [LAST]
+ 2/.3298           SERVICE SEPARATION DATE [NNTL]
+ 2/.3293           SERVICE SEPARATION DATE [NTL]
+ 2/.32945          SERVICE THIRD EPISODE?
+ 2/.322017         SOMALIA FROM DATE
+ 2/.322016         SOMALIA SERVICE INDICATED?
+ 2/.322018         SOMALIA TO DATE
+ 2/.32101          VIETNAM SERVICE INDICATED?
+ 2/.32104          VIETNAM FROM DATE
+ 2/.32105          VIETNAM TO DATE
+ 2/.32202          YUGOSLAVIA FROM DATE
+ 2/.322019         YUGOSLAVIA SERVICE INDICATED?
+ 2/.322021         YUGOSLAVIA TO DATE
+  
+ DATE OF DEATH Data Elements:
+  
+ 2/.351            DATE OF DEATH
+ 2/.352            DEATH ENTERED BY
+ 2/.353            SOURCE OF NOTIFICATION
+ 2/.354            DATE OF DEATH LAST UPDATED
+  
+ PLEASE NOTE: Elements 2/.353 and 2/.354 will be
+              retrieved and entered into
+              the message when they become available with the
+              installation of Patch DG*5.3*545 Date of Death
+              Modifications to ZPD segment.
+  
+ Special Rules pertaining to DATE OF DEATH:
+  
+ The DATE OF DEATH data element is received by the local VistA sites from
+ the HEC.  However, 3 other related date of death data elements are not
+ received from the HEC.  The following business rules shall be applied to
+ correctly retrieve all 4 date of death data elements from the LST when
+ this enhancement patch is installed.
+  
+  1.     VistA shall retrieve DATE OF DEATH, SOURCE OF NOTIFICATION FOR DATE
+         OF DEATH, DATE DEATH LAST UPDATED, and DEATH ENTERED BY (LST user 
+         ID and external person name) from the Last Site Treated and shall
+         place the retrieved data into a mail message that shall be 
+         automatically sent to the new DG REGISTER ONCE mail group
+         established for the data sharing of the RO project.  The retrieved
+         data shall not be filed directly into the requesting site's local
+         database.
+  
+  2.     VistA shall automatically send the mail message containing the
+         retrieved date of death information to the members of the new DG
+         REGISTER ONCE mail group and to the local user at the requesting
+         site who performed the registration of the patient.
+  
+ Temporary Address Data Elements:
+  
+ 2/.12105          TEMPORARY ADDRESS ACTIVE?
+ 2/.12111          TEMPORARY ADDRESS COUNTY
+ 2/.1218           TEMPORARY ADDRESS END DATE
+ 2/.1217           TEMPORARY ADDRESS START DATE
+ 2/.1214           TEMPORARY CITY
+ 2/.1219           TEMPORARY PHONE NUMBER
+ 2/.1215           TEMPORARY STATE
+ 2/.1211           TEMPORARY STREET [Line 1]
+ 2/.1212           TEMPORARY STREET [Line 2]
+ 2/.1213           TEMPORARY STREET [Line 3]
+ 2/.1216           TEMPORARY ZIP CODE
+ 2/.12112          TEMPORARY ZIP+4
+  
+ Special rules pertaining to Temporary Address:
+  
+ The data elements pertaining to Temporary Address are not provided to the
+ local VistA sites from the HEC.  The following business rules shall be
+ applied to correctly retrieve Temporary Address information from the LST.
+  
+  1.     VistA shall retrieve the data elements for Temporary Address from 
+         the Last Site Treated when:
+            TEMPORARY ADDRESS END DATE is greater than or equal to the date
+            of the query.
+  
+ Permanent Address Data Elements:
+  
+ 2/.111            STREET ADDRESS [Line 1]
+ 2/.112            STREET ADDRESS [Line 2]
+ 2/.113            STREET ADDRESS [Line 3]
+ 2/.114            CITY
+ 2/.115            STATE
+ 2/.1112           ZIP + 4
+ 2/.116            ZIP CODE
+ 2/.131            PHONE NUMBER RESIDENCE 
+ 2/.132            PHONE NUMBER WORK 
+ 2/.117            COUNTY
+ 2/.121            BAD ADDRESS INDICATOR
+ 2/.119            ADDRESS CHANGE SOURCE
+ 2/.118            ADDRESS CHANGE DT/TM
+ 2/.12             ADDRESS CHANGE SITE
+  
+ Special rules pertaining to Permanent Address:
+  
+  1.     The data elements pertaining to Permanent Address are not provided
+         real time within the Z10 & Z11 Messages to the local VistA sites
+         from the HEC.  The following business rules shall be applied to
+         correctly retrieve Permanent Address information from the LST.
+  
+            VistA shall retrieve the data elements for Permanent Address
+            from the Last Site Treated when:
+               BAD ADDRESS INDICATOR at the LST is NULL (not populated).
+  
+ 2/.3111           EMPLOYER NAME
+  
+ b.  Aliases
+  
+ File/Field        Field Name
+ ==========        ==========
+ 2.01/.01          ALIAS
+ 2.01/1            ALIAS SSN
+  
+ c.  Sensitive Patient Data Elements:
+  
+ 38.1/.01          PATIENT NAME (Pointer to Patient File (2).
+ 38.1/2            SECURITY LEVEL
+  
+ Special rules pertaining to Sensitive Patient data elements:
+  
+ The following business rules shall be applied to correctly retrieve patient
+ demographic data for patients that have been designated as Sensitive at the
+ LST.  The HEC sends the Sensitive Patient Flag to the local VistA sites on
+ the HL7 message ORU~Z11 - Eligibility/Enrollment Query (OBX segment), which
+ is received prior to the query to the Last Site Treated (LST).
+  
+     Sensitive Patient Flag is received by the local VistA site from the
+     HEC, Patient is also designated with Sensitive Patient Flag at the Last
+     Site Treated (LST):
+  
+     1.  VistA shall retrieve patient demographic data for patients that
+         have been designated as Sensitive at the LST.  VistA shall file the
+         retrieved data directly into the requesting site's local database.
+  
+     2.  VistA shall not retrieve the appropriate indicators, flags, and/or
+         file entries that identify the patient as Sensitive.  VistA shall
+         not retrieve the Primary Eligibility Code or the Patient Type since
+         these data elements are received at the local VistA site from their 
+         authoritative source: the HEC.
+  
+     Sensitive Patient Flag is received by the local VistA site from the
+     HEC, Patient is not designated with Sensitive Patient Flag at the Last
+     Site Treated (LST):
+  
+     1.  VistA shall retrieve patient demographic data for patients that
+         have not been designated as Sensitive at the LST.  VistA shall file
+         the retrieved data directly into the requesting site's local
+         database.  
+  
+     2.  VistA shall not retrieve the appropriate indicators, flags, and/or
+         file entries that identify the patient as Sensitive.  VistA shall
+         not retrieve the Primary Eligibility Code or the Patient Type since
+         these data elements are received at the local VistA site from their
+         authoritative source: the HEC.
+  
+     Sensitive Patient Flag is not received by the local VistA site from the
+     HEC, Patient is designated with Sensitive Patient Flag at the Last Site
+     Treated (LST):
+  
+     1.  VistA shall retrieve patient demographic data for patients that
+         have been designated as Sensitive at the LST.  VistA shall file the
+         retrieved data directly into the requesting site's local database.
+  
+     2.  VistA shall retrieve the appropriate indicators, flags, and/or file
+         entries that identify the patient as Sensitive.  VistA shall not
+         retrieve the Primary Eligibility Code or the Patient Type since
+         these data elements are received at the local VistA site from their
+         authoritative source: the HEC.
+  
+     3.  VistA shall file the indicators, flags, and/or file entries at the
+         requesting site so that the Patient continues to be identified as
+         Sensitive.
+  
+     4.  VistA shall also place a "Sensitive Patient Data Retrieved" 
+         notification into a mail message that shall be automatically sent
+         to the new DG REGISTER ONCE mail group established for the data
+         sharing of the RO project.
+  
+     5.  VistA shall automatically send the mail message containing the
+         "Sensitive Patient Data Retrieved" notification to the members of
+         the new mail group and to the local user at the requesting site who
+         site who performed the registration of the patient.
+  
+     6.  VistA shall automatically initiate the existing mail bulletin to
+         the Information Security Officer (ISO) to provide notification that
+         a sensitive patient has been accessed.
+  
+     7.  VistA shall automatically create the appropriate entry in the
+         existing security log file audit trail which records accesses to
+         sensitive patient information.
+  
+     Sensitive Patient Flag is not received by the local VistA site from the
+     HEC, Patient is not designated with Sensitive Patient Flag at the Last
+     Site Treated (LST):
+  
+     1.  VistA shall retrieve patient demographic data for patients that
+         have not been designated as Sensitive at the LST.  VistA shall file
+         the retrieved data directly into the requesting site's local
+         database.
+  
+     2.  VistA shall not retrieve the appropriate indicators, flags, and/or
+         file entries that identify the patient as Sensitive.  VistA shall
+         not retrieve the Primary Eligibility Code or the Patient Type since
+         these data elements are received at the local VistA site from their
+         authoritative source: the HEC.
+  
+ d.  Race and Ethnicity Data Elements
+  
+ 2.02/.01       RACE
+ 2.02/.02       RACE METHOD OF COLLECTION
+ 2.06/.01       ETHNICITY
+ 2.06/.02       ETHNICITY METHOD OF COLLECTION
+  
+ The following business rules shall be applied to correctly retrieve the new
+ Race and Ethnicity data elements:
+  
+    1.  VistA shall retrieve RACE INFORMATION, RACE COLLECTION METHOD,
+        ETHNICITY INFORMATION, and ETHNICITY COLLECTION METHOD from the Last
+        Site Treated when:
+           RACE INFORMATION, RACE COLLECTION METHOD, ETHNICITY INFORMATION,
+           and ETHNICITY COLLECTION METHOD are NULL (not populated from the
+           HEC).
+  
+ e.  Insurance Data Retrieval from Last Site Treated
+  
+          VistA shall retrieve insurance data from the Patient File
+          Insurance Entries by calling the appropriate routines developed
+          for IB*2*214 Patch.
+          Integration Agreement 4288 has been applied to this call.
+  
+ C.  Protocols
+     =========
+     Two new protocols are added to generate HL7 Messages:
+  
+ a.        NAME: DGRO ROM ORF/R04 SUBSC
+           TYPE: subscriber
+   DESCRIPTION: This protocol is the subscriber protocol for the Register 
+                 Once Messaging query message (QRY~R02).  The protocol  
+                 return a patient FDA array message (ORF~R04).  
+  
+ b.        NAME: DGRO ROM QRY/R02 EVENT
+           TYPE: event driver
+    DESCRIPTION: This protocol is the event protocol for the Register
+                 Once Messaging query message (QRY~R02). .
+  
+  
+ D.  HL7 APPLICATION PARAMETER(s)
+       =============================
+ The following new HL7 APPLICATION PARAMETER(s) will be added.
+  
+  a.  NAME: DGRO-QRY            
+  
+  b.  NAME: DGRO-QRYRESP     
+  
+  
+ E.  Routine Summary:
+     ================
+ The following list presents the routines included in this patch.  The
+ second line of the routines will look like:
+    <TAB>;;5.3;Registration;**[patch list]**;Aug 13, 1993
+  
+ Routine Name    Before Patch    After Patch     Patch List
+ ==========      =========       ========        ==================
+ DGREG           18270435        19607063        1,32,108,147,149,182,
+                                                 245,250,513,425,533
+ DGROAPI         N/A             1300849             533
+ DGRODEBR        N/A             6415203             533
+ DGROHLQ         N/A             2906845             533
+ DGROHLQ1        N/A             2214818             533
+ DGROHLQ2        N/A             1624513             533
+ DGROHLQ3        N/A             2343668             533
+ DGROHLR         N/A             5382218             533
+ DGROHLS         N/A             3286472             533
+ DGROHLU         N/A             4413425             533
+ DGROHLU1        N/A             3520845             533
+ DGROHLU3        N/A             7650590             533
+ DGROHLU4        N/A             2913300             533
+ DGROHLUT        N/A             2799412             533
+ DGROMAIL        N/A             6279855             533
+ DGROUT          N/A             4206308             533
+ DGROUT2         N/A             827862              533
+  
+ F.  Mail Groups:
+     ============
+ A new mail group (DG Register Once) is established to allow MailMan
+ messages to be communicated to those personnel associated with Register
+ Once Messaging at a given site.
+  
+ Mail Group Name:  DG REGISTER ONCE
+  
+ G.  Mailman Messages:
+     =================
+  
+ Three Mailman messages are generated by the ROM application:
+  
+ a.  Notification of the DG REGISTER ONCE mail group when Date-of-Death
+     information is received from the LST.  Note that the DOD information
+     is not filed into the Patient's database.
+  
+ b.  Notification of the DG REGISTER ONCE mail group and local ISO when
+     Sensitive-Patient data is retrieved from the LST.
+  
+ c.  Notification of the DG REGISTER ONCE mail group when a Confidential
+     Address is received from the LST with a future start date.
+  
+  
+ H.  Bulletins:
+     ==========
+     ROM will use an existing exception application interface (API) to notify
+     the MPI if there is a problem with the ICN at the LST.
+  
+  
+ Documentation
+ =============
+  
+ All hard copy training manuals have been sent to site enrollment
+ coordinators. Any site needing more copies should contact Laura Meade
+ with the required amount of manuals (subject to remaining availability)
+ or visit the following web site and download / print the training manual:
+   
+ <http://vaww.vistau.med.va.gov/Enrollment/RegisterOnce.htm> 
+  
+ FTP Documentation Retrieval
+ ===========================
+   
+    Documentation: Register Once  RegisterOnceNov2003manual.pdf  
+   The preferred method is to FTP the file in binary mode from:
+    
+       download.vista.med.va.gov
+    
+    which will transmit the files from the first available FTP server.
+    
+    The files may also be downloaded directly from a particular FTP
+    location at the following locations.
+     
+       Albany          ftp.fo-albany.med.va.gov
+       Hines           ftp.fo-hines.med.va.gov
+       Salt Lake       ftp.fo-slc.med.va.gov
+  
+ I.  Installation Instructions:
+     ==========================
+  
+ Although this patch may be loaded with users on the system, it is advised
+ that DG REGISTER A PATIENT option not be in use during the installation.
+ Because it affects Registration, you may want to install it during
+ non-peak hours.  The install will take about 10 minutes.
+  
+  1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu.  [Note: TEXT
+      PRINT/DISPLAY option in the PackMan menu will display the patch text
+      only.]
+  
+  2.  From the Kernel Installation and Distribution System, select the
+      Installation menu. 
+  
+  3.  From this menu, you may elect to use the following options:
+      (when prompted for the INSTALL NAME, enter DG*5.3*533)
+  
+      (a)  Backup a Transport Global - this option will create a backup
+           message of any routines exported with the patch.  It will NOT
+           backup any other changes such as DDs or templates.
+  
+      (b)  Compare Transport Global to Current System - this option will
+           allow you to view all changes that will be made when the patch is
+           installed.  It compares all components of the patch (routines,
+           DDs, templates, etc.).
+  
+      (c)  Verify Checksums in Transport Global - this option will allow you
+           to ensure the integrity of the routines that are in the transport
+           global.
+  
+      (d)  Print Transport Global - this option will allow you to view the
+           components of the KIDS build.
+  
+  4.  Use the Install Package(s) option and select the package DG*5.3*533.
+  
+  5.  You will be prompted for the name of the coordinator for the new mail
+      group DG REGISTER ONCE.  Please enter the name of the individual who
+      should be responsible for maintaining this mail group, which will
+      receive important alerts about Date of Death, Confidential Address,
+      and Sensitive Patient information.
+   
+  6.  When prompted 'Want KIDS to INHIBIT LOGON during the install? YES//'
+      respond YES
+   
+  7.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols? YES//', respond YES.  When prompted to select the options
+      you would like to place out of order, enter:
+  
+      DG REGISTER A PATIENT
+  
+      (This will place DG REGISTER A PATIENT option out of order during
+      the installation.)
+  
+  8.  When prompted to select the protocols that you would like to place
+      'out of order', Press Enter since no protocols need to be selected.
+  
+  9.  Appropriate personnel should be added to the new DG REGISTER ONCE
+      mail group.
+  
+ Test Sites
+ ==========
+ VISN 2       Upstate New York
+ El Paso, TX
+ Tucson, AZ
+ Grand Junction, CO
+ Muskogee, OK
+ Bronx, NY
+
+Routine Information:
+====================
+
+Routine Name:
+  - DGREG
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGROAPI
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGROHLR
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGROHLS
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGROHLQ
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGROHLQ1
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGROHLQ2
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGROHLQ3
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGROHLU
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGROHLU1
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGROHLU3
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGROHLU4
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGROHLU5
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGROUT
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGROUT2
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGROHLUT
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGRODEBR
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGROMAIL
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : ARNETTE,ANDY                  Date Entered  : JUN 17, 2003
+Completed By: FLEGEL,CHRIS M                Date Completed: NOV 21, 2003
+Released By : BURTS,WANDA                   Date Released : NOV 21, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

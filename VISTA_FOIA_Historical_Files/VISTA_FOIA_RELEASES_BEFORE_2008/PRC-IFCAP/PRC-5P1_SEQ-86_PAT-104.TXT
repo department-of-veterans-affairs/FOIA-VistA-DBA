@@ -1,0 +1,439 @@
+$TXT Created by SCHMITZ,STEVEN at MNTVBB.FO-WASH.MED.VA.GOV  (KIDS) on Monday, 09/11/06 at 13:34
+=============================================================================
+Run Date: SEP 25, 2006                     Designation: PRC*5.1*104
+Package : PRC - IFCAP                         Priority: EMERGENCY
+Version : 5.1        SEQ #86                    Status: Released
+                  Compliance Date: SEP 27, 2006
+=============================================================================
+
+Associated patches: (v)PRC*5.1*83  <<= must be installed BEFORE `PRC*5.1*104'
+
+Subject: MODIFY PRCHLO CLO PROCUREMENT EXTRACT
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch will change how data is extracted from File 442 (Procurement & 
+ Accounting Transactions) to create the PRCHLO CLO PROCUREMENT extract.  
+ Originally, the option extracted data from the first of the month and at
+ least 45 days prior to the date of the extract.  This change will now 
+ extract data from the beginning of the Fiscal Year until the date the
+ extract is run.
+  
+  
+ ASSOCIATED REMEDY TICKETS:
+ =========================
+ 1.  HD152022 - IFCAP bug identified in PRCHLO - Causing issues with CLRS 
+                data rollup
+ 2.  HD140902 - Site Unable to Submit GIP Report
+     Duplicate: HD153080 - File 442 Entries Not X-ref'd appropriately
+      
+      
+ PARTICIPATING TEST SITES:
+ ========================
+ Cincinnati VAMC
+ Dublin VAMC
+ Minneapolis VAMC
+ VA Heartland East HCS
+     
+  
+ REMEDY OVERVIEW:
+ ===============
+  
+ Problem 1:
+ ----------
+ Ref:  HD152022
+ The original logic to extract data from file 442 pulls one month's worth 
+ of data.  The original logic also makes sure each record that is pulled 
+ is at least 45 days old based on running the extract on the 15th of the 
+ month.  It was discovered after analyzing 4 months worth of data that 
+ there is a discrepancy between the IFCAP PO Activity data and the 
+ Prosthetics NPPD Data.
+  
+ Resolution:
+ -----------
+ To correct this problem and sync the IFCAP CLRS data with Prosthetics
+ NPPD data, the date range of the IFCAP extract will be changed to start 
+ with the beginning of the Fiscal Year  and end with the date the extract
+ is run.
+  
+  
+ Problem 2:
+ ----------
+ Ref:  HD140902, HD153080
+ An issue has been identified that may affect CLRS and possibly other 
+ IFCAP modules.  The issue involves pointers from File 442 to File 441 
+ where the entry no longer exists or is corrupt.  Please note that per the 
+ Prosthetics and Clinical Logistics Office (P&CLO) as well as HSD&D 
+ guidance, entries should never be deleted from File 441.  When no longer 
+ used, entries should be inactivated as there are still files that contain 
+ pointers to them.  
+  
+ Resolution:
+ -----------
+ Please follow the Pre-Installation instructions below to address this 
+ issue.
+  
+ ====================Pre-INSTALLATION INSTRUCTIONS ====================
+  
+ The following FileMan Utility (Verify Fields) will identify any possible 
+ problems where the ITEM MASTER FILE NO. field contains a pointer to an 
+ entry which has been deleted from File 441 (ITEM MASTER).  It will also 
+ identify potential problems with cross-references not being defined 
+ appropriately in File 442 for this field.
+  
+ The FileMan utility will need to be run prior to applying the patch.  If 
+ the report indicates "NO PROBLEMS", please proceed with the installation 
+ of this patch.  If the report displays data with error messages (as 
+ described in the screen capture below) these will need to be 
+ addressed/corrected.  If you require assistance in resolving these 
+ "errors", please log a Remedy Ticket or contact the VA Service Desk 
+ (888-596-4357) and a Remedy Ticket will be logged for you.  
+  
+ WARNING:  DO NOT REINDEX File 442 or File 441!  This will create major 
+ problems that cannot be corrected.  Log a Remedy Ticket for assistance as 
+ the errors will need to be addressed individually.
+  
+ Please proceed to the Installation Instructions if no errors are
+ encountered or when the errors have been resolved.
+  
+ 1. From the programmer prompt, run the following commands below:
+  
+ >D P^DI
+  
+ VA FileMan 22.0
+  
+ Select OPTION: 6  UTILITY FUNCTIONS
+  
+ Select UTILITY OPTION: 1  VERIFY FIELDS  
+  
+ MODIFY WHAT FILE: NEW PERSON// 442  PROCUREMENT & ACCOUNTING 
+ TRANSACTIONS                                      
+                    (45662 entries)
+ VERIFY WHICH FIELD: ITEM    (multiple)
+  
+ VERIFY WHICH ITEM SUB-FIELD: ITEM MASTER FILE NO.
+  
+ DEVICE: HOME// ;;99999  VIRTUAL TELNET
+  
+ VERIFY FIELDS REPORT
+  
+ ITEM SUB-FILE (#442.01)          JUL 18, 2006  16:07    PAGE 1
+ --------------------------------------------------------------    
+ POINTER
+ (CHECKING CROSS-REFERENCE)
+  
+ ENTRY#'S   LINE ITEM NUMBER   ERROR
+  
+ 99833675   518-P86089
+ 2          2                  No '2' in pointed-to File
+  
+ 98667348   573-S61860
+ 25         25                 "50248" not properly Cross-referenced
+  
+ 98667348   573-S61860
+ 26         26                 "50248" not properly Cross-referenced
+  
+ Select UTILITY OPTION:
+  
+ >
+  
+  
+ ===================INSTALLATION INSTRUCTIONS ========================
+   
+  ********************************************************************
+  *  NOTE:  This patch will require the rescheduling of 2 options:   *
+  *                                                                  *
+  *         PRCPLO CLO GIP OPTION & PRCHLO CLO PROCUREMENT OPTION    *
+  *         Must be rescheduled through Taskman Management Option:   *
+  *         SCHEDULE/UNSCHEDULE OPTIONS.                             *
+  *                                                                  *
+  *         PRCPLO CLO GIP OPTION will now be tasked to run on the   *
+  *         1st of the month.  PRCHLO CLO PROCUREMENT OPTION will    *
+  *         run 2 hours after the start of PRCPLO CLO GIP OPTION.    *
+  *                                                                  *
+  * Example:  If PRCHLO CLO GIP OPTION is set to run at 1:00 a.m.    *
+  *           Sept. 1st, 2006, PRCHLO CLO PROCUREMENT OPTION will    *
+  *           be set to run at 3:00 a.m. Sept. 1st, 2006.            *
+  *                                                                  *
+  *         There is a schedule of recommended start times included  *
+  *         at the end of the Installation Instructions.             *
+  *                                                                  *
+  ********************************************************************
+  
+ This patch can be installed with users on the system, however, one
+ option will need to be disabled.
+  
+ Install Time - less than 2 minutes.  
+      
+  
+ 1.   LOAD TRANSPORT GLOBAL 
+      ---------------------
+      Choose the PackMan message containing this patch and invoke the 
+      INSTALL/CHECK MESSAGE PackMan option.  
+      
+ 2.   START UP KIDS 
+      -------------
+      Start up the Kernel Installation and Distribution System Menu 
+      [XPD MAIN]: 
+      
+             Edits and Distribution ...  
+             Utilities ...  
+             Installation ...  
+      
+      Select Kernel Installation & Distribution System Option: INStallation
+                                                               ---
+             Load a Distribution 
+             Print Transport Global 
+             Compare Transport Global to Current System 
+             Verify Checksums in Transport Global 
+             Install Package(s) 
+             Restart Install of Package(s) 
+             Unload a Distribution 
+             Backup a Transport Global 
+    
+ 3.   Select Installation Option: 
+      ---------------------------
+      NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+             NAME, enter PRC*5.1*104):
+      
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will not
+          backup any other changes such as DD's or templates.
+      b.  Compare Transport Global to Current System - This option will
+          allow you to view all changes that will be made when this patch
+          is installed.  It compares all components of this patch
+          (routines, DD's, templates, etc.).
+      c.  Verify Checksums in Transport Global - This option will allow
+          you to ensure the integrity of the routines that are in the
+          transport global.
+      
+ 4.   Select Installation Option: Install Package(s) 
+                     
+      **This is the step to start the installation of this KIDS patch: 
+      
+      a. Choose the Install Package(s) option to start the patch install.
+    
+      b. When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+         YES//' answer NO
+    
+      c. When prompted 'Want to DISABLE Scheduled Options, Menu Options, 
+         and Protocols? YES//' answer YES
+       
+      d. When prompted 'Enter options you wish to mark as 'Out Of 
+         Order':'  Enter the following option:
+  
+         PRCPLO CLO MENU    Clinical Logistics Office Menu
+    
+      e. When prompted 'Enter protocols you wish to mark as 'Out Of 
+         Order':' press <return>.
+  
+ 5.   Change the schedule in Taskman for PRCPLO CLO GIP OPTION:
+      
+      Please refer to the schedule of recommended start times
+      included at the end of this step.
+      
+      a. In Taskman, select Schedule/Unschedule Options
+  
+      b. When prompted, 'Select OPTION to schedule or reschedule:',
+         enter 'PRCPLO CLO GIP OPTION'.
+     
+      c. Change the schedule so that the option runs on the 1st of 
+         the month.  See screen capture below:
+  
+      SCREEN CAPTURE:
+      ---------------
+      Select OPTION to schedule or reschedule: PRCPLO CLO GIP OPTION  
+      CLO GIP Rep orts (CLRS) ...OK? Yes//   (Yes)
+           (R)
+                               Edit Option Schedule
+      Option Name: PRCPLO CLO GIP OPTION         
+      Menu Text: CLO GIP Reports (CLRS)                    TASK ID: 1230673
+      _________________________________________________________________________
+  
+      QUEUED TO RUN AT WHAT TIME: SEP 1,2006@01:00              
+      DEVICE FOR QUEUED JOB OUTPUT:                               
+      QUEUED TO RUN ON VOLUME SET:           
+      RESCHEDULING FREQUENCY: 1M                            
+      TASK PARAMETERS:
+      SPECIAL QUEUEING:                     
+      _______________________________________________________________________
+      Exit     Save     Next Page     Refresh
+  
+  Enter a command or '^' followed by a caption to jump to a specific field.
+  
+  
+                           Edit Option Schedule
+      Option Name: PRCPLO CLO GIP OPTION         
+      Menu Text: CLO GIP Reports (CLRS)                    TASK ID: 1230673
+      _________________________________________________________________________
+      QUEUED TO RUN AT WHAT TIME: SEP 1,2006@01:00              
+      DEVICE FOR QUEUED JOB OUTPUT:
+      QUEUED TO RUN ON VOLUME SET:
+      RESCHEDULING FREQUENCY: 1M                            
+      TASK PARAMETERS:
+      SPECIAL QUEUEING:
+      _________________________________________________________________________
+      Exit     Save     Next Page     Refresh
+  
+     
+     __________________________________________________________
+    |                                                          |
+    |  Recommended Start Times for PRCPLO CLO GIP OPTION       |
+    |  by VISN                                                 |
+    |                                                          |
+    |  Note:  Start times below are Central Standard Time.     |
+    |         Please adjust for your time zone.                |
+    |__________________________________________________________|
+    |                            |                             |
+    |   VISN                     |   Start time for PRCPLO     |
+    |   ----                     |   CLO GIP Option            |
+    |____________________________|_____________________________|
+    |   VISN 1                   |   2 a.m. (CST)              |
+    |____________________________|_____________________________|
+    |   VISN 2                   |   2 a.m. (CST)              |
+    |____________________________|_____________________________|
+    |   VISN 3                   |   2 a.m. (CST)              |
+    |____________________________|_____________________________|
+    |   VISN 4                   |   2:20 am (CST)             |
+    |____________________________|_____________________________| 
+    |   VISN 5                   |   2:20 am (CST)             |
+    |____________________________|_____________________________| 
+    |   VISN 6                   |   2:20 am (CST)             |
+    |____________________________|_____________________________| 
+    |   VISN 7                   |   2:40 am (CST)             |
+    |____________________________|_____________________________| 
+    |   VISN 8                   |   2:40 am (CST)             |
+    |____________________________|_____________________________| 
+    |   VISN 9                   |   2:40 am (CST)             |
+    |____________________________|_____________________________| 
+    |   VISN 10                  |   3:00 am (CST)             |
+    |____________________________|_____________________________| 
+    |   VISN 11                  |   3:00 am (CST)             |
+    |____________________________|_____________________________|
+    |   VISN 12                  |   3:00 am (CST)             |
+    |____________________________|_____________________________|
+    |   VISN 13                  |   3:40 am (CST)             |
+    |____________________________|_____________________________|
+    |   VISN 14                  |   3:40 am (CST)             |
+    |____________________________|_____________________________|
+    |   VISN 15                  |   1:40 am (CST)             |
+    |____________________________|_____________________________|
+    |   VISN 16                  |   1:20 am (CST)             |
+    |____________________________|_____________________________|
+    |   VISN 17                  |   1:40 am (CST)             |
+    |____________________________|_____________________________|
+    |   VISN 18                  |   1:40 am (CST)             |
+    |____________________________|_____________________________|
+    |   VISN 19                  |   3:20 am (CST)             |
+    |____________________________|_____________________________|
+    |   VISN 20                  |   3:20 am (CST)             |
+    |____________________________|_____________________________|
+    |   VISN 21                  |   3:20 am (CST)             |
+    |____________________________|_____________________________|
+    |   VISN 22                  |   3:40 am (CST)             |
+    |____________________________|_____________________________|
+    |   VISN 23                  |   3:40 am (CST)             |
+    |____________________________|_____________________________|
+    | ALL OTHERS                 |   1:00 am (CST)             |
+    | (i.e. Central Office,      |                             |
+    | CMOP, VBA, etc.)           |                             |
+    |____________________________|_____________________________|
+  
+  
+  
+ 6.   Change the schedule in Taskman for PRCHLO CLO PROCUREMENT OPTION
+      so that it executes 2 hours after the start of PRCHLO CLO GIP
+      OPTION.
+  
+  
+      a. In Taskman, select Schedule/Unschedule Options
+  
+      b. When prompted, 'Select OPTION to schedule or reschedule:',
+         enter 'PRCHLO CLO PROCUREMENT OPTION'.  See screen capture below:
+  
+      SCREEN CAPTURE:
+      ---------------
+      Select OPTION to schedule or reschedule: PRCPLO CLO PROCUREMENT
+      CLO Procurement Reports (CLRS) ...OK? Yes//   (Yes)
+          (R)
+                              Edit Option Schedule
+      Option Name: PRCHLO CLO PROCUREMENT        
+      Menu Text: CLO Procurement Reports (CLRS)            TASK ID: 1230674
+      ________________________________________________________________________
+  
+      QUEUED TO RUN AT WHAT TIME: SEP 1,2006@03:00                 
+      DEVICE FOR QUEUED JOB OUTPUT:                               
+      QUEUED TO RUN ON VOLUME SET:           
+      RESCHEDULING FREQUENCY: 1M                            
+      TASK PARAMETERS:
+      SPECIAL QUEUEING:                     
+      _________________________________________________________________________
+      Exit     Save     Next Page     Refresh
+  
+  Enter a command or '^' followed by a caption to jump to a specific field.
+  
+                            Edit Option Schedule
+      Option Name: PRCHLO CLO PROCUREMENT        
+      Menu Text: CLO Procurement Reports (CLRS)            TASK ID: 1230676
+      _________________________________________________________________________
+      
+      QUEUED TO RUN AT WHAT TIME: SEP 1,2006@03:00              
+      DEVICE FOR QUEUED JOB OUTPUT:
+      QUEUED TO RUN ON VOLUME SET:
+      RESCHEDULING FREQUENCY: 1M                            
+      TASK PARAMETERS:
+      SPECIAL QUEUEING:
+      _________________________________________________________________________
+      Exit     Save     Next Page     Refresh
+  
+  Enter a command or '^' followed by a caption to jump to a specific field.
+  
+      COMMAND: EX                         Press <PF1>H for help   Insert
+  
+      **Notice that the queue time for PRCHLO CLO PROCUREMENT OPTION
+        is 2 hours later than the queue time for PRCPLO CLO GIP OPTION.
+  
+  
+ ROUTINE SUMMARY:
+ ===============
+ The following is a list of the routines included in this patch.  
+ The second line of each of these routines now looks like: 
+    
+      <tab>;;5.1;IFCAP;**[patch list]**;Oct 20, 2000
+  
+  
+                          CHECK^XTSUMBLD
+    
+ Routine         Before Patch       After Patch        Patch List
+ -------         ------------       -----------        ----------
+ PRCHLO          1533969            2277737                83,104
+ PRCHLO4A        9218167            7449627                83,104
+    
+ Number of Routines = 2  
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PRCHLO
+    Before:  B6164457  After: B11873921  **83,104**
+Routine Name: PRCHLO4A
+    Before: B45155553  After: B41529207  **83,104**
+
+=============================================================================
+User Information:
+Entered By  : SCHMITZ,STEVEN                Date Entered  : JUL 31, 2006
+Completed By: WERNER,GARY                   Date Completed: SEP 22, 2006
+Released By : NELSON,VICKI M                Date Released : SEP 25, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

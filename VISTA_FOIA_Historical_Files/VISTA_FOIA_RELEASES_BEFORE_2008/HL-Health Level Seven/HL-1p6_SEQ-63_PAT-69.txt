@@ -1,0 +1,164 @@
+$TXT Created by CHAN,ALAN at NXT.KERNEL.ISC-SF.VA.GOV  (KIDS) on TUESDAY, 11/14/00 at 10:29
+=============================================================================
+Run Date: APR 04, 2001                     Designation: HL*1.6*69
+Package : HL - HEALTH LEVEL SEVEN            Priority: Mandatory
+Version : 1.6        SEQ #63                    Status: Released
+=============================================================================
+
+
+Subject: wrong processing routine being executed for VistA HL7 apps
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+ Test sites:    Birmingham, North Texas NCS (Dallas), Grand Junction,
+                Milwaukee, Sheridan
+  
+ This patch addresses the following issues:
+  
+  1.  ISH-1000-42883  wrong processing routine being executed for
+                      VistA HL7 apps
+  2.  SDC-1100-60210  Problem with HL7/Radiology link
+  
+ Note:          This patch requires that KIDS build HL*1.6*66
+                be installed.
+  
+  The wrong processing routine is being executed (EN^RGADT)
+  for non-MPI/PD applications.  This causes a MPI/PD exception to be
+  generated and sent to Forum.
+  
+  This problem was originally identified in Milwaukee when the Dictaphone
+  application tried to execute a MPI/PD processing routine (EN^RGADT).
+  
+  Most recently, the problem appeared at the Birmingham VAMC.  Some user
+  inactivated a Lab interface application which caused an endless loop
+  creating application acks that were never received/processed because the
+  VistA HL7 application was inactivated.
+  
+  The problem lies in the CONT^HLTP3 subroutines, the HL("EIDS") variable,
+  defining the subscribing protocol, is not defined.  The software sets the
+  HL("EIDS") variable to HLEIDS.  The value of HLEIDS is not reliable, in
+  most cases the variable has not been properly set/killed.
+  
+  In addition, the inbound filers were not locking the cross-reference
+  ^HLMA("AC","I",... in order to flush to global cache buffers.
+  
+  In this case, the HL7 link receiving a message for an application
+  kills the cross-reference(entry in the inbound tcp/ip queue),
+  releases other locks, the inbound filers kicks in and grabs the lock at a
+  different parent level ^HLMA(ien), checks for the existence of
+  ^HLMA("AC","I",LLien,MSGien) and since no locking was performed on this
+  cross-reference, this piece of code thinks this entry exists.  Hence, the
+  inbound filers begin to process this message, finds
+  variables left around from a previous message(MPI/PD or HL7 itself),
+  invokes code that uses these variables to set other HL7 variables when
+  these variables itself are not setup properly.  This in turn causes the
+  code to call the MPI/PD application which in turn fires off exception
+  messages to Forum.
+  
+  These problems may be triggered by an inbound HL7 message that was not
+  properly constructed in terms of the HL7 MSH segment.  The VistA HL7
+  software needs from the MSH segment, the Sending/Receiving Application
+  names, Message Type, Event Type and Version ID.
+  The HL7 Protocol setups may also have triggered this problem if the data
+  in the MSH segment of an inbound message does not match the interface
+  definition setups.
+  
+  Therefore, sites will still need to correct problems with their local
+  interfaces. This patch only prevents the wrong application from being
+  executed.
+  
+ Routine Information:
+ ====================
+  The following routines are included in this patch.  The second line of each
+  of these routines now looks like:
+   ;;1.6;HEALTH LEVEL SEVEN;<patchlist>;Oct 13, 1995
+  
+  CHECK^XTSUMBLD checksum results:
+  
+  Routine Name     Before Patch  After Patch    Patch List
+  ============     ============  ===========    ====================
+  HLTP3            14792516      15038079       19,43,57,58,59,66,69
+  
+  List of preceding patches: HL*1.6*66
+  Sites should use CHECK^XTSUMBLD to verify checksums.
+  
+  
+ Installation Instructions: 
+ ==========================
+   1.  Users are allowed to be on the system during the installation.  
+  
+   2.  DSM SITES: Review your mapped set.  If any of the routines listed in 
+       the Routine Summary section are mapped, they should be removed from 
+       the mapped set at this time.  
+  
+   3.  Shutdown all Logical Links and incoming and outgoing filers, and 
+       the Link Manager. Use the options: 
+  
+         Filer and Link Management Options -> 
+             SA     Stop All Messaging Background Processes 
+             LM     TCP/IP Link Manager Start/Stop 
+  
+       For DSM sites ONLY, disable all HL7 UCX Services 
+       for this installation.  
+  
+   4.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This 
+       option will load the KIDS package onto your system.  
+  
+   5.  The patch has now been loaded into a Transport global on your 
+       system. You now need to use KIDS to install the Transport global.  
+       On the KIDS menu, under the 'Installation' menu, use the following 
+       options: 
+  
+          2 Verify Checksums in Transport Global 
+          3 Print Transport Global 
+          4 Compare Transport Global to Current System 
+          5 Backup a Transport Global 
+          6 Install Package(s) 
+              INSTALL NAME: HL*1.6*69 
+                            =========
+  
+         Answer 'NO' to 'Want KIDS to INHIBIT LOGONS during the install?'.  
+  
+         Answer 'NO' to 'Want to DISABLE Scheduled Options, Menu Options, 
+          and Protocols?'.  
+  
+   6.  Startup all Logical Links and incoming and outgoing filers. Use the 
+  
+         Filer and Link Management Options -> 
+             RA     Restart/Start All Links and Filers 
+         (Note that links that do not have "autostart" enabled will need to 
+         be restarted manually) 
+  
+       For DSM sites ONLY, if you previously disabled an HL7 UCX Service 
+       for this installation, you may now enable it.  
+  
+   7.  DSM Sites: Rebuild your mapped set if necessary.  
+  
+   8.  Start Link Manager using the option: "TCP/IP 
+         Link Manager Start/Stop." 
+
+Routine Information:
+====================
+
+Routine Name:
+  - HLTP3
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : CHAN,ALAN                      Date Entered : NOV 07, 2000
+Completed By: SINGH,GURBIR                  Date Completed: APR 03, 2001
+Released By : GAYFIELD,LISA                 Date Released : APR 04, 2001
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

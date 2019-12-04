@@ -1,0 +1,648 @@
+
+=============================================================================
+Run Date: SEP 28, 2007                     Designation: FH*5.5*8
+Package : FH - DIETETICS                      Priority: Mandatory
+Version : 5.5         SEQ #9                    Status: Released
+                  Compliance Date: OCT 29, 2007
+=============================================================================
+
+Associated patches: (v)FH*5.5*5    <<= must be installed BEFORE `FH*5.5*8'
+
+Subject: Patient Care and Communication
+
+Category: 
+  - Print Template
+  - Input Template
+  - Sort Template
+  - Routine
+  - Data Dictionary
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ This patch corresponds to New IT Service Request #20060202.
+  
+ http://vista.med.va.gov/pas/ViewTrackingRecord.asp?RequestID=20060202
+  
+ This patch contains the following items:
+  
+ 1) Mapping of GMR Allergies (#120.82) file entries to specific allergy-type
+ Food Preferences (#115.2) file entries to allow automation of adding specific
+ allergy-type Food Preferences to a patient's nutrition record when specific
+ GMRA food-type Allergies are added to the patient's medical record.
+  
+ 2) Update Nutrition reports and ordering options to display Allergy data,
+ and display *ALG indication on labels for patients with allergies.
+  
+ 3) Fix issue in which Recipes with Embedded Recipes were not being removed
+ if necessary when printing tray tickets.  If the patient had an allergy or
+ food preference which should exclude the recipe from the tray ticket, but
+ the excluded recipe was embedded, the tray ticket code was not removing or
+ replacing the food item.
+  
+ 4) Expansion of the Clinician field in the Nutrition Location (#119.6) file
+ to a multiple to allow diet, tube feeding and consult bulletins to go to
+ multiple RD's rather than one single individual.
+  
+ 5) Update and expand the Nutrition Assessment option by allowing the 
+ editing of the Work in Progress assessment and adding necessary fields
+ and new calculations.
+  
+ 6) Display Body Mass Index (BMI) on Nutrition Profile and Screening Report.
+  
+ 7) Make the inpatient Nutrition Assessment available as a Progress Note to
+ TIU.  When a Nutrition Assessment is marked as 'Complete' the Assessment
+ will be created as a Progress Note in TIU.
+  
+ 8) Add the Patient Allergies, Nutrition Assessment Patient Follow-up 
+ Date and Comments fields to the API provided to Health Summary.  This is for
+ inpatients only.  The new fields will be viewable in the Health Summary with
+ patch GMTS*2.7*83; this patch only passes the new fields to Health Summary.
+  
+ 9) Add new alerts for Nutrition Assessment Follow-up Date and Food/Drug 
+ Classification.
+  
+ 10) Users can now control how far the Dietetics Encounter will be 
+ displayed in Print Screening Report [FHASXR] and Print Nutrition Profile 
+ [FHASP1] reports.
+  
+ Remedy Tickets:
+ ===============
+ 98708
+ 184600
+   
+ Software Retrieval:
+ ===================
+     
+ This patch is available via FTP in a KIDS distribution file.  The Host
+ File is named FH5_5_P8.KID and is located in the [ANONYMOUS.SOFTWARE]
+ directory of the following OI Field Offices.
+     
+  OIFO     FTP ADDRESS
+  ----     -----------
+  Albany   ftp.fo-albany.med.va.gov
+  Hines    ftp.fo-hines.med.va.gov
+  SLC      ftp.fo-slc.med.va.gov
+   
+ Documentation Retrieval:
+ ========================
+  
+  The N&FS User Manual and Adpac Guide have been updated and are available
+  on the ANONYMOUS.SOFTWARE directory at one of the following
+  Office of Information (OI) Field Offices.
+  
+  This documentation can be retrieved in one of the following ways:
+   
+  (1) The preferred method is to FTP the files from 
+  download.vista.med.va.gov, which will transmit the files from the first
+  available FTP server.
+   
+  (2) Sites may also elect to retrieve documentation directly from a
+  specific server as follows:
+   
+   Albany          ftp.fo-albany.med.va.gov
+   Hines           ftp.fo-hines.med.va.gov
+   Salt Lake City  ftp.fo-slc.med.va.gov
+   
+   The documentation distribution includes:
+   
+     FILE NAME           DESCRIPTION             RETRIEVAL
+   FH5_5P8UM.PDF      Nutrition & Food Service    Binary
+                      V.5.5 User Manual
+   FH5_5P8AG.PDF      Nutrition & Food Service    Binary
+                      V.5.5 Manager/ADPAC Guide
+  
+  (3) Documentation can also be retrieved from VISTA Documentation Library
+      (VDL) on the Internet at the following address:
+      http://www.va.gov/vdl/Clinical.asp?appID=67
+    
+ Test Sites:
+ ===========
+    
+     Central-Texas
+     Phoenix
+     Puget Sound
+     Reno
+     Tomah 
+  
+ Data Dictionary Changes:
+ ========================
+  
+   File: DIET (#111)
+     Field: BULLETIN CLINICIAN?    0;6 SET
+   
+                                 'Y' FOR YES; 
+                                 'N' FOR NO; 
+               LAST EDITED:      JUN 08, 1985 
+               DESCRIPTION:      This field, if answered YES, will result in a
+                                 bulletin being sent to the clinician(s)
+                                 responsible for the ward on which the patient
+                                 resides any time this diet modification is
+                                 ordered.
+   
+   File: RECIPE (#114)
+     Field: EMBEDDED RECIPE (#1.5)
+       Subfield: 114.03,.01      EMBEDDED RECIPE         0;1 POINTER TO RECIPE
+                                                             FILE (#114)
+   
+                 INPUT TRANSFORM:S DIC("S")="I +Y'=D0" D ^DIC K DIC S DIC=DIE,X=
+                                 +Y K:Y<0 X
+                 LAST EDITED:    AUG 16, 2007 
+                 DESCRIPTION:    This field contains the name of a recipe which
+                                 is to be embedded in the present one. The
+                                 embedded recipe cannot be the same as the
+                                 present recipe.  
+   
+                 SCREEN:         S DIC("S")="I +Y'=D0"
+                 EXPLANATION:    Don't allow selection of current recipe
+                 NOTES:          XXXX--CAN'T BE ALTERED EXCEPT BY PROGRAMMER
+   
+                 CROSS-REFERENCE:114^AB 
+                                 1)= S ^FH(114,"AB",$E(X,1,30),DA(1),DA)=""
+                                 2)= K ^FH(114,"AB",$E(X,1,30),DA(1),DA)
+                                 Cross-reference the file by embedded recipes so
+                                 that embedded recipes can be excluded from
+                                 patient trays that may have an allergy or food 
+                                 preference to a recipe.
+   
+   File: NUTRITION PERSON (#115)
+     Field: NUTRITION ASSESSMENT (#115.011)
+       Subfield: 115.011,50      WCCM        1;11 NUMBER
+                 INPUT TRANSFORM:  K:+X'=X!(X>999)!(X<0)!(X?.E1"."1.N) X
+                 LAST EDITED:    FEB 15, 2007 
+                 HELP-PROMPT:    Type a number between 0 and 999, 0 Decimal
+                                 Digits 
+  
+               115.011,51      CIBW               1;12 FREE TEXT
+                 INPUT TRANSFORM:  K:$L(X)>1!($L(X)<1) X
+                 LAST EDITED:    FEB 15, 2007 
+                 HELP-PROMPT:    Answer must be 1 character in length 
+  
+               115.011,52      CERBO           1;13 NUMBER
+                 INPUT TRANSFORM:  K:+X'=X!(X>2)!(X<0)!(X?.E1"."1.N) X
+                 LAST EDITED:    FEB 15, 2007 
+                 HELP-PROMPT:    Type a number between 0 and 2, 0 Decimal
+                                 Digits 
+  
+               115.011,53      CENB              1;14 NUMBER
+                 INPUT TRANSFORM:  K:+X'=X!(X>2)!(X<0)!(X?.E1"."1.N) X
+                 LAST EDITED:    FEB 15, 2007 
+                 HELP-PROMPT:    Type a number between 0 and 2, 0 Decimal
+                                 Digits 
+  
+              115.011,54      PCTB            1;15 NUMBER
+                 INPUT TRANSFORM:  K:+X'=X!(X>3)!(X<0)!(X?.E1"."1.N) X
+                 LAST EDITED:    FEB 15, 2007 
+                 HELP-PROMPT:    Type a number between 0 and 3, 0 Decimal
+                                 Digits 
+  
+              115.011,55      SEF              1;16 NUMBER
+                 INPUT TRANSFORM:  K:+X'=X!(X>2.5)!(X<.7)!(X?.E1"."3.N) X
+                 LAST EDITED:      FEB 15, 2007 
+                 HELP-PROMPT:      Type a number between .7 and 2.5, 2 
+                                   Decimal Digits
+  
+              115.011,56      CFRB              1;17 NUMBER
+                 INPUT TRANSFORM:  K:+X'=X!(X>7)!(X<0)!(X?.E1"."1.N) X
+                 LAST EDITED:      FEB 15, 2007 
+                 HELP-PROMPT:      Type a number between 0 and 7, 0 
+                                   Decimal Digits
+  
+              115.011,57      CFRBO                  1;18 NUMBER
+                 INPUT TRANSFORM:  K:+X'=X!(X>2)!(X<0)!(X?.E1"."1.N) X
+                 LAST EDITED:      FEB 15, 2007 
+                 HELP-PROMPT:      Type a number between 0 and 2, 0 
+                                   Decimal Digits
+  
+             115.011,58      CPRBO                  1;19 NUMBER
+                 INPUT TRANSFORM:  K:+X'=X!(X>2)!(X<0)!(X?.E1"."1.N) X
+                 LAST EDITED:      FEB 15, 2007 
+                 HELP-PROMPT:      Type a number between 0 and 2, 0 
+                                   Decimal Digits
+  
+             115.011,59      EKKG                   1;20 NUMBER
+                 INPUT TRANSFORM:  K:+X'=X!(X>110)!(X<10)!(X?.E1"."1.N) X
+                 LAST EDITED:      MAR 20, 2007 
+                 HELP-PROMPT:      Type a number between 10 and 110, 0 
+                                   Decimal Digits
+  
+             115.011,60      DIAGNOSIS FROM PROBLEM LIST DI;1 FREE TEXT
+                 INPUT TRANSFORM:  K:$L(X)>45!($L(X)<3) X
+                 LAST EDITED:      JAN 10, 2007 
+                 HELP-PROMPT:      Answer must be 3-45 characters in 
+                                   length 
+                 DESCRIPTION:      This is a diagnosis selected from the 
+                                   Problem List package for a patient. 
+  
+             115.011,61      DATE ENTERED IN PROBLEM LIST DI;2 DATE
+                 INPUT TRANSFORM:  S %DT="E" D ^%DT S X=Y K:X<1 X
+                 LAST EDITED:      JAN 16, 2007 
+                 HELP-PROMPT:      (No range limit on date) 
+                 DESCRIPTION:      This is the date when a diagnosis from
+                                   Problem List was entered.  
+  
+             115.011,62      DIAGNOSIS ENTERED BY NFS DI;3 FREE TEXT
+                 INPUT TRANSFORM:  K:$L(X)>45!($L(X)<3) X
+                 LAST EDITED:      JAN 10, 2007 
+                 HELP-PROMPT:      Answer must be 3-45 characters in 
+                                   length 
+                 DESCRIPTION: This is a diagnosis entered by NFS
+                 personnel. 
+  
+             115.011,63      NFS DIAGNOSIS DATE     DI;4 DATE
+                 INPUT TRANSFORM:  S %DT="E" D ^%DT S X=Y K:X<1 X
+                 LAST EDITED:      JAN 10, 2007 
+                 HELP-PROMPT:      (No range limit on date) 
+                 DESCRIPTION:      This is the date when a NFS diagnosis 
+                 was entered by NFS personnel.
+   
+             115.011,64      ASSESSMENT FOLLOW-UP DATE DI;5 DATE
+                 INPUT TRANSFORM:  S %DT="E" D ^%DT S X=Y K:X<1 X
+                 LAST EDITED:      MAR 01, 2007 
+                 HELP-PROMPT:      (No range limit on date) 
+                 DESCRIPTION:      This is a date that a patient's 
+                 assessment needs to be checked by a dietetians or
+                 other providers.
+  
+                 CROSS-REFERENCE:  115^E 
+                                   1)= S ^FHPT("E",$E(X,1,30),DA(1),DA)=""
+                                   2)= K ^FHPT("E",$E(X,1,30),DA(1),DA)
+                                   This cross-reference is being used in 
+                                   the processing of an Assessment Alert
+                                   for clinicians in a particular Nutrition
+                                   Location.   
+  
+             115.011,65      ASSESSMENT STATUS      DI;6 SET
+                                'C' FOR COMPLETED; 
+                                'S' FOR SIGNED; 
+                                'W' FOR WORK IN PROGRESS; 
+                 LAST EDITED:    FEB 16, 2007 
+                 DESCRIPTION:    This is a status field for nutrition
+                 assessment.  When the status is completed, a progress note
+                              will be created in TIU and eventually visible
+                              in CPRS. Once it is signed in CPRS, the
+                              assessment status will be updated to SIGNED.
+   
+            115.011,66      ASSESSMENT DIET        DI;7 FREE TEXT
+                 INPUT TRANSFORM:  K:$L(X)>15!($L(X)<1) X
+                 LAST EDITED:   FEB 08, 2007 
+                 HELP-PROMPT:   Answer must be 1-15 characters in length
+                 DESCRIPTION:   Patient diet at the time the Nutrition
+                                Assessment was created.  
+   
+            115.011,67      ASSESSMENT TF          DI;8 FREE TEXT
+                 INPUT TRANSFORM:  K:$L(X)>15!($L(X)<1) X
+                 LAST EDITED:   FEB 08, 2007 
+                 HELP-PROMPT:   Answer must be 1-15 characters in length
+                 DESCRIPTION:   Patient's Tubefeeding at the time the
+                                Nutrition Assessment was created.  
+   
+            115.011,68      ALERT DATE             DI;9 DATE
+                 INPUT TRANSFORM:  S %DT="E" D ^%DT S X=Y K:X<1 X
+                 LAST EDITED:   MAR 14, 2007 
+                 HELP-PROMPT:   (No range limit on date) 
+                 DESCRIPTION:   This is the last date an assessment 
+                                alert was created.
+   
+            115.011,70      LAB DATA               L;0 Multiple #115.021
+                 DESCRIPTION:  This multiple contains laboratory data
+                               available for the nutrition assessment.
+   
+            115.021,.01   TEST NAME         0;1 FREE TEXT (Multiply asked)
+                   INPUT TRANSFORM:  K:$L(X)>30!($L(X)<1) X
+                   LAST EDITED:      JUL 05, 1989 
+                   HELP-PROMPT:      Answer must be 1-30 characters in 
+                                     length. 
+                   DESCRIPTION:      This field contains the name of the 
+                   lab test.
+  
+                   CROSS-REFERENCE:  115.021^B 
+                     1)= S ^FHPT(DA(2),"N",DA(1),"L","B",$E(X,1,30), DA)=""
+  
+                     2)= K ^FHPT(DA(2),"N",DA(1),"L","B",$E(X,1,30), DA)
+                     This is the normal B cross-reference of the TEST NAME
+                     field.
+   
+          115.021,1 LAB TEST  0;2 POINTER TO LABORATORY TEST FILE (#60)
+                   LAST EDITED:  JUL 05, 1989 
+                   DESCRIPTION:  This field contains a pointer to the Lab 
+                   Test file (60) corresponding to this lab test. 
+  
+             115.021,2         SPECIMEN           0;3 NUMBER
+                   INPUT TRANSFORM:K:+X'=X!(X>9999)!(X<1)!(X?.E1"."1N.N) X
+                   LAST EDITED:  JUL 05, 1989 
+                   HELP-PROMPT:  Type a Number between 1 and 9999, 0 
+                                 Decimal Digits
+                   DESCRIPTION:  This field contains a pointer to the 
+                   specimen type used for the lab test.
+   
+             115.021,3         UNITS      0;4 FREE TEXT
+  
+                   INPUT TRANSFORM:K:$L(X)>10!($L(X)<1) X
+                   LAST EDITED:  JUL 05, 1989 
+                   HELP-PROMPT:  Answer must be 1-10 characters in length. 
+                   DESCRIPTION:  This field indicates the units in which 
+                   the result is expressed.
+   
+             115.021,4         REF. RANGE         0;5 FREE TEXT
+                   INPUT TRANSFORM:K:$L(X)>11!($L(X)<4) X
+                   LAST EDITED:  JUL 05, 1989 
+                   HELP-PROMPT:  Answer must be 4-11 characters in length. 
+                   DESCRIPTION:  This field provides the low-high 
+                   reference (or normal) range for the lab test.
+   
+             115.021,5         RESULT             0;6 FREE TEXT
+                   INPUT TRANSFORM:K:$L(X)>10!($L(X)<1) X
+                   LAST EDITED:  JUL 05, 1989 
+                   HELP-PROMPT:  Answer must be 1-10 characters in length. 
+                   DESCRIPTION:  This field contains the lab test result.
+   
+             115.021,6         DATE PERFORMED     0;7 DATE
+                   INPUT TRANSFORM:S %DT="EX" D ^%DT S X=Y K:Y<1 X
+                   LAST EDITED:  JUL 05, 1989 
+                   DESCRIPTION:  This field contains the date the lab test 
+                   was performed. 
+  
+            115.011,71    COMMENTS    X;0   WORD-PROCESSING #115.1171
+                   DESCRIPTION:  This multiple contains comments relating 
+                   to the assessment.
+   
+            115.011,80    PT CONFINED IN BED   3;1 SET
+                                 'Y' FOR YES; 
+                                 'N' FOR NO; 
+                   LAST EDITED:  FEB 16, 2007 
+  
+            115.011,81      ENERGY CAL           3;2 FREE TEXT
+                   INPUT TRANSFORM:K:$L(X)>30!($L(X)<1) X
+                   LAST EDITED:  FEB 27, 2007 
+                   HELP-PROMPT:  Answer must be 1-30 characters in length 
+  
+            115.011,82      PROTEIN CAL          3;3 FREE TEXT
+                   INPUT TRANSFORM:K:$L(X)>30!($L(X)<1) X
+                   LAST EDITED:  FEB 27, 2007 
+                   HELP-PROMPT:  Answer must be 1-30 characters in length 
+  
+            115.011,83      NFS PROBLEM          3;4 FREE TEXT
+                   INPUT TRANSFORM:K:$L(X)>30!($L(X)<1) X
+                   LAST EDITED:  FEB 16, 2007 
+                   HELP-PROMPT:  Answer must be 1-30 characters in length 
+  
+            115.011,84   FOOD/DRUG INTERACTION 3;5 SET
+                                 'Y' FOR YES; 
+                                 'N' FOR NO; 
+                   LAST EDITED:  FEB 16, 2007   
+                         
+            115.011,85   FOOD/DRUG COMMENT    3;6 FREE TEXT                     
+                     INPUT TRANSFORM:K:$L(X)>40!($L(X)<3) X
+                     LAST EDITED: JUL 26, 2007 
+                     HELP-PROMPT:Answer must be 3-40 characters in length 
+  
+            115.011,86   PROTEIN LEVEL        3;7 NUMBER 
+                     INPUT TRANSFORM:K:+X'=X!(X>4)!(X<0)!(X?.E1"."3.N) X
+                     LAST EDITED: JUL 26, 2007 
+                     HELP-PROMPT:Type a number between 0 and 4, 2 Decimal Digits 
+                     DESCRIPTION:This is a protein level used in 
+                      calculation of protein requirements.  
+  
+           115.011,87   SPINAL CORD          3;8 SET 
+                                 'P' FOR Paraplegic; 
+                                 'Q' FOR Quadriplegic; 
+                     LAST EDITED: JUL 26, 2007 
+                     DESCRIPTION:This is a spinal cord code for Paraplegic 
+                      and Quadriplegic. 
+   
+   File: FOOD PREFERENCES (#115.2)
+     Field: SYNONYM (#115.2,26)
+   
+   File: NUTRITION LOCATION (#119.6)
+     Field: CLINCIAN(S) (#119.6,112)
+       Subfield:  CLINICIANS (#119.66,.01)
+   
+   File: FH SITE PARAMETERS (#119.9)
+     Field: DRUG CLASSIFICATIONS (#119.9,85)
+       Subfield:  PRINT ON ASSESSMENT (#119.985,3)
+       Subfield:  PRINT ON SCREENING/PROFILE (#119.985,4)
+       Subfield:  PRINT ORDER (#119.985,5)
+       Subfield:  CREATE ALERT (#119.985,6)
+   
+ Routine Summary: 
+ ================
+      
+ The following routines are included in this patch.  The second line of 
+ these routines should look like: 
+      
+   <tab>;;5.5;DIETETICS;**[patch list]**;Jan 28, 2005
+      
+  CHECK^XTSUMBLD results:  (OLD CHECKSUM VALUES)
+     
+ Routine       Pre Patch 8         Post Patch 8        Patch List
+ ==========    ===============     ===============     ===============
+ FH55P8        N/A (post-init)     2399271             8
+ FHASM1        8988353             19214690            8
+ FHASM2        8399539             16787373            8
+ FHASM2A       2430817             5989995             8
+ FHASM2B       3386101             3389739             8
+ FHASM2C       3102927             3106565             8
+ FHASM2D       2275862             2331906             8
+ FHASM3        5096802             8169238             8
+ FHASM3A       9169407             9164952             8
+ FHASM4        8055497             7834526             4,8
+ FHASM5        8945494             9718712             8
+ FHASM6        7486877             10020634            8
+ FHASM7        9760313             23378286            8
+ FHASMR        2838618             3388552             8
+ FHASMR1       10075474            15294850            8
+ FHASMR2       N/A (new routine)   21791773            8
+ FHASP         7995777             9975207             5,8
+ FHASP1        8312844             8272817             8
+ FHASXR        7202223             7503696             5,8
+ FHASXR1       9006803             12145625            8
+ FHCLN         756893              1109918             8
+ FHCTF5        9494182             9992459             4,8
+ FHMTK1B       11750251            12773535            5,8
+ FHNO21        6923610             7230852             5,8
+ FHNO31        12916080            13149490            5,8
+ FHNO7         16969832            17110057            5,8
+ FHOMRC1       5552540             5647632             2,8
+ FHOMTK2       12811708            13335276            5,8
+ FHORC         4195898             4267824             8
+ FHORD1        14039767            14180490            8
+ FHORD13       15076005            15231212            1,5,8
+ FHORD7        7938063             8058022             8
+ FHORE1        11283169            11404272            8
+ FHORE21       12487937            12962361            5,8
+ FHORT3        4118746             4102231             5,8
+ FHORX1        12853013            12875099            1,8
+ FHORX1A       5968895             6587891             1,5,8
+ FHORX1B       4899429             5039937             1,8 
+ FHREC4        3456680             4271562             8
+ FHSEL1        9136926             9795952             8
+ FHSELA1       N/A (new routine)   10880522            8
+ FHSELA2       N/A (new routine)   9957820             8
+ FHSP          28038363            28186805            5,8
+ FHSP11        4139049             4349514             5,8
+ FHSPED        26566596            26715038            5,8
+ FHWADM        10795224            11376280            5,8
+ FHWGMR        799404              3846513             8
+ FHWHEA        13524340            14937340            1,8
+ FHWORA        7483815             7622359             8
+    
+ Installation instructions:
+ ==========================
+      
+ This Patch is created with Kernel V8 KIDS.  Follow these instructions:   
+    
+ 1) From the Kernel Installation and Distribution System menu, select
+    the 'Installation' menu.
+     
+ 2) Use the 'Load a Distribution' option.  When prompted for a Host File, 
+    enter the host file named FH5_5_P8.KID.  You may need to indicate
+    the full path to the directory containing this file.
+         
+ 3) On the KIDS menu, under the 'Installation' menu, use the
+    option 'Verify Checksums in Transport Global' and enter 'FH*5.5*8' when
+    prompted for INSTALL NAME.  Verify that all routines have the correct
+    checksum values. 
+        
+ 4) Under the 'Installation' menu, use the option 'Install Package(s)'.
+    Select the package 'FH*5.5*8' when prompted for the INSTALL NAME and
+    proceed with the install.
+    
+ 5) Users may remain on the system.  Since new options are introduced with
+    this patch and therefore, menu rebuilding is suggested, this patch should
+    be installed after hours or during non-peak times to lessen impact to
+    users.  Install should take less than two minutes.  The routines included
+    in this patch should be installed in the production UCI.
+    
+ 6) The DIETETICS options do not need to be disabled during the
+    installation of this patch.  Your EVS representative will answer any
+    questions regarding this patch.
+    
+ 7) Recommended responses to the following installation questions:
+     
+    Want KIDS to Rebuild Menu Trees Upon Completion of Install? NO// YES
+    
+    Want KIDS to INHIBIT LOGONs during the install? NO// NO
+    Want to DISABLE Scheduled Options, Menu Options, and Protocols? NO// NO
+ 
+ 
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: FH55P8
+    Before:       n/a   After:  B3618153  **8**
+Routine Name: FHASM1
+    Before: B18758963   After: B65471080  **8**
+Routine Name: FHASM2
+    Before: B12615736   After: B36109288  **8**
+Routine Name: FHASM2A
+    Before:  B4690497   After: B17396578  **8**
+Routine Name: FHASM2B
+    Before:  B5462722   After:  B5467504  **8**
+Routine Name: FHASM2C
+    Before: B14309979   After: B14314553  **8**
+Routine Name: FHASM2D
+    Before:  B3631718   After:  B3712344  **8**
+Routine Name: FHASM3
+    Before:  B6230541   After: B17595871  **8**
+Routine Name: FHASM3A
+    Before: B14219417   After: B14361776  **8**
+Routine Name: FHASM4
+    Before: B13994312   After: B16463510  **4,8**
+Routine Name: FHASM5
+    Before: B14455306   After: B24965508  **8**
+Routine Name: FHASM6
+    Before: B12720792   After: B24772464  **8**
+Routine Name: FHASM7
+    Before: B13420540   After: B65406983  **8**
+Routine Name: FHASMR
+    Before:  B3641105   After:  B4709674  **8**
+Routine Name: FHASMR1
+    Before: B16349992   After: B40014572  **8**
+Routine Name: FHASMR2
+    Before:       n/a   After: B66960757  **8**
+Routine Name: FHASP
+    Before: B14729349   After: B22615206  **5,8**
+Routine Name: FHASP1
+    Before: B16358458   After: B16943415  **8**
+Routine Name: FHASXR
+    Before:  B8943956   After:  B9601519  **5,8**
+Routine Name: FHASXR1
+    Before: B16666585   After: B27507511  **8**
+Routine Name: FHCLN
+    Before:   B850863   After:  B1290608  **8**
+Routine Name: FHCTF5
+    Before: B26427742   After: B27613235  **4,8**
+Routine Name: FHMTK1B
+    Before: B25025382   After: B27056788  **5,8**
+Routine Name: FHNO21
+    Before: B15038178   After: B16043749  **5,8**
+Routine Name: FHNO31
+    Before: B28958638   After: B29617742  **5,8**
+Routine Name: FHNO7
+    Before: B43514527   After: B44064186  **5,8**
+Routine Name: FHOMRC1
+    Before: B12871022   After: B12945292  **2,8**
+Routine Name: FHOMTK2
+    Before: B27468276   After: B28087170  **5,8**
+Routine Name: FHORC
+    Before:  B5770912   After:  B6083686  **8**
+Routine Name: FHORD1
+    Before: B21152206   After: B21560497  **8**
+Routine Name: FHORD13
+    Before: B54149113   After: B53521157  **1,5,8**
+Routine Name: FHORD7
+    Before: B15592333   After: B15930347  **8**
+Routine Name: FHORE1
+    Before: B17169358   After: B17533631  **8**
+Routine Name: FHORE21
+    Before: B29651478   After: B31608695  **5,8**
+Routine Name: FHORT3
+    Before:  B5199954   After:  B5304161  **5,8**
+Routine Name: FHORX1
+    Before: B36932734   After: B36979468  **1,8**
+Routine Name: FHORX1A
+    Before: B15045653   After: B16289786  **1,5,8**
+Routine Name: FHORX1B
+    Before: B12206977   After: B12528647  **1,8**
+Routine Name: FHREC4
+    Before:  B4501508   After:  B5747106  **8**
+Routine Name: FHSEL1
+    Before: B19311390   After: B22413340  **8**
+Routine Name: FHSELA1
+    Before:       n/a   After: B45773612  **8**
+Routine Name: FHSELA2
+    Before:       n/a   After: B97907668  **8**
+Routine Name: FHSP
+    Before: B75662627   After: B75939691  **5,8**
+Routine Name: FHSP11
+    Before:  B6300547   After:  B6692534  **5,8**
+Routine Name: FHSPED
+    Before: B70827243   After: B71023432  **5,8**
+Routine Name: FHWADM
+    Before: B23908953   After: B26287048  **5,8**
+Routine Name: FHWGMR
+    Before:  B1375643   After:  B8808627  **8**
+Routine Name: FHWHEA
+    Before: B20746038   After: B27347368  **1,8**
+Routine Name: FHWORA
+    Before: B19320980   After: B19919064  **8**
+ 
+Routine list of preceding patches: 2, 4, 5
+
+=============================================================================
+User Information:
+Entered By  : INGRAM,FLORENCE A             Date Entered  : MAR 29, 2006
+Completed By: PATRICK,PAT                   Date Completed: SEP 24, 2007
+Released By : KREUZ,SHERI B                 Date Released : SEP 28, 2007
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

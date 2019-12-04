@@ -1,0 +1,229 @@
+$TXT Created by SMITH,ROBERT at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 04/26/07 at 11:32
+=============================================================================
+Run Date: JUL 18, 2007                     Designation: SR*3*161
+Package : SR - SURGERY                        Priority: Mandatory
+Version : 3       SEQ #155                      Status: Released
+                  Compliance Date: AUG 18, 2007
+=============================================================================
+
+Associated patches: (v)SR*3*92     <<= must be installed BEFORE `SR*3*161'
+                    (v)SR*3*119    <<= must be installed BEFORE `SR*3*161'
+                    (v)SR*3*142    <<= must be installed BEFORE `SR*3*161'
+                    (v)SR*3*144    <<= must be installed BEFORE `SR*3*161'
+
+Subject: CORRECT PRIMARY & SECONDARY PROV/SROCON ERR/UNDEFINED ERR
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch addresses the following problems:
+  
+ 1.  HD136616  SROPCEP  Primary and Secondary Provider incorrect from
+                        Surgery pkg
+ When information passed from the surgical package to Patient Care 
+ Encounter (PCE) is received in PCE the SURGEON is listed as the PRIMARY
+ PROVIDER and the ATTENDING is listed as the SECONDARY PROVIDER.  Claims
+ are being rejected if the PRIMARY PROVIDER is a RESIDENT.
+  
+ 2.  HD175983   SROCON   Error - <UNDEFINED>HELP+1^SROCON
+ When entering Anesthesia data for a surgical case ^SROCON routine errors at
+ the "Do you want to store this information in the concurrent case ?  YES//"
+ prompt if a "?" is entered and concurrent cases exist.
+  
+ 3.  HD177449  SROREQ4   UNDEF ERROR
+ When running the Operation Requests for a Day [SROP REQ] option the report 
+ generates an error <UNDEFINED>PRINT+2^SROREQ4
+  S S(0)=^SRF(SRTN,0),DFN=$P(S(0),"^"),CNT=CNT+1
+  
+ 4.  HD153358  SROCDX1   Error - <UNDEFINED>PADD1+4^SROCDX1
+ An <UNDEFINDED> error was encountered when trying to verify some ICD-9 codes
+ or Procedure codes
+  
+ ASSOCIATED NOIS/REMEDY:
+ =======================
+ HD136616 - Primary and Secondary Provider incorrect from Surgery pkg
+ HD153358 - Error - <UNDEFINED>PADD1+4^SROCDX1
+ HD175983 - Error - <UNDEFINED>HELP+1^SROCON
+ HD177449 - UNDEF ERROR
+  
+ ASSOCIATED NSR(s): 
+ ================== 
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ ========================= 
+ Upstate NY HCS
+ Salisbury, NC
+ North Texas HCS
+  
+ NOIS/REMEDY OVERVIEW:
+ ==================== 
+ 1.  HD136616  SROPCEP  Primary and Secondary Provider incorrect from
+                        Surgery pkg
+  
+ PROBLEM
+ ======= 
+ When information is passed from the surgical package to PCE is received
+ in PCE the SURGEON is listed as the PRIMARY PROVIDER and the ATTENDING is
+ listed as the SECONDARY PROVIDER. Claims are being rejected if the PRIMARY
+ PROVIDER is a RESIDENT.
+  
+ RESOLUTION
+ ==========
+ ^SROPCEP routine will be modified to mark the ATTEND SURG as the PRIMARY
+ PROVIDER and the SURGEON as the SECONDARY PROVIDER. It will also mark the
+ ATTEND SURG as the ENCOUNTER provider if the SURGEON is a RESIDENT when
+ sending the data to PCE.
+  
+ TECHNICAL
+ =========
+ PROV+7^SROPCEP
+ S ^TMP("SRPXAPI",$J,"PROVIDER",2,"PRIMARY")=1
+ S ^TMP("SRPXAPI",$J,"PROVIDER",1,"PRIMARY")=0
+  
+ CPT^SROPCEP
+ S ^TMP("SRPXAPI",$J,"PROCEDURE",SRI,"ENC PROVIDER")=$S($P($G(^SRF(SRTN,
+        .1)),"^",3)="R":SRATT,1:SRPROV)
+ To select the proper provider.
+  
+ 2.  HD175983   SROCON   Error - <UNDEFINED>HELP+1^SROCON
+  
+ PROBLEM
+ ======= 
+ When entering Anesthesia data for a surgical case ^SROCON routine errors at
+ the "Do you want to store this information in the concurrent case ?  YES//"
+ prompt if a "?" is entered and concurrent cases exist.
+  
+ RESOLUTION
+ ==========
+ The variable SRTN will be used instead of DA in the HELP+1 line tag of SROCON
+ routine.  
+  
+ TECHNICAL
+ =========
+ DA is replaced with SRTN in HELP+1^SROCON routine.
+  
+ 3.  HD177449  SROREQ4   UNDEF ERROR
+  
+ PROBLEM
+ ======= 
+ When running the Operation Requests for a Day [SROP REQ] option the report
+ generates an error <UNDEFINED>PRINT+2^SROREQ4
+ S S(0)=^SRF(SRTN,0),DFN=$P(S(0),"^"),CNT=CNT+1
+  
+ RESOLUTION
+ ==========
+ The reported problem is caused when a scheduled surgery is deleted and the
+ the "Operation Requests for a Day" report is run at the same time.  To
+ correct this SROREQ4 routine will be modified to check to see if the
+ requested case exists before printing the data.
+  
+ TECHNICAL
+ =========
+ PRINT+2^SROREQ4 will be modified to set S(0) with a $G(^SRF(SRTN,0)) to ensure
+ that the data is available when the report is running and prevents the
+ routine from generating an error if the data has been deleted.
+  
+ 4.  HD153358  SROCDX1   Error - <UNDEFINED>PADD1+4^SROCDX1
+  
+ PROBLEM
+ ======= 
+ In surgery EDIT [CPT/ICD9 Update/Verify Menu] option associated diagnosis
+ codes when presented with the selection list of diagnosis codes to edit,
+ if the user enters a 0, an <UNDEFINED> error results.
+  
+ RESOLUTION
+ ==========
+ When prompted for the selection list number to edit, the system should
+ validate the entry and disallow entries which are less than or greater
+ than the number of items in the list.
+  
+ TECHNICAL
+ =========
+ Modify the setup for the DIR call to set the lower limit of input to 1.
+  
+ Installation Instructions: 
+ ==========================
+  It is recommended that this patch be installed after normal business
+  hours while no Surgery users are using the system.
+  Installation can be queued.
+  
+   Installation will take about 5 minutes.
+  
+   1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+   2. From the Kernel Installation & Distribution System menu, select 
+      the Installation menu.  
+  
+   3. From this menu, you may elect to use the following options: 
+      (when prompted for INSTALL NAME, enter SR*3.0*161)
+  
+        a.  Verify Checksums in Transport Global - This option will allow
+            you to ensure the integrity of the routines that are in the
+            transport global.
+        b.  Print Transport Global - This option will allow you to view
+            the components of the KIDS build.
+        c.  Compare Transport Global to Current System - This option will
+            allow you to view all changes that will be made when this patch
+            is installed.  It compares all components of this patch
+            (routines, DD's, templates, etc.).
+        d.  Backup a Transport Global - This option will create a backup
+            message of any routines exported with this patch. It will not
+            backup any other changes such as DD's or templates.
+  
+ 4.  Select Installation Option: Install Package(s) 
+                                 ------------------
+     a.  Choose the Install Package(s) option to start the patch
+         install and when prompted for Install Name, enter SR*3.0*161.
+  
+     b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+         YES//' answer NO
+  
+     c.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, 
+         and Protocols? Yes//' respond NO
+  
+ ROUTINE SUMMARY
+ =============== 
+ The following is a list of the routines included in this patch.  
+ The second line of each of these routines now looks like: 
+  
+   <tab>;;3.0; Surgery ;**Patch List**;24 Jun 93
+  
+                        CHECK^XTSUMBLD results
+ Routine name      Before Patch         After Patch       Patch List
+ ============      ============         ===========       ===========
+ SROCDX1                9051857             9053663         142,161
+ SROCON                 7630009             7703609        78,119,161
+ SROPCEP               25620911            26008450     142,152,144,161
+ SROREQ4               11614763            11634328       26,48,92,161
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: SROCDX1
+    Before: B25057274   After: B25247822  **142,161**
+Routine Name: SROCON
+    Before:  B9792980   After:  B9881406  **78,119,161**
+Routine Name: SROPCEP
+    Before: B79067516   After: B80453673  **142,152,144,161**
+Routine Name: SROREQ4
+    Before: B15921764   After: B16096256  **26,48,92,161**
+ 
+Routine list of preceding patches: 92, 119, 144
+
+=============================================================================
+User Information:
+Entered By  : SMITH,ROBERT J                Date Entered  : JAN 31, 2007
+Completed By: TSAIMEUCHONG,BRENDA           Date Completed: JUL 17, 2007
+Released By : CONSENTINO,ALBERT             Date Released : JUL 18, 2007
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

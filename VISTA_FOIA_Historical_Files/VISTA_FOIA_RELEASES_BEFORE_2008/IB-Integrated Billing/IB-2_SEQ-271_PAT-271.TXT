@@ -1,0 +1,862 @@
+$TXT Created by WHITE,DARLENE at DSI-ALPHA.DAOU.COM  (KIDS) on Tuesday, 02/08/05 at 14:31
+=============================================================================
+Run Date: FEB 14, 2005                     Designation: IB*2*271
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #271                      Status: Released
+                  Compliance Date: MAR 17, 2005
+=============================================================================
+
+Associated patches: (v)IB*2*184    <<= must be installed BEFORE `IB*2*271'
+                    (v)IB*2*251    <<= must be installed BEFORE `IB*2*271'
+                    (v)IB*2*252    <<= must be installed BEFORE `IB*2*271'
+                    (v)IB*2*284    <<= must be installed BEFORE `IB*2*271'
+
+Subject: UPDATES TO INSURANCE IDENTIFICATION & VERIFICATION (IIV)
+
+Category: 
+  - Enhancement (Mandatory)
+  - Data Dictionary
+  - Input Template
+  - Routine
+
+Description:
+============
+
+ This patch updates several items related to Insurance Identification and
+ Verification functionality.  Several users' requests and suggestions
+ have been included as enhancements to the software.   Other enhancements
+ were made to alleviate potential areas of confusion for the users.  This
+ patch also corrects some problems with the IIV software that were
+ reported through NOIS.  In general, the majority of the changes that the
+ users will see with this patch are improved user interfaces and
+ simplified configuration of the software.
+ 
+ 
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+ There is no NSR associated with this patch.
+ 
+ 
+ This patch addresses the following NOIS message(s):
+ ---------------------------------------------------
+ BAY-0204-31962         IIV inquiries are increasing
+ FGH-0304-32103         Important IIV Msg-Monetary Amount
+ UNY-0204-11346         ERROR - CHK+23^IBCNEHLQ
+ WPB-0904-32212         ERROR - EN+43^IBCNEDE2:1, %DSM-E-NULL SUBSCR"
+ 
+ 
+ IRM, Please Note:
+ ----------------
+ As a result of the installation of this patch, some critical
+ functionality has changed.  Therefore, the Insurance Supervisor must be
+ notified that the Most Popular Insurance functionality, accessed by the
+ MOST POPULAR PAYER (MP) action of the IIV Site Parameters screen, has
+ been modified.  Prior to this patch, the Most Popular Insurance Companies
+ were automatically identified based on the number of authorized bills
+ created.  This patch has changed two aspects of this functionality.  The
+ list will be populated with payers rather than insurance companies.  In
+ addition, these payers will be manually entered by each site.  As a
+ result of these changes, the prior values of this list have been deleted.
+ If your site has elected to use this functionality, the table should be
+ updated with the payers that are most commonly used in your facility and
+ who are nationally active for IIV.
+ 
+ To accomplish this, the Insurance Supervisor should select the option
+ MCCR Site Parameter Display/Edit [IBJ MCCR SITE PARAMETERS], then select
+ "IV" for Insurance ID and Verification.  Finally, select "MP" for Most
+ Popular Payers within the IIV parameters to populate the list.
+ 
+ 
+ Overview of Patch Items:
+ ------------------------
+ 
+ 1)Problem: PENDING INQUIRIES ARE INCREASING (NOIS: BAY-0204-31962)
+   --------
+ The problem of a potentially inflated number of pending inquiries listed
+ on the IIV Statistical Report and in the stored data itself has been
+ corrected.  Before this patch, if inquiries were retried and a single
+ response was received, the inquiries that did not receive a response
+ remained pending forever.  We have revised the software in two ways.
+ When a retry is generated and the previously sent inquiry did not receive
+ a response, the status of the previous inquiry is set to communication
+ failure.  If a subsequent response is received for this inquiry, the
+ status will be appropriately updated as the response is received.  In 
+ addition, when a response is received for one of the inquiries (retry 
+ or original) the status of the remaining inquiries will be changed to 
+ communication failure (assuming that the current status of the inquiry 
+ (#365.1) is not response received).
+ 
+ 2)Problem:  REMOVE DASHES FROM THE SSN FIELDS IN THE PID AND GT1
+   --------  SEGMENTS
+ 
+ Dashes within a social security number are no longer included in the HL7
+ PID and GT1 segments, when they are transmitted to Austin for IIV.
+ 
+ 3)Problem:  MODIFY MONETARY AMOUNT FIELD (#365.02,.08)
+   --------  (NOIS: FGH-0304-32103)
+ 
+ The Monetary Amount field input transform was modified to accept values
+ as large as $999,999,999.00 (formerly the limit was $99,999,999.00).
+ 
+ 4)Problem: TEST PATIENTS WERE PICKED UP BY THE IIV EXTRACTS
+   --------
+ The IIV extracts were picking up test patients found in the production 
+ account, if they met the extracts' selection criteria.  This has been
+ corrected to ensure that the IIV extracts will skip test patients.
+ 
+ 5)Enhancement:  IIV PURGE FUNCTIONALITY UPDATE
+   ------------
+ The purge utility was updated to display a message to the user
+ indicating that journaling should be disabled for ^IBCN when using the
+ purge option. A message will now be sent to the IBCNE MESSAGE GROUP on
+ the first of each month (assuming the nightly batch process is running)
+ if, and only if, there are eligible IIV TRANSMISSION QUEUE or IIV
+ RESPONSE records to be purged.
+ 
+ 6)Enhancement:  IIV RESPONSE REPORT AND IIV PAYER REPORT UPDATES
+   ------------
+ The prompts for selecting the payers and the patients for the report
+ have been changed from one (payer/patient) or all (payers/patients)
+ rather than entering a range of names (payer/patient).
+ 
+ The Eligibility/Benefit information displayed on the IIV Response Report
+ was logically grouped for readability and quick identification of key
+ information.  The error information that displays on the IIV Response
+ Report has been modified to display the entire description (it
+ previously truncated the text).
+ 
+ 7)Enhancement:  MOST POPULAR LIST UPDATES
+   ------------
+ The Most Popular Insurance Company list that can be found within the IIV
+ Site Parameters screen has been replaced.  The new list is now
+ configurable by the users, and is a list of payers rather than insurance
+ companies.  This new list is referred to as the Most Popular Payer list.
+ 
+ A new ListMan interface was created to maintain the Most Popular Payer
+ List.  The IIV Site Parameter fields included in the IB Site Parameters 
+ file (#350.9) were revised to reflect the change in functionality and 
+ conversion from insurance company to payer.
+ 
+ 8)Enhancement:  ADD SSN AND DATE OF BIRTH UPDATE TO MAILMAN MESSAGES
+   ------------
+ The last four digits of the patient's social security number, as well
+ as, the patient's date of birth have been included in MailMan messages
+ generated by IIV when referring to a patient.  This was done to simplify
+ the patient identification process.
+ 
+ 9)Enhancement:  CHANGE ERROR INFORMATION FORMAT IN INSURANCE BUFFER
+   ------------  EXPAND ENTRY SCREEN
+ 
+ The display of Error Information when using the Expand Entry action of
+ the insurance buffer caused some confusion for the users.  The format of
+ 'Code: Description' was unclear when the code was numeric.  For example,
+ if the code was '78', the users interpreted it as having 78 errors rather
+ than identifying '78' as the code associated with the error.  To
+ alleviate potential confusion, the displaying of error information was
+ modified to be more user friendly, specifically 'Description (Error
+ Condition 'Code')' and 'Description (Error Action 'Code')' are now
+ displayed.
+ 
+ 10)Enhancement:  REVISE RESPONSE PROCESSING AND IIV STATUS CODES
+    ------------
+ In order to provide more complete and accurate information to the users,
+ the processing of IIV responses has been modified to take advantage of
+ additional information provided to VistA through the interface.  This
+ additional information will provide a more accurate reflection of the
+ patient's insurance eligibility as reported by the Payer.
+ 
+ A new IIV status has been introduced, '#'.  This new status represents
+ two different scenarios.  It identifies payer responses received by
+ VistA that are ambiguous, and therefore could not be categorized as a
+ true indication that the patient does or does not have active insurance.
+ It also identifies any payer response that encountered a problem in
+ either Austin or by the Payer.  In addition, the definition of two of the
+ existing IIV status codes has been revised to be more intuitive.  These
+ are:
+ 
+     '+' - patient has active insurance
+     '-' - patient does not have active insurance
+ 
+ 11)Enhancement:  MINIMIZE THE NUMBER OF INSURANCE INQUIRIES WITHOUT AN
+    ------------  ASSOCIATED PAYER
+ 
+ Prior to this patch, when a patient had no active insurance, no inactive
+ insurance, and the most popular insurance company functionality had been
+ turned off, an inquiry without an associated payer ("blank inquiry")
+ would be generated.  The only situation that would prevent this from
+ happening was if another "blank inquiry" had been generated within
+ the freshness period.  To reduce the number of "blank inquiries",
+ IIV will now check if an inquiry was transmitted for any payer (or no
+ payer) within the freshness period.  If anything is found, the "blank
+ inquiry" will not be generated.
+ 
+ 12)Enhancement:  REMOVE CONFUSING IIV SITE PARAMETERS
+    ------------
+ The following General Parameters will now be automatically set to the
+ following values:
+ 
+     Field Name                                   System wide Value
+     ----------                                   -----------------
+     TIMEOUT DAYS (#350.9,51.05)                         3
+     NUMBER RETRIES (#350.9,51.06)                       1
+     TIMEOUT MAILMAN MSG (#350.9,51.07)                  NO
+     INQUIRE SECONDARY INSURANCES (#350.9,51.23)         YES
+ 
+ The Suppress Buffer field (#350.9002,.06) has been set to a system wide
+ value of YES for the Appointment and Non-Verified IIV Batch Extracts.
+ 
+ 13)Enhancement:  MODIFIED THE EXTRACT LOGIC THAT USES THE MOST POPULAR
+    ------------  LIST.
+ 
+ The software was modified to have the Inactive flag and the Most Popular
+ flag work together.  Now when the Inquire Popular Payers field
+ (#350.9,51.09) is enabled and the Inquire Inactive Insurance field
+ (#350.9,51.08) is disabled, IIV will no longer generate an inquiry for a
+ payer that is listed on the most popular payer list, if that patient has
+ an inactive policy with that payer.
+ 
+ 14)Enhancement:  MODIFIED RESPONSE PROCESSING
+    ------------
+ The response processing logic was modified so that responses reported as
+ inactive insurance policies for Identification inquiries will no longer
+ be entered into the insurance buffer.  Identification inquiries are
+ those inquiries that are generated by IIV as a result of checking a
+ patient's inactive policies and/or checking the payers listed in the
+ Most Popular Payer List.  These reported inactive policies can be viewed
+ through a new IIV report, IIV Inactive Policy report, instead of the
+ insurance buffer.
+ 
+ 15)Enhancement: IIV INACTIVE POLICY REPORT
+    ------------
+ The new IIV Inactive Policy report reflects responses that indicate
+ inactive coverage was discovered by IIV, where the patient did not have
+ active insurance on file.
+ 
+ 16)Enhancement: IIV AMBIGUOUS POLICY REPORT
+    ------------
+ The new IIV Ambiguous Policy report reflects ambiguous responses when
+ coverage was discovered by IIV, where the patient did not have active
+ insurance on file.
+ 
+ 17)Enhancement: IIV NIGHTLY PROCESS CAN BE RUN MULTIPLE TIMES A DAY
+    ------------ 
+ The IIV Nightly Process [IBCNE IIV BATCH PROCESS] option, which was
+ introduced with patch IB*2.0*184, can be scheduled to run multiple
+ times a day within TaskMan.  
+ 
+ * Note:  This will cause multiple identical copies of the IIV 
+ Statistical Report and the IIV Purge MailMan message to be sent to
+ those members of the mail group associated with IIV (this is defined in
+ the General Parameter section of the IIV Site Parameters screen).
+ 
+ 18)Enhancement: IIV STATISTICAL REPORT MODIFICATION
+    -----------
+ Replaced the misleading message that is displayed in the Current Status
+ section of the IIV Statistical Report (Run menu option "Link Insurance
+ Companies to Payers" for assistance) with more meaningful instructions,
+ "Please link the associated active insurance companies to these payers
+ at your earliest convenience.  Locally activate the payers after you
+ link insurance companies to them.  For further details regarding this
+ process, please refer to the Integrated Billing IIV Interface User
+ Guide."  In addition, this message was made conditional, so it only
+ displays if new payers are listed.
+ 
+ 19)Enhancement: CHANGED INCLUSION CRITERIA FOR APPOINTMENT EXTRACT
+    ------------
+ Prior to this patch, Inpatient appointments were excluded from the
+ Appointment Extract.  Inpatient appointments will now be included as
+ valid criteria for this extract.
+ 
+ 20)Problem: ADDRESSED RESPONSE PROCESSING ISSUE
+    --------
+ The response processing routines included a utility to strip off
+ extraneous encoding characters from the end of data fields that were sent
+ by Austin.  During some internal testing, it was determined that under
+ certain circumstances it would strip off relevant trailing escape
+ sequences.  The code was modified to only remove the unnecessary
+ characters.  This was not causing problems for IIV, but could potentially
+ be a factor in future releases.
+ 
+ 21)Problem:  ADDRESSED RESPONSE PROCESSING ISSUE (NOIS: WPB-0904-32212)
+    --------
+ The Extract process was aborting when accessing a corrupted appointment
+ subfile (#44.001).  The corrupted appointment subfile included a blank
+ internal Patient IEN/DFN in the .01 field.  The code was modified to
+ skip the corrupted appointment rather than abort the processing.
+ 
+ 
+ Test Sites:
+ ---------------
+ Asheville, NC
+ Bay Pines, FL
+ Prescott, AZ
+ Denver, CO
+ 
+ 
+  LOCATION OF DOCUMENTATION FOR THIS PATCH
+  ------------------------------------------------------
+  The following files are included for this patch:
+ 
+  File Name          Description 
+  ---------          -----------
+  IB_2_271_TM.PDF    Technical Manual
+  IB_2_271_UM.PDF    User Guide
+ 
+  These files are available on the OI Field Office Anonymous.Software
+  directories listed below.  Use the appropriate FTP capability to retrieve
+  the files.  The documentation files that end in .PDF need to be downloaded
+  in the BINARY format.
+ 
+  OI FIELD OFFICE           FTP ADDRESS                  DIRECTORY
+  ===============           ===========                  =========
+  ALBANY                    ftp.fo-albany.med.va.gov     anonymous.software
+  HINES                     ftp.fo-hines.med.va.gov      anonymous.software
+  SALT LAKE                 ftp.fo-slc.med.va.gov        anonymous.software
+  FIRST AVAILABLE SERVER    download.vista.med.va.gov    anonymous.software
+ 
+ 
+        ================INSTALLATION INSTRUCTIONS =================
+ 
+ If installed during the normal workday, it is recommended that the
+ following selection(s) in the OPTION (#19) file, and all of their
+ descendants be disabled to prevent possible conflicts while running the
+ KIDS Install. Other VISTA users will not be affected.
+ 
+      Process Insurance Buffer          [IBCN INSURANCE BUFFER PROCESS
+      MCCR Site Parameter Display/Edit  [IBJ MCCR SITE PARAMETERS]    
+      Purge IIV Transactions            [IBCNE PURGE IIV DATA]
+      IIV Menu                          [IBCNE IIV MENU]
+ 
+ In addition, the IIV SERVER and IIV EC HL7 Logical Links must be stopped 
+ using the Start/Stop Links [HL START] option prior to performing the 
+ install and restarted once the installation process has completed.  This
+ is required as the routines that perform response processing have been
+ altered in this patch.
+ 
+ Install Time - less than 5 minutes
+ 
+ 
+   1.   LOAD TRANSPORT GLOBAL
+        ---------------------
+        Choose the PackMan message containing this patch and invoke the
+        INSTALL/CHECK MESSAGE PackMan option.
+ 
+   2.   DISABLE ROUTINE MAPPING   (DSM for Open VMS sites only)
+        -----------------------
+        Disable routine mapping on all systems for the routines listed in
+        step 3 below.
+ 
+        NOTE:  If the routines included in this patch are not currently
+        in your mapped routine set, please skip this step.
+ 
+   3.   COMPONENTS SENT WITH PATCH
+        --------------------------
+        The following is a list of the routines included in this patch.
+        The second line of each of these routines now looks like:
+ 
+            ;;Version;Package;**[patch list]**;Package Release Date
+ 
+                            CHECK^XTSUMBLD results
+ 
+        Routine     Before Patch   After Patch     Patch List
+        -------     ------------   -----------     ----------
+        IBCNBLA          15241547     15954424     82,149,153,184,271
+        IBCNBLA1         23648439     23654969     82,133,149,184,252,271
+        IBCNBLE1         6922418       7372540     184,271
+        IBCNBLL          19957600     21368471     82,149,153,183,184,271
+        IBCNEBF          5706943       5811990     184,271
+        IBCNEDE          9887929       4757465     184,271
+        IBCNEDE1         10761837     10945486     184,271
+        IBCNEDE2         10647827     10986296     184,271
+        IBCNEDE3         10362656     10699923     184,271
+        IBCNEDE4         13573751     13818895     184,271
+        IBCNEDE5         5992585       6087679     184,271
+        IBCNEDE6         6495408       7090431     84,271
+        IBCNEDE7         n/a           6154214     271
+        IBCNEDEP         12382940     12413574     184,271
+        IBCNEDEQ         4747398       5458540     184,271
+        IBCNEHLD         1692434       1795577     184,271
+        IBCNEHLI         3030560       3017378     184,252,251,271
+        IBCNEHLP         12628557     13139616     184,252,271
+        IBCNEHLQ         6108212       6209619     184,271
+        IBCNEHLR         5877074       8622113     184,252,271
+        IBCNEHLS         10219415     11770281     184,271
+        IBCNEHLT         11590527     11491529     184,251,271
+        IBCNEKI2         n/a           4742128     271
+        IBCNEKIT         14071154     14699494     184,271
+        IBCNEPST         8289186          n/a      184 (post install)
+        IBCNEQU          16729366     16759050     184,271
+        IBCNERP0         2444128       2477894     184,271
+        IBCNERP1         14325613     13146531     184,271
+        IBCNERP2         11795436      7200910     184,271
+        IBCNERP3         22215991      9624190     184,271
+        IBCNERP4         3829469       3825717     184,271
+        IBCNERP5         13494627     12923181     184,271
+        IBCNERP6         15688371     15458222     184,271
+        IBCNERP8         7869197       7975648     184,271
+        IBCNERP9         14841537     15974469     184,271
+        IBCNERPA         2345475       7528479     184,271
+        IBCNERPB         10363102     10509514     184,252,271
+        IBCNERPC         11434617     11572469     184,252,271
+        IBCNERPE         n/a          21424444     271
+        IBCNEUT3         18512159     19210728     184,252,271
+        IBCNEUT4         16507451     13828500     184,271
+        IBCNEUT5         8655505       9103660     184,284,271
+        IBCNEUT6         6303995       8262907     184,252,271
+        IBJPI            20494012     19167695     184,271
+        IBJPI2           16202092      7707004     184,271
+        IBJPI3            n/a         12594180     271
+        IBJPI4            n/a          8990639     271
+        IBJPM             4070106      4055871     39,137,184,271
+        IBY271PR          n/a          n/a         (pre install routine)
+        IBY271PS          n/a          n/a         (post install routine)
+ 
+        Total number of routines - 50
+ 
+        *NOTE:
+              IBCNEPST is the post init routine from patch, IB*2.0*184, and
+                       is simply being deleted at the site by this patch.
+              IBY271PR and IBY271PS, the pre and post init routines, are
+                       auto-deleting.
+ 
+ 
+        The following is a list of the files included in this patch:
+ 
+        IB SITE PARAMETERS  (350.9)    Partial Update
+        POPULAR PAYERS      (350.9003) sub-file
+        IIV STATUS TABLE    (365.15)
+        ELIGIBILITY/BENEFIT (365.02)   sub-file
+ 
+        The following is a list of the fields included in this patch:
+ 
+        INQUIRE POPULAR PAYERS        (350.9, 51.09)
+        NO. POPULAR PAYERS            (350.9, 51.1)
+        POPULAR INSUR CO. FROM DATE   (350.9, 51.11)
+        POPULAR INSUR CO. THRU DATE   (350.9, 51.12)
+        FAILURE MAILMAN MSG           (350.9, 51.2)
+        MOST POPULAR LAST SAVE DATE   (350.9, 51.21)
+        POPULAR PAYERS                (350.9, 51.18)
+        POPULAR PAYER                 (350.9003, .01)
+        MONETARY AMT                  (365.02, .08)
+        CODE                          (365.15, .01)
+        ASCII VALUE FOR IIV STATUS    (365.15, .02)
+        EXPAND ENTRY ACTION           (365.15, .03)
+        DESCRIPTION                   (365.152, .01)
+        CORRECTIVE ACTION             (365.17, .01)
+ 
+        The following is a list of options included in this patch:
+ 
+        IBCNE IIV AMBIGUOUS POLICY RPT
+        IBCNE IIV INACTIVE POLICY RPT
+        IBCNE IIV MENU
+        IBCNE IIV RESPONSE REPORT
+        IBCNE POTENTIAL NEW INS FOUND
+ 
+        The following is a list of the protocols included in this patch:
+        
+        IBJP IIV MOST POPULAR ADD
+        IBJP IIV MOST POPULAR DELETE
+        IBJP IIV MOST POPULAR EDIT
+        IBJP IIV MOST POPULAR EXIT
+        IBJP IIV MOST POPULAR MENU
+        IBJP IIV MOST POPULAR MODIFY
+        IBJP IIV MOST POPULAR REORDER
+        IBJP IIV MOST POPULAR RESTORE
+        IBJP IIV MOST POPULAR SAVE
+ 
+        The following is a list of the input templates included in this
+        patch:
+ 
+        IBJP IIV MOST POPULAR PAYERS
+ 
+        The following is a list of the ListMan templates included in this 
+        patch:
+ 
+        IBJP IIV MOST POPULAR PAYERS
+ 
+   4.   START UP KIDS
+        -------------
+        Start up the Kernel Installation and Distribution System Menu
+        [XPD MAIN]:
+ 
+             Edits and Distribution
+             Utilities
+             Installation
+ 
+        Select Kernel Installation & Distribution System Option: INStallation
+                                                                 ---
+             Load a Distribution
+             Print Transport Global
+             Compare Transport Global to Current System
+             Verify Checksums in Transport Global
+             Install Package(s)
+             Restart Install of Package(s)
+             Unload a Distribution
+             Backup a Transport Global
+ 
+        Select Installation Option:
+ 
+   5.   Select Installation Option:
+        ---------------------------
+        NOTE:  The following are OPTIONAL - (When prompted for the
+               INSTALL NAME, enter IB*2.0*271):
+ 
+        a.  Backup a Transport Global - This option will create a backup
+            message of any routines exported with this patch. It will not
+            backup any other changes such as DD's or templates.
+        b.  Compare Transport Global to Current System - This option will
+            allow you to view all changes that will be made when this
+            patch is installed.  It compares all components of this patch
+            (routines, DD's, templates, etc.).
+        c.  Verify Checksums in Transport Global - This option will allow
+            you to ensure the integrity of the routines that are in the
+            transport global.
+ 
+   6.   Select Installation Option: Install Package(s)
+                                    ----------------
+        **This is the step to start the installation of this KIDS patch:
+ 
+        a.  Choose the Install Package(s) option to start the patch
+            install.
+        b.  When prompted 'Want KIDS to INHIBIT LOGONs during the
+            install? YES//' answer NO
+        c.  When prompted 'Want to DISABLE Scheduled Options, Menu
+            Options, and Protocols? YES//' answer YES
+        d.  When prompted 'Enter options you wish to mark as 'Out of
+            Order':', enter the following:
+ 
+            Process Insurance Buffer      [IBCN INSURANCE BUFFER PROCESS]
+            MCCR Site Parameter Display/Edit   [IBJ MCCR SITE PARAMETERS]
+            Purge IIV Transactions             [IBCNE PURGE IIV DATA]
+            IIV Menu                           [IBCNE IIV MENU]
+ 
+        e.  When prompted 'Enter protocols you wish to mark as 'Out of
+            Order':', press <return>.
+ 
+   7.  REBUILD MAPPED ROUTINE(S)  (DSM for Open VMS sites only)
+       -------------------------
+       Optional - Include the routines distributed with this patch
+       in the mapped routine set.
+ 
+  
+       NOTE: This step is only necessary if you performed step 2 or
+             if you wish to include the routines in your mapped set.
+ 
+ 
+
+Routine Information:
+====================
+
+Routine Name:
+  - IBCNBLA
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNBLE1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNBLL
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNEDE
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNEDE4
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNEDEP
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNEDEQ
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNEHLQ
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNEHLR
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNEHLS
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNEKI2
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNEKIT
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNERP0
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNERP1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNERP2
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNERP3
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNERP4
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNERP5
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNERP6
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNERP8
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNERP9
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNERPA
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNEUT4
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNEUT6
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBJPI
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBJPI2
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBJPI3
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBJPI4
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBJPM
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNBLA1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNEDE2
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNEDE6
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNEHLD
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNEHLI
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNEHLT
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNEHLP
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNEUT5
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNEUT3
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNEDE7
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNEDE1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNEDE3
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNEQU
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNEDE5
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNEBF
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBY271PR
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBY271PS
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNERPB
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNERPC
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNERPE
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNEPST
+
+ Deleted at site by patch, IB*2.0*271.
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : ACORD,ARLIS                   Date Entered  : APR 06, 2004
+Completed By: KUREK,STANLEY M               Date Completed: FEB 09, 2005
+Released By : GANUS,MAUNETTE                Date Released : FEB 14, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

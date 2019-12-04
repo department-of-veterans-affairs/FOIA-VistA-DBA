@@ -1,0 +1,274 @@
+$TXT Created by TRAXLER,FRANK at DEV.DEV.FO-HINES.MED.VA.GOV  (KIDS) on Monday, 12/20/04 at 13:55
+=============================================================================
+Run Date: DEC 30, 2004                     Designation: GMRV*5*2
+Package : GMRV - GEN. MED. REC. - VITALS      Priority: Mandatory
+Version : 5         SEQ #3                      Status: Released
+                  Compliance Date: JAN 30, 2005
+=============================================================================
+
+Associated patches: (v)GMRV*5*1    <<= must be installed BEFORE `GMRV*5*2'
+
+Subject: HDR EVENT POINTS
+
+Category: 
+  - Enhancement (Mandatory)
+  - Routine
+  - Other
+
+Description:
+============
+
+ Associated NOIS: <None>
+  
+ Associated E3Rs: 19063
+  
+ Test Sites:
+ ===========
+  Cheyenne
+  St. Louis
+  Martinsburg
+  
+  
+ This patch supports the VistA Data Extraction Framework (VDEF) package 
+ which will transmit GMRV VITAL MEASUREMENT file (#120.5) data to the
+ Health Data Repository (HDR). 
+  
+ This patch adds trigger event points to FILE 120.5 to tell the VDEF
+ package when an entry is created or marked in error. If the VDEF package
+ is not installed, the trigger events will do nothing. After this patch and
+ patch GMRV*5*5 are installed and the VDEF software is installed and
+ configured, FILE 120.5 data will be transmitted to the HDR.
+  
+ 1) This patch creates two new style FileManager indexes (AHDRNEW and
+ AHDRERR) on FILE 120.5 that call a VDEF routine when new entries are added
+ or existing entries are marked as entered-in-error.
+  
+ The AHDRNEW index definition is:
+  FILE: 120.5
+  NAME: AHDRNEW
+  SHORT DESCRIPTION: INDEX for HDR
+  TYPE: MUMPS                          
+  EXECUTION: FIELD
+  ROOT TYPE: INDEX FILE
+  ROOT FILE: 120.5                     
+  USE: ACTION
+  DESCRIPTION:   This cross-reference calls a Health Data Repository (HDR) 
+    API whenever a new entry is created.
+   
+    No actual cross-reference nodes are set or killed.  
+   
+    Calls to the VDEFQM routine are covered by Integration Agreement 4253.
+  
+  SET LOGIC: Q:$D(DIU(0))  N ERR,GMVFLAG I $T(QUEUE^VDEFQM)]"" S
+    GMVFLAG=$$QUEUE^VDEFQM("ORU^R01","SUBTYPE=VTLS^IEN="_DA,.ERR)
+  SET CONDITION CODE: S:X1(1)="" X=1
+  KILL LOGIC: Q                        
+  KILL ENTIRE INDEX CODE: Q
+  ORDER NUMBER: 1                        
+  TYPE OF VALUE: FIELD
+  FILE: 120.5                          
+  FIELD: .01
+  
+ The AHDRERR index definition is:
+  FILE: 120.5
+  NAME: AHDRERR                        
+  SHORT DESCRIPTION: INDEX for HDR
+  TYPE: MUMPS                          
+  EXECUTION: FIELD
+  ROOT TYPE: INDEX FILE
+  ROOT FILE: 120.5                     
+  USE: ACTION
+  DESCRIPTION:  This cross-reference calls a Health Data Repository (HDR) 
+    API whenever a FILE 120.5 entry is marked as entered-in-error.
+   
+    No actual cross-reference nodes are set or killed.  
+   
+    Calls to the VDEFQM routine are covered by Integration Agreement 4253.
+  
+  SET LOGIC: Q:$D(DIU(0))  N ERR,GMVFLAG I $T(QUEUE^VDEFQM)]"" S
+    GMVFLAG=$$QUEUE^VDEFQM("ORU^R01","SUBTYPE=VTLS^IEN="_DA,.ERR)
+  SET CONDITION CODE: I X1(1)="",X2(1)]"" S X=1
+  KILL LOGIC: Q                        
+  KILL ENTIRE INDEX CODE: Q
+  ORDER NUMBER: 1                        
+  TYPE OF VALUE: FIELD
+  FILE: 120.5                          
+  FIELD: 2
+  
+ 2) This patch provides the VDEF package with an Application Programming 
+ Interface (API) to retrieve vitals data from FILE 120.5. This API is 
+ documented in Integration Agreement 4583 and below.
+  
+  ROUTINE: GMVHDR
+  COMPONENT:  $$EN(GMVIEN)
+              This entry point is a function that returns a string of 
+              data for the record specified.
+                 
+              GMVIEN is an internal entry number for a GMRV VITAL
+              MEASUREMENT (#120.5) file entry.  
+                 
+              The function returns a string where: 
+                 piece 1 = (#.01) DATE/TIME VITALS TAKEN (internal) 
+                 piece 2 = (#.02) PATIENT (internal) 
+                 piece 3 = (#.03) VITAL TYPE (external) 
+                 piece 4 = (#.04) DATE/TIME VITALS ENTERED (internal) 
+                 piece 5 = (#.05) HOSPITAL LOCATION (internal) 
+                 piece 6 = (#.06) ENTERED BY (internal) 
+                 piece 7 = (#.03) VITAL TYPE (internal) 
+                 piece 8 = (#1.2) RATE (external) 
+                 piece 9 = UNITS (value is computed by this routine) 
+                 piece 10 = (#1.4) SUPPLEMENTAL O2 (internal) 
+                 piece 11 = (#2) ENTERED IN ERROR (internal) 
+                 piece 12 = (#3) ERROR ENTERED BY (internal) 
+                 piece 13 = (#4) REASON ENTERED IN ERROR (multiple) 
+                            (internal and external). The internal and
+                            external values are separated by a hyphen. A
+                            tilde (~) is used to separate multiple entries.
+                 piece 14 = (#5) QUALIFIER (multiple) (external) Values are
+                            separated by a tilde (~).
+                        
+ The function returns a null value if the entry does not exist.
+                 
+  Example: 
+  > W $$EN^GMVHDR(7599) 
+  > 3040527.1137^22^TEMPERATURE^3040527.113849^87^547^2^98.8^F^^YES^547^
+    2-INCORRECT READING^ORAL 
+  
+  
+ 3) Modifies the GMRVED2 routine to use FileMan utilities to create entries
+ in the GMRV VITAL MEASUREMENT (#120.5) file. Prior to this patch, this 
+ routine created an entry by setting the data in the global and calling a 
+ FileMan utility to build the cross-references. After this patch is 
+ installed, FileMan utilities will be used to set the data in the global 
+ and build the cross-references.
+  
+ Before installing this patch, the GMRVED2 routine on your system is a 
+ version 4 routine. The second line is:
+  <tab>;;4.0;Vitals/Measurements;**7,14**;Apr 25, 1997.
+  
+ After installing this patch, the GMRVED2 routine will be version 5. The 
+ second line will be:
+  <tab>;;5.0;GEN. MED. REC. - VITALS;**2**;Oct 31, 2002.
+  
+ If you do a comparison of the patch to your system before installation,
+ you will see the message:
+  "*** WARNING, your routine has more patches than the incoming routine
+ ***".
+  
+ For example:
+  
+ Select Installation Option: 4  Compare Transport Global to Current System
+ Select INSTALL NAME: GMRV*5.0*2       Loaded from Distribution  
+ 12/28/04@13:16:35
+      => GMRV*5*2  ;Created on Dec 28, 2004@13:16:11
+  
+ This Distribution was loaded on Dec 28, 2004@13:16:35 with header of 
+    GMRV*5*2  ;Created on Dec 28, 2004@13:16:11
+    It consisted of the following Install(s):
+      GMRV*5.0*2
+  
+      Select one of the following:
+  
+           1         Full Comparison
+           2         Second line of Routines only
+           3         Routines only
+  
+ Type of Compare: 2  Second line of Routines only
+ DEVICE: HOME//
+  
+  Routine: GMRVED2
+ <TG>  ;;5.0;GEN. MED. REC. - VITALS;**2**;Oct 31, 2002
+ <SYS> ;;4.0;Vitals/Measurements;**7,14**;Apr 25, 1997
+ *** WARNING, your routine has more patches than the incoming routine ***
+  
+ You should ignore this warning.
+  
+  
+ Documentation:
+ ==============
+ There are no documentation changes for this patch.
+  
+  
+ Routine Version Line:
+ =====================
+  
+ Below is a list of the routines included in this patch. The second line of
+ each of these routines now looks like:
+  
+ ;;5.0;GEN. MED. REC. - VITALS;**[Patch History]**;Oct 31, 2002
+  
+  
+ Checksum Results:
+ =================
+  
+  Routine Name   Before Patch    After Patch     Patch History
+  ============   ============    ===========     =============
+  GMRVED2        12644363        12357440        2
+  GMV2PST        new             5182223         2
+  GMVHDR         new             4600194         2
+  
+ Installation Instructions:
+ ==========================
+  
+ 1) This patch can be installed with users on the system. Installation
+    should take less than 2 minutes.
+  
+    DSM Sites: If the GMRVED2 routine is mapped, disable mapping for 
+    this routine. The GMRVED* routines were recommended for mapping in 
+    Version 4.
+  
+ 2) Load the Transport Global.
+  
+ 3) (Optional) Run the following KIDS options before installing the patch:
+  
+               Compare Transport Global to Current System
+               Verify Checksums in Transport Global
+               Backup a Transport Global
+  
+ 4) Install the Build GMRV*5.0*2.
+  
+    At the 'Want KIDS to INHIBIT LOGONs during the install' prompt answer
+    NO.
+  
+    At the 'Want to DISABLE Scheduled Options, Menu Options, and
+    Protocols?' prompt answer NO.
+  
+ 5) DSM Sites: After the patch is installed, rebuild your map set, if 
+    necessary.
+  
+ 6) (Optional) Delete the routine GMV2PST after the patch installation is
+               complete.
+
+Routine Information:
+====================
+
+Routine Name:
+  - GMV2PST
+
+
+Routine Checksum:
+
+Routine Name:
+  - GMVHDR
+
+
+Routine Checksum:
+
+Routine Name:
+  - GMRVED2
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : TRAXLER,FRANK                 Date Entered  : MAY 06, 2003
+Completed By: GADDIE,MARLIE                 Date Completed: DEC 28, 2004
+Released By : GIVENS,DALE S                 Date Released : DEC 30, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

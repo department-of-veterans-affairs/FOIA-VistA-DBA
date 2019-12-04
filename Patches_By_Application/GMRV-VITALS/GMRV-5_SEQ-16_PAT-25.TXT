@@ -1,0 +1,232 @@
+$TXT Created by TRAXLER,FRANK at DEV.DEV.FO-HINES.MED.VA.GOV  (KIDS) on Friday, 02/13/09 at 09:38
+=============================================================================
+Run Date: APR 30, 2009                     Designation: GMRV*5*25
+Package : GMRV - GEN. MED. REC. - VITALS      Priority: Mandatory
+Version : 5        SEQ #16                      Status: Released
+                  Compliance Date: MAY 31, 2009
+=============================================================================
+
+Associated patches: (v)GMRV*5*3    <<= must be installed BEFORE `GMRV*5*25'
+
+Subject: DELETE TRAILING ZEROS FROM VITALS RECORD AND PREVENT ENTRY OF TRAILING ZEROS
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ Trailing zeros were inadvertently added to some GMRV VITAL MEASUREMENT
+ records by BCE/CareFusion, a third party company that makes a handheld 
+ data input device used by some sites.  A fix for the BCE/CareFusion 
+ devices has already been made and this patch will delete the trailing 
+ zeros from the DATE/TIME VITALS TAKEN field (# .01) of the GMRV VITAL
+ MEASUREMENT file (# 120.5).
+      
+ Also, a modification will be made to the API (GMVDCSAV) to prevent records
+ with trailing zeroes in the DATE/TIME VITALS TAKEN field (# .01) of the
+ GMRV VITAL MEASUREMENT file (# 120.5) from being entered.
+  
+ This update to the GMRV VITAL MEASUREMENT file does not necessitate an 
+ update to the Health Data Repository (HDR).
+  
+ This patch is required to be installed at all sites, whether or not they 
+ use the BCE/CareFusion product.
+       
+       
+ Associated Remedy tickets:
+ ==========================
+ 1. HD0000000269158 - Get rid of trailing zeros in FILE 120.5, Field .01 
+ 2. HD0000000300970 - 6 out of sequence records
+ 3. HD0000000303243 - Modify GMVDCSAV API
+      
+       
+ Associated NSR(S):
+ ==================
+ N/A
+      
+  
+ Patient Safety Issue:
+ =====================
+ PSPO #1266
+  
+       
+ Participating Test Sites:
+ =========================
+ Central Plains HCS
+ San Juan VAMC
+ Tampa VAMC
+ North Texas HCS
+      
+       
+ Remedy Overview:
+ ================
+ 1. HD0000000269158 - Get rid of trailing zeros in FILE 120.5, Field .01
+       
+    Problem:  
+    --------
+    The BCE/CareFusion project uses a Vitals package (GMRV) Application
+    Programming Interface (API) to file a patient record in the GMRV VITAL
+    MEASUREMENT file (#120.5).  The API assumes that the data is in the
+    proper internal FileMan format and files the data as-is.
+       
+    The BCE/CareFusion product is padding the value for the DATE/TIME
+    VITALS TAKEN field (# .01) with trailing zeros (i.e., 3080724.080000
+    instead of 3080724.08) and FileMan is storing this field as a string
+    instead of as a date/time.  Since this value is considered a string
+    instead of a number, the B cross-reference entry is at the end of the
+    cross-reference listing.
+       
+    The entries with the trailing zeros will display properly in the VistA
+    and Vitals GUI applications but will not be picked up in FileMan
+    searches when searching on a partial match.  This is also showing 
+    up as a problem for the Clinical Reminders package (PXRM) which uses 
+    the Vitals API to calculate the most recent Body Mass Index (BMI) but
+    the API does not return the most recent Vitals record.
+       
+    BCE/CareFusion has a fix for their product. If your facility is using
+    the BCE/CareFusion product, you should contact your BCE/CareFusion 
+    representative to verify that you have their fix before installing this
+    patch to clean up any existing records which have trailing zeros.
+       
+       
+ 2. HD0000000300970 - 6 out of sequence records
+  
+    Problem:
+    --------
+    A test site for patch GMRV*5.0*23 noticed that they had some records 
+    out of sequence in the VITALS GUI grid display.  This problem was 
+    attributed to the presence of the same trailing zeros caused by the use
+    of the BCE/CareFusion product.
+  
+       
+    Resolution 1 & 2:
+    -----------------
+    This patch will start routine GMVZEROS as a background task.  The 
+    routine will loop through the entries in the GMRV VITAL MEASUREMENT
+    file, check the DATE/TIME VITALS TAKEN field value and strip off any  
+    trailing zeros.  If the field value is not a real date/time, the entry
+    is ignored. 
+        
+    When the routine completes, a MailMan message will be sent to the
+    person who installed the patch.  The message gives the total records
+    searched in the GMRV VITAL MEASUREMENT file, the number of records
+    changed and the number of records which could not be changed.
+       
+    The routine will also create a file (GMRV_5_25.DAT) in the USER$:[TEMP]
+    directory which will identify any records updated, showing the record
+    IEN, date/time stamp before the change, and the date/time stamp after
+    the change.  An example is below:
+       
+     IEN=2367291    3051011.163000 changed to 3051011.163
+     IEN=2367292    3051011.163600 changed to 3051011.1636
+     IEN=2367293    3051011.163740 changed to 3051011.16374
+     
+  
+ 3. HD0000000303243 - Modify GMVDCSAV API
+       
+    Problem:
+    --------
+    Currently the API (GMVDCSAV) which writes Vitals data to the GMRV 
+    VITAL MEASUREMENT file allows trailing zeros in the DATE/TIME VITALS
+    TAKEN field.
+      
+    Resolution 3:
+    -------------
+    A modification will be made in GMVDCSAV to remove the trailing zeros
+    from the date/time stamp before writing the record to the file.
+  
+  
+ Installation Instructions:
+ ==========================
+ This patch can be installed at any time.  Users do not need to be off 
+ the system.  However, the post-init routine (background task) will run 
+ for several minutes depending on how many records are in the GMRV VITAL
+ MEASUREMENT file (# 120.5).
+       
+       
+ 1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu. [Note:
+    TEXT PRINT/DISPLAY option in the PackMan menu will display the
+    patch text only].
+      
+ 2. From the Kernel Installation and Distribution System (KIDS)
+    menu, select the Installation menu.
+      
+ 3. From this menu, you may elect to use the following options:
+    (when prompted for INSTALL NAME, enter GMRV*5.0*25)
+      
+    a.  Backup a Transport Global - this option will create a backup
+        message of any routines exported with the patch.  It will
+        NOT backup any other changes such as DDs or templates.
+    b.  Compare Transport Global to Current System  - this option
+        will allow you to view all changes that will be made when
+        the patch is installed.  It compares all components of the
+        patch (routines, DDs, templates, etc.).
+    c.  Verify Checksums in Transport Global - this option will
+        allow you to ensure the integrity of the routines that are
+        in the transport global.
+    d.  Print Transport Global - this option will allow you to view
+        the components of the KIDS build.
+     
+ 4. Use the Install Package(s) option and select the package
+    GMRV*5.0*25.
+      
+ 5. When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+    NO//', respond NO.
+      
+ 6. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+    Protocols? NO//', respond NO.
+       
+       
+ Post-install Instructions:
+ ==========================
+ After the successful installation of this patch, the installer should 
+ check his/her MailMan for a message with the subject line, "GMRV*5.0*25
+ D/T REPAIR UTILITY".
+       
+ This message contains the start/stop times of the utility, the number of 
+ records checked, the number of records changed and the number of records 
+ which could not be changed.  A sample message is below:
+       
+   Subj: GMRV*5.0*25 D/T REPAIR UTILITY  [#205583] 01/15/09@10:57  7 lines
+   From: POSTMASTER  In 'IN' basket.   Page 1  *New*
+   -------------------------------------------------------------------------
+   Starting search for string dates in FILE 120.5 at 01/15/2009@10:57
+   Finished at 01/15/2009@10:57:34
+   Records checked: 2367255
+   Records changed: 3
+   Records that could not be changed: 0
+        
+   The GMRV_5_25.DAT file in the USER$:[TEMP] directory contains
+   a list of entries changed and those that could not be changed.
+       
+ The post-init routine GMVZEROS may be deleted after verifying that the 
+ MailMan message has been received and no problems have been encountered.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.0;GEN. MED. REC. - VITALS;**[Patch List]**;Oct 31, 2002;Build 4
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: GMVDCSAV
+    Before: B19942469   After: B19948030  **9,3,25**
+Routine Name: GMVZEROS
+    Before:       n/a   After: B14692106  **25**
+ 
+Routine list of preceding patches: 3
+
+=============================================================================
+User Information:
+Entered By  : MCNEILE,KEN                   Date Entered  : AUG 26, 2008
+Completed By: WERNER,GARY                   Date Completed: APR 01, 2009
+Released By : PIERSON,YVONNE E              Date Released : APR 30, 2009
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,254 @@
+$TXT Created by WOLF,ED at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 04/23/07 at 16:26
+=============================================================================
+Run Date: JUL 18, 2007                     Designation: SD*5.3*496
+Package : SD - SCHEDULING                     Priority: Mandatory
+Version : 5.3       SEQ #412                    Status: Released
+                  Compliance Date: AUG 18, 2007
+=============================================================================
+
+Associated patches: (v)SD*5.3*417  <<= must be installed BEFORE `SD*5.3*496'
+                    (v)SD*5.3*478  <<= must be installed BEFORE `SD*5.3*496'
+                    (v)SD*5.3*487  <<= must be installed BEFORE `SD*5.3*496'
+
+Subject: : ACCEPT ENTRY WITHOUT STOP CODE FOR ENCOUNTER AND MISCELLANEOUS FIXES
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ This patch addresses several issues related to Scheduling and one related
+ to the integrity of the REQUEST/CONSULTATION file (#123) accessed from a
+ scheduling routine.
+  
+  
+ ASSOCIATED REMEDY TICKETS:
+ ==========================
+ 1) HD161289 -  $ZE= <STORE>XPRF1+5^DIQGQ ERROR
+    Duplicate:  HD165046
+                HD185122
+  
+ 2) HD132799 -  STANDALONE ENCOUTER ERRORS FOR INPATIENTS
+    Duplicates: HD135349
+                HD136905
+                HD151308
+                HD157276
+                HD170211
+  
+ 3) HD156920 -  Error Message <UNDEFINED>A+3^SDCNSLT
+    Duplicates: HD165772
+                HD169640
+  
+ 4) HD157791 -  ASP+5^GMRCONS1
+    Duplicate:  174272
+  
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Mountain Home VAMC
+ Salisbury VAMC
+ Upstate New York HCS
+  
+  
+ REMEDY OVERVIEW:
+ ================
+ 1) HD161289 - $ZE= <STORE>XPRF1+5^DIQGQ ERROR
+  
+    Problem:
+    ========
+    An error occurred while running Cancelled Clinic Report [SDAM CANCELLED
+    CLINIC RPT].  That error indicates overloading the current partition
+    with local variables due to not cleaning locally generated variables
+    SDRES and SDMES after the related record was printed.  
+  
+    Solution:
+    =========
+    After processing and printing an entry, its related local variables are
+    killed within subroutine BLD^SDAMOCP1.
+  
+  
+ 2) HD132799 - STANDALONE ENCOUTER ERRORS FOR INPATIENTS
+  
+    Problem:
+    ========
+    An error occurred when attempting to add a Standalone Encounter to an 
+    inpatient with a Hospital Location that did not have a Stop Code 
+    defined.  Not all Hospital Location Types require a Stop Code, however 
+    it is a required field for an encounter.
+  
+    Solution:
+    =========
+    Routine SDM4 will be modified to display an informational message,
+    '***NO STOP CODE ASSIGNED***', to allow proceeding and to prompt the user
+    for missing Stop Code before finalizing an encounter. That prompt for 
+    missing Stop Code is the current PCE functionality.
+  
+  
+ 3) HD156920 - Error Message <UNDEFINED>A+3^SDCNSLT
+  
+    Problem:
+    =======
+    The REQUEST/CONSULTATION file (#123) contains 'F' cross-references for 
+    each consult which point to the ZERO (0) node.  If the ZERO node does
+    not exist, an error can occur in routine SDCNSLT when scheduling an
+    appointment for the patient with the missing ZERO node.
+    
+    Solution:
+    =========
+    The Consult team is allowing this Scheduling patch to clean up the
+    'hanging' 'F' cross references with post-init routine SD53P496.  
+    Routine SDCNSLT is also being modified to prevent this scheduling error
+    by verifying the presence of the ZERO node.
+  
+     
+ 4) HD157791 - ASP+5^GMRCONS1
+  
+    Problem:
+    ========
+    The WL SERVICE/SPECIALTY field (#7) of the SD WAIT LIST file (#409.3)
+    is a pointer to the SD WL SERVICE/SPECIALTY file (#409.31).
+    Modifications to file 409.3 require the related KILL statements of an
+    'SS' cross-reference. If the entry pointed to in file 409.31 did not
+    exist then an error occurred.
+  
+    Solution:
+    ========
+    A conditional statement was added to the KILL statement of
+    the cross-reference of file 409.3 to unable modification of
+    the WL SERVICE/SPECIALTY field (#7) in file 409.3. 
+    Sites will still need to correct the problem with the missing entry
+    in file 409.31, which generates the error. 
+    SD*5.3*496 will allow sites to modify the WL SERVICE/SPECIALTY field (#7)
+    through Fileman, removing the erroneous entry and adding the correct entry.
+    The determination of the correct WL SERVICE SPECIALTY must be made by
+    the site.
+  
+    
+    Before change:  2)= K ^SDWL(409.3,"SS",$P(^SDWL(409.3,DA,0),U,1)
+    --------------      ,$P(^SDWL(409.31,X,0),U,1),DA)
+  
+  
+    After change:   2)= I $D(^SDWL(409.31,X,0)) K ^SDWL(409.3,"SS",
+    -------------       $P(^SDWL(409.3,DA,0),U,1),$P(^SDWL(409.31,X,0),
+                        U,1),DA)
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ Users may be on the system during the installation of this patch, however 
+ it is recommended to be queued for off-peak hours.
+  
+ Installation could take between 3 - 4 hours depending on how many entries
+ the site has in the REQUEST/CONSULTATION file.
+  
+ 1.  LOAD TRANSPORT GLOBAL
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the
+     INSTALL/CHECK MESSAGE PackMan option.
+  
+ 2.  START UP KIDS
+     -------------
+     Start up the Kernel Installation and Distribution System Menu
+     [XPD MAIN]
+  
+           Edits and Distribution ...
+           Utilities ...
+           Installation ...
+  
+     Select Kernel Installation & Distribution System Option:  INStallation
+                                                               ---
+  
+     1     Load a Distribution
+     2     Verify Checksums in Transport Global
+     3     Print Transport Global
+     4     Compare Transport Global to Current System
+     5     Backup a Transport Global
+     6     Install Package(s)
+           Restart Install of Package(s)
+           Unload a Distribution
+  
+ 3.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter SD*5.3*496):
+  
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch.  It will NOT
+         backup any other changes such as DDs or templates.
+  
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when the patch
+         is installed.  It compares all components of the patch
+         (routines, DDs, templates, etc.).
+  
+     c.  Verify Checksums in Transport Global - This option will ensure
+         the integrity of the routines that are in the transport global.
+  
+     d.  Print Transport Global - This option will allow you to view
+         the components of the KIDS build.
+  
+ 4.  Use the Install Package(s) option and select the package SD*5.3*496.
+  
+     a.  When prompted, "Want KIDS to INHIBIT LOGONS during the
+         install? YES//", respond NO.
+  
+     b.  When prompted, "Want to DISABLE Scheduled Options, Menu Options,
+         and Protocols? YES//", respond YES.
+  
+         When prompted, "Enter options you wish to mark as "Out of
+         Order":", enter the following options:
+         
+         Make Consult Appointment     [MAKE CONSULT APPOINTMENT]
+         Appointment Management       [SDAM APPT MGT] 
+         Cancelled Clinic Report      [SDAM CANCELLED CLINIC RPT]
+          
+         When prompted, "Enter protocols you wish to mark as "Out of
+         Order":", press <return>.
+  
+ ** NOTE:  Routine SD53P496 may be deleted upon successful installation of 
+           the patch.
+  
+  
+ ROUTINE SUMMARY:
+ ================
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+  
+          ;;5.3;SCHEDULING;**[patch list]**;AUG 13, 1993
+  
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  SD53P496                   N/A              2372231                496
+  SDAMOCP1               8239723              8263406            487,496
+  SDCNSLT               23008569             23193678            478,496
+  SDM4                  18009901             17550898        263,273,327
+                                                             394,417,496
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: SD53P496
+    Before:       n/a   After:  B3431434  **496**
+Routine Name: SDAMOCP1
+    Before: B17836724   After: B18032029  **487,496**
+Routine Name: SDCNSLT
+    Before: B40454930   After: B40644653  **478,496**
+Routine Name: SDM4
+    Before: B34653337   After: B35143578  **263,273,327,394,417,496**
+ 
+Routine list of preceding patches: 417, 478, 487
+
+=============================================================================
+User Information:
+Entered By  : VILLELLA,ROSS                 Date Entered  : OCT 25, 2006
+Completed By: WERNER,GARY                   Date Completed: JUL 12, 2007
+Released By : LANDRIE,LARRY                 Date Released : JUL 18, 2007
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

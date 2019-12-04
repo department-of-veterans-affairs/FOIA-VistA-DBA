@@ -1,0 +1,453 @@
+
+=============================================================================
+Run Date: SEP 24, 2003                     Designation: LEX*2*25
+Package : LEX - LEXICON UTILITY               Priority: Mandatory
+Version : 2        SEQ #24                      Status: Released
+                  Compliance Date: OCT 15, 2003
+=============================================================================
+
+Associated patches: (v)LEX*2*7     <<= must be installed BEFORE `LEX*2*25'
+                    (v)LEX*2*14    <<= must be installed BEFORE `LEX*2*25'
+                    (v)LEX*2*15    <<= must be installed BEFORE `LEX*2*25'
+                    (v)LEX*2*19    <<= must be installed BEFORE `LEX*2*25'
+                    (v)ICPT*6*12   <<= must be installed BEFORE `LEX*2*25'
+                    (v)ICPT*6*13   <<= must be installed BEFORE `LEX*2*25'
+                    (v)ICD*18*5    <<= must be installed BEFORE `LEX*2*25'
+                    (v)LEX*2*24    <<= must be installed BEFORE `LEX*2*25'
+
+Subject: CSV - LEXICON CODE SET VERSIONING
+
+Category: 
+  - Data Dictionary
+  - Routine
+  - Enhancement (Mandatory)
+  - Informational
+
+Description:
+============
+
+  
+  **********************************************************************
+  *                                                                    *
+  *   This patch is part of the CSV Project and must be installed at   *
+  *                   all sites by September 30, 2003                  *
+  *                                                                    *
+  *      Please review the Installation heading of this patch for      *
+  *              Installation Guide retrieval Information              *
+  *                                                                    *
+  **********************************************************************
+  
+  This patch supports Code Set Versioning, mandated under the Health 
+  Information Portability and Accountability Act (HIPAA).  It contains
+  routines, globals and data dictionary changes to recognize code sets
+  for the International Classification of Diseases, Clinical Modification
+  (ICD-9-CM), Current Procedural Terminology (CPT) and Health Care 
+  Financing Administration (HCFA) Common Procedure Coding System (HCPCS).
+  When implemented, the Lexicon will allow translation of these three 
+  code systems to select codes based upon a date that an event occurred 
+  with the Standards Development Organization (SDO) established specific
+  code that existed on that event date.
+  
+  This patch is one of three installs contained in a combined KIDS 
+  distribution:
+  
+      CSV UTIL 1.0
+  
+          LEX*2.0*25
+          ICD*18.0*6
+          ICPT*6.0*14
+  
+  The multi-package distribution consists of both a KIDS host file and a
+  data global host file:
+  
+      KIDS Distribution        CSV_UTIL_1_0.KID
+      Data Global              CSV_UTIL_1_0.GBL
+  
+  
+  APPLICATION INTERFACE (API) SUMMARY
+  ===================================
+  
+      New
+          STATCHK^LEXSRC2    Returns activations status and IEN of a Code
+  
+          Refer to DBIA #4083 for details concerning input parameters and
+          output of the calls.
+  
+      Modified
+          INFO^LEXA          Return information about a term
+          LOOK^LEXA          Lookup a Term
+          EN^LEXCODE         Return Terms linked to a code
+          CONFIG^LEXSET      Set up default lookup variables
+          $$ICD^LEXU         Returns all ICD codes for a term
+          $$ICDONE^LEXU      Returns one ICD code for a term
+          $$CPTONE^LEXU      Returns one CPT code for a term
+          $$CPCONE^LEXU      Returns one HCPCS code for a term
+  
+          Refer to DBIA #1573, #1597, #1609, #1614, and #2950 for details
+          concerning input parameters and output of the calls.
+  
+  PROTOCOL SUMMARY
+  ================
+  
+      LEXICAL SERVICES UPDATE                        SEND TO SITE
+         TYPE:                 EXTENDED ACTION
+         REQUIRED VARIABLES:   LEXSCHG
+         ENTRY ACTION:         S:'$D(LEXSCHG) XQORQUIT=1
+         EXIT ACTION:          K LEXSCHG
+         SCREEN:               I $D(LEXSCHG)
+         This protocol event point is used for notifying subscribing
+         applications when an update to Lexical files has occurred.
+  
+  FILES SUMMARY
+  =============
+  
+      757.02    CODES
+  
+          * The existing CODE field (#1) is modified to add MUMPS 
+            cross reference ACT
+          * The ACTIVATION STATUS multiple (#8) is created with 
+            these fields:
+          * ACTIVATION EFFECTIVE DATE field (#.01) with MUMPS 
+            cross reference ACT
+          * ACTIVATION STATUS field (#.02) with MUMPS cross 
+            reference ACT
+          * DD is updated, security codes are sent, but no new data 
+            is sent in the build.
+  
+      757.03    CODING SYSTEMS
+  
+          * The SOURCE TITLE field (#2) was added as an identifier
+            for lookup for file 757.91.
+          * DD is updated, security codes are sent, but no new data 
+            is sent in the build.
+  
+      757.2     SUBSET DEFINITIONS
+  
+          * The DIC("S") value used by various applications and stored 
+            in the APPLICATION FILTER field (#10) has been modified to 
+            include the passing of a date.
+          * DD is updated, security codes are sent, new data is
+            sent in the build and will overwrite existing data.
+  
+      757.9     CHANGE LOG
+     
+          * This is a new file and contains a log of all changes by
+            date provided to Lexical Services by a Standards 
+            Development Organization (SDO) or other contributing
+            agency. 
+          * DD is updated, security codes are sent, but no new data 
+            is sent in the build.
+  
+      757.901   CHANGE TYPE
+  
+          * This is a new file containing a listing of the different 
+            types of change files provided to Lexical Services (i.e.,
+            ICD, CPT, etc).  
+          * DD is updated, security codes are sent, new data is
+            sent in the build and will overwrite existing data.
+  
+      757.902   CONTRIBUTING AGENCY
+  
+          * This is a new file containing a list of the Standards 
+            Development Organizations (SDO) or other agencies that 
+            contribute changes to Lexical services.  
+          * DD is updated, security codes are sent, new data is
+            sent in the build and will overwrite existing data.
+  
+      757.903   IMPORT GLOBAL
+  
+          * This is a new file that keeps a record of the processing
+            of the import global ^LEXM, and is populated by the Lexicon 
+            import routine LEXXGI.
+          * DD is updated, security codes are sent, but no new data 
+            is sent in the build.  It will be populated by the 
+            post-install.
+  
+      757.91    CHANGE FILE
+   
+          * This is a new file that keeps a record of code and text 
+            changes provided by standards development organizations.
+          * DD is updated, security codes are sent, but no new data 
+            is sent in the build.
+  
+  ROUTINE SUMMARY
+  =============== 
+  
+     The second line of each of these routines will look like:
+     
+        <tab>;;2.0;LEXICON UTILITY;**[patch list]**;Sep 23, 1996
+     
+               Checksums    Checksums  
+                  Before        After  
+    Routine        Patch        Patch  Patch List (2nd Line)
+    --------------------------------------------------------
+    LEX2025    Envir Chk     15046119  25
+    LEX2025P   Post Install   2280067  25
+    LEXA         6983801      7517246  3,4,6,19,25
+    LEXAB        3139893      3367173  25
+    LEXABC      17059868     15769227  4,25
+    LEXALK       7322842      6992957  2,3,6,25
+    LEXAMD      13008165     11634807  6,25
+    LEXAR        4034732      4083659  3,19,25
+    LEXAR4       4334073      4550782  4,5,6,25
+    LEXAR5       7158995      7814105  14,25
+    LEXAR7       7582722      7661640  9,25
+    LEXASC       2351809      2480187  25
+    LEXASO       2650022      2954508  25
+    LEXCHGF       <new>      11166275  25
+    LEXCHGF2      <new>       9996892  25
+    LEXCODE      1972138      2007531  25
+    LEXEDF1      5365319      5520164  3,25
+    LEXLGM       9246858      9295475  25
+    LEXNDX7       <new>       8541086  25
+    LEXNDX8       <new>       8776633  25
+    LEXPL        7792965      7908353  25
+    LEXSET       4696419      5231888  25
+    LEXSRC       2605064      2818957  7,25
+    LEXSRC2       <new>       4677581  25
+    LEXU         6796060      7338131  2,6,9,15,25
+    LEXXFQ       9027641      5068856  4,25
+    LEXXGI      14931591     17148085  4,25
+    LEXXGI2       <new>      11783868  25
+    LEXXST      19814563     21344723  4,5,8,25
+    LEXXST3      8320614      8370313  4,5,8,25
+    LEXXST5       <new>      15288447  25
+  
+  
+  DOCUMENTATION
+  =============
+    
+    The Technical Manual for the Lexicon Utility has been updated to 
+    describe the new functionality introduced by the Code Set 
+    Versioning project.  This document can be found in the following 
+    [ANONYMOUS.SOFTWARE] directories:
+   
+                                   Preferred Address
+                                   -------------------------
+      First available FTP server   download.vista.med.va.gov
+   
+      Specific Field Office        FTD Address
+      ---------------------        ------------------------
+      Albany                       ftp.fo-albany.med.va.gov
+      Hines                        ftp.fo-hines.med.va.gov
+      Salt Lake City               ftp.fo-slc.med.va.gov
+   
+   
+      File Name      Description                Format          FTP Protocol
+      ------------   ------------------------   -------------   ------------
+      LEXTM2_0.PDF   Lexicon Technical Manual   Adobe Acrobat   Binary
+  
+  INSTALLATION
+  ============
+  
+     Please refer to the Health Insurance Portability and Accountability 
+     Act (HIPAA) Code Set Versioning (CSV) Installation Guide for details
+     of the installation procedure for this patch.
+  
+     The HIPAA CSV Installation Guide can be found in the following
+     [ANONYMOUS.SOFTWARE] directories:
+   
+                                   Preferred Address
+                                   -------------------------
+      First available FTP server   download.vista.med.va.gov
+   
+      Specific Field Office        FTD Address
+      ---------------------        ------------------------
+      Albany                       ftp.fo-albany.med.va.gov
+      Hines                        ftp.fo-hines.med.va.gov
+      Salt Lake City               ftp.fo-slc.med.va.gov
+   
+      File Name        Description     Format            FTP Protocol
+      --------------   -------------   -------           ------------
+      CSV_1_0_IG.PDF   Install Guide   Acrobat Reader    Binary
+ 
+
+Routine Information:
+====================
+
+Routine Name:
+  - LEXA
+
+
+Routine Checksum:
+
+Routine Name:
+  - LEXAB
+
+
+Routine Checksum:
+
+Routine Name:
+  - LEXABC
+
+
+Routine Checksum:
+
+Routine Name:
+  - LEXALK
+
+
+Routine Checksum:
+
+Routine Name:
+  - LEXAMD
+
+
+Routine Checksum:
+
+Routine Name:
+  - LEXAR
+
+
+Routine Checksum:
+
+Routine Name:
+  - LEXAR4
+
+
+Routine Checksum:
+
+Routine Name:
+  - LEXAR5
+
+
+Routine Checksum:
+
+Routine Name:
+  - LEXASC
+
+
+Routine Checksum:
+
+Routine Name:
+  - LEXASO
+
+
+Routine Checksum:
+
+Routine Name:
+  - LEXCODE
+
+
+Routine Checksum:
+
+Routine Name:
+  - LEXNDX7
+
+
+Routine Checksum:
+
+Routine Name:
+  - LEXNDX8
+
+
+Routine Checksum:
+
+Routine Name:
+  - LEXSET
+
+
+Routine Checksum:
+
+Routine Name:
+  - LEXSRC
+
+
+Routine Checksum:
+
+Routine Name:
+  - LEXSRC2
+
+
+Routine Checksum:
+
+Routine Name:
+  - LEXU
+
+
+Routine Checksum:
+
+Routine Name:
+  - LEXXGI
+
+
+Routine Checksum:
+
+Routine Name:
+  - LEXCHGF
+
+
+Routine Checksum:
+
+Routine Name:
+  - LEXCHGF2
+
+
+Routine Checksum:
+
+Routine Name:
+  - LEXXGI2
+
+
+Routine Checksum:
+
+Routine Name:
+  - LEXXST
+
+
+Routine Checksum:
+
+Routine Name:
+  - LEXXST3
+
+
+Routine Checksum:
+
+Routine Name:
+  - LEXXST5
+
+
+Routine Checksum:
+
+Routine Name:
+  - LEXAR7
+
+
+Routine Checksum:
+
+Routine Name:
+  - LEXEDF1
+
+
+Routine Checksum:
+
+Routine Name:
+  - LEXLGM
+
+
+Routine Checksum:
+
+Routine Name:
+  - LEXPL
+
+
+Routine Checksum:
+
+Routine Name:
+  - LEXXFQ
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : ROWE,KIMBALL                  Date Entered  : MAR 04, 2003
+Completed By: STERNHAGEN,SHERRIL            Date Completed: SEP 17, 2003
+Released By : RIDINGS,SCOTT                 Date Released : SEP 24, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

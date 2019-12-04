@@ -1,0 +1,235 @@
+$TXT Created by FRANCE,VENESSA at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 10/18/05 at 10:15
+=============================================================================
+Run Date: DEC 13, 2005                     Designation: PSS*1*102
+Package : PSS - PHARMACY DATA MANAGEMENT      Priority: Mandatory
+Version : 1        SEQ #91                      Status: Released
+                  Compliance Date: JAN 13, 2006
+=============================================================================
+
+Associated patches: (v)PSS*1*68    <<= must be installed BEFORE `PSS*1*102'
+
+Subject: LOWERCASE ORDERABLE ITEM PULLS FROM DRUG TEXT ENTRY
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ This patch will correct the problem with look-ups in the PHARMACY
+ ORDERABLE ITEM file (#50.7) when entering in lowercase drug names.
+  
+  
+ ASSOCIATED REMEDY TICKET:
+ =========================
+ CLL-0503-40016         Lowercase orderable item pulls from drug text entry
+ HD67623
+   duplicate BAY-0404-31767         Lowercase POI Pulls from Drug Text
+             HD67976
+  
+ ASSOCIATED E3R:
+ ===============
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Chillicothe, OH
+ Oklahoma City, OK
+ Palo Alto HCS, CA
+  
+ REMEDY TICKET OVERVIEW:
+ =======================
+ CLL-0503-40016         Lowercase orderable item pulls from drug text entry
+ HD0000000067623
+  
+ Problem:
+ --------
+ There are three cross-references on the PHARMACY ORDERABLE ITEM file
+ (#50.7) used during lookup: "B", "C", "DTXT".  The "DTXT" cross-reference
+ is a pointer to the DRUG TEXT file (#51.7).  During the lookup process,
+ all lookup cross-references on the 'pointed to' file (#51.7) are searched
+ as well as the "B" and "C" cross-references in the PHARMACY ORDERABLE 
+ ITEM file (#50.7).  If there is a match on the search string in the Name
+ or Synonym cross-references in the DRUG TEXT file (#51.7), these will be
+ included in the list as well. This does not work when a lowercase entry is
+ typed in.  When lowercase entries are converted to uppercase (after no
+ lowercase match is found), the indexes of 'pointed to' files are searched
+ first, and if a partial match is found, it is selected and the search
+ stops, i.e. does not continue on to main file cross-references.
+  
+ Resolution:
+ ----------- 
+ Modify the data dictionary to prompt if Drug Text should also be added as a
+ synonym when adding a new drug text to an orderable item.
+ Modify the code to no longer look at the "DTXT" cross-reference during a
+ look-up.  Create a report displaying any orderable items that are set up as
+ a Drug Text but not as a Synonym. 
+  
+  
+ DATA DICTIONARY CHANGES:
+ ========================
+ This patch modifies the data dictionary for the OI-DRUG TEXT ENTRY field (#6)
+ in the PHARMACY ORDERABLE ITEM file (#50.7).  If the user adds a new Drug
+ Text, they will be prompted if they also want to add the Drug Text as a
+ Synonym, field #2.  This is accomplished by adding a MUMPS style
+ cross-reference to the OI-DRUG TEXT ENTRY field (#6).
+  
+ 50.7,6        OI-DRUG TEXT ENTRY     1;0 POINTER Multiple #50.76
+  
+  
+ 50.76,.01       OI-DRUG TEXT ENTRY     0;1 POINTER TO DRUG TEXT FILE (#51.7)
+                                    (Multiply asked)
+  
+                 INPUT TRANSFORM:S DIC("S")="N ZC S ZC=$P($G(^PS(51.7,+Y,0)),""^
+                                 "",2) I $S('ZC:1,1:ZC>DT)" D ^DIC K DIC S DIC=D
+                                 IE,X=+Y K:Y<0 X
+                 LAST EDITED:    AUG 18, 2005 
+                 HELP-PROMPT:    This field is used to associate entries from 
+                                 the DRUG TEXT File (#51.7) with Pharmacy 
+                                 Orderable Items. This information will be seen 
+                                 in CPRS and Pharmacy during the medication 
+                                 order entry process. 
+                 DESCRIPTION:    This is a pointer to the DRUG TEXT File
+                                 (#51.7). This file contains such information as
+                                 drug restrictions, guidelines and protocols to
+                                 help assure that medications are being used
+                                 according to formulary specifications.  This
+                                 information will be seen in CPRS and Pharmacy,
+                                 when a medication order is placed for the
+                                 Pharmacy Orderable Item. New entries to the
+                                 DRUG TEXT File (#51.7) must be made through the
+                                 Drug Text Enter/Edit [PSS EDIT TEXT] option.  
+  
+                 SCREEN:         S DIC("S")="N ZC S ZC=$P($G(^PS(51.7,+Y,0)),""^
+                                 "",2) I $S('ZC:1,1:ZC>DT)"
+                 EXPLANATION:    Only active entries may be selected.
+                 CROSS-REFERENCE:50.76^B 
+                                 1)= S ^PS(50.7,DA(1),1,"B",$E(X,1,30),DA)=""
+                                 2)= K ^PS(50.7,DA(1),1,"B",$E(X,1,30),DA)
+  
+                 CROSS-REFERENCE:50.7^DTXT 
+                                 1)= S ^PS(50.7,"DTXT",$E(X,1,30),DA(1),DA)=""
+                                 2)= K ^PS(50.7,"DTXT",$E(X,1,30),DA(1),DA)
+                                 3)= Do Not Delete
+                                 This is used to lookup Drug Text entries linked
+                                 to Orderable Item.  
+  
+  
+                 CROSS-REFERENCE:50.7^AL^MUMPS 
+                                 1)= D ASKSYN^PSSPOIMP
+                                 2)= I
+  
+  
+ TEMPLATES:
+ ==========
+ N/A
+  
+  ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;1.0;PHARMACY DATA MANAGEMENT;**[patch list]**;9/30/97
+  
+  Using new logic for Integrity Checking tools:
+                             CHECK1^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  PSS102RP                   N/A              5001430             102
+  PSSPOIMO              71597721             73322011       29,32,38,47,68
+                                                                  102
+  PSSPOIMP                   N/A               911666             102
+  
+  
+  Using old logic for Integrity Checking tools:
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  PSS102RP                   N/A              3141264             102
+  PSSPOIMO              39785862             40026827       29,32,38,47,68
+                                                                  102
+  PSSPOIMP                   N/A               531710             102
+  
+ Total number of routines - 3
+  
+ DISTRIBUTION:
+ =============
+ This patch is exported using KIDS.
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+  
+ *** NOTE ***
+  
+ Users will need to add any Drug Text entries as Synonyms in the PHARMACY
+ ORDERABLE ITEM file (#50.7) if they should be searched for during a
+ look-up. The Drug Text entries that are not currently set up as Synonyms
+ are listed on the Pharmacy Data Management report created during patch
+ install.  This report is sent to the In box of the person doing the
+ install.  The report should be reviewed and site should add as synonyms 
+ any drug-text entries that should be included during a look-up.
+  
+ ************
+  
+ This patch can be installed during business hours, but it is suggested
+ that it be queued for non-peak hours. Installation will take less than 5
+ minutes.
+  
+   
+ 1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu. [Note:
+    TEXT PRINT/DISPLAY option in the PackMan menu will display the
+    patch text only].
+      
+ 2. From the Kernel Installation and Distribution System (KIDS)
+    menu, select the Installation menu.
+  
+ 3. From this menu, you may elect to use the following options:
+    (when prompted for INSTALL NAME, enter PSS*1.0*102)
+     
+    a.  Backup a Transport Global - this option will create a backup
+        message of any routines exported with the patch.  It will
+        NOT backup any other changes such as DDs or templates.
+    b.  Compare Transport Global to Current System  - this option
+        will allow you to view all changes that will be made when
+        the patch is installed.  It compares all components of the
+        patch (routines, DDs, templates, etc.).
+    c.  Verify Checksums in Transport Global - this option will
+        allow you to ensure the integrity of the routines that are
+        in the transport global.
+    d.  Print Transport Global - this option will allow you to view
+        the components of the KIDS build.
+     
+ 4. Use the Install Package(s) option and select the package
+    PSS*1.0*102
+     
+ 5. When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+    YES//', respond NO.
+     
+ 6. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+    Protocols? YES//', respond NO.
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PSS102RP
+    Before:            After:  B5001430  **102**
+Routine Name: PSSPOIMO
+    Before: B71597721  After: B73322011  **29,32,38,47,68,102**
+Routine Name: PSSPOIMP
+    Before:            After:   B911666  **102**
+
+=============================================================================
+User Information:
+Entered By  : FRANCE,VENESSA                Date Entered  : AUG 03, 2005
+Completed By: CROSSMAN,PAM                  Date Completed: DEC 13, 2005
+Released By : VECE,VIRGINIA                 Date Released : DEC 13, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

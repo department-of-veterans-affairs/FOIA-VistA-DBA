@@ -1,0 +1,911 @@
+
+=============================================================================
+Run Date: APR 17, 2001                     Designation: PXRM*1.5*2
+Package : PXRM - CLINICAL REMINDERS           Priority: Mandatory
+Version : 1.5         SEQ #3                   Status: Released
+=============================================================================
+
+Associated patches: (v)PSO*7*54    <<= must be installed BEFORE `PXRM*1.5*2'
+                    (v)DI*22*67    <<= must be installed BEFORE `PXRM*1.5*2'
+                    (v)PXRM*1.5*3  <<= must be installed BEFORE `PXRM*1.5*2'
+
+Subject: Clinical Reminders Fixes and Enhancements
+
+Category: 
+  - Data Dictionary
+  - Routine
+  - Print Template
+  - Input Template
+  - Enhancement (Mandatory)
+
+Description: 
+============
+
+ General Overview:
+ =================
+ This patch provides a number of NOIS fixes as well as minor enhancements.
+ Detailed descriptions of the changes follow:
+  
+ 1.  Inquiry Option changes:
+  
+ 1.1  All inquiry functions were consolidated into a standard set of
+ print templates and routines. Previously all fields in the FINDINGS
+ multiple of the REMINDER DEFINITION (#811.9) and REMINDER TERM (#811.5)
+ files were printed, even if they were null. Now only non-null fields will
+ be printed. This should provide considerably shorter output.
+  
+ 1.2  There was a bug in the taxonomy inquiry that caused the ICD
+ Operation/Procedure to be displayed incorrectly. This problem is
+ corrected. NOIS:  CIN-0900-42457, FAR-0800-40686, HUN-1000-20744, 
+ LAH-0101-60194, PHI-0101-20893, V01-0201-N0005.
+  
+ 1.3  If display of the FINDINGS multiple required more than one page,
+ there was no page breaking. Proper page breaking is now done.
+  
+ 2.  Data dictionary changes:
+  
+ 2.1  A number of fields in the REMINDER TAXONOMY (#811.2) and
+ REMINDER DEFINITION (#811.9) files were made obsolete when Clinical
+ Reminders version 1.5 was released. These fields are deleted by this
+ patch, as well as the associated AC and C cross references in file 811.9.
+  
+ 2.2  Due to the way KIDS works, security codes were not properly set on
+ the previously existing Clinical Reminders' files when Clinical Reminders
+ version 1.5 was installed. The security codes are set to their proper
+ values during the post-install.
+  
+ 2.3  A VERSION field was added to CLINICAL REMINDER PARAMETERS file (#800)
+ to store the current version number of the package. This patch will
+ initially set the VERSION field to "1.5".
+  
+ 2.4  Moved the CONDITION field in the REMINDER TERM (#811.5) and REMINDER
+ DEFINITION (#811.9) files to a separate node. It now has a maximum length
+ of 225 characters instead of 52. Also added the new field CONDITION CASE
+ SENSITIVE to the FINDINGS multiple in the same two files. When this has a
+ value of "NO" the condition evaluation will not be case sensitive. The
+ default is "YES".
+  
+ 2.5  Added the new field EFFECTIVE DATE to the FINDINGS multiple in the
+ REMINDER TERM (#811.5) and REMINDER DEFINITION (#811.9) files. A finding
+ with a date older than the EFFECTIVE DATE will be treated as false. An
+ updated version of the VA-HEP C RISK ASSESSMENT reminder definition is
+ included. In this definition the EFFECTIVE PERIOD of 2Y is replaced by an
+ EFFECTIVE DATE of October 1, 1998. If your site has created a dialog for 
+ this reminder you will need to relink it to the dialog after the install
+ has finished.
+  
+ 3.  Reminder Evaluation/Clinical Maintenance changes:
+  
+ 3.1  The Computed Finding VA-RACE was not returning the patient's race
+ correctly.  This was fixed. NOIS:  CTX-0900-70341, WPB-0700-30774.
+  
+ 3.2  Inpatient medications were not being found for drug findings. This
+ was fixed. Drug finding evaluations were made more efficient. This also
+ requires Outpatient Pharmacy patch PSO*7*54.  NOIS: BRX-0900-12529.
+  
+ 3.3  The code that calls the TIU object expansion was passing a pointer
+ to the INSTITUTION file (#4) instead of the required HOSPITAL LOCATION
+ file (#44). It was fixed. NOIS:  FGH-0700-32788.
+  
+ 3.4  When there was no match between any of the baseline age ranges and
+ the patient's age, making the reminder N/A due to age, the output was
+ still appearing in the Clinical Maintenance component even, if IGNORE ON
+ N/A was set. This was fixed.
+  
+ 3.5  Locking of expanded taxonomies was made more robust. It no longer
+ generates an error when it fails to get a lock. It now produces a "no
+ lock" message. NOIS:  CHA-0900-30869.
+  
+ 3.6  Added display of Problem List priorities (acute or chronic) in the
+ Clinical Maintenance output. NOIS:  UNY-0900-12325
+  
+ 3.7  The wildcard form of IGNORE ON N/A was not working correctly when the 
+ reminder was N/A because the PATIENT COHORT LOGIC evaluated to false. This 
+ was fixed. NOIS:  HOU-1100-72053
+  
+ 3.8  A term with more than one drug finding was not always working 
+ correctly. This was fixed. NOIS:  SAG-1200-40405
+  
+ 3.9  A change was made in the calculation of the resolution date for 
+ complex resolutions. Previously, the most recent date was used. Now, if
+ two findings are ANDed, the oldest date is used.  If two findings are
+ ORed, the most recent date is used. If the logic is complex, then the date
+ is determined by using the above rules. NOIS:  HIN-0900-40246,
+ WRJ-0101-11399.
+  
+ 3.10  Previously, when a health factor without a category - which is a 
+ required field - was encountered during the reminder evaluation, it caused
+ a null subscript error. Now, when a health factor without a category is
+ encountered, a warning message will be sent to the user and the reminders
+ mailgroup (if the mailgroup is defined). The health factor will be ignored
+ in the reminder evaluation and the null subscript errors will be
+ eliminated. NOIS:  UNY-0900-10369
+  
+ 3.11  When set, the IGNORE ON N/A field was suppressing the Summary 
+ component output in addition to the Maintenance component. It should 
+ suppress only the Maintenance component output. It now works correctly.
+  
+ 3.12  The CONDITION field can now be used with all finding types. 
+ Previously, all drug findings, radiology procedures, and taxonomies would 
+ not allow the use of CONDITION because there is no value for these
+ findings. These findings still do not return a value to test against, but
+ there is now a standard set of variables that can be used in all
+ CONDITIONS.  These variables are:
+ PXRMAGE  - patient's age
+ PXRMDOB  - patient's date of birth in FileMan format
+ PXRMRACE - patient's race (this is the text from the RACE file)
+ PXRMSEX  - patient's sex, in the format M^MALE or F^FEMALE
+  
+ 3.13  When there was no reminder frequency the error message "Patient does 
+ not meet any age criteria" was being displayed instead of "There is no 
+ reminder frequency". NOIS: MAC-0201-61450
+  
+ 3.14  For a historical encounter the internal entry number of the 
+ Institution file was being displayed instead of the station number. A 
+ change was made to display the station number. NOIS: BUT-0201-22423
+  
+ 4.  Reminder List Option changes:
+  
+ 4.1  When doing a Reminder List, typing a ^ at a prompt caused an
+ undefined error instead of taking the user to the previous prompt. 
+ This was fixed. NOIS:  HUN-0700-21914, HUN-1100-22185, SFC-1100-60475.
+  
+ 5.  Reminder Dialog changes:
+  
+ 5.1  Dialog elements with sequence numbers >100 created by generating
+ dialogs for reminders with >20 findings could not be edited unless the
+ sequence number was first changed to <100. This is corrected and
+ additional validation is also included to prevent duplicate sequence
+ numbers being entered. NOIS: MIA-1100-32057, WPB-0800-30571.
+  
+ 5.2  A dialog group could be entered as a dialog element within itself.
+ The result was that stack errors were generated when running the reminder
+ dialog containing the group multiple. The REMINDER DIALOG file (#801.41)
+ is corrected so that a dialog group may no longer be entered as a dialog
+ element within itself. NOIS: SLC-0800-52045 and WAS-0700-21656
+  
+ 5.3  Auto generated dialog elements for contraindicated immunizations
+ included an additional prompt - PXRM VISIT DATE - that was not displayed
+ in the reminder dialog. This is corrected so that the PXRM VISIT DATE
+ prompt displays in the reminder dialog. NOIS: HUN-1000-21282
+  
+ 5.4  Dialog elements for exams occasionally displayed a code value
+ instead of the exam name in the encounter window of the reminder dialog.
+ This is corrected to show the exam name. NOIS: SPO-1000-52529 
+  
+ 5.5  Editing dialog groups within the CV option of reminder dialogs now 
+ uses the same editor as is used for reminder dialogs. Dialog group elements
+ may be edited, copied/renamed or deleted. It is no longer necessary to build 
+ component dialog elements before building the dialog group. Elements may 
+ be created from within the dialog group screen. NOIS: WIC-1000-42229
+  
+ 5.6  A problem was reported by San Diego where the reminder categories in 
+ CPRS GUI display the wrong reminders. This is corrected. NOIS: SDC-1000-61815
+  
+ 5.7  If a reminder taxonomy was created after the installation of the
+ Clinical Reminders package, selectable codes were not generated for the
+ taxonomy dialog. This is changed so that taxonomy dialog edit will
+ auto-create the selectable codes if none exist. NOIS: CHA-1100-30888
+  
+ 5.8  If multiple web sites were entered for a reminder and the first 30
+ characters of the URLs were the same, only the first of the web sites
+ would display in the 'reference information' section of the GUI. This is
+ corrected. NOIS: MAC-1100-60409
+  
+ 5.9  The GROUP ENTRY field of the REMINDER DIALOG file (#801.41) used for
+ dialog groups is extended to allow a new code:
+  
+        3       None or One Selection
+  
+ 5.10 The forced value 'PXRM REPEAT CONTRAINDICATED' released with the 
+ reminder package had the default value incorrectly set to 'YES'. As a 
+ result, the contraindicted field in PCE was not being updated because it
+ expects a 1 or 0. This is corrected by patch 2 which sets the default
+ value from YES to 1.
+  
+ 5.11 Dialog copy of additional prompts now allows the prompt to be changed 
+ into a forced value if the prompt updates PCE or Vitals data. NOIS 
+ HVH-1200-11111.
+    
+ 5.12 Dialog edit screens now return to the selection screen from which the 
+ edit was initiated. NOIS: PUG-1200-52077
+    
+ 5.13 CPRS Lookup Categories now display sub-categories in display order and 
+ show the display sequence number. NOIS: PUG-0101-50004
+    
+ 5.14 Edit template for dialog groups (PXRM EDIT GROUP) now allows
+ additional prompts for a group level finding to be excluded from progress 
+ note text. NOIS: WAS-0700-21999
+  
+ 6.  Reminder Reports:
+ 6.1 Reminders Due Report displays 'See below' if future appointments exist 
+ outside of the selected location and the 'Display All Future Appointments' 
+ option is being used. NOIS: FAR-1000-42813
+  
+          
+  NOIS Messages:
+  ==============
+   BRX-0900-12529
+   BUT-0201-22423
+   CHA-0900-30869
+   CHA-1100-30888
+   CIN-0900-42457
+   CTX-0900-70341
+   EKH-1000-42980
+   FAR-0800-40686
+   FAR-1000-42813
+   FGH-0700-32788
+   HIN-0900-40246
+   HOU-1100-72053
+   HUN-0700-21914
+   HUN-1000-20744
+   HUN-1000-21282
+   HUN-1000-22185
+   HVH-1200-11111
+   LAH-0101-60194
+   MAC-1100-60338
+   MAC-1100-60409
+   MAC-0201-61450
+   MIA-1100-32057
+   PHI-0101-20893
+   PUG-1200-52077
+   PUG-0101-50004
+   SAG-1200-40405
+   SDC-1000-61815
+   SFC-1100-60475
+   SLC-0800-52045
+   SPO-1000-52529
+   UNY-0900-10369
+   UNY-0900-12325
+   V01-0201-N0005
+   WAS-0700-21656
+   WAS-0700-21999
+   WIC-1000-42229
+   WPB-0700-30744
+   WPB-0800-30571
+   WRJ-0101-11399
+  
+  
+  Documentation:
+  ==============
+  Updated documentation describing the new functionality introduced by this
+  patch is available.
+  
+ The preferred method is to FTP the files from download.vista.med.va.gov.
+ This transmits the files from the first available FTP server. Sites
+ may also elect to retrieve software directly from a specific server as
+ follows:
+  
+ Albany          ftp.fo-albany.med.va.gov  <ftp://ftp.fo-albany.med.va.gov>
+ Hines           ftp.fo-hines.med.va.gov   <ftp://ftp.fo-hines.med.va.gov>
+ Salt Lake City  ftp.fo-slc.med.va.gov     <ftp://ftp.fo-slc.med.va.gov>
+  
+ This documentation will be in the form of Adobe Acrobat files. The
+ complete Clinical Reminders Manager Manual is PXRM.PDF The documentation
+ can also be found on the System Design and Development Web page:
+ (http://vista.med.va.gov/vdl/).
+  
+  
+ Build Components:
+ =================
+  
+  Data Dictionary:
+  ================
+ 800         CLINICAL REMINDER PARAMETERS
+ 801.41      REMINDER DIALOG
+ 811.2       REMINDER TAXONOMY
+ 811.5       REMINDER TERM
+ 811.9       REMINDER DEFINITION
+  
+  Input Templates:
+  ================
+    PXRM EDIT NATIONAL TERM    FILE #811.5
+    PXRM EDIT REMINDER TERM    FILE #811.5
+    PXRM EDIT GROUP            FILE #801.41
+    
+  Options:
+  ========
+    PXRM TAXONOMY EDIT
+    
+  Print Templates:
+  ================
+    PXRM DEFINITION INQUIRY    FILE #811.9
+    PXRM DEFINITION LIST       FILE #811.9
+    PXRM TAXONOMY INQUIRY      FILE #811.2
+    PXRM TAXONOMY LIST         FILE #811.2
+    PXRM TERM INQUIRY          FILE #811.5
+     
+  Protocols
+  =========
+    PXRM DIALOG GROUP MENU
+    PXRM DIALOG COPY, 
+    PXRM DIALOG DETAILS
+    PXRM DIALOG EDIT
+    PXRM DIALOG EXIT
+    PXRM DIALOG P/N TEXT
+    PXRM DIALOG TEXT
+    
+  Routines:
+  =========
+  The following is a list of the routines included in this patch. The
+  routines listed as "N/A" under the New Checksum column are deleted with
+  this build.  Routine PXRMP2I is deleted after the post-install.  The
+  second line of each routine looks like:
+  
+ <tab>;;1.5;CLINICAL REMINDERS;**[Patch List]**;Jun 19, 2000
+  
+   Routine         Old Checksum    New Checksum     Patch List
+  ========         ============    ============     ==========
+  PXRM               3816281          4276601            2
+  PXRMAGE            3398678          3397400            2
+  PXRMBXTL           3201909          3438802            2
+  PXRMCAT            3145185          3330747            2 
+  PXRMCF             3397035          3801455            2
+  PXRMCFED            543812           798554            2
+  PXRMDATE           4435925          4517542            2
+  PXRMDCPY           5408718          6126482            2
+  PXRMDD41           1091179          1140872            2
+  PXRMDEDT           9206221         10300729            2
+  PXRMDGEN           3699225          4225676            2
+  PXRMDGPT          10492083         10626355            2
+  PXRMDHLP          13385107         13568838            2
+  PXRMDLG            6508726          7537029            2
+  PXRMDLG1           8128481          9632990            2
+  PXRMDLG2           3543072          5420627            2
+  PXRMDLGH           4498235          4519609            2
+  PXRMDLGZ           5844728          5872662            2
+  PXRMDLL            9778396         10147371            2
+  PXRMDLLA           9800444         10050318            2
+  PXRMDRCL           3842208          4371963            2
+  PXRMDRUG           5864311          8714771            2
+  PXRMEDU            3849331          4278237            2
+  PXRMERRH           3620664          3648519            2
+  PXRMEXAM           3831349          4270459            2
+  PXRMFOUT           2872675          3100525            2
+  PXRMGEDT           3304615          6058517            2
+  PXRMHF             8880190          9700858            2
+  PXRMHL7             688053           686776            2
+  PXRMHOST             NEW            1336573            2
+  PXRMIMM            4398662          4834048            2
+  PXRMINQ            1592893          2902345            2
+  PXRMLAB            3865324          4273456            2
+  PXRMLOG            6824235          7572721            2
+  PXRMMEAS           3614991          4013021            2
+  PXRMMH             5534594          5944952            2
+  PXRMMSG              NEW             449608            2
+  PXRMOPT            9291744         10078727            2
+  PXRMORDR           3743577          4144019            2
+  PXRMP2I              NEW            5005097            2
+  PXRMPDEM            221119           210698            2
+  PXRMPINF           2111744          2175542            2
+  PXRMPROB           4254831          4416909            2
+  PXRMPTDF             NEW            5394581            2
+  PXRMPT             4472285            N/A              2
+  PXRMPTL            4286810          4213780            2
+  PXRMPTTR             NEW            2725320            2
+  PXRMPTTX             NEW            2069535            2
+  PXRMRAD            5221163          5833093            2
+  PXRMRCPT           2466387          2533523            2
+  PXRMREDF           2453701          2417599            2
+  PXRMRIN2           7477789            N/A              2
+  PXRMRIN3           4062919            N/A              2
+  PXRMRLST           2961893          3039774            2
+  PXRMRPCA           9792377          9804337            2
+  PXRMRPCC           2283217          2283809            2
+  PXRMRUTL           2008056          2010864            2
+  PXRMSEL            9370492          9364011            2
+  PXRMSKIN           4154373          4594812            2
+  PXRMTAX            6312205          7229778            2
+  PXRMTDLG           2691148          2854658            2
+  PXRMTDUP             NEW            3660612            2
+  PXRMTEDT            746070           812846            2
+  PXRMUTIL           2780351          4126777            2
+  PXRMV1I            5530187            N/A              2
+  PXRMV1IA           7961867            N/A              2
+  PXRMV1ID           3591902            N/A              2
+  PXRMV1IE           1518945            N/A              2
+  PXRMV1IG           2452372            N/A              2
+  PXRMV1IH           2517295            N/A              2
+  PXRMV1X             571258            N/A              2
+  PXRMV1X1            273779            N/A              2
+  PXRMVCPT           2077093          2144229            2
+  PXRMVPOV           3475533          3542669            2
+  PXRMVPTR            218074           672795            2
+  PXRMVSIT           1013124          1086391            2
+  PXRMXAP            2600970          2562625            2
+  PXRMXPR            5961989          6077381            2                       
+  
+  Host File:
+  ==========
+  Due to its size this patch will be available only as a host file.
+  The name of the file is PXRM_1_5_2.KID.
+  
+ Sites will retrieve VistA software from the following FTP addresses.  The
+ preferred method is to FTP the files from download.vista.med.va.gov.  This
+ transmits the files from the first available FTP server. Sites may also
+ elect to retrieve software directly from a specific server as follows:
+  
+ Albany          ftp.fo-albany.med.va.gov  <ftp://ftp.fo-albany.med.va.gov>
+ Hines           ftp.fo-hines.med.va.gov   <ftp://ftp.fo-hines.med.va.gov>
+ Salt Lake City  ftp.fo-slc.med.va.gov     <ftp://ftp.fo-slc.med.va.gov>
+  
+  
+ Installation:
+ =============
+ This patch can be loaded with users on the system; however, we recommend 
+ installtion during non-peak hours. The installation time will vary 
+ depending on the size of your patient cache. Test sites have experienced 
+ installation times between 1 and 35 minutes. During this time your users 
+ may experience slow system response.
+  
+ 1. Download the KIDS file PXRM_1_5_2.KID via FTP.  Move the file to the
+    appropriate directory on your system.
+  
+ 2. Review your mapped set. If any of the routines are mapped, they should be
+    removed from the mapped set at this time.
+  
+ 3. On the KIDS menu under the 'INSTALLATION' menu, use the following
+    option:
+        Load a Distribution
+    When prompted for the file name, type in the directory where you have
+    stored the KIDS build, followed by PXRM_1_5_2.KID. An example for
+    a VMS system is [ANON]:PXRM_1_5_2.KID.
+  
+ 4. On the KIDS menu under the 'INSTALLATION' menu, use the following
+    options as desired:
+        Print Transport Global
+        Compare Transport Global to Current System
+        Verify Checksums in Transport Global
+        Backup a Transport Global
+  
+ 5. On the KIDS menu under the 'INSTALLATION' menu, use the following
+    option to install the patch:
+        Install Package(s) (PXRM*1.5*2)
+  
+ 6. When prompted "Want KIDS to INHIBIT LOGONs during the install? YES//",
+    respond 'NO'.
+  
+ 7. When prompted "Want to DISABLE Scheduled Options, Menu Options,
+    and Protocols? YES//," respond 'YES'. When prompted to select the
+    options you would like to place out of order, enter the following:
+  
+    GMTS*
+    PXRM*
+    IBDF PRINT*
+    IBDF PRINT FORM
+    OR CPRS GUI CHART
+    ORS HEALTH SUMMARY
+  
+                               **Warning** 
+    When an option is included in the patch build, the question REBUILD MENUS
+    is asked as a PRE-INSTALL question. If you choose to have KIDs rebuild
+    the menus it will happen at the end of the build installation and may
+    take several hours.
+  
+    When prompted to select the protocols you would like to place out of
+    order, enter the following:
+  
+    ORS AD HOC HEALTH SUMMARY
+    ORS HEALTH SUMMARY
+    PXRM PATIENT DATA CHANGE
+  
+ 8. If any routines were unmapped as part of step 2, they should be returned
+    to the mapped set once the installation has run to completion.
+
+Routine Information:
+====================
+
+Routine Name:
+  - PXRM
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMAGE
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMBXTL
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMCF
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMDATE
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMDD41
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMDGEN
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMDGPT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMDLG
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMDLL
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMDLLA
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMDRCL
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMDRUG
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMEDU
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMERRH
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMEXAM
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMHF
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMHOST
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMIMM
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMINQ
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMLAB
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMMEAS
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMMH
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMOPT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMORDR
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMP2I
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMPDEM
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMPINF
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMPROB
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMPTDF
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMPTL
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMPTTR
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMPTTX
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMRCPT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMREDF
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMRLST
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMRPCC
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMSKIN
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMTAX
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMTEDT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMUTIL
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMVCPT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMVPOV
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMXAP
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMDEDT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMDLG1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMDLG2
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMRPCA
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMGEDT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMTDLG
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMTDUP
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMLOG
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMDCPY
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMDLGZ
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMDHLP
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMDLGH
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMSEL
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMCAT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMXPR
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMMSG
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMFOUT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMHL7
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMRAD
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMRUTL
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMVPTR
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMCFED
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXRMVSIT
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : REDINGTON,PATRICK              Date Entered : OCT 26, 2000
+Completed By: MERRILL,DAVID P              Date Completed: APR 17, 2001
+Released By : CARLSON-GOTTS,NANCY           Date Released : APR 17, 2001
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

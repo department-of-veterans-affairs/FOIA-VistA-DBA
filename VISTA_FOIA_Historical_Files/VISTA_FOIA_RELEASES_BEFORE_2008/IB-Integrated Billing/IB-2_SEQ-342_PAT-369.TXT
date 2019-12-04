@@ -1,0 +1,283 @@
+$TXT Created by HARPER,AMY R at DEVFEX.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 08/27/07 at 14:19
+=============================================================================
+Run Date: SEP 27, 2007                     Designation: IB*2*369
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #342                      Status: Released
+                  Compliance Date: OCT 28, 2007
+=============================================================================
+
+
+Subject: IB SUPPORT FOR ASCD
+
+Category: 
+  - Routine
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ This patch exports API's to support the Automated Service Connected 
+ Designation (ASCD) project (SD*5.3*495).  The ASCD project allows review 
+ of an encounters Service Connected designation after the encounter is 
+ checked out.  The IB API's in this patch provide Billing data for ASCD 
+ reports and the ability to update an encounters Reason Not Billable.
+                                     
+ Update Encounters Reason Not Billable:
+ With ASCD the Service Connected designation for an encounter is reviewed 
+ and potentially changed after check-out.  If that encounter has already 
+ been added to Claims Tracking, then it is possible that the original Reason 
+ Not Billable added for the encounter is no longer appropriate.  Therefore, 
+ an encounters Reason Not Billable may be updated by the ASCD review.
+                                     
+ When an encounters Service Connected designation is changed in ASCD,
+ Claims Tracking may also be updated:
+                                     
+ o If an encounter is changed to Service Connected during the ASCD review 
+   and an entry exists in Claims Tracking for the encounter with no Reason 
+   Not Billable, then the encounters Claims Tracking entry is updated:
+   -  The Reason Not Billable of 'SC TREATMENT' is added
+   -  The Billable Finding of 'NSC TO SC' and Last Reviewed By is added
+   Note that if the encounter is already billed, then the bill and the new 
+   Billable Finding will be added to the CT Entered/Not Reviewed Report 
+   [IBT ENTERED NOT REVIEWED]
+                                     
+ o If an encounter is changed to Non-Service Connected during the ASCD 
+   review and an entry exists in Claims Tracking for the encounter with a 
+   Reason Not Billable of 'SC TREATMENT', then the encounters Claims 
+   Tracking entry is updated:
+   -  The Reason Not Billable of 'SC TREATMENT' is deleted
+   -  The Billable Finding of 'SC TO NSC' and Last Reviewed By is added
+   Note that the encounter will be added to the Un-reviewed Claims for 
+   Coders Report [IBT UNREVIEWED CODING REPORT] and if the encounter is 
+   already billed, then the bill and the new Billable Finding will be 
+   added to the CT Entered/Not Reviewed Report [IBT ENTERED NOT REVIEWED]
+                                     
+                                                          
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+ NSR 20050705 Automated Service Connected Designation (in support of)
+                                       
+ This patch addresses the following NOIS/Remedy Ticket(s):
+ ---------------------------------------------------------
+ There is no NOIS/Remedy tickets associated with this patch.
+                                     
+                                     
+ TECHNICAL DESCRIPTION:
+ ======================
+ The following are the API's exported with this patch:
+                                     
+ CT^IBRSUTL - identify an encounters Claims Tracking entry
+ Input:  IEN of Outpatient Encounter (#409.68)
+ Output: IEN of encounters Claims Tracking record (#356)
+         null if none found
+                                     
+                                     
+ RNBU^IBRSUTL - update an encounters Claims Tracking Reason Not Billable
+ Input:  IEN of Outpatient Encounter (#409.68)
+         CHG = 1 if encounter changed from NSC to SC
+               2 if encounter changed from SC to NSC
+ Output: 1 Reason Not Billable of SC TREATMENT added to CT entry
+           also adds Billable Finding of 'NSC TO SC' and Last Reviewed By
+           (only if the CT entry did not already have a RNB)
+         2 Reason Not Billable of SC TREATMENT deleted from CT entry
+           also adds Billable Finding of 'SC TO NSC' and Last Reviewed By
+           (only if the CT entry RNB was SC TREATMENT)
+         0 no update/change
+                                     
+         Note that encounters changed to Service Connected that have 
+         already been billed will be added to the CT Entered/Not Reviewed 
+         Report [IBT ENTERED NOT REVIEWED].
+                                     
+         Encounters changed to Non-Service Connected will be displayed on 
+         the Un-reviewed Claims for Coders Report [IBT UNREVIEWED CODING 
+         REPORT].  And if the encounter is already billed then it will be 
+         added to the CT Entered/Not Reviewed Report [IBT ENTERED NOT 
+         REVIEWED]
+                                     
+                                     
+ FPBILL^IBRSUTL - returns an encounters First Party bill and charge
+ Input:  IEN of Outpatient Encounter (#409.68)
+ Output: AR Bill (#350,.11) ^ AR Trans (#350,.12) ^ Total Charge (#350,.07)
+         Null if no non-cancelled charge found for encounter
+                                     
+         Returns charge of last transaction for the encounter if the charge 
+         Status (#350,.05) is not a Cancelled Status and the charge Action 
+         Type (#350,.03) is not a Cancellation Action Type.
+                                     
+         Note that only charges passed to AR will have an AR Bill Number 
+         and AR Transaction Number.  Charges not yet passed to AR, such as 
+         charges On Hold, will only have a Total Charge.
+                                     
+                                     
+ TPBILL^IBRSUTL - returns an encounters Third Party Bills
+ Input:  IEN of Outpatient Encounter (#409.68)
+ Output: Bill Number (#399,.01) ^ Bill Number (#399,.01) ^ ...
+         Null if no non-cancelled bills found for encounter
+                                     
+         Encounters may have multiple Third Party bills.  This function 
+         returns a string of all Third Party bills that have not been 
+         cancelled and have one of the encounters procedures assigned.
+                                     
+                                     
+ FIRST^IBRSUTL - check if encounter is billable for First Party
+ Input:  IEN of Outpatient Encounter (#409.68)
+ Output: 1 if encounter is First Party billable
+         0 ^ reason encounter not billable
+                                     
+         This function checks various elements related to the patient and 
+         the specific encounter:
+         - Patient is Category C
+         - Appointment Status is billable
+         - Appointment Type is billable
+         - Encounter Clinic is not Non-Count
+         - Encounter Clinic is billable for First Party
+         - Encounter Stop Code is billable for First Party
+                                     
+                                     
+ THIRD^IBRSUTL - check if encounter is billable for Third Party
+ Input:  IEN of Outpatient Encounter (#409.68)
+ Output: 1 if encounter is Third Party billable
+         0 ^ reason encounter not billable
+                                     
+         This function checks various elements related to the patient and 
+         the specific encounter:
+         - Appointment Status is billable
+         - Appointment Type is billable
+         - Encounter Clinic is not Non-Count
+         - Encounter Clinic is billable for Third Party
+         - Encounter Stop Code is billable for Third Party
+                                     
+                                     
+ TPCHG^IBRSUTL - return an encounters potential Third Party charges
+ Input:  IEN of Outpatient Encounter (#409.68)
+ Output: Total Institutional Charge ^ Total Professional Charge
+         0 for no billable procedure charges found
+                                     
+         This function calculates the charges based on the procedures 
+         assigned to the encounter in PCE (not the encounter procedures 
+         that have been billed).  The returned amounts are the sum of the 
+         individual Reimbursable Insurance charges for each PCE procedure.
+                                     
+   
+ Database Integration Agreement (DBIA) 4987 - IB BILLING DATA API
+  
+                                     
+                                     
+ Components Sent With Patch
+ --------------------------
+                                       
+ ROUTINE SUMMARY:
+ ----------------
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+                                     
+      <tab>;;2.0;INTEGRATED BILLING;**[patch list]**;21-MAR-94
+                                     
+                           CHECK^XTSUMBLD results
+  Routine name    Before Patch        After Patch         Patch List
+  ============    ============        ===========         ==========
+  IBRSUTL                  N/A           10187865             369
+                                     
+                           CHECK1^XTSUMBLD results
+  Routine name    Before Patch        After Patch         Patch List
+  ============    ============        ===========         ==========
+  IBRSUTL                  N/A           26299507             369
+                                     
+  Number of Routines = 1           
+                                       
+                            
+ Test Sites:
+ -----------
+ Bedford MA
+ Fargo ND
+ North Texas HCS
+ Puget Sounds HCS
+ Tampa FL                                      
+                                       
+                                       
+                                       
+ ======================= INSTALLATION INSTRUCTIONS =======================
+                                       
+ No options need to be disabled during the installation of this patch.
+                                     
+ Install Time - less than 5 minutes 
+                                       
+                                       
+                                       
+ 1.  LOAD TRANSPORT GLOBAL 
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the 
+     INSTALL/CHECK MESSAGE PackMan option.  
+                                       
+ 2.  START UP KIDS 
+     -------------
+     Start up the Kernel Installation and Distribution System Menu 
+     [XPD MAIN]: 
+                                       
+          Edits and Distribution ...  
+          Utilities ...  
+          Installation ...  
+                                       
+ Select Kernel Installation & Distribution System Option: INStallation 
+                                                          ---
+          Load a Distribution 
+          Print Transport Global 
+          Compare Transport Global to Current System 
+          Verify Checksums in Transport Global 
+          Install Package(s) 
+          Restart Install of Package(s) 
+          Unload a Distribution 
+          Backup a Transport Global 
+                                       
+ Select Installation Option: 
+                                       
+ 3.  Select Installation Option: 
+     ---------------------------
+     NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+            NAME, enter IB*2.0*369):
+                                       
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when this patch
+         is installed.  It compares all components of this patch
+         (routines, DD's, templates, etc.).
+     c.  Verify Checksums in Transport Global - This option will allow
+         you to ensure the integrity of the routines that are in the
+         transport global.
+                                       
+ 4.  Select Installation Option: Install Package(s) 
+                                 ------------------
+     **This is the step to start the installation of this KIDS patch: 
+                                       
+     a.  Choose the Install Package(s) option to start the patch
+         install.
+     b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+         YES//' answer NO 
+     c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+         Options, and Protocols? YES//' answer NO
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;2.0;INTEGRATED BILLING;**[Patch List]**;21-MAR-94;Build 2
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: IBRSUTL
+    Before:       n/a   After: B26299507  **369**
+
+=============================================================================
+User Information:
+Entered By  : HARPER,AMY R                  Date Entered  : FEB 20, 2007
+Completed By: LYNCH,MARY F.                 Date Completed: SEP 25, 2007
+Released By : HARRIS,ANGELA                 Date Released : SEP 27, 2007
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

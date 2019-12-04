@@ -1,0 +1,736 @@
+Saved by %RS from [DEV,VCC] on 20-JAN-1998 09:12:05.87
+Sample Routines using the ACRP Interface Toolkit (AIT)
+SDZQIB
+SDZQIB	;ALB/ARH - UNBILLED APPOINTMENT BASC FOR INSURED PATIENTS ; 2/27/92
+	;;Version 2.0 ; INTEGRATED BILLING ;; 21-MAR-94
+	; (SAMPLE REWRITE OF IBOBCC)
+EN	;get date range then run the report
+	;I $D(XRT0) S:'$D(XRTN) XRTN="IBOBCC" D T1^%ZOSV ;stop rt clock
+	;S XRTL=$ZU(0),XRTN="IBOBCC-1" D T0^%ZOSV ;start rt clock
+	S IBHDR="UNBILLED BASC FOR INSURED PATIENT APPOINTMENTS" D HOME^%ZIS
+	W @IOF W !!,?15,"Report Unbilled BASC for Insured Patient Appointments",!!!!
+	D BDT^IBOUTL G:Y<0!(IBBDT="")!(IBEDT="") EXIT
+DEV	;get the device
+	W !!,"Report requires 132 columns."
+	S %ZIS="QM",%ZIS("A")="OUTPUT DEVICE: " D ^%ZIS G:POP EXIT
+	I $D(IO("Q")) S ZTRTN="EN1^IBOBCC",ZTDESC=IBHDR,ZTSAVE("IB*")="" D ^%ZTLOAD K IO("Q"),ZTSK G EXIT
+	U IO D EN1 D ^%ZISC
+	;
+EXIT	;clean up and quit
+	;I $D(XRT0) S:'$D(XRTN) XRTN="IBOBCC" D T1^%ZOSV ;stop clock
+	I $D(ZTQUEUED) S ZTREQ="@" Q
+	K IBBDT,IBEDT,IBHDR,X,Y,DTOUT,DUOUT,DIRUT,DIROUT
+	Q
+	;
+EN1	;entry pt. for tasked jobs
+	;I $D(XRT0) S:'$D(XRTN) XRTN="IBOBCC" D T1^%ZOSV ;stop rt clock
+	;S XRTL=$ZU(0),XRTN="IBOBCC-2" D T0^%ZOSV ;start rt clock
+	;find, save, and print each BASC entered in scheduling that has not been entered in billing (or doesn't/can't match)
+	;for each patient appointment in scheduling, where patient has active insurance, and billable CPTs entered for appointment
+	;must match between scheduling and billing: DFN, CPT, appointment date (procedure date) (doesn't match clinics)
+APPT	;get all BASC CPTs for appointments in date range for patients with insurance
+	;
+	; -- access to scheduling data using apis (see bottom for current logic)
+	;
+	N IBQRY,IBQ
+	S IBQ=0
+	D OPEN^SDQ(.IBQRY)
+	D INDEX^SDQ(.IBQRY,"DATE/TIME","SET")
+	D DATE^SDQ(.IBQRY,IBBDT-.001,IBEDT+.3,"SET")
+	D SCANCB^SDQ(.IBQRY,"D CB^SDZQIB(Y,Y0,.SDSTOP)","SET")
+	D ACTIVE^SDQ(.IBQRY,"TRUE","SET")
+	D SCAN^SDQ(.IBQRY)
+	D CLOSE^SDQ(.IBQRY)
+	;
+	G:'$D(^TMP("IBBC",$J))!IBQ PRINT
+	;
+BILLED	;determine which BASC procedures from scheduling were actually entered in billing
+	;try to match scheduling and billing, the scheduling appointment date (^SDV) and the billing procedure date (^IB) must be
+	;the same to be able to match procedures between scheduling and billing
+	S IBDFN="" F  S IBDFN=$O(^TMP("IBBC",$J,IBDFN)) Q:(IBDFN'?1N.N)!IBQ  S IBAD="" D  S IBQ=$$STOP
+	. F  S IBAD=$O(^TMP("IBBC",$J,IBDFN,IBAD)) Q:IBAD=""  S IBCPT="" D
+	.. F  S IBCPT=$O(^TMP("IBBC",$J,IBDFN,IBAD,IBCPT)) Q:IBCPT=""  S IBCNT=^(IBCPT) I $D(^DGCR(399,"ASD",-IBAD,IBCPT)) D
+	... S IBBN="" F  S IBBN=$O(^DGCR(399,"ASD",-IBAD,IBCPT,IBBN)) Q:IBBN=""!(IBCNT'>0)  I $D(^DGCR(399,"C",IBDFN,IBBN)) D
+	.... S IBX="" F  S IBX=$O(^DGCR(399,"ASD",-IBAD,IBCPT,IBBN,IBX)) Q:IBX=""!(IBCNT'>0)  S IBCNT=IBCNT-1
+	... I IBCNT'>0 K ^TMP("IBBC",$J,IBDFN,IBAD,IBCPT) Q
+	... S ^TMP("IBBC",$J,IBDFN,IBAD,IBCPT)=IBCNT
+	.. I $D(^TMP("IBBC",$J,IBDFN,IBAD)) S ^TMP("IBBC",$J,"N",$P($G(^DPT(IBDFN,0)),"^",1),IBDFN)=""
+	K IBDFN,IBAD,IBCPT,IBCNT,IBBN,IBX
+	;
+PRINT	G PRINT^IBOBCC1
+	Q
+	;
+STOP()	;determine if user requested task to be stopped
+	I $D(ZTQUEUED),$$S^%ZTLOAD S ZTSTOP=1 K ZTREQ I +$G(IBPGN) W !!,"TASK STOPPED BY USER",!!
+	Q +$G(ZTSTOP)
+	;
+CB(IBOE,IBOE0,SDSTOP)	; -- scan callback code
+	IF $$STOP() S (SDSTOP,IBQ)=1 G CBQ ; -- has user asked to stop report
+	;
+	G CBQ:$P(IBOE0,U,6)                ; -- quit if encounter has parent
+	G CBQ:'$P(IBOE0,U,5)               ; -- quit if no visit ien
+	;
+	N IBCPTS,IBI,IBCPT,IBINDT,IBAD,DFN,IBDFN
+	S (IBINDT,IBAD)=$E($P(IBOE0,U),1,7)
+	S (DFN,IBDFN)=$P(IBOE0,U,2)
+	D ^IBCNS G CBQ:'IBINS
+	D GETCPT^SDOE(IBOE,"IBCPTS")
+	S IBI=0 F  S IBI=$O(IBCPTS(IBI)) Q:IBI=""  D
+	. S IBCPT=IBCPTS(IBI)
+	. IF IBCPT,$$CPTBSTAT^IBEFUNC1(IBCPT,IBAD) D
+	. . S ^TMP("IBBC",$J,IBDFN,IBAD,IBCPT)=$G(^TMP("IBBC",$J,IBDFN,IBAD,IBCPT))+1
+CBQ	Q
+	;
+	; -- current access logic that was replaced above
+	;S IBE=IBEDT+.3,IBADT=IBBDT-.001,IBQ=0
+	;F  S IBADT=$O(^SDV("AP",IBADT)) Q:'IBADT!(IBADT>IBE)!IBQ  S IBX="" D  S IBQ=$$STOP
+	;. F  S IBX=$O(^SDV("AP",IBADT,IBX)) Q:'IBX  D
+	;.. S IBAD=$E(IBADT,1,7),(DFN,IBDFN)=^(IBX),IBINDT=IBAD D ^IBCNS Q:'IBINS
+	;.. S IBPR=$G(^SDV(IBADT,"CS",IBX,"PR")) I IBPR D
+	;... F IBI=1:1 S IBCPT=$P(IBPR,"^",IBI) Q:'IBCPT  I $$CPTBSTAT^IBEFUNC1(IBCPT,IBAD) D
+	;.... S ^TMP("IBBC",$J,IBDFN,IBAD,IBCPT)=$G(^TMP("IBBC",$J,IBDFN,IBAD,IBCPT))+1
+	;K IBE,IBADT,IBDFN,IBAD,IBX,IBPR,IBI,IBCPT,DFN,IBINDT,IBINS
+	;G:'$D(^TMP("IBBC",$J))!IBQ PRINT
+
+SDZQOE
+SDZQOE	;ALB/MJK - Test Logic for ACRP APIs ;8/12/96
+	;;5.3;ssss;;Aug 12, 1996
+	;
+	; ------------------------- cpt api's --------------------------
+	;
+CPT	; -- At least one cpt for encounter?                      [API ID: 65]
+	N SDOE
+	K ^TMP("DIERR",$J)
+	IF '$$SELOE^SDZQUT(.SDOE) G CPTQ
+	;
+	W !!,"[",$P($T(CPT),"[",2)
+	IF $$CPT^SDOE(.SDOE) D
+	. W !,"At least one CPT has been associated with this encounter."
+	ELSE  D
+	. W !,"No CPT has been associated with this encounter."
+	. D MSG^SDZQUT()
+CPTQ	D CLEAN^DILF
+	Q
+	;
+	;
+GETCPT	; -- get cpt's for encounter  / use local error array     [API ID: 61]
+	N SDOE,SDER,SDLIST,SDIEN
+	IF '$$SELOE^SDZQUT(.SDOE) G GETCPTQ
+	;
+	W !!,"[",$P($T(GETCPT),"[",2)
+	D GETCPT^SDOE(.SDOE,"SDLIST","SDER")
+	IF $O(SDLIST(0)) D
+	. W !,"List of V CPT zero nodes for encounter:"
+	. S SDIEN=0
+	. F  S SDIEN=$O(SDLIST(SDIEN)) Q:'SDIEN  W !?5,SDIEN,": ",SDLIST(SDIEN)
+	. W !!?5,"Count: ",+$G(SDLIST)
+	ELSE  D
+	. W !,"No CPTs have been associated with this encounter."
+	. D MSG^SDZQUT("SDER")
+GETCPTQ	D CLEAN^DILF
+	Q
+	;
+FINDCPT	; -- find cpt in encounter data                           [API ID: 71]
+	N SDOE,SDCPT
+	K ^TMP("DIERR",$J)
+	IF '$$SELOE^SDZQUT(.SDOE) G FINDCPTQ
+	IF '$$SELCPT^SDZQUT(.SDCPT) G FINDCPTQ
+	;
+	W !!,"[",$P($T(FINDCPT),"[",2)
+	IF $$FINDCPT^SDOE(.SDOE,.SDCPT) D
+	. W !,"CPT has been associated with this encounter."
+	ELSE  D
+	. W !,"CPT has not been associated with this encounter."
+	. D MSG^SDZQUT()
+FINDCPTQ	D CLEAN^DILF
+	Q
+	;
+	; ------------------------- dx api's --------------------------
+	;
+DX	; -- at least one dx for encounter?                       [API ID: 64]
+	N SDOE
+	K ^TMP("DIERR",$J)
+	IF '$$SELOE^SDZQUT(.SDOE) G DXQ
+	;
+	W !!,"[",$P($T(DX),"[",2)
+	IF $$DX^SDOE(.SDOE) D
+	. W !,"At least one diagnosis has been associated with this encounter. "
+	ELSE  D
+	. W !,"No diagnosis has been associated with this encounter."
+	. D MSG^SDZQUT()
+DXQ	D CLEAN^DILF
+	Q
+	;
+GETDX	; -- get DX's for encounter                               [API ID: 56]
+	N SDOE,SDLIST,SDIEN
+	K ^TMP("DIERR",$J)
+	IF '$$SELOE^SDZQUT(.SDOE) G GETDXQ
+	;
+	W !!,"[",$P($T(GETDX),"[",2)
+	D GETDX^SDOE(.SDOE,"SDLIST")
+	IF $O(SDLIST(0)) D
+	. W !,"List of V POV zero nodes for encounter:"
+	. S SDIEN=0
+	. F  S SDIEN=$O(SDLIST(SDIEN)) Q:'SDIEN  W !?5,SDIEN,": ",SDLIST(SDIEN)
+	. W !!?5,"Count: ",+$G(SDLIST)
+	ELSE  D
+	. W !,"No diagnoses have been associated with this encounter."
+	. D MSG^SDZQUT()
+GETDXQ	D CLEAN^DILF
+	Q
+	;
+FINDDX	; -- find dx in encounter data                            [API ID: 70]
+	N SDOE,SDDX
+	K ^TMP("DIERR",$J)
+	IF '$$SELOE^SDZQUT(.SDOE) G FINDDXQ
+	IF '$$SELDX^SDZQUT(.SDDX) G FINDDXQ
+	;
+	W !!,"[",$P($T(FINDDX),"[",2)
+	IF $$FINDDX^SDOE(.SDOE,.SDDX) D
+	. W !,"Diagnosis has been associated with this encounter."
+	ELSE  D
+	. W !!,"Diagnosis has not been associated with this encounter."
+	. D MSG^SDZQUT()
+FINDDXQ	D CLEAN^DILF
+	Q
+	;
+GETPDX	; -- find primary dx for encounter                        [API ID: 73]
+	N SDOE,SDPDX
+	K ^TMP("DIERR",$J)
+	IF '$$SELOE^SDZQUT(.SDOE) G GETPDXQ
+	;
+	W !!,"[",$P($T(GETPDX),"[",2)
+	S SDPDX=$$GETPDX^SDOE(.SDOE)
+	IF SDPDX D
+	. N X S X=$G(^ICD9(SDPDX,0))
+	. W !,"Primary diagnosis found for encounter:"
+	. W !?5,"Code: ",$P(X,"^")_" - "_$P(X,"^",3)
+	ELSE  D
+	. W !,"No primary diagnosis has been associated with this encounter."
+	. D MSG^SDZQUT()
+GETPDXQ	D CLEAN^DILF
+	Q
+	;
+	; ------------------------- provider api's --------------------------
+	;
+PRV	; -- at least one provider for encounter?                 [API ID: 63]
+	N SDOE
+	K ^TMP("DIERR",$J)
+	IF '$$SELOE^SDZQUT(.SDOE) G PRVQ
+	;
+	W !!,"[",$P($T(PRV),"[",2)
+	IF $$PRV^SDOE(.SDOE) D
+	. W !,"At least one provider has been associated with this encounter."
+	ELSE  D
+	. W !,"No provider has been associated with this encounter."
+	. D MSG^SDZQUT()
+PRVQ	D CLEAN^DILF
+	Q
+	;
+GETPRV	; -- get provider's for encounter                         [API ID: 58]
+	N SDOE,SDLIST,SDIEN
+	K ^TMP("DIERR",$J)
+	IF '$$SELOE^SDZQUT(.SDOE) G GETPRVQ
+	;
+	W !!,"[",$P($T(GETPRV),"[",2)
+	D GETPRV^SDOE(.SDOE,"SDLIST")
+	IF $O(SDLIST(0)) D
+	. W !,"List of V PROVIDER zero nodes for encounter:"
+	. S SDIEN=0
+	. F  S SDIEN=$O(SDLIST(SDIEN)) Q:'SDIEN  W !?5,SDIEN,": ",SDLIST(SDIEN)
+	. W !!?5,"Count: ",+$G(SDLIST)
+	ELSE  D
+	. W !,"No providers have been associated with this encounter."
+	. D MSG^SDZQUT()
+GETPRVQ	D CLEAN^DILF
+	Q
+	;
+FINDPRV	; -- find provider in encounter data                      [API ID: 69]
+	N SDOE,SDPRV
+	K ^TMP("DIERR",$J)
+	IF '$$SELOE^SDZQUT(.SDOE) G FINDPRVQ
+	IF '$$SELPRV^SDZQUT(.SDPRV) G FINDPRVQ
+	;
+	W !!,"[",$P($T(FINDPRV),"[",2)
+	IF $$FINDPRV^SDOE(.SDOE,.SDPRV) D
+	. W !,"Provider has been associated with this encounter."
+	ELSE  D
+	. W !,"Provider has not been associated with this encounter."
+	. D MSG^SDZQUT()
+FINDPRVQ	D CLEAN^DILF
+	Q
+	;
+	; --------------------------------oe api's--------------------------
+	;
+GETOE	; -- get supported 0th node data                          [API ID: 98]
+	N SDOE
+	K ^TMP("DIERR",$J)
+	IF '$$SELOE^SDZQUT(.SDOE) G GETOEQ
+	;
+	W !!,"[",$P($T(GETOE),"[",2)
+	W !,"Zeroth Node for Encounter Selected:"
+	W !?5,"IEN: ",SDOE," --> ",$$GETOE^SDOE(.SDOE)
+	D MSG^SDZQUT()
+GETOEQ	D CLEAN^DILF
+	Q
+	;
+GETGEN	; -- get encounter general data                           [API ID: 76]
+	N SDOE,SDATA,SDNODE
+	K ^TMP("DIERR",$J)
+	IF '$$SELOE^SDZQUT(.SDOE) G GETGENQ
+	;
+	W !!,"[",$P($T(GETGEN),"[",2)
+	D GETGEN^SDOE(.SDOE,"SDATA")
+	W !,"General Nodes Supported for Encounter Selected:"
+	W !?5," IEN: ",SDOE
+	S SDNODE="" F  S SDNODE=$O(SDATA(SDNODE)) Q:SDNODE=""  W !?5,"Node: ",SDNODE," --> ",SDATA(SDNODE)
+	D MSG^SDZQUT()
+GETGENQ	D CLEAN^DILF
+	Q
+	;
+PARSE	; -- parse encounter data                                 [API ID: 78]
+	N SDOE,SDATA,SDNODE,SDPARSE,SDFMT
+	K ^TMP("DIERR",$J)
+	IF '$$SELOE^SDZQUT(.SDOE) G PARSEQ
+	;
+	W !!,"[",$P($T(PARSE),"[",2)
+	D GETGEN^SDOE(.SDOE,"SDATA")
+	F SDFMT="INTERNAL","EXTERNAL" D
+	. K SDPARSE
+	. D PARSE^SDOE(.SDATA,SDFMT,"SDPARSE")
+	. D MSG^SDZQUT()
+	. W:SDFMT="INTERNAL" !,"Parsed data for Encounter Selected:"
+	. W !?3,"Format: ",SDFMT
+	. W !?5," IEN: ",SDOE
+	. S SDNODE="" F  S SDNODE=$O(SDPARSE(SDNODE)) Q:SDNODE=""  W !?5,"Node: ",SDNODE," --> ",SDPARSE(SDNODE)
+	. D RETURN^SDZQUT
+	;
+PARSEQ	D CLEAN^DILF
+	Q
+	;
+EXAE	; -- find first standalone for date range                 [API ID: 72]
+	N SDFN,SDBEG,SDEND,SDFMT,SDATA,SDPARSE,SDNODE
+	K ^TMP("DIERR",$J)
+	IF '$$SELPAT^SDZQUT(.SDFN) G EXAEQ
+	IF '$$RANGE^SDZQUT(.SDBEG,.SDEND) G EXAEQ
+	;
+	W !!,"[",$P($T(EXAE),"[",2)
+	S SDOE=$$EXAE^SDOE(.SDFN,.SDBEG,.SDEND,"C")
+	IF SDOE D
+	. W !,"First Standalone enounter found in date range:"
+	. D GETGEN^SDOE(.SDOE,"SDATA")
+	. S SDFMT="EXTERNAL"
+	. K SDPARSE
+	. D PARSE^SDOE(.SDATA,SDFMT,"SDPARSE")
+	. W !!?5," IEN: ",SDOE
+	. S SDNODE="" F  S SDNODE=$O(SDPARSE(SDNODE)) Q:SDNODE=""  W !?5,"Node: ",SDNODE," --> ",SDPARSE(SDNODE)
+	ELSE  D
+	. W !,"No Standalone enounter found in date range."
+	. D MSG^SDZQUT()
+	W !
+EXAEQ	D CLEAN^DILF
+	Q
+	;
+GETLAST	; -- find last standalone after a date                    [API ID: 75]
+	N SDFN,SDBEG,SDFMT,SDATA,SDPARSE,SDNODE
+	K ^TMP("DIERR",$J)
+	IF '$$SELPAT^SDZQUT(.SDFN) G GETLASTQ
+	IF '$$DATE^SDZQUT(.SDBEG) G GETLASTQ
+	;
+	W !!,"[",$P($T(GETLAST),"[",2)
+	S SDOE=$$GETLAST^SDOE(.SDFN,.SDBEG,"C")
+	IF SDOE D
+	. W !,"Last standalone enounter found after date:"
+	. D GETGEN^SDOE(.SDOE,"SDATA")
+	. S SDFMT="EXTERNAL"
+	. K SDPARSE
+	. D PARSE^SDOE(.SDATA,SDFMT,"SDPARSE")
+	. W !!?5," IEN: ",SDOE
+	. S SDNODE="" F  S SDNODE=$O(SDPARSE(SDNODE)) Q:SDNODE=""  W !?5,"Node: ",SDNODE," --> ",SDPARSE(SDNODE)
+	ELSE  D
+	. W !,"No standalone enounter found after date."
+	. D MSG^SDZQUT()
+	W !
+GETLASTQ	D CLEAN^DILF
+	Q
+	;
+EXOE	; -- find first encounter in date range                   [API ID: 74]
+	N SDFN,SDBEG,SDEND,SDFMT,SDATA,SDPARSE,SDNODE
+	K ^TMP("DIERR",$J)
+	IF '$$SELPAT^SDZQUT(.SDFN) G EXOEQ
+	IF '$$RANGE^SDZQUT(.SDBEG,.SDEND) G EXOEQ
+	;
+	W !!,"[",$P($T(EXOE),"[",2)
+	S SDOE=$$EXOE^SDOE(.SDFN,.SDBEG,.SDEND,"C")
+	IF SDOE D
+	. W !,"First enounter found for date range:"
+	. D GETGEN^SDOE(.SDOE,"SDATA")
+	. S SDFMT="EXTERNAL"
+	. K SDPARSE
+	. D PARSE^SDOE(.SDATA,SDFMT,"SDPARSE")
+	. W !!?5," IEN: ",SDOE
+	. S SDNODE="" F  S SDNODE=$O(SDPARSE(SDNODE)) Q:SDNODE=""  W !?5,"Node: ",SDNODE," --> ",SDPARSE(SDNODE)
+	ELSE  D
+	. W !,"No enounter found in date range."
+	. D MSG^SDZQUT()
+	W !
+EXOEQ	D CLEAN^DILF
+	Q
+	;
+
+SDZQRY
+SDZQRY	;ALB/MJK - Test Logic for Next/Eof Processing of Query Object ;8/12/96
+	;;5.3;ssss;;Aug 12, 1996
+	;
+DATE	; -- scan by 'date/time'
+	N SDQ,SDEBUG,SDBEG,SDEND,SDFIL
+	IF '$$RANGE^SDZQUT(.SDBEG,.SDEND) G DATEQ
+	;
+	D INIT^SDZQUT
+	D OPEN^SDQ(.SDQ) ;                                                                      [API ID: 79]
+	IF '$$ERRCHK^SDQUT() D INDEX^SDQ(.SDQ,"DATE/TIME","SET") ;                              [API ID: 85]
+	IF '$$ERRCHK^SDQUT() D DATE^SDQ(.SDQ,.SDBEG,.SDEND,"SET") ;                     [API ID: 82]
+	IF '$$ERRCHK^SDQUT() D:SDFIL]"" FILTER^SDQ(.SDQ,SDFIL,"SET") ;                  [API ID: 83]
+	IF '$$ERRCHK^SDQUT() D ACTIVE^SDQ(.SDQ,"TRUE","SET") ;                          [API ID: 88]
+	IF $$ERROR^SDZQUT(.SDQ) G DATEQ
+	;
+	D FIRST^SDQ(.SDQ) ;                                                                     [API ID: 90]
+	;                          FIRST call is not needed since ACTIVE call
+	;                          above will automatically position cursor at
+	;                          first record. Shown here for demo purposes.
+	;
+	F  Q:$$EOF^SDQ(.SDQ)  D  ;                                                              [API ID: 86]
+	. D PROCESS(.SDQ)
+	. D NEXT^SDQ(.SDQ) ;                                                                    [API ID: 92]
+	;
+	W !!,"Count: ",$$COUNT^SDQ(.SDQ) ;                                                      [API ID: 89]
+	;
+	D CLOSE^SDQ(.SDQ) ;                                                                     [API ID: 80]
+	;
+DATEQ	D CLEAN^DILF
+	Q
+	;
+PAT	; -- scan by 'patient'
+	N SDQ,SDFN,SDEBUG,SDCNT,SDFIL
+	IF '$$SELPAT^SDZQUT(.SDFN) G PATQ
+	;
+	D INIT^SDZQUT
+	D OPEN^SDQ(.SDQ) ;                                                                      [API ID: 79]
+	IF '$$ERRCHK^SDQUT() D INDEX^SDQ(.SDQ,"PATIENT","SET") ;                                [API ID: 85]
+	IF '$$ERRCHK^SDQUT() D PAT^SDQ(.SDQ,SDFN,"SET") ;                                       [API ID: 81]
+	IF '$$ERRCHK^SDQUT() D:SDFIL]"" FILTER^SDQ(.SDQ,SDFIL,"SET") ;                          [API ID: 83]
+	IF '$$ERRCHK^SDQUT() D ACTIVE^SDQ(.SDQ,"TRUE","SET") ;                                  [API ID: 88]
+	IF $$ERROR^SDZQUT(.SDQ) G PATQ
+	;
+	W !!,"Positioning to last entry..."
+	;N SDZB S SDZB=$ZH ; timing test code
+	D LAST^SDQ(.SDQ) ;                                                                      [API ID: 91]
+	;                         Need to position cursor at last record
+	;                         in order to scan backwards thru records
+	;
+	W !!,"Scan Backward..."
+	F  Q:$$BOF^SDQ(.SDQ)  D  ;                                                              [API ID: 87]
+	. D PROCESS(.SDQ)
+	. D PRIOR^SDQ(.SDQ) ;                                                                   [API ID: 93]
+	W !!,"Backward Count: ",$$COUNT^SDQ(.SDQ),! ;                                           [API ID: 89]
+	;W !!,"Time: ",$ZH-SDZB Q  ; -- timing test code
+	D RETURN^SDZQUT
+	;
+	D REFRESH^SDQ(.SDQ) ;                                                                   [API ID: 94]
+	;                            Cursor will be positioned at first record
+	;                            after REFRESH call.
+	;
+	W !,"Scan Forward..."
+	F  Q:$$EOF^SDQ(.SDQ)  D  ;                                                              [API ID: 86]
+	. D PROCESS(.SDQ)
+	. D NEXT^SDQ(.SDQ) ;                                                                    [API ID: 92]
+	W !!,"Forward Count: ",$$COUNT^SDQ(.SDQ),! ;                                            [API ID: 89]
+	;
+	D CLOSE^SDQ(.SDQ) ;                                                                     [API ID: 80]
+	;
+PATQ	D CLEAN^DILF
+	Q
+	;
+PATDT	; -- scan by 'pateint and date/time'
+	;       - uses local error array
+	;       - nesting test
+	;
+	N SDQ,SDER,SDFN,SDOE,SDEBUG,SDBEG,SDEND,SDCNT,SDFIL
+	IF '$$SELPAT^SDZQUT(.SDFN) G PATDTQ
+	IF '$$RANGE^SDZQUT(.SDBEG,.SDEND) G PATDTQ
+	;
+	D INIT^SDZQUT
+	D OPEN^SDQ(.SDQ,"SDER") ;                                 [API ID: 79]
+	IF '$$ERRCHK^SDQUT("SDER") D INDEX^SDQ(.SDQ,"PATIENT/DATE","SET","SDER") ;              [API ID: 85]
+	IF '$$ERRCHK^SDQUT("SDER") D PAT^SDQ(.SDQ,SDFN,"SET","SDER") ;                          [API ID: 81]
+	IF '$$ERRCHK^SDQUT("SDER") D DATE^SDQ(.SDQ,.SDBEG,.SDEND,"SET","SDER") ;                [API ID: 82]
+	IF '$$ERRCHK^SDQUT("SDER") D:SDFIL]"" FILTER^SDQ(.SDQ,SDFIL,"SET","SDER") ;             [API ID: 83]
+	IF '$$ERRCHK^SDQUT("SDER") D ACTIVE^SDQ(.SDQ,"TRUE","SET","SDER") ;                     [API ID: 88]
+	IF $$ERROR^SDZQUT(.SDQ,"SDER") G PATDTQ
+	;
+	D FIRST^SDQ(.SDQ,"SDER") ;                                                              [API ID: 90]
+	;                          FIRST call is not needed since ACTIVE call
+	;                          above will automatically position cursor at
+	;                          first record. Shown here for demo purposes.
+	;
+	D NEST
+	;
+	F  Q:$$EOF^SDQ(.SDQ,"SDER")  D  ;                                                       [API ID: 86]
+	. D PROCESS(.SDQ,"SDER")
+	. D NEXT^SDQ(.SDQ,"SDER") ;                                                             [API ID: 92]
+	;
+	W !!,"Count: ",$$COUNT^SDQ(.SDQ,"SDER") ;                                               [API ID: 89]
+	;
+	D CLOSE^SDQ(.SDQ,"SDER") ;                                                              [API ID: 80]
+	;
+PATDTQ	D CLEAN^DILF
+	Q
+	;
+VISIT	; -- scan by 'visit'
+	N SDQ,SDVST,SDOE,SDEBUG,SDCNT,SDFIL
+	IF '$$SELVST^SDZQUT(.SDVST) G VISITQ
+	;
+	D INIT^SDZQUT
+	D OPEN^SDQ(.SDQ) ;                                                                      [API ID: 79]
+	IF '$$ERRCHK^SDQUT() D INDEX^SDQ(.SDQ,"VISIT","SET") ;                                  [API ID: 85]
+	IF '$$ERRCHK^SDQUT() D VISIT^SDQ(.SDQ,SDVST,"SET") ;                                    [API ID: 84]
+	IF '$$ERRCHK^SDQUT() D:SDFIL]"" FILTER^SDQ(.SDQ,SDFIL,"SET") ;                          [API ID: 83]
+	IF '$$ERRCHK^SDQUT() D ACTIVE^SDQ(.SDQ,"TRUE","SET") ;                                  [API ID: 88]
+	IF $$ERROR^SDZQUT(.SDQ) G VISITQ
+	;
+	D FIRST^SDQ(.SDQ) ;                                                                     [API ID: 90]
+	;                          FIRST call is not needed since ACTIVE call
+	;                          above will automatically position cursor at
+	;                          first record. Shown here for demo purposes.
+	;
+	F  Q:$$EOF^SDQ(.SDQ)  D  ;                                                              [API ID: 86]
+	. D PROCESS(.SDQ)
+	. D NEXT^SDQ(.SDQ) ;                                                                    [API ID: 92]
+	;
+	W !!,"Count: ",$$COUNT^SDQ(.SDQ) ;                                                      [API ID: 89]
+	;
+	D CLOSE^SDQ(.SDQ) ;                                                                     [API ID: 80]
+	;
+VISITQ	D CLEAN^DILF
+	Q
+	;
+PROCESS(SDQ,SDERR)	; -- do some process
+	N SDOE
+	S SDOE=+$$GETENTRY^SDQ(.SDQ,$G(SDERR)) ;                                                [API ID: 95]
+	W !,SDOE," >>>",$$GETOE^SDOEOE(.SDOE,$G(SDERR)) ;                                       [API ID: 98]
+	Q
+	;
+NEST	; -- query object nesting test
+	N SDBYPASS
+	W !!,"-----------------------------------------------------------------"
+	W !,"Will now call DATE^SDZQRY to test nesting of queries..."
+	S SDBYPASS=1
+	D DATE
+	W !,"Nesting test complete...now back to PATDT^SDZQRY call..."
+	W !,"------------------------------------------------------------------"
+	W !! H 2
+	Q
+	;
+
+SDZQSCAN
+SDZQSCAN	;ALB/MJK - Test Logic for Scan Method of Query Object ;8/12/96
+	;;5.3;ssss;;Aug 12, 1996
+	;
+DATE	; -- scan by 'date/time'
+	N SDQ,SDEBUG,SDBEG,SDEND,SDCNT,SDFIL
+	IF '$$RANGE^SDZQUT(.SDBEG,.SDEND) G DATEQ
+	;
+	D INIT^SDZQUT
+	D OPEN^SDQ(.SDQ) ;                                                                         [API ID: 79]
+	IF '$$ERRCHK^SDQUT() D INDEX^SDQ(.SDQ,"DATE/TIME","SET") ;                                 [API ID: 85]
+	IF '$$ERRCHK^SDQUT() D DATE^SDQ(.SDQ,.SDBEG,.SDEND,"SET") ;                                [API ID: 82]
+	IF '$$ERRCHK^SDQUT() D SCANCB^SDQ(.SDQ,"D CALLBACK^SDZQSCAN(Y,Y0,.SDSTOP)","SET") ;        [API ID: 100]
+	IF '$$ERRCHK^SDQUT() D:SDFIL]"" FILTER^SDQ(.SDQ,SDFIL,"SET") ;                             [API ID: 83]
+	IF '$$ERRCHK^SDQUT() D ACTIVE^SDQ(.SDQ,"TRUE","SET") ;                                     [API ID: 88] 
+	IF $$ERROR^SDZQUT(.SDQ) G DATEQ
+	;
+	S SDCNT=0
+	W @IOF,!,"Forward Scan for Date Range:"
+	D SCAN^SDQ(.SDQ,"FORWARD") ;                                                               [API ID: 99]
+	W !!,"Count: ",SDCNT
+	D CLOSE^SDQ(.SDQ) ;                                                                        [API ID: 80]
+DATEQ	D CLEAN^DILF
+	Q
+	;
+PAT	; -- scan by 'patient' / use local error arry
+	N SDQ,SDER,SDFN,SDEBUG,SDCNT,SDFIL
+	IF '$$SELPAT^SDZQUT(.SDFN) G PATQ
+	;
+	D INIT^SDZQUT
+	D OPEN^SDQ(.SDQ,"SDER") ;                                                                  [API ID: 79]
+	IF '$$ERRCHK^SDQUT("SDER") D INDEX^SDQ(.SDQ,"PATIENT","SET","SDER") ;                            [API ID: 85]
+	IF '$$ERRCHK^SDQUT("SDER") D PAT^SDQ(.SDQ,SDFN,"SET","SDER") ;                                   [API ID: 81]
+	IF '$$ERRCHK^SDQUT("SDER") D SCANCB^SDQ(.SDQ,"D CALLBACK^SDZQSCAN(Y,Y0,.SDSTOP)","SET","SDER") ; [API ID: 100]
+	IF '$$ERRCHK^SDQUT("SDER") D:SDFIL]"" FILTER^SDQ(.SDQ,SDFIL,"SET","SDER") ;                      [API ID: 83]
+	IF '$$ERRCHK^SDQUT("SDER") D ACTIVE^SDQ(.SDQ,"TRUE","SET","SDER") ;                              [API ID: 88] 
+	IF $$ERROR^SDZQUT(.SDQ) G PATQ
+	;
+	S SDCNT=0
+	W @IOF,!,"Forward(default) Scan for Patient:"
+	D SCAN^SDQ(.SDQ,"","SDER") ; use default direction                                         [API ID: 99]
+	W !!,"Count: ",SDCNT ; SDCNT is incremented in callback
+	D CLOSE^SDQ(.SDQ,"SDER") ;                                                                 [API ID: 80]
+PATQ	D CLEAN^DILF
+	Q
+	;
+PATDT	; -- scan by 'pateint and date/time'
+	N SDQ,SDFN,SDEBUG,SDBEG,SDEND,SDCNT,SDFIL
+	IF '$$SELPAT^SDZQUT(.SDFN) G PATDTQ
+	IF '$$RANGE^SDZQUT(.SDBEG,.SDEND) G PATDTQ
+	;
+	D INIT^SDZQUT
+	D OPEN^SDQ(.SDQ) ;                                                                         [API ID: 79]
+	IF '$$ERRCHK^SDQUT() D INDEX^SDQ(.SDQ,"PATIENT/DATE","SET") ;                              [API ID: 85]
+	IF '$$ERRCHK^SDQUT() D PAT^SDQ(.SDQ,SDFN,"SET") ;                                          [API ID: 81]
+	IF '$$ERRCHK^SDQUT() D DATE^SDQ(.SDQ,.SDBEG,.SDEND,"SET") ;                                [API ID: 82]
+	IF '$$ERRCHK^SDQUT() D SCANCB^SDQ(.SDQ,"D CALLBACK^SDZQSCAN(Y,Y0,.SDSTOP)","SET") ;        [API ID: 100]
+	IF '$$ERRCHK^SDQUT() D:SDFIL]"" FILTER^SDQ(.SDQ,SDFIL,"SET") ;                             [API ID: 83]
+	IF '$$ERRCHK^SDQUT() D ACTIVE^SDQ(.SDQ,"TRUE","SET") ;                                     [API ID: 88] 
+	IF $$ERROR^SDZQUT(.SDQ) G PATDTQ
+	;
+	S SDCNT=0
+	W @IOF,!,"Backward Scan for Patient and Date Range:"
+	D SCAN^SDQ(.SDQ,"BACKWARD") ;                                                              [API ID: 99]
+	W !!,"Count: ",SDCNT ; SDCNT is incremented in callback
+	D CLOSE^SDQ(.SDQ) ;                                                                        [API ID: 80]
+PATDTQ	D CLEAN^DILF
+	Q
+	;
+VISIT	; -- scan by 'visit'
+	N SDQ,SDVST,SDEBUG,SDCNT,SDFIL
+	IF '$$SELVST^SDZQUT(.SDVST) G VISITQ
+	;
+	;
+	D INIT^SDZQUT
+	D OPEN^SDQ(.SDQ) ;                                                                         [API ID: 79]
+	IF '$$ERRCHK^SDQUT() D INDEX^SDQ(.SDQ,"VISIT","SET") ;                                     [API ID: 85]
+	IF '$$ERRCHK^SDQUT() D VISIT^SDQ(.SDQ,SDVST,"SET") ;                                       [API ID: 84]
+	IF '$$ERRCHK^SDQUT() D SCANCB^SDQ(.SDQ,"D CALLBACK^SDZQSCAN(Y,Y0,.SDSTOP)","SET") ;        [API ID: 100]
+	IF '$$ERRCHK^SDQUT() D:SDFIL]"" FILTER^SDQ(.SDQ,SDFIL,"SET") ;                             [API ID: 83]
+	IF '$$ERRCHK^SDQUT() D ACTIVE^SDQ(.SDQ,"TRUE","SET") ;                                     [API ID: 88] 
+	IF $$ERROR^SDZQUT(.SDQ) G VISITQ
+	;
+	S SDCNT=0
+	W @IOF,!,"Forward Scan for Visit:"
+	D SCAN^SDQ(.SDQ,"FORWARD") ;                                                               [API ID: 99]
+	W !!,"Count: ",SDCNT ; SDCNT is incremented in callback
+	D CLOSE^SDQ(.SDQ) ;                                                                        [API ID: 80]
+VISITQ	D CLEAN^DILF
+	Q
+	;
+CALLBACK(SDOE,SDOE0,SDSTOP)	; -- callback logic
+	W !,SDOE," >>>",SDOE0
+	S SDCNT=SDCNT+1
+	Q
+	;
+
+SDZQUT
+SDZQUT	;ALB/MJK - Test Tools for ACRP APIs and Query Object ;8/12/96
+	;;5.3;ssss;;Aug 12, 1996
+	;
+SEL(SDGL,SDIEN)	; -- select encounter
+	N DIC,Y
+	S DIC=SDGL,DIC(0)="AEMQ" D ^DIC
+	S SDIEN=+Y
+	;S SDIEN=99999999 ; used to force errors
+	Q $S(SDIEN>0:SDIEN,1:0)
+	;
+SELOE(SDIEN)	; -- select encounter
+	Q $$SEL("^SCE(",.SDIEN)
+	;
+SELPAT(SDIEN)	; -- select patient
+	Q $$SEL("^DPT(",.SDIEN)
+	;
+SELCPT(SDIEN)	; -- select cpt
+	Q $$SEL("^ICPT(",.SDIEN)
+	;
+SELPRV(SDIEN)	; -- select provider
+	Q $$SEL("^VA(200,",.SDIEN)
+	;
+SELDX(SDIEN)	; -- select dx
+	Q $$SEL("^ICD9(",.SDIEN)
+	;
+SELVST(SDIEN)	; -- select cpt
+	Q $$SEL("^AUPNVSIT(",.SDIEN)
+	;
+MSG(SDERR)	; -- show error message [optional processing]
+	N SDROOT
+	IF $G(SDERR)="" S SDROOT="^TMP(""DIERR"",$J)"
+	IF $G(SDERR)]"" S SDROOT=SDERR_"(""DIERR"")"
+	Q:'$O(@SDROOT@(0))
+	W !
+	D MSG^DIALOG("WES","","",5,$G(SDERR))
+	D RETURN
+	Q
+	;
+RETURN	;
+	N DIR
+	S DIR(0)="E",DIR("A")="Press RETURN to continue"
+	W ! D ^DIR W !
+	Q
+	;
+RANGE(SDBEG,SDEND)	; -- select date range
+	N X1,X2,X,SDFIRST,SDLAST,DIR
+	S (SDBEG,SDEND)=0,SDFIRST=2900101,SDLAST=2991231
+	S DIR("B")=$$FMTE^XLFDT(DT)
+	S DIR(0)="DA"_U_SDFIRST_":"_SDLAST_":EX",DIR("A")="Select Beginning Date: "
+	S DIR("?",1)="Enter a date between "_$$FMTE^XLFDT(SDFIRST)_" to "_$$FMTE^XLFDT(SDLAST)_".",DIR("?")=" "
+	W ! D ^DIR K DIR G RANGEQ:Y'>0 S SDBEG=Y
+	;
+	S DIR("B")=$$FMTE^XLFDT(SDBEG)
+	S DIR(0)="DA"_U_SDBEG_":"_SDLAST_":EX",DIR("A")="Select    Ending Date: "
+	S DIR("?",1)="Enter a date between "_$$FMTE^XLFDT(SDBEG)_" to "_$$FMTE^XLFDT(SDLAST)_".",DIR("?")=" "
+	D ^DIR K DIR G RANGEQ:Y'>0 S SDEND=Y_".2359"
+	;
+RANGEQ	Q SDEND
+	;
+DATE(SDBEG)	; -- select date
+	N X1,X2,X,SDFIRST,SDLAST,DIR
+	S SDBEG=0,SDFIRST=2900101,SDLAST=2991231
+	S DIR("B")=$$FMTE^XLFDT(DT)
+	S DIR(0)="DA"_U_SDFIRST_":"_SDLAST_":EX",DIR("A")="Select Date: "
+	S DIR("?",1)="Enter a date between "_$$FMTE^XLFDT(SDFIRST)_" to "_$$FMTE^XLFDT(SDLAST)_".",DIR("?")=" "
+	W ! D ^DIR K DIR S:Y>0 SDBEG=Y
+	Q SDBEG
+	;
+	;
+INIT	; -- setup variables for testing
+	S SDEBUG=0 ; [1 - display error ; 0 don't display errors]
+	;S SDEBUG=1
+	;
+	D HOME^%ZIS
+	;
+	; -- SDBYPASS used for nesting test
+	IF '$G(SDBYPASS) D KILL
+	;
+	N DIR,Y
+	S DIR(0)="Y",DIR("A")="Apply 'appointment only' filter",DIR("B")="No"
+	D ^DIR
+	S SDFIL=$S(Y:"IF $P(Y0,U,8)=1",1:"")
+	Q
+	;
+KILL	; -- kill overall vars and globals left during testing
+	K ^TMP("DIERR",$J)
+	K SDERR,SDER
+	K ^TMP("SDQUERY LIST",$J)
+	K ^TMP("SDQUERY CLASS",$J)
+	IF $G(SDQUERY)]"" D
+	. K @SDQUERY
+	. K SDQUERY
+	K SDQDATA
+	K ^TMP("SDQDATA",$J)
+	Q
+	;
+ERROR(SDQ,SDERROR)	; -- were there errors? If so, show error and close qry
+	IF '$$ERRCHK^SDQUT($G(SDERROR)) Q 0
+	D MSG($G(SDERROR))
+	D CLOSE^SDQ(.SDQ)
+	Q 1
+	;
+
+

@@ -1,0 +1,668 @@
+$TXT Created by PHELPS,TY at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 11/21/06 at 22:21
+=============================================================================
+Run Date: FEB 07, 2007                     Designation: GMRC*3*50
+Package : GMRC - CONSULT/REQUEST TRACKING     Priority: Mandatory
+Version : 3        SEQ #46                      Status: Released
+                  Compliance Date: MAR 10, 2007
+=============================================================================
+
+Associated patches: (v)GMRC*3*21   <<= must be installed BEFORE `GMRC*3*50'
+                    (v)GMRC*3*22   <<= must be installed BEFORE `GMRC*3*50'
+                    (v)OR*3*215    <<= must be installed BEFORE `GMRC*3*50'
+
+Subject: GROUP UPDATE, SIGNIFICANT FINDINGS, WRONG TIME ZONE, AND RELATED SERVICES ISSUES
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ This patch corrects group updating to store the appropriate Last Action 
+ Taken and to update Inter-Facility Consults at the partnering facility.   
+ It also removes an inappropriate time zone stamp in the display of Consult
+ activities and prevents Services set-up as Inter-Facility from being 
+ added as a Related Service to a Consult Procedure.  Finally, this patch
+ provides a list of consults which have the Significant Finding stored as
+ an ampersand.
+  
+ ASSOCIATED NSR(s):
+ ==================
+ N/A
+  
+ ASSOCIATED REMEDY:
+ ================
+ 1. HD0000000068007     MAD-0504-40687  Procedure IFC won't transmit
+ 2. HD0000000068369     TUA-1004-32034  Update of IFC requests
+    Duplicates:
+       HD0000000068781     MAC-0205-60463  Remote site did mass complete -
+                              did not affect IFCs here
+       HD0000000068800     BUT-0205-20604  IFC update not seen at Ordering
+                              Site
+       HD0000000087042     Group update functionality for Interfacility
+                              Consults does not work.  We cannot update
+                              consults sent to New Orleans and They can
+       HD0000000088188     IFCs not updating with group update functionality
+ 3. HD0000000112065     Group update doesn't update the last action taken
+                           field
+ 4. HD0000000133729     Question on TIME ZONE notation on IFCs
+ 5. HD0000000068574     ISL-1204-51593  Provide sites list of consults to
+                           edit Significant Findings
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ ALTOONA, PA
+ NORTHERN CALIFORNIA HCS
+ PUGET SOUND HCS
+ UPSTATE NEW YORK HCS
+  
+ REMEDY OVERVIEW:
+ ==============
+ 1. HD0000000068007     MAD-0504-40687  Procedure IFC won't transmit
+  
+    Problem:
+    --------
+    The problem reported by the site was an inability to transmit a Procedure
+    Inter-Facility Consult.  The Procedure Consult in question was not set-up
+    as an Inter-Facility Consult, but a Related Service was.  A Related
+    Service should never be set-up as an Inter-Facility Consult.  This can
+    cause the Inter-Facility Consults to fail to transmit to the partnering
+    site.
+  
+    Resolution:
+    -----------
+    This patch adds a check for Service Inter-Facility Consults when
+    selecting services at the "Select RELATED SERVICES: " prompt.  The input
+    transform for the RELATED SERVICES (#.01) field of the RELATED SERVICES
+    (#123.32) sub-file was modified.  The changes are the following:
+  
+       Before Patch
+       ------------
+       123.32,.01
+  
+            INPUT TRANSFORM:I $P($G(^GMR(123.5,+X,0)),"^",2)=9!($P($G(^GMR(
+                            123.5,+X,0)),"^",2)=1) D EN^DDIOL("This service
+                             is not orderable. Try again.") K X
+  
+       After Patch
+       -----------
+       123.32,.01
+  
+            INPUT TRANSFORM:I $P($G(^GMR(123.5,+X,0)),"^",2)=9!($P($G(^GMR(
+                            123.5,+X,0)),"^",2)=1)!(+$G(^GMR(123.5,+X,"IFC"
+                            )))!(+$O(^GMR(123.5,+X,"IFCS",0))) D EN^DDIOL("
+                            This service is not orderable. Try again.") K X
+  
+  
+  
+    A post-init routine, GMRCYP50, has been included with this patch to
+    provide a listing of all Consult Procedures containing a RELATED SERVICE
+    set-up as an Inter-Facility Consult.  If any are found, a mailman
+    message will be generated and sent to the installer.  The message will
+    be similar to the following:
+  
+ Subj: RELATED SERVICES ARE INVALID  [#2085249] 05/04/06@18:57  23 lines
+ From: PATCH GMRC*3.0*50 POST-INIT  In 'IN' basket.   Page 1  *New*
+ --------------------------------------------------------------------------
+ This message has been sent by patch GMRC*3.0*50 at the completion of
+ the post-init routine.
+   
+ This message was sent because Consult Procedure records were found which
+ contained one or more Related Services which are setup as Inter-Facility
+ Consults.  These related services should be removed and replaced with
+ non-IFC services to prevent possible problems in the Consult/Request
+ Tracking package.  The following information is provided to assist you
+ in your cleanup efforts.
+   
+ PROCEDURE
+      RELATED SERVICE
+ ===========================================================================
+   
+ EEG (#4)
+     ELECTROENCEPHALOGRAM (#131)
+   
+ ELECTROENCEPHALOGRAM (#5)
+     ELECTROENCEPHALOGRAM (#131)
+  
+   
+   
+ Total invalid Related Services: 2.
+  
+ Enter message action (in IN basket): Ignore//
+  
+ ++++++++++++++++++++++++++++++++++++++++++++++++++
+ NOTE: Due to questions coming out of testing this patch, 
+   A known limitation of the software was pointed out and will be noted 
+   here. This Note statement is located on page 11 of the INTER-FACILITY 
+   CONSULTS IMPLEMENTATION GUIDE. 
+  
+  Note: Even though the RELATED SERVICE is a multiple, the consulting
+        facility can only have one RELATED SERVICE entry for an inter-
+        facility procedure.
+  If sites need multiple services, they could set the procedure up with
+  a related service that is a grouper.  Then, the users of that service
+  could forward it to the appropriate service.
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++
+  
+  
+  
+ 2. HD0000000068369     TUA-1004-32034  Update of IFC requests
+  
+    Problem:
+    --------
+    The issue reported was when a site used the Group update of
+    consult/procedure requests [GMRCSTSU] option, Inter-Facility Consults
+    were not being updated at the partnering site.  This was because 
+    the before mentioned option did not check if the consults were Inter-
+    Facility.
+  
+    Resolution:
+    -----------
+    Routine GMRCSTS1 was modified to check if the Consult is an Inter-
+    Facility Consult and update the partnering facililty with the
+    appropriate information during the group update function.
+  
+ 3. HD0000000112065     Group update doesn't update the last action taken
+                           field
+  
+    Problem:
+    --------
+    The problem reported is the Group update of consult/procedure requests
+    [GMRCSTSU] option is not updating the LAST ACTION TAKEN (#9) field of
+    the REQUEST/CONSULTATION (#123) file.
+  
+    Resolution:
+    -----------
+    Routine GMRCSTS1 was modified to add the storing of the LAST ACTION
+    TAKEN (#9) field of the REQUEST/CONSULTATION (#123) file during the
+    group update function.
+  
+ 4. HD0000000133729     Question on TIME ZONE notation on IFCs
+  
+    Problem:
+    --------
+    The problem reported is a time zone stamp for a remote site is being
+    added to the (entered) date/time for remote activities when viewing
+    the Consult Detailed Display.  Since this date/time is the local
+    date/time, the time zone stamp is inappropriate and should be removed.
+  
+    Resolution:
+    -----------
+    Routine GMRCSLM4 was modified to remove the time zone stamp associated
+    with the (entered) date/time for remote activities when viewing the
+    Consult Detailed Display.
+  
+ 5. HD0000000068574     ISL-1204-51593  Provide sites list of consults to
+                           edit Significant Findings
+  
+    Problem:
+    --------
+    Prior to CPRS GUI v26 (OR*3*215), when entering Consult "Significant
+    Findings" via the CPRS GUI, the value stored was the ampersand ("&")
+    character, which was subsequently treated as if "Unknown" had been
+    selected.  Significant Findings entered through OE/RR ListManager
+    store and display correctly.  This was fixed in CPRS GUI v26 (OR*3*215),
+    so the correct value selected is being stored and displayed.  Refer to
+    Order Entry Result Reporting (OERR) Remedy tickets: HD0000000070231 and
+    HD0000000070877 for additional information.  As a result of this issue
+    there may be consult "Significant Findings" entries which are set
+    inappropriately and need to be corrected.
+  
+    Resolution:
+    -----------
+    As it is not possible to automatically fix these bad consult "Significant
+    Findings" entries, a software solution is needed to provide sites with a
+    list of consults from which they can manually review and edit
+    "Significant Findings" as appropriate.  This patch uses a pre-init
+    routine to search the SIGNIFICANT FINDINGS (#15) field of the
+    REQUEST/CONSULTATION (#123) file for an ampersand ("&").  Any that are
+    found are reported in Mailman Message(s) which are sent to the installer.
+    There are two possible types of messages you might receive.  One type
+    will contain all locally correctable consults, while the second type of
+    message will contain Inter-Facility Consults where the site is the
+    requesting (sending) site.  This second type of message is intended to
+    list consults that can not be corrected locally.  The pre-init reports
+    can be generated with the patients' full name listed or with the patients'
+    initials and last six of their Social Security Number.  Following are
+    examples of the two types of messages, with each demonstrating one of
+    the two ways to display the patient identifier.  The first type of
+    message(s) will look like the following using the patients full names:
+   
+ Subj: SIGNIFICANT FINDINGS VALUES ARE INVALID (MSG 1 of 1)  [#2104297]
+ 10/17/06@09:37  40 lines
+ From: PATCH GMRC*3.0*50 PRE-INIT  In 'IN' basket.   Page 1  *New*
+ ----------------------------------------------------------------------------
+ This message (1 of 3) has been sent by patch GMRC*3.0*50 at the
+ completion of the pre-init routine.
+    
+ This message was sent because Consult records were found which contained an
+ Ampersand as the Significant Finding.  Since these can not be corrected
+ automatically, this message was created to assist in a manual correction of
+ this data.  We are hopeful that the following data will contain enough
+ information to allow your site to make the corrections, or at least give you
+ the information needed to research the specific consult and determine what
+ the Significant Finding should have been.  It is important to understand the
+ comments from the Significant Finding are fine and the only problem
+ needing correction is the Significant Finding value itself (Yes/No/Unknown).
+ Per guidance from HIMSS, it is preferable that an audit trail exist for this
+ fix.  A disclaimer should be added, if possible.  To correct the
+ Significant Finding, you can use the Action, Consult Tracking menu on the
+ Consults tab of CPRS GUI.  The person making this change will need the
+ appropriate update authority for the Consult Services involved.  It should
+ also be noted the significant finding will display as "Unknown" despite
+ the ampersand ("&") stored in the data file.
+    
+ PATIENT IDENTIFIER
+   CONSULT DATE(IEN)
+   TO SERVICE                                                   STATUS
+     ACTIVITY            ACTIVITY DATE          RESPONSIBLE PERSON
+     ACTIVITY COMMENTS
+ ============================================================================
+   
+ TEST,GMRC 1
+   APR 02, 2004@11:31 (542938)
+   WOMEN GYN SCREENING CLINIC (PRIME CARE)                      COMPLETE
+     SIG FINDING UPDATE  JUN 17, 2004@14:04:02  TEST,GMRC UPDATE1
+     SEE RADIOLOGIST REPORT.
+    
+ TEST,GMRC 2
+   MAY 03, 2004@14:21 (550819)
+   CARDIOLOGY CLINIC                                            DISCONTINUED
+     SIG FINDING UPDATE  MAY 21, 2004@10:22:21  TEST,GMRC UPDATE2
+     Please read fellow's note of 5/19/04
+    
+ TEST,GMRC 3
+   FEB 09, 2004@15:15 (527834)
+   COMMUNITY HEALTH NURSE COORDINATORS                          COMPLETE
+     SIG FINDING UPDATE  MAR 02, 2004@11:25:42  TEST,GMRC UPDATE3
+    
+ TEST,GMRC 4
+   NOV 03, 2003@15:31 (503908)
+   WOMEN GYN SCREENING CLINIC (PRIME CARE)                      COMPLETE
+     SIG FINDING UPDATE  DEC 19, 2003@12:44:13  TEST,GMRC ADMIN
+     SEE RADIOLOGIST REPORT.
+   
+   FEB 03, 2004@08:24 (525904)
+   WOMEN GYN SCREENING CLINIC (PRIME CARE)                      COMPLETE
+     SIG FINDING UPDATE  MAY 14, 2004@15:14:35  TEST,GMRC ADMIN
+     SEE RADIOLOGIST REPORT.  PLEASE ACKNOWLEDGE RECEIPT.
+    
+ TEST,GMRC 5
+   MAY 13, 2002@11:01 (375826)
+   HOME OXYGEN REQUEST                                          COMPLETE
+     SIG FINDING UPDATE  NOV 03, 2003@11:31:11  TEST,GMRC ADMIN
+     Patient is being supplied home oxygen through the COLUMBUS VAMC.
+   
+   AUG 05, 2003@15:07 (481042)
+   HOME OXYGEN REQUEST                                          COMPLETE
+     SIG FINDING UPDATE  JAN 22, 2004@07:54:43  TEST,GMRC ADMIN
+     THIS PATIENT RECEIVES HOME OXYGEN THROUGH COLUMBUS VAMC
+   
+   NOV 20, 2003@15:43 (508580)
+   HOME OXYGEN REQUEST                                          COMPLETE
+     SIG FINDING UPDATE  JAN 22, 2004@07:55:12  TEST,GMRC ADMIN
+     THIS PATIENT RECEIVES HOME OXYGEN THROUGH COLUMBUS VAMC
+ ...
+   
+ TEST,GMRC 6
+   MAR 18, 2004@10:07 (538353)
+   RESIDENTIAL CARE HOME                                        COMPLETE
+     SIG FINDING UPDATE  MAR 20, 2004@22:01     TEST,GMRC ADMIN
+     Per 3/19/04 Social Work PN, the patient is not seen as stable enough for
+     preparation for discharge to RCH.  He appears preoccupied with his
+     "guardianship status" and is not seen as stable on medications. VA
+     approved CRC homes are unable to handle the patient's behaviors.  He is not
+     seen as appropriate for an assisted living facility as the ones affiliated
+     with the VA CRC Program are not receptive to the placement of any patient
+     with active behavioral symtoms.  His physical functioning level of care is
+     not seen as a predominant factor to be considered for placement in a VA
+     CRC approved home.  The guardian is free to arrange placement in a non-VA
+     approved CRC home of his or the patient's choice, if desired.
+    
+    
+    
+ Total records in this message: 500
+ Total records containing a Significant Finding of an ampersand: 1023
+   
+ Enter message action (in IN basket): Ignore//
+  
+  
+    The second type of message(s) will look like the following using the
+    patients initials and last six of their social security number:
+  
+ Subj: IFC SIGNIFICANT FINDINGS VALUES ARE INVALID (MSG 1 of 1)  [#20373]
+ 11/16/06@03:04  26 lines
+ From: PATCH GMRC*3.0*50 PRE-INIT  In 'IN' basket.   Page 1
+ ----------------------------------------------------------------------------
+ This message (1 of 1) has been sent by patch GMRC*3.0*50 at the
+ completion of the pre-init routine.
+   
+ This message was sent because Inter-Facility Consult records were found
+ which contained an Ampersand as the Significant Finding.  Since these can
+ not be corrected by the requesting (sending) site, this message was created
+ to alert you of these entries.  The Consulting (receiving) site(s) will need
+ to correct these entries and should receive a similar message when they
+ install this patch.  You can use this list as a record of Inter-Facility
+ Consults needing to be corrected by the Consulting (receiving) site(s).
+   
+ PATIENT IDENTIFIER
+   CONSULT DATE(IEN)
+   TO SERVICE                                                   STATUS
+     ACTIVITY            ACTIVITY DATE          RESPONSIBLE PERSON
+     ACTIVITY COMMENTS
+ ============================================================================
+   
+ (JES486697)
+   SEP 21, 2006@13:40 (146098)
+   CARDIOLOGY IFC                                               COMPLETE    
+     COMPLETE/UPDATE     NOV 15, 2006@12:25:12  TEST,GMRC IFC   
+     TESTING SIGNIFICANT FROM ADMIN COMPLETE AND NEW CODE TO FIND IT.
+   
+   
+   
+ Total records in this message: 1
+ Total records containing a Significant Finding of an ampersand: 1
+  
+ Enter message action (in IN basket): Ignore//
+  
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ NOTE:  Only the historical data should be affected. It is up to each 
+ individual site to decide whether to correct these.
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  
+   
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+ This patch can be loaded with users in the system.  But, it is recommended
+ it be installed when user activity is low.  Installation time will vary,
+ depending on the length of time the pre/post init routines take to run. 
+ From site testing the install could be from 3 minutes to 30 minutes.
+  
+ 1.  Choose the PackMan message containing this patch and invoke the 
+     INSTALL/CHECK MESSAGE PackMan option.  
+  
+ 2.  Start up the Kernel Installation and Distribution System Menu
+     [XPD MAIN]: 
+  
+          Edits and Distribution ...  
+          Utilities ...  
+          Installation ...  
+  
+     Select Kernel Installation & Distribution System Option: Installation
+                                                              ---
+          1      Load a Distribution
+          2      Verify Checksums in Transport Global
+          3      Print Transport Global
+          4      Compare Transport Global to Current System
+          5      Backup a Transport Global
+          6      Install Package(s)
+                 Restart Install of Package(s)
+                 Unload a Distribution
+  
+ 3.  From this menu, you may elect to use the following options
+     (When prompted for the INSTALL NAME, enter GMRC*3.0*50):
+      
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will
+         not backup any other changes such as DD's or templates.
+     b.  Compare Transport Global to Current System - This option
+         will allow you to view all changes that will be made when
+         this patch is installed.  It compares all components of this
+         patch (routines, DD's, templates, etc.).
+     c.  Verify Checksums in Transport Global - This option will
+         allow you to ensure the integrity of the routines that are
+         in the transport global.
+  
+ 4.  Use the Install Package(s) option and select the package
+     GMRC*3.0*50.
+  
+     a.  When prompted "Print Full Patient Names on pre-install report? YES//",
+         select 'NO' to print only the patient's initials and last six of
+         their SSN, or choose 'YES' to print the patient's full name.
+     b.  When prompted "Want KIDS to INHIBIT LOGONs during the
+         install? YES//", answer NO.
+     c.  When prompted "Want to DISABLE Scheduled Options and Menu 
+         Options and Protocols? YES//", answer YES.
+     d.  When prompted "Enter options you wish to mark as 'Out Of Order':",
+         enter the following options:
+  
+            Group update of consult/procedure requests [GMRCSTSU]
+            Setup procedures [GMRC PROCEDURE SETUP]
+   
+     e.  When prompted "Enter protocols you wish to mark as 'Out Of Order':",
+         enter the following protocols:
+  
+            Detailed Display [GMRCACT DETAILED DISPLAY]
+            Detailed Display [ORC DETAILED DISPLAY]
+  
+     f.  When prompted "Delay Install (Minutes):  (0-60): 0//", press
+         <return>.
+  
+ POST INSTALLATION INSTRUCTIONS:
+ ===============================
+  1.  If any invalid significant findings values of ampersand were found,
+      a mailman message was sent to the installer.  This message should be
+      forwarded to the appropriate personnel, including the clinical
+      application coordinator (CAC) so these entries may be corrected.
+   
+  2.  The pre-init routine, GMRCP50, may be used to search for consults
+      which still contain an ampersand as the Significant Finding.  Once
+      all the entries have been corrected, the pre-init may be deleted.
+      To run the pre-init from the programmers prompt type the following:
+   
+      D EN^GMRCP50
+  
+  
+ INSTALLATION EXAMPLE:
+ ===================== 
+   
+ Select Installation Option: 6  Install Package(s)
+ Select INSTALL NAME:  GMRC*3.0*50   Loaded from Distribution  10/17/06@09:27
+ :36
+      => GMRC*3*50
+   
+ This Distribution was loaded on Oct 17, 2006@09:27:36 with header of 
+    GMRC*3*50
+    It consisted of the following Install(s):
+     GMRC*3.0*50
+ Checking Install for Package GMRC*3.0*50
+    
+ Install Questions for GMRC*3.0*50
+  
+ Print Full Patient Names on pre-install report? YES//
+ Incoming Files:
+  
+  
+    123.3     GMRC PROCEDURE  (Partial Definition)
+ Note:  You already have the 'GMRC PROCEDURE' File.  
+   
+   
+ Want KIDS to INHIBIT LOGONs during the install? YES// NO
+ Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// 
+  
+ Enter options you wish to mark as 'Out Of Order': GMRCSTSU       Group updat
+ e of consult/procedure requests
+  
+ Enter options you wish to mark as 'Out Of Order': GMRC PROCEDURE SETUP
+  Setup procedures
+  
+ Enter options you wish to mark as 'Out Of Order': 
+  
+ Enter protocols you wish to mark as 'Out Of Order': GMRCACT DETAILED DISPLAY
+    Detailed Display      
+  
+ Enter protocols you wish to mark as 'Out Of Order': ORC DETAILED DISPLAY
+ Detailed Display  
+  
+ Enter protocols you wish to mark as 'Out Of Order': 
+  
+ Delay Install (Minutes):  (0-60): 0// 
+  
+ Enter the Device you want to print the Install messages.
+ You can queue the install by enter a 'Q' at the device prompt.
+ Enter a '^' to abort the install.
+  
+ DEVICE: HOME// ;;9999  UCX/TELNET
+  
+  
+  Install Started for GMRC*3.0*50 : 
+                Oct 17, 2006@09:37:53
+  
+ Build Distribution Date: Oct 16, 2006
+  
+  Installing Routines:
+                Oct 17, 2006@09:37:53
+  
+  Running Pre-Install Routine: PRE^GMRCP50
+  
+ Starting Pre-init...
+   
+    Searching for ampersand ("&") in the SIGNIFICANT FINDINGS (#15) field
+    of the REQUEST/CONSULTATION (#123) file.
+   
+    Consult entry 62965 has an ampersand ("&") as the Significant Finding.
+    Consult entry 326792 has an ampersand ("&") as the Significant Finding.
+    Consult entry 375826 has an ampersand ("&") as the Significant Finding.
+    Consult entry 382520 has an ampersand ("&") as the Significant Finding.
+    Consult entry 392653 has an ampersand ("&") as the Significant Finding.
+    Consult entry 392892 has an ampersand ("&") as the Significant Finding.
+    Consult entry 407309 has an ampersand ("&") as the Significant Finding.
+    Consult entry 451480 has an ampersand ("&") as the Significant Finding.
+    Consult entry 457497 has an ampersand ("&") as the Significant Finding.
+    Consult entry 461628 has an ampersand ("&") as the Significant Finding.
+    Consult entry 461835 has an ampersand ("&") as the Significant Finding.
+    Consult entry 471569 has an ampersand ("&") as the Significant Finding.
+    Consult entry 477369 has an ampersand ("&") as the Significant Finding.
+    Consult entry 478029 has an ampersand ("&") as the Significant Finding.
+    Consult entry 481042 has an ampersand ("&") as the Significant Finding.
+    ...
+    Consult entry 608210 has an ampersand ("&") as the Significant Finding.
+   
+   
+ 1023 total consults contain an ampersand as the Significant Finding.
+   
+ *****************************************************************************
+ ** Message (01 of 03) containing Consult records which have an ampersand as**
+ ** the Significant Finding was sent to the user.  Please forward this      **
+ ** message to the appropriate staff, which includes the clinical           **
+ ** coordinator, for further action.                                        **
+ *****************************************************************************
+   
+ *****************************************************************************
+ ** Message (02 of 03) containing Consult records which have an ampersand as**
+ ** the Significant Finding was sent to the user.  Please forward this      **
+ ** message to the appropriate staff, which includes the clinical           **
+ ** coordinator, for further action.                                        **
+ *****************************************************************************
+   
+ *****************************************************************************
+ ** Message (03 of 03) containing Consult records which have an ampersand as**
+ ** the Significant Finding was sent to the user.  Please forward this      **
+ ** message to the appropriate staff, which includes the clinical           **
+ ** coordinator, for further action.                                        **
+ *****************************************************************************
+  
+ ******************************************************************************
+ ** Message (01 of 01) containing Inter-Facility Consult records which have  **
+ ** an ampersand as the Significant Finding was sent to the user.            **
+ ** Please forward this message to the appropriate staff, which includes the **
+ ** clinical coordinator, for further action.                                **
+ ******************************************************************************
+   
+ Pre-init complete.
+   
+  Installing Data Dictionaries: 
+                Oct 17, 2006@09:37:54
+  
+  Running Post-Install Routine: POST^GMRCYP50
+  
+ Starting Post-init...
+  
+    Searching for Procedure Consults which have an Inter-Facility
+    Consult as a Related Service.
+  
+       Related Service, ELECTROENCEPHALOGRAM (IEN #131), associated 
+       with Consult Procedure, EEG (IEN #4), is an Inter-Facility 
+       Consult Service and must be removed or replaced with a 
+       service which is not an IFC!
+  
+       Related Service, ELECTROENCEPHALOGRAM (IEN #131), associated 
+       with Consult Procedure, ELECTROENCEPHALOGRAM (IEN #5), is an 
+       Inter-Facility Consult Service and must be removed or 
+       replaced with a service which is not an IFC!
+  
+  
+    2 total invalid Related Services.
+  
+ ****************************************************************************
+ ** Message containing Procedure Consult records which have invalid        **
+ ** Related Services was sent to the user.  Please forward this            **
+ ** message to the appropriate staff, which includes the clinical          **
+ ** coordinator, for further action.                                       **
+ ****************************************************************************
+  
+ Post-init complete.
+  
+  Updating Routine file...
+   
+  Updating KIDS files...
+   
+  GMRC*3.0*50 Installed.
+                Oct 17, 2006@09:37:55
+   
+  Install Message sent #2104300
+ ----------------------------------------------------------------------------
+           +------------------------------------------------------------+
+   100%    |             25             50             75               |
+ Complete  +------------------------------------------------------------+
+     
+   
+ Install Completed
+  
+  
+ ROUTINE SUMMARY 
+ ===============
+ The following is a list of the routines included in this patch.  
+ The second line of each of these routines now looks like: 
+  
+   <tab>;;3.0;CONSULT/REQUEST TRACKING;**[PATCH LIST]**;DEC 27, 1997
+  
+                        CHECK^XTSUMBLD results
+ Routine name      Before Patch      After Patch       Patch List
+ ============      ============      ===========       ===========
+  GMRCP50                 N/A          8361341         50
+  GMRCP50A                N/A         29641928         50
+  GMRCSLM4           13908162         14037087         4,12,15,22,50
+  GMRCSTS1            7476561          8053047         8,18,21,50
+  GMRCYP50                N/A         14276393         50
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: GMRCP50
+    Before:       n/a  After: B19728840  **50**
+Routine Name: GMRCP50A
+    Before:       n/a  After: B63790900  **50**
+Routine Name: GMRCSLM4
+    Before: B35674872  After: B36237040  **4,12,15,22,50**
+Routine Name: GMRCSTS1
+    Before: B29194073  After: B31373636  **8,18,21,50**
+Routine Name: GMRCYP50
+    Before:       n/a  After: B31546211  **50**
+
+=============================================================================
+User Information:
+Entered By  : PHELPS,TY                     Date Entered  : FEB 16, 2006
+Completed By: BOWEN,MARY JANE               Date Completed: FEB 07, 2007
+Released By : STRONG,NICK                   Date Released : FEB 07, 2007
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

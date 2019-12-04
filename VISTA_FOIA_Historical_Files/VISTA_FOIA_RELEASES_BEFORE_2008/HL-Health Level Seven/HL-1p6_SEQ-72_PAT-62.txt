@@ -1,0 +1,244 @@
+$TXT Created by BEUSCHEL,GARY at NXT.KERNEL.ISC-SF.VA.GOV  (KIDS) on THURSDAY, 11/08/01 at 06:24
+=============================================================================
+Run Date: DEC 28, 2001                     Designation: HL*1.6*62
+Package : HL - HEALTH LEVEL SEVEN            Priority: Mandatory
+Version : 1.6        SEQ #72                    Status: Released
+=============================================================================
+
+Associated patches: (v)HL*1.6*28   <<= must be installed BEFORE `HL*1.6*62'
+                    (v)HL*1.6*34   <<= must be installed BEFORE `HL*1.6*62'
+                    (v)HL*1.6*47   <<= must be installed BEFORE `HL*1.6*62'
+
+Subject: Reduce calls to Kernel API
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Other
+
+Description: 
+============
+
+ Patch HL*1.6*62
+ 
+ NOIS: LAS-0100-61912, GRJ-0400-51133, HIN-0501-42418, NJH-0601-21196
+ Test Sites: Grand Junction, CO; San Francisco, CA
+ This patch increases the amount of time between checks to see if the filers
+ have been asked to stop.  In most cases, the check is performed at most
+ once a minute.
+ 
+ For serial connections, this patch also improves the efficiency of the
+ inbound filers.  A whole file cross reference has been added to message
+ STATUS field of the IN QUEUE multiple of the HL LOGICAL LINK FILE, #870.
+ The inbound filers can now go directly to the logical links which have
+ inbound messages pending, instead of constantly checking each logical
+ link to see if any messages are pending.
+ 
+ The post-init for this patch will go through file 870 and fire the new xref.
+ 
+ Here's the updated field with its new xref:
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ STANDARD DATA DICTIONARY #870.019 -- IN QUEUE SUB-FILE
+ STORED IN ^HLCS(870,
+ DATA        NAME               GLOBAL        DATA
+ ELEMENT     TITLE              LOCATION      TYPE
+ --------------------------------------------------------------------------
+ 870.019,1   STATUS              0;2 SET
+                            'P' FOR PENDING; 
+                            'D' FOR DONE PROCESSING; 
+                            'S' FOR STUB RECORD; 
+             LAST EDITED:   MAY 08, 2000 
+             HELP-PROMPT:   This is the status of an individual message in 
+                            the queue. These statuses control the flow and 
+                            processing of the message. 
+             DESCRIPTION:   Status of a particular message. Can be Stub,
+                            Pending, or Done.  These statuses control the
+                            processing of a message. For example, a stub
+                            record is created when a message is enqueued,
+                            and cannot be processed until its status is
+                            changed from 'stub' to 'pending'.  Changing
+                            this status is the last thing the Low Layer
+                            Protocol does after reading in a message. 
+                            Finally, once the message has been processed,
+                            its status is changed to 'done'.  
+             CROSS-REFERENCE:  870^AISTAT 
+                            1)= S ^HLCS(870,"AISTAT",$E(X,1,30),DA(1),DA)=""
+                            2)= K ^HLCS(870,"AISTAT",$E(X,1,30),DA(1),DA)
+                            Used to quickly identify links with messages
+                            in any status, thus improving performance.
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ 
+ The option, HL PURGE TRANSMISSIONS, is updated to improve the description
+ and to set the SCHEDULING RECOMMENDED field to YES.
+ 
+ Here's the updated option:
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ NAME: HL PURGE TRANSMISSIONS            MENU TEXT: Purge Messages
+ TYPE: run routine                     CREATOR: DIMICELI,RON
+ PACKAGE: HEALTH LEVEL SEVEN
+ DESCRIPTION:   This option purges entries from the HL7 message files: 
+  773 - HL7 MESSAGE ADMINISTRATION 
+  772 - HL7 MESSAGE TEXT 
+   
+ These files contain a record of all outgoing HL7 transmissions and their 
+ status.  Messages are purged if they are in a certain status and are a
+ certain number of days old.  The default parameters (number of days) are
+ taken from fields in file 869.3, HL COMMUNICATION SERVER PARAMETERS.  The
+ fields should be set such that a balance is struck between the need to
+ keep disk space from filling up and the need to keep messages around long
+ enough so that they can be investigated in case problems arise.  Please
+ see the descriptions of these fields for more information: 
+   41 - PURGE COMPLETED MESSAGES 
+   42 - PURGE AWAITING ACK MESSAGES 
+   43 - PURGE ALL MESSAGES 
+  
+ Note that the number of days in field 43 must be greater than or equal to
+ the number of days in field 42, which must be greater than or equal to the
+ number of days in field 41.  If any of the fields violates this rule, then
+ the default values of these fields will be used, instead.  
+  
+ To purge entries in an error status, run this option directly and answer
+ 'Yes' to the question about purging them.  It is recommended that entries in
+ an error status be reviewed before purging.  For this reason, such messages
+ are NOT purged by automatically recurring scheduled runs of this option.  
+  
+ It is recommended that this option be scheduled to run once a day to keep
+ the files from getting too large.  On TaskMan's 'Edit Option Schedule', the
+ TASK PARAMETERS field is ignored.  Instead, the parameters are taken from
+ the fields in file 869.3, noted above.  
+ ROUTINE: PURGE^HLUOPT1                TIMESTAMP: 55644,54515
+ SCHEDULING RECOMMENDED: YES           UPPERCASE MENU TEXT: PURGE MESSAGES
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ 
+ NOTE: This patch should be installed during off hours, when activity is at
+ a minimum.  It requires HL7 patches HL*1.6*28, *34, & *47.
+ ============================================================================
+ 
+ ROUTINES:
+ The second line of the routine now looks like:
+        ;;1.6;HEALTH LEVEL SEVEN;**[patch list]**;JUL 17,1995
+ 
+              Before       After
+ Name         Checksum     Checksum     Patch List
+ ---------------------------------------------------------------------
+ HLCSDR1      10571563      8554313     2,22,27,30,34,62
+ HLCSDR2       5218053      4813200     2,9,62
+ HLCSIN        2517664      4825867     2,30,14,19,62
+ HLCSOUT       4118513      4765416     25,30,62     
+ HLCSUTL2      2181860      2309661     18,28,62
+ HLPAT62        *NEW*        236063     62
+ HLUOPT1      13112533     12526225     10,13,21,36,19,47,62
+ * Checksums produced by CHECK^XTSUMBLD
+ 
+ This patch introduces the following new routine:
+ HLPAT62 - post-init for this patch has no user-callable entry points
+ ============================================================================
+ 
+ INSTALLATION:
+ NOTE: This patch should be installed during off hours, when activity is at
+ a minimum.  It requires HL7 patches HL*1.6*28, *34, & *47.
+ 1. Users may be on the system during the installation of this patch.
+ 2. DSM Sites: If any of these routines is mapped, disable mapping for the
+    affected routine(s).
+ 3. Shutdown all Logical Links and incoming and outgoing filers, and
+    the Link Manager. Use the options:
+  
+      Filer and Link Management Options -> 
+          SA     Stop All Messaging Background Processes
+          LM     TCP/IP Link Manager Start/Stop
+ 
+ 4. DSM sites: Disable all HL7 UCX Services for this installation.
+ 5. Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu to load the
+    KIDS package into a Transport global on your system.  
+ 6. On the KIDS:Installation menu, use the following options to install the
+    Transport Global:
+          2 Verify Checksums in Transport Global 
+          3 Print Transport Global 
+          4 Compare Transport Global to Current System 
+          5 Backup a Transport Global 
+          6 Install Package(s) 
+  Select INSTALL NAME: HL*1.6*62     Loaded from Distribution  <date/time>
+                       =========
+  Install Questions for HL*1.6*62
+ 
+  Want KIDS to Rebuild Menu Trees Upon Completion of Install? YES// YES
+                                                                    ===
+  Want KIDS to INHIBIT LOGONS during the install? YES// NO
+                                                        ==
+  Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// NO
+                                                                        ==
+  Enter the Device you want to print the Install messages.
+  You can queue the install by enter a 'Q' at the device prompt.
+  Enter a '^' to abort the install.
+ 
+  DEVICE: HOME// <Do NOT queue it!>
+                 ------------------
+ 7. Startup all Logical Links and incoming and outgoing filers. Use the 
+  
+      Filer and Link Management Options ->
+          RA     Restart/Start All Links and Filers
+    (Note: Links which do not have "autostart" enabled will need to
+           be restarted manually)
+    
+ 8. DSM Sites: If you previously disabled an HL7 UCX Service for this
+    installation, you may now enable it.
+ 9. DSM Sites: Rebuild your mapped set if necessary.
+ 10. Start Link Manager using the option: "TCP/IP Link Manager Start/Stop."
+
+Routine Information:
+====================
+
+Routine Name:
+  - HLCSDR1
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSDR2
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSIN
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSOUT
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSUTL2
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLUOPT1
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLPAT62
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : HSU,RAYMOND JL                Date Entered : FEB 14, 2000
+Completed By: SINGH,GURBIR                  Date Completed: DEC 28, 2001
+Released By : APOLONIO,AUGUSTO              Date Released : DEC 28, 2001
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

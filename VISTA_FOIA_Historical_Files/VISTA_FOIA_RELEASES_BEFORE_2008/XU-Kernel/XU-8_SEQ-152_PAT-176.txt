@@ -1,0 +1,226 @@
+$TXT Created by FORT,WALLY at NXT.KERNEL.ISC-SF.VA.GOV  (KIDS) on THURSDAY, 11/02/00 at 11:21
+=============================================================================
+Run Date: NOV 17, 2000                     Designation: XU*8*176
+Package : XU - KERNEL                          Priority: Mandatory
+Version : 8       SEQ #152                       Status: Released
+=============================================================================
+
+
+Subject: Fix to VA# and DEA#
+
+Category: 
+  - Data Dictionary
+
+Description: 
+============
+
+  
+ NOIS
+ MIA-0700-30488
+ LEB-0800-20388
+ DAY-1000-40325
+ SBY-1000-30177
+  
+ Patch XU*8*165 unintentionly send all fields in file 200 not just the
+ ones needed for the patch.  This patch fixes the problem caused in
+ the DEA# and VA# fields.  The main problem was a change made to the
+ cross-reference of each field.  The post-INIT will reindex the data
+ to setup the cross-reference.  Some experimental fields from the
+ development account were send and will be removed.  Routine XUINPCH3
+ is just the Post-INIT routine.  The discription was changed on other
+ fields.
+ The fields being loaded:
+ 53.1,53.2,53.3,53.4,53.6,53.7,53.8,54.1
+  
+  
+  
+ NAME STANDARDIZATION: SPACES WITHIN SUFFIXES
+ NOIS
+ ====
+ ANN-0800-42960
+ MAN-0800-12845
+  
+ Background
+ ==========
+ The Name Standardization Patch (Kernel Patch XU*8.0*134), which was
+ released on April 6, 2000, includes a data conversion run as part of the
+ Post-Installation of that patch. The data conversion converts all names
+ stored in the .01 field of the New Person file to standard form. It also
+ parses each name into its component parts (Given Name, Middle Name, Family
+ Name, and Suffix), and stores those component parts in the Name Components
+ file (#20) also released with the patch.
+  
+  
+ Problem
+ =======
+ The data conversion looks for specific suffixes at the end of the name,
+ such as MD, PHD, and DDS. However, it was not accounting for suffixes that
+ contain periods, such as M.D., Ph.D. and D.D.S. When the data conversion
+ finds a name with a suffix that contains periods the name could be
+ incorrectly parsed.
+  
+ For example, suppose the name as stored in the .01 field of the New Person
+ file before patch XU*8.0*134 was installed was:
+  
+             Original name: SMITH,JOHN M.D.
+  
+ The result after the data conversion would be:
+  
+     New standardized name: SMITH,JOHN M D
+  
+     Name components as stored in the Name Components file:
+                     Given: JOHN M.
+                    Middle: D.
+                    Family: SMITH
+                    Suffix:
+  
+ Note that in the above, the suffix M.D. was not recognized as a suffix.
+ 'M' was considered part of the person's first (given) name, and 'D' was
+ considered the middle initial.
+  
+  
+ Solution
+ ========
+ In order to correct names that were parsed incorrectly by the data
+ conversion, routine XLFNP176 is included in this patch. The FIX^XLFNP176
+ entry point loops through the entries in the New Person file and looks for
+ names that may have been standardized and parsed incorrectly. It will then
+ optionally correct the name in the New Person file and the corresponding
+ name components in the Name Components file.
+  
+ NOTE: Sites should still install patch XU*8*134. The FIX^XLFNP176 entry
+ point is designed to run on systems on which the data conversion has
+ already been run.
+  
+  
+ FIX^XLFNP176 Description
+ ========================
+ This directly mode utility loops through all entries in the New Person
+ file (#200) and looks in the .01 field for names that end in any of the
+ following strings (without the single quotes (')):
+  
+   ' M D'
+   ' D D S'
+   ' PH D'
+   ' R N'
+   ' D P M'
+   ' D O'
+   ' P A'
+   ' N P'
+   ' C R N A'
+   ' L P N'
+  
+ If it finds any of the above strings at the end of the name, it assumes
+ that string is a suffix. It removes the spaces from the suffix and stores
+ the modified name in the .01 field of the New Person file. It also stores
+ the suffix (without embedded spaces) in the Suffix field (#5) of the
+ corresponding entry in the Name Components file.
+  
+ For example, if FIX^XLFNP176 finds a name in the .01 field of the New
+ Person file stored as:
+  
+         Name: SMITH,JOHN M D
+  
+ it assumes M D is a suffix, and changes the name to SMITH,JOHN MD. It also
+ stores MD in the SUFFIX field (#5) in the Name Components file.
+  
+  
+ How to use:
+ ----------
+ FIX^XLFNP176 can be run with VISTA users online. However, it is
+ recommended that it be run during non-peak times.
+  
+ Run FIX^XLFNP176 from programmer mode:
+  
+         >D FIX^XLFNP176
+  
+ The routine need only be run onced to fix the problem.
+  
+  
+ Customizing the list of problem suffixes checked by FIX^XLFNP176
+ ----------------------------------------------------------------
+ If you wish to modify the list of problem suffixes checked by XLFNP176,
+ you can edit the text at line tag LINE^XLFNP176. Replace the list with an
+ up-arrow (^)-delimited list of suffixes that may occur at the end of the
+ Names stored in your New Person file.
+  
+ Blood Bank Team Coordination:
+ =============================
+ Clearance - Nov. 2, 2000 
+  
+  
+ Routine Summary
+ The following routines are included in this patch.  The second line of each
+ of these routines now looks like:
+  ;;8.0;KERNEL;<patchlist>;Jul 10, 1995
+  
+                  Checksum
+ Routine         Old       New      2nd Line
+ XLFNP176          n/a   9524118    **176**
+ XUINPCH3       555958   1351290    **115,176**
+  
+ List of preceding patches: 115
+ Sites should use CHECK^XTSUMBLD to verify checksums.
+  
+ ========================================================================= 
+ Installation:
+  
+ >>>Users may remain on the system.
+ >>>Taskman does not need to be stopped.
+  
+  
+   1.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This
+       option will load the KIDS package onto your system.
+  
+   2.  The patch has now been loaded into a Transport global on your
+       system. You now need to use KIDS to install the Transport global.
+       On the KIDS menu, under the 'Installation' menu, use the following
+       options:
+  
+          Verify Checksums in Transport Global
+          Print Transport Global
+          Compare Transport Global to Current System
+          Backup a Transport Global
+  
+   3.  Users can remain on the system. 
+       This patch can be queued and installed at any time.
+  
+   4.  On the KIDS menu, under the 'Installation' menu, use the following
+       option:
+         Install Package(s)  'XU*8.0*176'
+                              =========
+  
+         Want KIDS to INHIBIT LOGONs during the install? YES// NO                
+         No Options or Protocols need to be placed out-of-order.
+         Want to DISABLE Scheduled Options, Menu Options, and Protocols? NO
+                                                                         ==
+  
+ =========================================================================
+
+Routine Information:
+====================
+
+Routine Name:
+  - XUINPCH3
+
+
+Routine Checksum:
+
+Routine Name:
+  - XLFNP176
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : FORT,WALLY                     Date Entered : OCT 10, 2000
+Completed By: MURPHY,MINAO J.              Date Completed: NOV 16, 2000
+Released By : GIBBONS,JOE                   Date Released : NOV 17, 2000
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

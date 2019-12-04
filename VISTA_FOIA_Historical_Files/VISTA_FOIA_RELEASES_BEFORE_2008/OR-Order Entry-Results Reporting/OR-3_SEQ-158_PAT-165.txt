@@ -1,0 +1,331 @@
+$TXT Created by NABER,DAVID A at DEVCUR.FO-SLC.MED.VA.GOV  (KIDS) on Friday, 01/24/03 at 13:52
+=============================================================================
+Run Date: JAN 30, 2003                     Designation: OR*3*165
+Package : OR - ORDER ENTRY/RESULTS REPORTING Priority: Mandatory
+Version : 3       SEQ #158                       Status: Released
+                  Compliance Date: FEB 03, 2003
+=============================================================================
+
+Associated patches: (v)XU*8*179    <<= must be installed BEFORE `OR*3*165'
+                    (v)OR*3*141    <<= must be installed BEFORE `OR*3*165'
+
+Subject: EVENT DELAYED ORDER FIXES, FLAGGED RESULTS NOTIFICATION FIX, DATE FIX, ETC.
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Input Template
+
+Description: 
+============
+
+ This patch addresses a number of issues related to GUI v20 (OR*3*141) 
+ that were identified too late in the testing process to be fixed in v20 
+ or have been identified since the release of v20.
+  
+ 1. LOM-0103-60391     Delayed orders not printing when released
+ This patch corrects a bug in the printing of chart copies for delayed
+ orders when released.  Patch OR*3*141 (GUI v20) made significant changes
+ to the entry and processing of delayed orders, and these changes 
+ inadvertently introduced a bug in the print logic on release which will 
+ cause orders for locations marked as "DON'T PROMPT" to not print chart 
+ copies.
+  
+ 2. Delayed orders that are subsequently changed in such a way that 
+ a new order is created do not release as expected when the manual 
+ release option is used.  This has now been fixed, so that changed orders
+ are now released as expected.
+  
+ 3. MIN-1202-40300  Change of TPN orders
+ Prior to this patch, when IV Fluid orders entered via CPRS were finished 
+ in Pharmacy as Hyperals without any other modifications, that designation 
+ was not being updated in CPRS; this allowed hyperal, or TPN, orders to be 
+ changed via CPRS which is normally prohibited.  This has now been fixed 
+ with this patch.
+  
+ 4. ALB-1202-51604  QUESTIONS ON HOW V20 SHOULD WORK
+    E3R #17774, AUTO DC OUTPATIENT GENERIC ORDERS
+    CPH-0103-41765     Event Order Dialog Complete Status v20
+    MIA-1202-32072     Generic & ADT orders not d/cing
+ GUI v20 (OR*3*141) modified the auto-dc processing of orders to look only 
+ at those placed during the current admission; this effectively disabled 
+ the auto-dc on admission rule which was intended to allow sites to clean 
+ up outpatient orders when a patient was admitted.  This has now been 
+ fixed, and all active outpatient orders (except outpatient 
+ medications, which will be addressed in an upcoming patch) will now be
+ considered when processing an auto-dc rule for admission.  Also on this
+ E3R, it was noted that the event order that was created for an admission
+ movement was not being auto-dc'ed when the patient was discharged.  This
+ has now been corrected so that the generic order is discontinued on any
+ subsequent movement for which there is an active auto-dc rule.
+  
+ 5. The post installation process deletes the package-level parameter value
+ for the Orderer-Flagged Results notification in the ORB PROVIDER
+ RECIPIENTS parameter.  GUI 20 introduced a new feature that allows GUI
+ users to identify recipients of the Orderer-Flagged Results by selecting
+ an Order then the Alert When Results action.  If a site wants the
+ identified recipient to get the alert and not the Ordering Provider, there
+ was previously no way to prevent sending the alert to the Ordering
+ Provider.  By deleting the package level parameter value ("O"), sites now
+ have the option to only send the alert to the person specified via the
+ Alert When Results action.  If additional recipients are desired, sites
+ can use the System or Division levels to set parameter values.
+  
+ 6. NJH-0502-22968     Question about date field
+ Kernel patch XU*8*179 fixed a problem with converting dates from HL7 
+ format to FileMan format.  Previously, it was possible to have a FileMan 
+ date with trailing zeros.  When a date has trailing zeros it is treated 
+ as a string and doesn't collate correctly when the cross reference is 
+ built.  A clean-up routine will be queued to the background upon 
+ installation of this patch to clean up the incorrect dates and cross 
+ references. During installation, if you're installing the patch 
+ interactively, you'll be prompted to press return to continue after 
+ receiving the task number for this clean-up routine.  This pause is to 
+ allow you to record the task number and read the description of the
+ clean-up routine.  If this patch is queued the question will not be asked.
+ Therefore, this patch can be queued.
+  
+ 7. CPH-1202-41774     OREVNT COMMON LIST not working?
+    HWH-1202-41908     RELEASE EVENTS IN CPRS v20 NOT DIVISIONAL
+ Also, on one of the event delayed orders calls it was noted that the
+ common event list wasn't functioning correctly.  It now correctly displays
+ the selected common list, including any identified default.
+  
+ 8. A question was received regarding the logic for determining the ability
+ to manually release orders.  Upon reviewing the logic it was determined
+ that a modification was necessary.  Previously, if the ability to do a
+ manual release was being controlled by the parameter, it was possible to
+ have a higher precedence level set to not allow the user to manually
+ release, yet a lower precedence would over-ride that setting.  For
+ example, if you had the individual user set to NO (not allowing manual
+ release) but the user belonged to a user class that was allowed to 
+ manually release, then the user could still do the manual release.  This 
+ has now been changed so that the next level of precedence will only be 
+ considered if the previous level doesn't have a value assigned (positive
+ or negative).  
+  
+ In addition, a modification was also made so that when the control
+ parameter is set to both keys and parameter that the parameter can cause
+ an exclusion, which it previously could not.  For example, before the
+ change, if you held ORES or ORELSE keys but your individual parameter
+ setting was set to not allow manual release, you could still do a manual
+ release because you held the key.  Now, under these conditions, you'll be
+ denied the ability to manually release as the parameter can be used as an
+ exclusion to the "key" group.
+  
+ 9. MIW-0103-40955     IX+1^DIE1:6 ERROR
+    TAM-0103-30795     Error in FIRE~DIKC when entering time out of OR 
+    BIR-0103-30911     Delayed order problem
+    WPB-0103-30786     or patch 141 error in surgery auto dc
+ As part of the event delayed orders software, the surgery package 
+ notifies CPRS when the time patient out of OR is entered.  During the 
+ processing of this information certain variables were being updated that 
+ subsequently caused an error when control was returned to the surgery 
+ package.  The event delayed order processing will now be done in the 
+ background with control returning immediately to surgery.
+  
+ 10. On one of the event delayed orders calls a request was made to have 
+ future SP lab orders auto-dc when the patient is discharged with a death 
+ type.  Future SP lab orders will now auto-dc when a discharge with death 
+ type movement is entered.
+  
+ 11. TAM-1202-31071     GUI V20 allows inactive locations to be selected
+     BAY-1202-30598     Event delayed order setup
+ In the OR GXMOVE EVENT dialog there is a prompt for expected location.  
+ Previously, this prompt did not have any screen on it so all locations 
+ were available for selection.  A screen has now been added so that 
+ inactive locations will no longer be available.  As a result of a change 
+ to a national dialog a background routine will run as part of the 
+ installation that will identify your local copies of this dialog so that 
+ you may make any necessary changes as a result of the change to the 
+ dialog.
+  
+ 12. It was reported on one of the event delayed orders calls that it was 
+ possible to re-use treating specialties within the same type and division,
+ which shouldn't be allowed.  A change was made to the screening logic so
+ that the screen is consistently applied while entering/editing treating
+ specialties.  In order to verify that this is not a problem at your site
+ you may inactivate and immediately reactivate events within type by
+ division. When attempting to reactivate, the uniqueness checking will be
+ applied correctly.
+  
+ 13. A number of NOIS have pointed out a problem when copying active 
+ inpatient medications to a delayed discharge event.  Those orders do not 
+ properly convert to outpatient medications.  This problem will be fixed 
+ in CPRS GUI V21 (patch OR*3*149), but in order to decrease the likelihood
+ of this happening the copy active orders window will not appear when
+ writing delayed discharge orders regardless of the setting of the "copy
+ active orders" field in the definition of the release event.  This
+ functionality will be re-introduced in patch OR*3*149.
+  
+ FILE/INPUT TEMPLATES
+ ====================
+ The following files and input templates are updated in this patch:
+  
+ File 100.5 (OE/RR RELEASE EVENTS) - The included locations and included 
+ treating specialties multiples had their "screen" code updated so that 
+ entries already in use may not be chosen.
+  
+ File 101.41 (ORDER DIALOG) - The OR GXMOVE EVENT dialog is being modified 
+ in this patch so that inactive locations may not be selected.  A mail 
+ message will be sent after installation indicating any local copies of 
+ this dialog.  The message will be sent to the installer. 
+  
+ Input templates OE/RR AUTO-DC RULES and OE/RR RELEASE EVENTS - templates
+ updated so that user cannot "^" before responding to required fields.
+  
+  ROUTINE SUMMARY:
+  ================ 
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+     <tab>;;3.0;ORDER ENTRY/RESULTS REPORTING;**[patch list]**;Dec 17, 1997
+  
+                             CHECK^XTSUMBLD results
+  Routine name       Before Patch       After Patch       Patch List
+  ============       ============       ===========       ==========
+  ORCACT0                18907956          19977015   7,27,48,72,86,92,94,
+                                                            141,165
+  ORCSEND                17568141          17673211  4,27,45,79,92,141,165
+  OREV1                  28947351          29025902        142,141,165
+  OREV3                  23659024          24395597         141,165
+  OREVNTX1                7592826           7617262         141,165
+  ORMEVNT                17784375          17927586   24,45,70,79,141,165
+  ORMEVNT1               13643300          15886105         141,165
+  ORMPS                  17720126          18029252  3,54,62,86,92,94,116,
+                                                        138,152,141,165
+  ORQ13                   4276230           4388258         141,165
+  ORY165                      N/A           1052275           165
+  ORY165A                     N/A           5569343           165 
+  ORYDLG                  3951129           3951129         141,165
+  
+ INSTALLATION INSTRUCTIONS:  
+ =========================
+ This patch should be loaded during non-peak hours to minimize disruption
+ to users.  Users may be on the system during installation. Installation
+ will take less than 5 minutes.
+  
+ 1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+  
+ 2.  Review your mapped set.  If any of the routines listed in the ROUTINE
+     SUMMARY section are mapped, they should be removed from the mapped set
+     at this time.
+  
+ 3.  From the Kernel Installation and Distribution System Menu, select the
+     Installation menu.
+  
+ 4.  From this menu, you may elect to use the following options (when 
+     prompted for INSTALL NAME, enter OR*3.0*165):
+       a.  Backup a Transport Global
+       b.  Compare Transport Global to Current System
+       c.  Verify Checksums in Transport Global
+  
+ 5.  Use the Install Package(s) options and select the package OR*3*165.
+  
+ 6.  When prompted 'Want KIDS to INHIBIT LOGONS during install? YES//',
+     respond "NO".
+  
+ 7.  When prompted 'Want to DISABLE Scheduled Options, Menu Options and 
+     Protocols? YES//', respond "NO".
+  
+ 8.  During installation, if you're installing the patch interactively,
+     you'll be prompted to press return to continue after receiving the
+     task number for the clean-up routine.  This pause is to allow you to
+     record the task number and read the description of the clean-up
+     routine. You also have the option to queue this patch.  If it's 
+     queued, the question will not be asked.
+  
+ 9.  If routines were unmapped as part of step 2, they should be returned
+     to the mapped set once the installation has run to completion.
+  
+ 10. After successful installation, and upon receiving the patch 
+     clean up completion mail message, delete the ORY165, ORY165A, ORYDLG
+     routines. These routines are used for patch installation only.
+
+Routine Information:
+====================
+
+Routine Name:
+  - ORY165
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORMEVNT1
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORCSEND
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORMPS
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORQ13
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORMEVNT
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORCACT0
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORY165A
+
+
+Routine Checksum:
+
+Routine Name:
+  - OREV3
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORYDLG
+
+
+Routine Checksum:
+
+Routine Name:
+  - OREV1
+
+
+Routine Checksum:
+
+Routine Name:
+  - OREVNTX1
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : ANDERSON,CURTIS L             Date Entered : NOV 26, 2002
+Completed By: MERRILL,DAVID P              Date Completed: JAN 30, 2003
+Released By : KREUZ,SHERI B                Date Released : JAN 30, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

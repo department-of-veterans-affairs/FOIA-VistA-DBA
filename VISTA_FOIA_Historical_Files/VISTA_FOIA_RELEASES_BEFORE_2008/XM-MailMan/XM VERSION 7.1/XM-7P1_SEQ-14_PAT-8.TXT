@@ -1,0 +1,735 @@
+$TXT Created by WU,CHIAO-MING at SILVER.FORUM.VA.GOV on THURSDAY, 07/20/95 at 16:40
+=============================================================================
+Run Date: AUG 01, 1995                     Designation: XM*7.1*8
+Package : XM - MAILMAN                         Priority: Mandatory
+Version : 7.1        SEQ #14                    Status: Verified
+=============================================================================
+
+Associated patches: (v)XU*7.1*45       install with patch       `XM*7.1*8'
+
+Subject: MSM-NT Enhancement
+
+Category: 
+  - Routine
+  - Informational
+  - Enhancement (Mandatory)
+
+Description: 
+============
+
+ The present code limits the number of characters that can be read in a 
+ single chunk from a TCP/IP line to prevent maximum length (MXSTR) errors.
+ The new MSM NT code waits until "n" characters are in the buffer of a
+ R#n:TO command -- older code just handed over what was there.  Earlier
+ versions of MSM (and DSM, etc.) could read in more characters than a local
+ variable could legitimately hold.
+  
+ XMLTCP is the routine that implements a more flexible and better TCP/IP
+ channel reading and writing algorithm.  Changes to other routines (XMRTCP,
+ XMRTCPGO, XMRINETD, XMS, XMS0, XMS1, XMCDNT and XMS5) are needed to make
+ this the default protocol for outgoing transmissions.
+  
+  
+ <<<<<<<<<<<<<<<<<<<<           NOTE             >>>>>>>>>>>>>>>>>>>>>
+  
+ Installation for this patch consists of two steps.  Step I unloads PackMan
+ routines.  If you don't have MSM-NT, you only need to perform Step I. Step
+ II only applies to sites that have MSM-NT installed.
+  
+ <<<<<<<<<<<<<<<<<<<<                             >>>>>>>>>>>>>>>>>>>>
+  
+  STEP I  : Unloads PackMan routines
+  ======
+  
+            Save a copy of the routines either before you begin this
+            installation or when requested to do so during the unloading
+            of the specified PackMan message.  
+  
+  NOTES:  o There are no differences in the installation on an ALPHA, or on
+            a 486 platform.  
+          o Users may NOT be on the system during the installation of the
+            MailMan network patch.
+          o There is no TARGET or NOIS report associated with this patch.
+  
+  1.  Check mapped routine set and unmap the appropriate MailMan routines.
+  
+  2.  Install the PackMan message into your production account.
+  
+  3.  Execute CHECK^XTSUMBLD to compute checksums for the following
+      routines:
+  
+           XMCDNT    value = 401792
+           XMLTCP    value = 2233803
+           XMRINETD  value = 363486
+           XMRTCP    value = 3219803
+           XMRTCPGO  value = 2862153
+           XMS       value = 5938186
+           XMS0      value = 9594337
+           XMS1      value = 7363462
+           XMS5      value = 11986202
+  
+           *Stop installation, reload the original routines and call your
+            supporting ISC if these values do not match.
+  
+  4.  Move the newly installed routines to all DHCP systems (as
+      appropriate).
+  
+  5.  Check mapped routine set and map the appropriate routines into the
+      routine set.  Rebuild the mapped routine set.
+  
+  **Note: For non-MSM-NT systems, installation for patch XM*7.1*8 is
+          complete.  The following instructions are intended for sites that
+          are going to install MailMan TCP/IP on a MSM-NT system.  If
+          assistance is needed to setup of a MSM-NT system, please call
+          your IRM support people.
+  
+  
+       
+  
+  STEP II : Install MailMan TCP/IP on a MSM-NT system
+  ========
+  
+  
+  <<<<<<<<<<<<<<<<<<<<             NOTE               >>>>>>>>>>>>>>>>>>>>>
+  
+        The following documentation is maintained and updated by the
+        MSM-NT Customer Support Team.   To get the most recent copy, read
+        MailMan message "MailMan TCP/IP for MSM-NT" in the Share Mail
+        mailbox "MAILMAN DOCUMENTS" on Forum.  The last revision of this
+        message was revised on July 25,1995. 
+  
+  <<<<<<<<<<<<<<<<<<<<                                >>>>>>>>>>>>>>>>>>>>>
+  
+  
+  MAILMAN INSTALLATION 
+  USING TCP/IP CHANNELS 
+  ON MSM-NT
+  
+  Revised 7-25-95
+  
+  
+  
+  1. INTRODUCTION
+  
+  Once you have installed and configured your brouter, connected the NT box
+  onto the production LAN, configured MSM on NT, and installed MailMan 7.1,
+  you will be ready to implement TCP/IP mail.  TCP/IP mail uses 56Kb lines
+  over IDCU to create very fast virtual circuits to other TCP/IP machines
+  on the network.  
+  
+  2. SETUP INSTRUCTIONS
+  
+  2.1 Install TCP/IP mail patches
+  
+  Certain patches and versions must be in place for TCP/IP mail to work.
+  You must minimally be at MailMan version 7.1 and be fully patched. Patch
+  8 and 13 are especially important, since TCP/IP mail will not work if
+  these are not installed. 
+  
+  2.2 Verify Communications Protocol file (3.4)
+  
+  Verify the TCP/IP-MAILMAN record in the Communications Protocol file. You
+  should already have this record in the file but you will have to modify
+  it.  Make sure your record EXACTLY matches this example.
+  
+  NAME: TCP/IP-MAILMAN
+  SEND: D SEND^XMLTCP I $G(XM)["D" S XMTRAN="S:"_$E(XMSG,1,242) D TRAN^XMC1
+  RECEIVE: D REC^XMLTCP I $G(XM)["D" S XMTRAN="R: "_$E(XMRG,1,242) D
+           TRAN^XMC1
+  OPEN: S (X,XMLINE,XMLCHAR,XMLER,XMLST,XMNO220)=0,XMLTCP="",XMSTIME=60
+  CLOSE: K XMLTCP L -^XMBX("TCPCHAN",XMHOST) Q
+   
+  Review this text to verify no typos and that the case of the text 
+  matches the example.
+  
+  2.3 Edit Transmission Script file (4.6) 
+  
+  Add a new record to the Transmission Script file containing the MSM
+  specific commands to OPEN and USE TCP/IP devices.  The new script will
+  only have to be added once.
+  
+  NAME:  TCPCHAN-SOCKET25/NT
+  TEXT
+  X L +^XMBX("TCPCHAN",XMHOST):99 E  S ER=1,XMER="CHANNEL IN USE"
+  X S X="ERRSCRPT^XMRTCP",@^%ZOSF("TRAP")
+  X S XMRPORT=56 O 56::30 E  S ER=1 L - ^XMBX("TCPCHAN",XMHOST)
+  X U 56::"TCP" W /SOCKET(XMHOST,25) S XMKEYTCP=$KEY
+  X I XMKEYTCP="" S ER=1 C 56 L  Q
+  X S XMHANG="S IOST(0)=0",IO=56,IOT="TCP",XMSTIME=30
+  MAIL
+  X L -^XMBX("TCPCHAN",XMHOST) K XMSIO,XMKEYTCP
+  
+  Review this text to verify no typos and that the case of the text 
+  matches the example.
+  
+  2.4 Add GSA to the Volume Set file (14.5)
+  
+  > D Q^DI
+   
+  VA FileMan XX.X
+  Select OPTION: ENTER OR EDIT FILE ENTRIES  
+  INPUT TO WHAT FILE: VOLUME SET
+  EDIT WHICH FIELD: ALL//
+  
+  
+  Select VOLUME SET: GSA  
+  VOLUME SET: GSA// 
+  TYPE: COMPUTE SERVER
+  INHIBIT LOGONS?: NO
+  LINK ACCESS?: YES
+  OUT OF SERVICE?: NO
+  REQUIRED VOLUME SET?: 
+  TASKMAN FILES UCI: MGR
+  TASKMAN FILES VOLUME SET: 
+  REPLACEMENT VOLUME SET: 
+  DAYS TO KEEP OLD TASKS: 
+  
+  2.5 Edit the UCI Association file (14.6)
+  
+  This entry is needed to allow future use of TaskMan for network scripts. 
+  
+  > D Q^DI
+  
+  VA FileMan XX.X
+  Select OPTION: ENTER OR EDIT FILE ENTRIES  
+  INPUT TO WHAT FILE: DEVICE// UCI ASSOCIATION      (X entries)
+  EDIT WHICH FIELD: ALL// 
+  
+  Select UCI ASSOCIATION FROM UCI: VAH
+  FROM VOLUME SET: GSA
+  TO VOLUME SET: 
+  TO UCI:   
+  
+  2.6 Edit TaskMan Site Parameter file (14.7)
+  
+  Add the GSA volume to the TaskMan Site Parameters file.  It will be type
+  Computer Server. 
+  
+  > D Q^DI
+  
+  VA FileMan XX.X
+  Select OPTION: ENTER OR EDIT FILE ENTRIES  
+  INPUT TO WHAT FILE: DOMAIN// 14.7  TASKMAN SITE PARAMETERS
+  EDIT WHICH FIELD: ALL// 
+  
+  Select TASKMAN SITE PARAMETERS BOX-VOLUME PAIR: GSA  
+  BOX-VOLUME PAIR: GSA// 
+  RESERVED: 
+  LOG TASKS?: NO// 
+  DEFAULT TASK PRIORITY: 4
+  TASK PARTITION SIZE: 
+  SUBMANAGER RETENTION TIME: 
+  TASKMAN JOB LIMIT: 14 
+  TASKMAN HANG BETWEEN NEW JOBS: 
+  MODE OF TASKMAN: COMPUTE SERVER
+  VAX DSM ENVIROMENT FOR DCL: 
+  OUT OF SERVICE: NO
+  LOAD BALANCE ROUTINE: 
+   
+  2.7 Add TCP/IP device to device file
+  
+  >D Q^DI
+  
+  VA FileMan XX.X
+  
+  Select OPTION: ENTER OR EDIT FILE ENTRIES  
+  INPUT TO WHAT FILE: DEVICE// DEVICE       (XX entries)
+  EDIT WHICH FIELD: ALL// 
+  Select DEVICE NAME: TCP/IP DEVICE
+   Are you adding 'TCP/IP DEVICE' as a new DEVICE (the XXTH)? Y  (Yes)  
+   DEVICE LOCATION OF TERMINAL: GSA SYSTEM
+      DEVICE $I: 56
+      DEVICE VOLUME SET(CPU): GSA
+  LOCATION OF TERMINAL: GSA SYSTEM// 
+  Select MNEMONIC: 
+  LOCAL SYNONYM: 
+  $I: 56// 
+  VOLUME SET(CPU): GSA// 
+  SIGN-ON/SYSTEM DEVICE: NO
+  TYPE: TRM  TERMINAL
+  SUBTYPE: C-VT100
+  ASK DEVICE: YES
+  ASK PARAMETERS: NO
+  ASK HOST FILE: ^
+  
+  2.8 Place JOB^XMRTCP in automatic partition startup on GSA
+  
+  This will automatically start the tcp/ip mail poller.
+  
+  >D ^SYSGEN
+  Select Option: 3 - Edit Configuration Parameters
+  Select Option: 3 - Autostarts and Automounts
+  Select Option: 5 - Automatic Partition Startup
+  Select index: 1
+  Enter UCI name : VAH
+  Enter Entry Reference: JOB^XMRTCP
+  Enter partition size <SYSTEM>: SYSTEM
+  
+  2.9 Place XMRINETD in automatic partition startup on GSA
+  
+  Add the XMRINETD listener deamon to the automatic partition startup
+  utility.  The routine is the listener on your system that will detect and
+  service incoming mail requests.  If this routine is not running in the
+  background you will not be able to receive incoming TCP/IP mail from
+  other sites, but you will still be able to send TCP/IP mail.
+  
+  >D ^SYSGEN
+  Select Option: 3 - Edit Configuration Parameters
+  Select Option: 3 - Autostarts and Automounts
+  Select Option: 5 - Automatic Partition Startup
+  Select index: 2
+  Enter UCI name : VAH
+  Enter Entry Reference: ^XMRINETD
+  Enter partition size <SYSTEM>: SYSTEM
+  
+  2.10 Reboot
+  
+  Shut down MSM, Shut down and reboot NT, then restart MSM.  To verify that
+  the new background jobs are running you can do a system status (^%SS) and
+  you should see a job running the routine XMRINETD and another running the
+  routine XMRTCP.
+  
+  2.11 Setup flag fields for poller shutdown
+  
+  Set up a new field to control the background poller.
+  
+   >D P^DI
+   VA FileMan XX.X
+   Select OPTION: 4  MODIFY FILE ATTRIBUTES
+   MODIFY WHAT FILE: KERNEL SITE PARAMETERS
+   Select FIELD: 8.15
+     Are you adding a new FIELD (the 96TH)? Y
+      LABEL:  TCP/IP POLLER RUN FLAG
+      FIELD NUMBER: 8.15// 
+   DATA TYPE OF TCP/IP POLLER RUN FLAG: SET OF CODES  
+   INTERNALLY-STORED CODE: 1  WILL STAND FOR: STOP RUNNING
+   INTERNALLY-STORED CODE: 0  WILL STAND FOR: OKAY TO RUN
+   INTERNALLY-STORED CODE: 
+   SHOULD 'TCP/IP POLLER RUN FLAG' ENTRIES BE SCREENED? No
+   WILL TCP/IP POLLER RUN FLAG FIELD BE MULTIPLE? No
+   SUBSCRIPT: 7// 0     (**Note: do not accept the default)
+   ^-PIECE POSITION: 18//
+   IS TCP/IP POLLER RUN FLAG ENTRY MANDATORY (Y/N): NO//   NO
+   'HELP'-PROMPT: 
+   XECUTABLE 'HELP': 
+   DESCRIPTION:
+     This field is checked every time the background tcp poller
+     goes through its logic.  If it is set to 1, then the routine 
+     XMRTCP will stop.  If it is null or zero, XMRTCP will continue to run.
+  
+  2.12 Add new options to the option file
+    
+  Add two new options to the option file to start and stop the poller.
+  
+   >D P^DI
+    VA FileMan XX.X
+    Select OPTION: 1  ENTER OR EDIT FILE ENTRIES
+    INPUT TO WHAT FILE: OPTION
+     EDIT WHICH FIELD: ALL// .01  NAME  
+     THEN EDIT FIELD: MENU TEXT    
+     THEN EDIT FIELD: DESCRIPTION    (word processing)
+     THEN EDIT FIELD: TYPE    
+     THEN EDIT FIELD: EXIT ACTION    
+     THEN EDIT FIELD: ENTRY ACTION    
+    THEN EDIT FIELD: 
+    STORE THESE FIELDS IN TEMPLATE: 
+   
+    Select OPTION NAME: XMMGR-START-TCP-POLLER
+       Located in the XM (MAILMAN 7.1) namespace.
+       Are you adding 'XMMGR-START-TCP-POLLER' as a new OPTION
+          (the xxxxTH)? Y    (Yes)
+    NAME: XMMGR-START-TCP-POLLER
+    MENU TEXT: Start TCP poller (XMRTCP) Replace   
+    DESCRIPTION:
+     1>XMMGR-START-TCP-POLLER will start a background routine (XMRTCP) to 
+     2>service outgoing TCP/IP queues.
+    EDIT Option: 
+    TYPE: action
+    EXIT ACTION: I '$D(ZTQUEUED) W !!,*7," Starting TCP poller...",!
+    ENTRY ACTION: S $P(^XMB(1,1,0),U,18)="" D JOB^XMRTCP Q
+  
+    Select OPTION NAME: XMMGR-STOP-TCP-POLLER
+     Located in the XM (MAILMAN 7.1) namespace.
+     Are you adding 'XMMGR-STOP-TCP-POLLER' as a new OPTION 
+        (the xxxxTH)? Y    (Yes)
+    OPTION MENU TEXT: Stop TCP poller 
+    MENU TEXT: Stop TCP poller   Replace 
+    DESCRIPTION:
+    1>Use this option to stop the TCP poller, routine XMRTCP.
+    2>
+   EDIT Option: 
+   TYPE: action
+   EXIT ACTION: I '$D(ZTQUEUED) W !!,*7,"Stopping TCP poller...",!
+   ENTRY ACTION: S X=$$READ^XMAREAD("Are you sure you want the TCP POLLER
+                 to STOP ","Y","NO") I X=1 S $P(^XMB(1,1,0),U,18)=1
+  
+  2.13 Add a null device to Device file (3.5)
+  
+  A new system device is available in MSM-NT version 4.2.2.  A true null
+  device has been implemented as $I of 46. This is a system level device
+  and does not have to be SYSGENed by the system manager.  A NULL device
+  can now be added as a selectable device in the Device file:
+  
+  >D Q^DI
+  
+  VA FileMan XX.X
+  Select OPTION: ENTER OR EDIT FILE ENTRIES  
+  INPUT TO WHAT FILE: DOMAIN// 3.5  DEVICE    (XX entries)
+  EDIT WHICH FIELD: ALL// 
+  
+  Select DEVICE NAME: NULL
+  NAME: NULL// 
+  LOCATION OF TERMINAL: NT SYSTEM
+  Select MNEMONIC: 
+  LOCAL SYNONYM: 
+  $I: 46
+  VOLUME SET(CPU): GSA 
+  SIGN-ON/SYSTEM DEVICE: NO
+  TYPE: TERMINAL
+  SUBTYPE: C-VT100
+  ASK DEVICE: YES
+  ASK PARAMETERS: NO
+  ASK HOST FILE: ^ 
+  
+  You should now be able to open this device on the GSA sytem with 
+  the device handler.
+  
+  2.14 Edit Domain file (4.2)
+  
+  Now you must change the Domain file to use the new TCP/IP protocol and
+  script.  Only the domains that you change will use TCP/IP mail.  The
+  domains that you do not edit will still use the old IDCU style
+  connection.  It is very important that you follow the example below for
+  the Domain file edit. There is a list of TCP/IP-ready sites on the DBA
+  menu on FORUM under option "TCP Printout".  You can get a list of valid
+  sites and addresses there.  This list will help you find sites that can
+  send to via TCP/IP.
+  
+  > D Q^DI
+  
+  Select OPTION: ENTER OR EDIT FILE ENTRIES  
+  INPUT TO WHAT FILE:  DOMAIN
+  Select DOMAIN NAME: ISC-CHICAGO.VA.GOV
+  NAME: ISC-CHICAGO.VA.GOV// 
+  FLAGS: P
+  SECURITY KEY: 
+  VALIDATION NUMBER:
+  DISABLE TURN COMMAND: 
+  RELAY DOMAIN: 
+  Select TRANSMISSION SCRIPT: TCP/IP 
+    TRANSMISSION SCRIPT: TCP/IP// 
+    PRIORITY: 1
+    NUMBER OF ATTEMPTS:  5 
+    TYPE: TCP/IP  
+    PHYSICAL LINK / DEVICE: NULL
+    NETWORK ADDRESS (MAILMAN HOST): 152.129.1.112 
+    TEXT:
+    1>O H=ISC-CHICAGO.VA.GOV,P=TCP/IP-MAILMAN
+    2>C TCPCHAN-SOCKET25/NT      
+  EDIT Option: 
+    TRANSMISSION SCRIPT NOTES:
+    1>
+  
+  
+  You are ready to play a script, but you can test the TCP/IP path to 
+  ISC-CHICAGO.  From VAH,GSA use the XMCDNT routine to test the outgoing
+  circuit:
+  
+  >D ^XMCDNT
+  
+  TCP/IP MAIL TEST PROGRAM
+  
+  Enter the TCP/IP address of the domain to test: 152.129.1.112
+  Testing 152.129.1.112...
+  220 ISC-CHICAGO.VA.GOV MailMan 7.1 ready
+  
+  Note:  Verify the correct response above before continuing with the rest
+  of the TCP/IP MailMan setup.  If you receive a message from the host
+  other than "220 domain-name MailMan 7.1 Ready" then do not continue.
+  Review all the above setup steps and contact your ISC.
+  
+  2.15 Setting up additional Domains for TCP/IP mail
+  
+  NOTE:  On Forum you can list TCP/IP mail sites and their address.  At the
+         Forum prompt just ^TCP to jump to the listing.
+  
+  The following method can be used to find the sites you exchange mail with
+  most often.  You can use this to prioritize the sites you wish to send
+  mail to via TCP/IP.  Remember that you can only control how you send mail
+  to other sites, you cannot control how other sites send mail to you.
+  Here is and actual example of the message statistics output from
+  ISC-CHICAGO.
+  
+  >D Q^DI
+  
+  Select option: PRINT FILE ENTRIES
+  
+  OUTPUT FROM WHAT FILE: MESSAGE STATISTICS
+  SORT BY: NUMBER// @-OUTGOING MESSAGE COUNT  
+  START WITH OUTGOING MESSAGE COUNT: FIRST// 
+    WITHIN OUTGOING MESSAGE COUNT, SORT BY: 
+  FIRST PRINT FIELD: .01  NAME  
+  THEN PRINT FIELD: OUTGOING MESSAGE COUNT    
+  THEN PRINT FIELD: INCOMING MESSAGE COUNT    
+  THEN PRINT FIELD: 
+  HEADING: MESSAGE STATISTICS LIST  Replace 
+  DEVICE: ;;66  HOME    RIGHT MARGIN: 80// 
+  
+  ...SORRY, LET ME THINK ABOUT THAT A MOMENT...
+  
+  MESSAGE STATISTICS LIST                        MAR 21,1995  08:46    
+  PAGE 1
+   
+                                      OUTGOING           INCOMING
+                                       MESSAGE            MESSAGE
+  NAME                                   COUNT              COUNT
+  -------------------------------------------------------------------------
+  
+  FORUM.VA.GOV                          168418             356447
+  HINES.VA.GOV                            9111              10683
+  KANSAS-CITY.VA.GOV                      8776               9455
+  IOWA-CITY.VA.GOV                        8321               4832
+  CLEVELAND.VA.GOV                        8019               6031
+  INDIANAPOLIS.VA.GOV                     7883               3827
+  DAYTON.VA.GOV                           7584               4680
+  CHILLICOTHE.VA.GOV                      7570               4110
+  N-CHICAGO.VA.GOV                        7442               5171
+  KNOXVILLE.VA.GOV                        7405               3758
+  ANN-ARBOR.VA.GOV                        7337               5414
+  MADISON.VA.GOV                          7192               5160
+  COLUMBUS.VA.GOV                         7164               1142
+  OMAHA.VA.GOV                            7113               4690
+  FORT-WAYNE.VA.GOV                       7110               3021
+  LEXINGTON.VA.GOV                        7054               4799
+  TOPEKA.VA.GOV                           7028               5037
+  CINCINNATI.VA.GOV                       6745               5492
+  CHICAGO-LAKE.VA.GOV                     6685               3287
+  
+  Once a domain has been configured and tested to work with TCP/IP mail,
+  adding additional domains is very simple.  The Communications Protocol
+  file and Transmission Script file do NOT have to be modified again.  All
+  subsequent domains will use the same TCP/IP protocol and transmission
+  script.  Only the domain file will have to be edited.  
+  
+  Be sure the site has TCP/IP mail setup and working.  This example shows
+  the setup of TCP/IP mail to ISC-CHICAGO, which has TCP/IP mail enabled.
+  If you can use XMCDNT to verify the address then you are ready to play
+  the script.
+  
+  **Note to system managers:  Operators will not be able to play a TCP/IP 
+  scripts from any machine other that the GSA machine.  The TCP/IP 
+  capabilities only exist on the GSA node.  When interactively playing 
+  a script the default script will be the highest priority script.
+  
+  CHECKLIST FOR ADDITIONAL DOMAIN SETUP:
+  
+  Select DOMAIN NAME: FORUM.VA.GOV  
+  NAME: FORUM.VA.GOV// 
+  FLAGS: P
+  SECURITY KEY: 
+  VALIDATION NUMBER: 
+  DISABLE TURN COMMAND: 
+  RELAY DOMAIN: 
+  Select TRANSMISSION SCRIPT: SCRIPT//  
+    TRANSMISSION SCRIPT: SCRIPT// 
+    PRIORITY: 2
+    NUMBER OF ATTEMPTS: 10
+    TYPE: SMTP
+    PHYSICAL LINK / DEVICE: MINIOUT  (NOTE: Your actual device name may be
+                                            different, use your working
+                                            device name)
+    NETWORK ADDRESS (MAILMAN HOST): MM688.75   
+    TEXT:   (NOTE: The text for the script is not shown here because
+                   no changes are necessary, use your existing script) 
+    TRANSMISSION SCRIPT NOTES:
+    1>
+  
+  Select TRANSMISSION SCRIPT: TCP/IP
+    Are you adding 'TCP/IP' as a new TRANSMISSION SCRIPT? Y  
+  (Yes)
+    PRIORITY: 1
+    NUMBER OF ATTEMPTS: 5
+    TYPE: TCP/IP
+    PHYSICAL LINK / DEVICE:   NULL
+    NETWORK ADDRESS (MAILMAN HOST): 152.128.1.2
+    TEXT:
+    1>O H=FORUM.VA.GOV,P=TCP/IP-MAILMAN
+    2>C TCPCHAN-SOCKET25/NT
+  Select TRANSMISSION SCRIPT: 
+  NOTES:
+    1>
+  Select SYNONYM: ISC-WASH.VA.GOV// 
+  STATION: 12000// 
+  MCTS ROUTING INDICATOR: DAT// 
+  DHCP ROUTING INDICATOR: DPP// 
+  MAILMAN HOST:  
+  FTP BLOB IP ADDRESS: 
+  TCP/IP POLL FLAG: P
+  FTP: 
+  FTP BLOB DIRECTORY: 
+  Select POLL LIST:
+  Select POLL LIST: 
+  PHYSICAL LINK DEVICE: 
+  DIRECTORY REQUESTS FLAG: 
+  
+  You can verify that it works by playing the script.
+  
+  3. Network Mail Management with TCP/IP
+  
+  DHCP mail should be able to recover from several component failures on
+  the WAN.  This section will describe
+  
+  3.1 Trouble-shooting Tools
+  
+  The following troubleshooting tools are additional tools to help you 
+  identify problems with TCP/IP mail transmissions:
+  
+  Use the FTP utility to verify TCP/IP functionality of a remote host.  
+  By selecting different hosts you can determine whose equipment is not
+  working properly.
+  
+  Use the ^XMCDNT routine to verify TCP/IP addresses and working mail
+  listeners.
+  
+  Record all outgoing scripts.  Simply edit the RECORD NETWORK
+  TRANSMISSIONS field in the Kernel Site Parameter file (if running Kernel
+  7.1).  If you are running Kernel 8, the field will be in the MAILMAN SITE
+  PARAMETER file.  The mail dialogue  will be recorded in ^TMP(XMC.  Note
+  that you should turn off this feature when finished testing, otherwise
+  all transmission scripts will continue to be recorded in ^TMP(XMC and can
+  potentially fill up the disk.  A cleanup utility does not exist to remove
+  recorded text from ^TMP(XMC and will have to be killed off manually by
+  the system manager.
+  
+  3.2 Management Tips
+  
+  Keep these tips in mind when setting up the first TCP/IP mail domains.
+  
+  1.  System managers will have to inform other staff members that 
+  TCP/IP scripts cannot be played from the print or compute servers.  When
+  interactively playing a script the user will be prompted with the highest
+  priority script (i.e. priority number 1) as the default.  If you play the
+  script from the print or compute server you will have to select the old
+  IDCU script.
+  
+  2.  The GSA system will only have a subset of DHCP routines (i.e. Kernel,
+  FileMan, and MailMan).  You will not be able to run other core
+  applications from the GSA system.
+  
+  3.  When you are ready to have other system managers send TCP/IP mail
+  transmissions to you, you can publish your TCP/IP address on Forum.  Just
+  send a message to Lee Hirz on Forum with your TCP/IP address indicating
+  that you would like to be added to the list of TCP/IP ready sites.  Other
+  system managers will then see your address as available for TCP/IP mail
+  on the DBA menu on Forum.
+  
+  4.  Remember that the system manager can only determine how network mail
+  is sent, not how it is received.  The protocol used for transmission
+  (e.g. TCP/IP, SWP, etc) are alwasy determined by the sender.
+
+Routine Information:
+====================
+
+Routine Name:
+  - XMCDNT
+
+ Second line now looks like ";;7.1;MailMan;**8**;Jun 02, 1994".
+  
+ See description for other changes.
+
+Routine Checksum:
+401792
+
+Routine Name:
+  - XMLTCP
+
+ Second line now looks like ";;7.1;MailMan;**8**;Jun 02, 1994".
+  
+ See description for other changes.
+
+Routine Checksum:
+2233803
+
+Routine Name:
+  - XMRINETD
+
+ Second line now looks like ";;7.1;MailMan;**8**;Jun 02, 1994".
+  
+ See description for other changes.
+
+Routine Checksum:
+363486
+
+Routine Name:
+  - XMRTCP
+
+ Second line now looks like ";;7.1;MailMan;**8**;Jun 02, 1994".     
+  
+ See description for other changes.
+
+Routine Checksum:
+3219803
+
+Routine Name:
+  - XMRTCPGO
+
+ Second line now looks like ";;7.1;MailMan;**8**;Jun 02, 1994".     
+  
+ See description for other changes.
+
+Routine Checksum:
+2862153
+
+Routine Name:
+  - XMS
+
+ Second line now looks like "V ;;7.1;MailMan;**8**;Jun 02, 1994".     
+  
+ See description for other changes.
+
+Routine Checksum:
+5938186
+
+Routine Name:
+  - XMS0
+
+ Second line now looks like ";;7.1;MailMan;**13,8**;Jun 02, 1994".     
+  
+ See description for other changes.
+
+Routine Checksum:
+9594337
+
+Routine Name:
+  - XMS1
+
+ Second line now looks like ";;7.1;MailMan;**13,8**;Jun 02, 1994".     
+  
+ See description for other changes.
+
+Routine Checksum:
+7363462
+
+Routine Name:
+  - XMS5
+
+ Second line now looks like ";;7.1;MailMan;**13,8**;Jun 02, 1994".     
+  
+ See description for other changes.
+
+Routine Checksum:
+11986202
+
+=============================================================================
+User Information:                               
+Entered By  : WILLIAMSON,ROBERT              Date Entered : NOV 21, 1994
+Completed By: WU,CHIAO-MING                 Date Completed : JUL 25, 1995
+Verified By : WALLACE,TRACIE                Date Verified : AUG 01, 1995
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+ 
+$END TXT

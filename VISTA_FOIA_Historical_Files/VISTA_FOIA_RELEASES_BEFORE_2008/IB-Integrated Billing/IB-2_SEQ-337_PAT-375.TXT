@@ -1,0 +1,188 @@
+$TXT Created by WANG,CHI at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 07/25/07 at 13:22
+=============================================================================
+Run Date: AUG 30, 2007                     Designation: IB*2*375
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #337                      Status: Released
+                  Compliance Date: SEP 30, 2007
+=============================================================================
+
+
+Subject: CLAIMS IN AUTHORIZED STATUS BUT NOT TRANSMITTED
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ The CBO has requested that these three things be done by this patch. 
+ First, it will automatically update the transmission status for certain 
+ EDI bills that are authorized but not yet transmitted. Second, the 
+ CLAIM MRA STATUS field will be updated to 'NO MRA NEEDED' for authorized 
+ bills if there are no MRAs on file. Third, a list will be produced for 
+ sites to deal with individually: this list will be of authorized claims  
+ with the AR status and the total amount collected.
+  
+ ASSOCIATED REMEDY:
+ ==================
+ HD191215  Authorized bill report issue
+      Duplicate: HD181374 Claims in authorized status
+                 HD193931 Bills in an authorized status failed to transmit
+                 HD193795 Bills "stuck" in Authorized Status
+                 HD193512 REVENUE ALERT: Bills "stuck" in Authorized Status
+                 HD193284 REVENUE ALERT Bills "stuck" in Authorized Status
+                 HD193246 REVENUE ALERT:  Bills "stuck" in Authorized Status
+  
+ ASSOCIATED NSR(s):
+ ==================
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ BAY PINES, FL                                                 
+ BRONX, NY                                                        
+ MARYLAND HCS  
+  
+ REMEDY OVERVIEW:
+ ================
+ HD191215 Authorized bill report issue
+  
+ Problem:
+ --------
+ When using the Print Authorized Bill [IB BATCH PRINT BILLS] option and
+ entering ?? at the Begin Printing Bills prompt, a list of authorized bills
+ would display but only a few of them would print to a designated printer. 
+  
+ Due to a timing issue with the processing of EDI reports, some secondary 
+ claims received delayed status messages on the same day as an MRA. The 
+ operational issue that led to these delays was resolved the first week of
+ April 2007, but affected claims got 'stuck' within VistA and required 
+ manual intervention to resolve.
+  
+ Resolution:
+ -----------
+ First, the post-init routine in this patch will update records in the EDI
+ TRANSMIT BILL (#364) file setting the TRANSMISSION STATUS (#.03) field to
+ "X" for "READY FOR EXTRACT" under the following conditions:
+  
+  - The BILL/CLAIMS (#399) file STATUS (#.13) field is "AUTHORIZED".
+  - The bill has at least one record in the EXPLANATION OF BENEFITS (#361.1)
+    file where the EOB TYPE (#.04) field is "MEDICARE MRA".
+  - There is a record for the bill in the ACCOUNTS RECEIVABLE (#430) file
+    where the CURRENT STATUS (#8) is "ACTIVE" and if there is a record for
+    the bill in the AR TRANSACTION (#433) file that the TRANS AMOUNT (#15)
+    field has no total amount collected.
+  - There is a record in the EDI TRANSMIT BILL (#364) file has the BATCH
+    NUMBER (#.02) field empty, and the COB SEQUENCE(#.03) field is "S" for
+    "SECONDARY," and the TRANSMISSION STATUS (#.03) field is not already 
+    "X" for "READY FOR EXTRACT".
+  
+ Second, the BILL/CLAIMS (#399) file CLAIM MRA STATUS field (#24) will be 
+ updated to 'NO MRA NEEDED' for certain authorized bills if there are no  
+ MRAs on file. This will resolve the situation where users try to print 
+ using Print Bill [IB PRINT BILL] option and receive the "Not Ready for MRA
+ Submission, Can Not Print!" message.
+  
+ Third, a list will be produced of authorized claims other than ones where
+ both AR status is ACTIVE and the total amount collected is 0. There is no
+ automatic update for this list of claims.
+  
+ The First and Third lists mentioned above will print to the patch
+ installer's screen. You should pass the report to the IB Supervisor 
+ (See Installation Instruction #7).
+  
+ FYI: Those records that are reported will be in XTMP("IB20P375") and you
+ may be able to see them again using the INSTALL (#9.7) file or the Install
+ File Print option in the Kernel Installation & Distribution System
+ and then Utilities menu. The data in the XTMP file is set to be stored for
+ thirty days from the day of the patch install.
+  
+ INSTALLATION INSTRUCTIONS
+ =========================  
+ It is recommended that this patch be installed outside of normal business 
+ hours to avoid any complications resulting from users on the system. 
+ The installation time will rely on the size of the global in database.
+  
+    1. Choose the PackMan message containing this patch and invoke the
+       INSTALL/CHECK MESSAGE PackMan option.
+  
+    2. From the Kernel Installation & Distribution System menu, select 
+       the Installation menu.  
+   
+    3. From this menu, you may select to use the following options: 
+       (when prompted for INSTALL NAME, enter IB*2.0*375)
+   
+         a.  Verify Checksums in Transport Global - This option will allow
+             you to ensure the integrity of the routines that are in the
+             transport global.
+         b.  Print Transport Global - This option will allow you to view
+             the components of the KIDS build.
+         c.  Compare Transport Global to Current System - This option will
+             allow you to view all changes that will be made when this patch
+             is installed.  It compares all components of this patch
+             (routines, DD's, templates, etc.).
+         d.  Backup a Transport Global - This option will create a backup
+             message of any routines exported with this patch. It will not
+             backup any other changes such as DD's or templates.
+   
+    4. Use the Install Package(s) option and select the package IB*2.0*375.
+  
+    5. When Prompted "Want KIDS to INHIBIT LOGONs during the install? 
+       YES//" respond NO.  
+   
+    6. When Prompted "Want to DISABLE Scheduled Options, Menu Options, and 
+       Protocols? YES//" respond NO.
+  
+    7. Print this patch description along with the lists that were produced
+       as a result of Installing this patch and give them to your sites 
+       IB Supervisor.
+  
+       The two lists are entitled with an example of a bill:
+  Updating the transmit status in file 364 for MRA secondary claim
+   Bill #: L01064 Statement Covers From Date: Feb 08, 2004  Transmit Status:X
+  Total 1 bill has been updated.
+  
+  List of all claims excludes ACTIVE AR Status with 0 Total Amount Collected
+   Bill #: K9003BZ  AR Status: CANCELLED BILL Total Amount Collected: $330.00
+  Total 1 bill has been listed.
+  
+    8. POST INIT CLEANUP
+       --------------------------
+       Optional - Once this patch has been successfully installed you may 
+       delete the post init routine:  IB20P375
+  
+ ROUTINE SUMMARY: 
+ ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+       <tab>;;2.0;INTEGRATED BILLING;**[patch list]**;21-MAR-94
+  
+                              CHECK^XTSUMBLD results
+   Routine name      Before Patch          After Patch         Patch List
+   ============      ============          ===========         ==========
+   IB20P375          N/A                   7613506             375
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;2.0;INTEGRATED BILLING;**[Patch List]**;21-MAR-94;Build 4
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: IB20P375
+    Before:       n/a   After: B18628445  **375**
+
+=============================================================================
+User Information:
+Entered By  : WANG,CHI                      Date Entered  : JUN 11, 2007
+Completed By: DAWSON,TIM                    Date Completed: AUG 30, 2007
+Released By : CAULFIELD,MARY                Date Released : AUG 30, 2007
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

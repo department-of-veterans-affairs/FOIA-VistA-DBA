@@ -1,0 +1,130 @@
+
+=============================================================================
+Run Date: SEP 24, 2002                     Designation: EAS*1*19
+Package : EAS - ENROLLMENT APPLICATION Priority: EMERGENCY
+Version : 1        SEQ #14                      Status: Released
+=============================================================================
+
+Associated patches: (v)EAS*1*7     <<= must be installed BEFORE `EAS*1*19'
+
+Subject: Modify Copay API to handle incomplete tests
+
+Category: 
+  - Routine
+  - Informational
+
+Description: 
+============
+
+ **************************************************************************
+ *  THIS PATCH MUST BE INSTALLED PRIOR TO THE IMPLEMENTATION MANDATE OF   *
+ *                          OCTOBER 1, 2002                               *
+ **************************************************************************
+ 
+ INTRODUCTION
+ ============
+ The software for this patch, EAS*1.0*19, and associated patches,
+ IB*2.0*176 and PRCA*4.5*176 are not being distributed through the National
+ Patch Module.  These patches are being distributed as a single KIDS
+ software distribution (host file).  This patch contains the informational
+ portion of EAS*1.0*19 and provides field personnel with instructions on
+ how to acquire, install, and implement the patch software.
+  
+  
+ PROBLEM DESCRIPTION:
+ ====================
+ 1.  This patch addresses an issue that was identified during Beta testing 
+ of the IB LTC patch IB*2.0*176.  If a LTC Copay test has a status of 
+ Non-Exempt with no financial data on file and the Decline to Give Income 
+ Info field (#.14) in the Annual Means Test file (#408.31) is not "YES", 
+ the API, $$COPAY^EASECCAL, which is called by IB is returning the 
+ Non-Exempt status with a calculated copay of null.  The following 
+ modifications were made to EASECCAL.  If a LTC Copay test has a status of 
+ Non-Exempt, no financial information, and the Decline to Give Income Info 
+ (#.14) does not equal "YES", check if the Agree to Pay Deductible field 
+ (#.11) equals "YES".  If true then return the Non-Exempt status in the 
+ first piece and the maximum copay amounts in pieces 3,4, and 5, otherwise 
+ return 0 as the first piece indicating that there is no completed LTC 
+ Copay test on file.
+  
+ 2.  The maximum daily copayment rates for inpatient and outpatient LTC 
+ services were hard coded into the routines EASECCAL and EASECPC.  This 
+ patch  replaces those references with a call to the IB API 
+ $$MAXRATE^IBAECU (supported by DBIA #3717).  This will return the copay 
+ rates that are stored in file #350.2.  If the rates change it will not be 
+ necessary to modify the routines to add the new rates.
+  
+  
+ ROUTINE SUMMARY:
+ ================
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+  
+   <tab>;;1.0;ENROLLMENT APPLICATION SYSTEM;**[patch list]**;Mar 15, 2001
+  
+                             CHECK^XTSUMBLD results
+ Routine name      Before Patch          After Patch         Patch List
+ ============      ============          ===========         ==========
+ EASECCAL               3288586              3878189           5,7,19
+ EASECPC               12219508             12838367           5,7,19
+  
+  
+ SOFTWARE AND DOCUMENTATION RETRIEVAL:
+ =====================================
+ The software for this patch is being distributed in a host file.  The 
+ host file will contain three KIDS builds.  The first build will be for 
+ the Accounts Receivable patch, PRCA*4.5*176, the second build will be for 
+ the Integrated Billing patch, IB*2.0*176. The third build will be for the 
+ Enrollment Application System patch, EAS*1.0*19.
+  
+ Please refer to the 'Software and Documentation Retrieval' section of the 
+ IB*2.0*176 patch description for instructions on how to acquire the patch 
+ software and documentation.
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================  
+ Please refer to the 'Installation Instructions' section of the IB*2.0*176 
+ patch description for instructions on how to install the patch software.
+
+Routine Information:
+====================
+
+Routine Name:
+  - EASECCAL
+
+ Added these lines of code after COPAY+22:
+  
+ COPAY+19 D FINTOT I $G(ERR) D  G Q
+          .I +COPAY=1 Q
+          .;no financial data but veteran agreed to pay copayments, 
+     copay = max
+          .I $P(DGMT(0),U,11) S COPAY=COPAY_U_IPMAX_U_IPMAX_U_OPMAX Q
+          .S COPAY=0
+  
+ Added line COPAY+6 to call $$MAXRATE^IBAECU(DT) to get the daily rates
+ for LTC copayments.  The outpatient rate is returned in the first piece
+ and the inpatient rate is returned in the second piece.
+
+Routine Checksum:
+
+Routine Name:
+  - EASECPC
+
+ Added lines EN+9 and EN+10 to call $$MAXRATE^IBAECU(DT) to get the daily 
+ rates for LTC copayments.  The outpatient rate is returned in the first 
+ piece and the inpatient rate is returned in the second piece.
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : DESMOND,LINDA                  Date Entered : AUG 08, 2002
+Completed By: MORGAN,BRIAN                  Date Completed: SEP 23, 2002
+Released By : NELSON,VICKI M               Date Released : SEP 24, 2002
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

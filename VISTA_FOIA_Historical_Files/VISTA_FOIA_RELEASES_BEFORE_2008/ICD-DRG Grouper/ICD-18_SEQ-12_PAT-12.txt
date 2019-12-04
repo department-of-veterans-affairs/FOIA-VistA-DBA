@@ -1,0 +1,224 @@
+
+=============================================================================
+Run Date: OCT 08, 2004                     Designation: ICD*18*12
+Package : ICD - DRG GROUPER                   Priority: Mandatory
+Version : 18        SEQ #12                     Status: Released
+                  Compliance Date: NOV 08, 2004
+=============================================================================
+
+Associated patches: (v)ICD*18*7    <<= must be installed BEFORE `ICD*18*12'
+                    (v)ICD*18*11   <<= must be installed BEFORE `ICD*18*12'
+
+Subject: CTD - ICD CODE TEXT DESCRIPTORS
+
+Category: 
+  - Data Dictionary
+  - Routine
+  - Enhancement (Mandatory)
+  - Informational
+
+Description:
+============
+
+  The Code Text Descriptor (CTD) project adds the functionality of 
+  versioning the short and long-text descriptions of the International
+  Classification of Diseases (ICD-9-CM), Diagnostic Related Groupings 
+  (DRG), Current Procedural Terminology (CPT-4) and Healthcare Common 
+  Procedure Coding System (HCPCS) classification systems.  Once installed,
+  the long and short text descriptors presented for these classifications
+  will be date-sensitive (versioned) for all text changes occurring since
+  Oct 1, 2002.
+  
+  This patch modifies the data dictionary for ICD Diagnosis (file 80),
+  ICD Operation/Procedure (file 80.1) and DRG file (80.2) to record 
+  a continuing history of textual changes in the names and descriptions
+  (short and long text) of diagnosis, procedures and DRG groupings.
+  Several APIs have been modified to extract and return the date
+  appropriate text based on the history stored in the new fields.
+  
+  API SUMMARY
+  ===========
+  
+      $$ICDDX^ICDCODE(<Code/IEN>,<Date>,<DFN>,<Source>)
+  
+        ICD Diagnosis Short Text - This API has been modified to 
+        return an 18 piece "^" delimited string containing information
+        about an ICD Diagnosis code.  The 4th piece of the string is
+        the name of the diagnosis (short text) and is date sensitive.
+        The text returned is date appropriate based on the date passed
+        to the API.  If no date is passed, then TODAY is used and the 
+        current text is returned in piece 4.  If the date passed in 
+        pre-dates text versioning (before Oct 1, 2002), then a warning
+        message will be inserted at the 18th piece, warning the user that
+        the text may be inaccurate.  (DBIA 3990)
+  
+      $$ICDOP^ICDCODE(<Code/IEN>,<Date>,<DFN>,<Source>)
+  
+        ICD Operation/Procedure Short Text - This API has been modified
+        to return a 14 piece "^" delimited string containing information
+        about an ICD Operation/Procedure code.  The 5th piece of the 
+        string is the name of the Operation/Procedure (short text) and 
+        is date sensitive.  The text returned is date appropriate based 
+        on the dates passed to the API.  If no date is passed, then TODAY
+        is used and the current text is returned in piece 5.  If the date 
+        passed in pre-dates text versioning (before Oct 1, 2002), then a
+        warning message will be inserted at the 14th piece, warning the
+        user that the text may be inaccurate.  (DBIA 3990)
+  
+      $$ICDD^ICDCODE(<Code>,<Array>,<Date>)
+  
+        ICD Diagnosis/Procedure Description Long Text - This API has been
+        modified to return the date sensitive ICD Diagnosis/Procedure
+        description (long text).  The text returned is date appropriate
+        based on the date passed to the API.  Output will be in an array 
+        designated by an input parameter.  If the date passed in pre-dates
+        text versioning (before Oct 1, 2002) then the array will contain 
+        a blank line followed by a warning message that the text may be 
+        inaccurate.  (DBIA 3990)
+ 
+      PERIOD^ICDAPIU(<Code>,.<Array>)
+  
+        ICD Diagnosis/Procedure Short Text - This API has been modified
+        to include a date sensitive diagnosis or procedure name (short 
+        text) as the 2nd piece of a "^" delimited string.  The string 
+        will be returned in an array passed in by reference and subscripted
+        by the ICD Diagnosis activation date.  The text returned is date 
+        appropriate based on the dates that define a period of activation
+        for the ICD Diagnosis/Procedure code.  If the history/period has
+        an activation date and no inactivation date, then TODAY will
+        be used, providing the current text.  If the history/period has an 
+        activation date and an inactivation date, then the inactivation
+        date will be used, providing the text of the code on the day the
+        period of activation ended.  (DBIA 3991)
+  
+      $$DRGD^ICDGTDRG(<Code>,<Array>,<Date>)             NEW
+  
+        DRG Description Long Text - This is a NEW API created to return 
+        the date sensitive DRG description (long text).  The text returned
+        is date appropriate based on the date passed to the API.  Output 
+        will be in an array designated by an input parameter.  If the 
+        date passed in pre-dates text versioning (before Oct 1, 2002) 
+        then the array will contain a blank line followed by a warning 
+        message that the text may be inaccurate.  (DBIA 4052)
+  
+  DD SUMMARY
+  ==========
+  
+      ICD Diagnosis File 80 (2 new fields)
+  
+         67   DIAGNOSIS (VERSIONED) (Multiple-80.067), [67;0]
+              .01  VERSION DATE (MRD), [0;1]
+              1    DIAGNOSIS (VERSIONED) (RF), [0;2]
+  
+         68   DESCRIPTION (VERSIONED) (Multiple-80.068), [68;0]
+              .01  VERSION DATE (MRD), [0;1]
+              1    DESCRIPTION (VERSIONED) (RF), [1;1]
+  
+      ICD Operation/Procedure File 80.1 (2 new fields)
+  
+         67   OPERATION/PROC (VERSIONED) (Multiple-80.167), [67;0]
+              .01  VERSION DATE (MRD), [0;1]
+              1    OPERATION/PROC (VERSIONED) (RF), [0;2]
+  
+         68   DESCRIPTION (VERSIONED) (Multiple-80.168), [68;0]
+              .01  VERSION DATE (MRD), [0;1]
+              1    DESCRIPTION (VERSIONED) (RF), [1;1]
+  
+      DRG File 80.2 (1 new field)
+  
+         68   DESCRIPTION (VERSIONED) (Multiple-80.268), [68;0]
+              .01  EFFECTIVE DATE (MD), [0;1]
+              1    DESCRIPTION (Multiple-80.2681), [1;0]
+                   .01  DESCRIPTION (MF), [0;1]
+  
+  ROUTINE SUMMARY
+  ===============
+  
+    The second line of each of these routines will look like:
+ 
+        <tab>;;18.0;DRG Grouper;**[PATCH LIST]**;Oct 20, 2000
+ 
+               Checksums    Checksums  
+                  Before        After  
+    Routine        Patch        Patch  Patch List (2nd Line)
+    --------------------------------------------------------
+    ICD1812    Envir Chk      4997946  12
+    ICDAPIU      4745402      5624868  6,11,12
+    ICDCODE      4732626      9860985  6,12
+    ICDGTDRG    13362323     12513862  7,12
+    ICDID         <new>       4957875  12
+   
+  INSTALLATION
+  ============
+  
+      Please refer to the Health Insurance Portability and Accountability 
+      Act (HIPAA) Code Text Descriptors (CTD) Installation Guide for details
+      of the installation procedure for the CTD project.
+  
+      This patch is part of the CTD Utilities combined build, and is the
+      first build/patch to be installed.  Please reference the installation 
+      guide concerning the recommended installation of this combined build.
+  
+      The HIPAA CTD Installation Guide can be found in the following
+      [ANONYMOUS.SOFTWARE] directories:
+  
+                                    Preferred Address
+                                    -------------------------
+       First available FTP server   download.vista.med.va.gov
+    
+       Specific Field Office        FTD Address
+       ---------------------        ------------------------
+       Albany                       ftp.fo-albany.med.va.gov
+       Hines                        ftp.fo-hines.med.va.gov
+       Salt Lake City               ftp.fo-slc.med.va.gov
+    
+       File Name                  Description    Format FTP      Protocol
+       ---------                  -----------    ----------      --------
+       CTD_INSTALL_GUIDE_1_0.PDF  Install Guide  Acrobat Reader  Binary
+ 
+
+Routine Information:
+====================
+
+Routine Name:
+  - ICDAPIU
+
+
+Routine Checksum:
+
+Routine Name:
+  - ICDCODE
+
+
+Routine Checksum:
+
+Routine Name:
+  - ICDGTDRG
+
+
+Routine Checksum:
+
+Routine Name:
+  - ICD1812
+
+
+Routine Checksum:
+
+Routine Name:
+  - ICDID
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : ROWE,KIMBALL                  Date Entered  : MAR 16, 2004
+Completed By: STERNHAGEN,SHERRIL            Date Completed: OCT 07, 2004
+Released By : GROOMS,ANTHONY E              Date Released : OCT 08, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

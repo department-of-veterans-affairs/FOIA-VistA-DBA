@@ -1,0 +1,241 @@
+$TXT Created by CURTIS,RICHARD L at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 01/31/05 at 12:55
+=============================================================================
+Run Date: FEB 23, 2005                     Designation: DVBA*2.7*83
+Package : DVBA - AUTOMATED MED INFO EXCHANGE  Priority: Mandatory
+Version : 2.7        SEQ #78                    Status: Released
+                  Compliance Date: MAR 26, 2005
+=============================================================================
+
+
+Subject: INCORRECT RELEASE DATE AND TIME
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch will fix a problem where a negative 1 is being entered in the 
+ 2507 Request file (396.3) in fields Date Approved and Date Released.  
+ This problem occurs sporadically when option DVBA C RELEASE C&P REQUESTS 
+ is selected to release C&P Exams.
+  
+ ASSOCIATED REMEDY/NOIS TICKET:
+ =============================
+ 1. HD0000000064340 -HEH-1004-41840   Incorrect release date and time
+  
+  
+ ASSOCIATED E3RS:
+ =================
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ North Chicago   
+ Montgomery,AL(Central Alababma HCS)  
+ Cheyenne,WY 
+ San Francisco,CA
+  
+ REMEDY/NOIS OVERVIEW:
+ ====================
+ 1)  HD0000000064340-(HEH-1004-41840)- Incorrect release date and time
+  
+     Problem:
+     --------
+     A problem exists when selecting option DVBA C RELEASE C&P REQUESTS to 
+     release C&P Exams.  Sporadically, the Date Approved and Date Released
+     fields in the 2507 Request file (396.3) are being updated with a
+     negative 1.
+  
+     Resolution:
+     -----------
+     This problem is occurring because from time to time Fileman variable
+     %DT(0) is still defined when Fileman API ^%DT is called to update
+     these fields.  To avoid future occurrences of this problem: 
+     1.The logic will be changed to use Kernel API XLFDT rather than the
+       Fileman API ^%DT, as it currently does, to get the current
+       date/time.
+     2.A post-init routine (DVBA83PI) will update all records possible,
+       where applicable, based on the Approval Date/Time found in field 26,
+       if it is defined.  It will also auto-generate a mailman message to
+       the user installing the patch containing the internal entry number
+       for all updated records.  The subject of this message will be:
+       LIST OF FILE 396.3 UPDATES.
+     3.Another routine (DVB83RPT), will be available for local IRM staff
+       to run a report that will identify if there were any records that
+       were not updated by the post-init routine because field 26 was null.
+       These records, if any, will have to be reported to staff supporting
+       the C&P exams to be reviewed and determination made for correcting 
+       the date with help from IRM.
+  
+     Here are the changes that will be made in routine DVBCRELS:
+  
+     At line DATA+5:
+  
+     FROM:
+  
+     I NFINAL=0 K DR S %DT="TS",X="NOW" D ^%DT S CTIM=Y,DA=REQDA,DIE="^DVB
+     (396.3,",DR="12////"_CTIM_";13////"_CTIM_";14////^S X=DUZ;17///R;W *7;
+     22;25R;26R" D ^DIE K CTIM
+  
+     TO:
+  
+     I NFINAL=0 K DR S CTIM=$$NOW^XLFDT,DA=REQDA,DIE="^DVB(396.3,",DR="12
+     ////"_CTIM_";13////"_CTIM_";14////^S X=DUZ;17///R;W *7;22;25R;26R" D
+     ^DIE K CTIM
+  
+     At line FX+1:
+  
+     FROM:
+  
+     I FAX="Y" S %DT="ST",X="NOW" D ^%DT S CTIM=Y,DR="6////"_CTIM_";15////"
+     _CTIM_";16////^S X=DUZ;17////"_RSTAT S (DIE,DIC)="^DVB(396.3,",DA=
+     REQDA D ^DIE
+  
+     TO:
+  
+     I FAX="Y" K DR S CTIM=$$NOW^XLFDT,DR="6////"_CTIM_";15////"_CTIM_";16
+     ////^S X=DUZ;17////"_RSTAT S (DIE,DIC)="^DVB(396.3,",DA=REQDA D ^DIE
+  
+  ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;2.7;AMIE;**[patch list]**;Apr 10, 1995
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  DVBCRELS              11302743             11059041             83
+  DVB83RPT                   N/A              1148396             83
+  DVBA83PI                   N/A              2252056(deleted)    83
+  
+  Note:  post-init routine DVBA83PI is deleted after installation of patch
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+  
+ If the patch is installed during the normal workday, it is recommended
+ that the following menu option (File #19) and all its descendants be
+ disabled to prevent possible conflicts while running the KIDS install.
+ Other VISTA users will not be effected.
+  
+ Release C&P Requests     [DVBA C RELEASE C&P REQUESTS]
+  
+ Installation should take less than 2 minutes.
+  
+ 1.  LOAD TRANSPORT GLOBAL
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the
+     INSTALL/CHECK MESSAGE PackMan option.
+  
+ 2.  DISABLE ROUTINE MAPPING  (DSM for open VMS sites only)
+     -----------------------
+     Disable routine mapping on all systems for the routines listed in
+     the routine summary.
+     NOTE:  If the routines included in this patch are not currently in
+     your mapped routine set, please skip this step.
+  
+ 3.  START UP KIDS
+     -------------
+     Start up the Kernel Installation and Distribution System Menu
+     [XPD MAIN]
+  
+           Edits and Distribution ...
+           Utilities ...
+           Installation ...
+  
+     Select Kernel Installation & Distribution System Option:  INStallation
+                                                               ---
+  
+     1     Load a Distribution
+     2     Verify Checksums in Transport Global
+     3     Print Transport Global
+     4     Compare Transport Global to Current System
+     5     Backup a Transport Global
+     6     Install Package(s)
+           Restart Install of Package(s)
+           Unload a Distribution
+  
+ 4.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter DVBA*2.7*83):
+  
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with the patch.  It will NOT
+         backup any other changes such as DDs or templates.
+  
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when the patch
+         is installed.  It compares all components of the patch
+         (routines, DDs, templates, etc.).
+  
+     c.  Verify Checksums in Transport Global - This option will ensure
+         the integrity of the routines that are in the transport global.
+  
+ 5.  Use the Install Package(s) option and select the package DVBA*2.7*83.
+  
+     a.  When prompted "Want KIDS to INHIBIT LOGONS during the
+         install? YES//" respond NO.
+  
+     b.  When prompted "Want to DISABLE Scheduled Options, Men
+         Options, and Protocols? YES//" respond YES.
+  
+         1) When prompted "Enter options you wish to mark as "Out of
+            Order":" enter the following option:
+  
+            Release C&P Requests     [DVBA C RELEASE C&P REQUESTS]
+  
+         2) When prompted "Enter protocols you wish to mark as "Out of
+            Order":" just press <Return>.
+  
+ 6.  BUILD MAPPED ROUTINE(S)   (DSM for open VMS sites only)
+     =======================
+     Optional - Include the routines distributed with this patch in
+     the mapped routine set.
+  
+     NOTE:  This step is only necessary if you performed step 2 or if
+     you wish to include the routines in your mapped set.
+  
+ POST-INSTALL INSTRUCTIONS:
+  
+ 1.Review mail message with the subject LIST OF FILE 396.3 UPDATES.
+  
+ 2.Run routine DVB83RPT.  This will identify IF there were any records that
+ were not updated by the post-init routine. If any records are on this
+ report please work with the staff supporting the C&P exams to get a
+ correct date.
+
+Routine Information:
+====================
+
+Routine Name:
+  - DVBCRELS
+
+
+Routine Checksum:
+
+Routine Name:
+  - DVBA83PI
+
+
+Routine Checksum:
+
+Routine Name:
+  - DVB83RPT
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : CURTIS,RICHARD                Date Entered  : NOV 18, 2004
+Completed By: BOWEN,MARY JANE               Date Completed: FEB 23, 2005
+Released By : FIELDS-BARNES,JANETTE         Date Released : FEB 23, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

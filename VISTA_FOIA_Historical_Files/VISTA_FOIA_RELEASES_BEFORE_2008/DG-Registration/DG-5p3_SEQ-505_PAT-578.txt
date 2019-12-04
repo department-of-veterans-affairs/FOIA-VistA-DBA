@@ -1,0 +1,197 @@
+$TXT Created by THEROUX,JOHN at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 03/02/04 at 14:42
+=============================================================================
+Run Date: APR 13, 2004                     Designation: DG*5.3*578
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #505                    Status: Released
+                  Compliance Date: MAY 14, 2004
+=============================================================================
+
+Associated patches: (v)DG*5.3*530  <<= must be installed BEFORE `DG*5.3*578'
+                    (v)DG*5.3*532  <<= must be installed BEFORE `DG*5.3*578'
+
+Subject: DUPLICATE RECORDS WHEN ADDING NEW PATIENT
+
+Category: 
+  - Routine
+
+Description:
+============
+
+   This patch changes the way patient file identifiers are handled when 
+ adding new patients.
+  
+ ASSOCIATED NOISes:
+ ==================
+ MAD-0204-40585  Patient not really deleted
+ SDC-0104-60127  Patient deleted using Load Patient Data Option
+ ISB-1003-31477  Missing xref's in File#2
+ MAC-0903-61477  Same SSN under 2 DFNs with DG - bdj
+ CTX-0203-71199  SSN XREFS TO 2 DIFFERENT DFN'S
+ SBY-0204-31808  K+1^DIK1:2, %DSM-E-UNDE 
+  
+ ASSOCIATED E3R(s):
+ ==================
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ El Paso,TX       
+ Madison,WI              
+ Portland,OR                
+ Salisbury,NC                   
+ Birmingham,AL     
+  
+ NOIS OVERVIEW:
+ ==============
+  
+ Problem:
+ ========
+ Currently, after entering the patient name, the user is prompted with 
+ these identifiers when adding a new patient:
+  
+   Sex
+   Date of birth
+   Social Security Number
+   Type
+   Veteran (y/n)
+  
+ If the user up arrows or times out, the message "<patient name> deleted" 
+ appears and the user must start over.  Actually, no record is
+ deleted as none was added (the message will be changed to 
+ "<patient name> not added").
+  
+ Once these five identifiers have been answered and pass edit, the user 
+ will get the message "...patient added" and Fileman will actually start
+ to add the record (thru FILE^DICN).  This in turn sets off various 
+ cross references and other processes such as HL7 messages.  While
+ still in the process of adding the record, Fileman prompts the
+ user for these additional identifiers:
+  
+   Service Connected?
+   Multiple Birth Indicator
+   any local identifiers in the data dictionary of the site's Patient file
+  
+ In fact the prompt for Service Connected? comes before Fileman has added
+ the Type and Veteran (y/n) data, so no edit is done and any answer is 
+ accepted.  However, if the user ponders what to answer to any of these
+ additional prompts and times out, Fileman will delete the record and
+ display the message "<patient name> deleted".
+ In doing the deletion, it will first dispose of the lookup 
+ cross references, but the earlier processes already in motion can
+ interfere with the rest of the deletion and prevent the balance
+ of the record from being removed.  One such process is the VAFC 
+ BATCH UPDATE option which is normally scheduled to run automatically
+ every 10 minutes.  With the right timing it is possible for this 
+ option to be trying to process the new record just as Fileman 
+ is trying to delete it.
+ When the user tries to reenter the record, it cannot be accessed because 
+ there are no lookup cross references left.  So the user creates
+ a new record from scratch, in effect producing a duplicate although
+ the old record is inaccessible through normal channels. 
+  
+ Solution:
+ =========
+ The DPTLK2 routine will be modified to prompt for the national identifiers
+ Service Connected? and Multiple Birth Indicator immediately after 
+ asking the Type and Veteran (y/n) questions and before making any attempt
+ to add a record.  This will also enable editing to be done on the answer 
+ to Service Connected?.  If the user up arrows or times out, the message 
+ "<patient name> not added" will display and the user can simply start 
+ over.
+  
+ Once all the prompts have been answered successfully, the record will be 
+ added and, if there are any local identifiers, additional prompts
+ for these will be issued through a separate update process which
+ will not be affected adversely if the user times out.
+  
+ The VAFCMSG routine from the VAFC BATCH UPDATE option will be modified
+ to check for the presence of a "B" cross reference before processing the 
+ record.
+  
+ ROUTINE SUMMARY:
+ ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;5.3;Registration;**[patch list]**;Aug 13, 1993
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  DPTLK2                14271821             15926868       32,197,214,244
+                                                               532,578
+  VAFCMSG                4629743              5240897       91,149,530,578
+  
+ INSTALLATIONS INSTRUCTIONS:
+ ==========================
+  
+ This patch may be run with users on the system, but it is recommended
+ that it be queued to run after normal business hours to minimize the 
+ impact on users of the Registration package.
+  
+ Installation will take less than 5 minutes.
+  
+ 1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu to unload
+     the KIDS distribution included with this message.
+  
+ 2.  Review your mapped set.  If any of the routines listed in the 
+     ROUTINE section are mapped, they should be removed from the mapped
+     set at this time.
+  
+ 3.  From the Kernel Installation and Distribution System Menu, select
+     the Installation menu.
+  
+ 4.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter DG*5.3*578):
+     a.  Compare Transport Global to Current System  - this option will
+         allow you to view all changes that will be made when the patch
+         is installed.  It compares all components of the patch (routines,
+         DDs, templates, etc.).
+     b.  Verify Checksums in Transport Global - this option will
+         allow you to ensure the integrity of the routines that are in
+     c.  Print Transport Global - this option will allow you to view the
+         components of the KIDS build.
+  
+ 5.  Use the Install Package(s) option and select the package DG*5.3*578.
+  
+ 6.  When prompted ' Want KIDS to INHIBIT LOGONs during the install?
+     YES//', respond NO.
+  
+ 7.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+     Protocols? YES//', respond YES.  When prompted to select the options
+     you would like to place out of order, enter:
+  
+      Register a Patient [DG REGISTER PATIENT]
+      Load/Edit Patient Data [DG LOAD PATIENT DATA]
+      Preregister a Patient [DGPRE PRE-REGISTER OPTION]
+  
+ 8.  If routines were unmapped as part of step 2, they should be returned
+     to the mapped set once the installation has run to completion.
+
+Routine Information:
+====================
+
+Routine Name:
+  - DPTLK2
+
+
+Routine Checksum:
+
+Routine Name:
+  - VAFCMSG
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : THEROUX,JOHN                  Date Entered  : JAN 12, 2004
+Completed By: BOWEN,MARY JANE               Date Completed: APR 09, 2004
+Released By : FITCH,DONNA                   Date Released : APR 13, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,220 @@
+$TXT Created by MO,SELINA at DEV.DEV.FO-HINES.MED.VA.GOV  (KIDS) on Friday, 08/08/03 at 11:37
+=============================================================================
+Run Date: AUG 18, 2003                     Designation: RA*5*42
+Package : RA - RADIOLOGY/NUCLEAR MEDICINE     Priority: Mandatory
+Version : 5        SEQ #37                      Status: Released
+                  Compliance Date: SEP 18, 2003
+=============================================================================
+
+Associated patches: (v)RA*5*37     <<= must be installed BEFORE `RA*5*42'
+
+Subject: Imaging Location edit via 'Location Parameter Set-up' option
+
+Category: 
+  - Data Dictionary
+  - Input Template
+  - Routine
+
+Description:
+============
+
+ There is a problem with the Radiology Nuclear Medicine v5 'Location 
+ Parameter Set-up' option.  This option, prior to this patch, allows the 
+ user to edit an imaging location record and change the name of the 
+ imaging location for that record to the same name of another record.
+  
+ What follows is a display on how such an error can occur:
+  
+ First, I'll get a FileMan print of the imaging locations along with their 
+ internal entry numbers (iens):
+ Heading (S/C): IMAGING LOCATIONS LIST  Replace 
+ DEVICE:   TELNET PORT    Right Margin: 80// 
+ IMAGING LOCATIONS LIST                         JUL 30,2003  07:44    
+ PAGE 1
+ NUMBER        LOCATION
+ ----------------------------------
+ 1             5TH FLOOR
+ 2             7TH FLOOR
+ 3             10TH FLOOR
+ 4             MAIN FLOOR
+ 5             OPC RADIOLOGY
+ 6             ZZ RADIOLOGY MAIN
+ 7             RADIOLOGY MAIN FLOOR
+ 8             RAD TEST
+ ----------------------------------
+  
+ In this case I am going to change '7th FLOOR' (ien of two) to 'OPC
+ RADIOLOGY' (ien of five).
+  
+ Select System Definition Menu Option:  Location Parameter Set-up
+ Select Location: 7TH FLOOR 
+        ...OK? Yes//   (Yes)
+  
+ LOCATION: 7TH FLOOR// OPC RADIOLOGY <---- Note: its as simple as this.
+  
+ For the sake of brevity, each field eligible to be edited will not be 
+ displayed.
+  
+ INACTIVE: 
+ TYPE OF IMAGING: GENERAL RADIOLOGY// 
+ CREDIT METHOD: Regular Credit// 
+ DSS ID: X-RAY// 
+  
+ Imaging Location OPC RADIOLOGY is OK. <--- Note imaging location
+  
+ Now there are two 'OPC RADIOLOGY' locations:
+  
+ Heading (S/C): IMAGING LOCATIONS LIST  Replace 
+ DEVICE:   TELNET PORT    Right Margin: 80// 
+ IMAGING LOCATIONS LIST                         JUL 30,2003  07:55    
+ PAGE 1
+ NUMBER        LOCATION
+ ----------------------------------
+  
+ 1             5TH FLOOR
+ 2             OPC RADIOLOGY <--- OPC RADIOLOGY with an ien of two
+ 3             10TH FLOOR
+ 4             MAIN FLOOR
+ 5             OPC RADIOLOGY <--- OPC RADIOLOGY with an ien of five
+ 6             ZZ RADIOLOGY MAIN
+ 7             RADIOLOGY MAIN FLOOR
+ 8             RAD TEST
+ ----------------------------------
+  
+ The solution to prevent this issue involves three components: a routine,
+ an input template, and data dictionary.
+  
+ * The routine 'RASYS' is modified to display the imaging location that the
+   user selects.  Previous to this patch, the routine did not display the 
+   imaging location selected by the user.
+  
+ * The input template 'RA LOCATION PARAMETERS' from file #79.1, IMAGING 
+   LOCATIONS, has been modified to prevent entry of a duplicate imaging 
+   location.  It will prompt "Select Location:" as before, but after that, 
+   will not prompt for the "Location:" field any more.  Thus, the user can 
+   not change the location's name.  This impacts the option 'Location 
+   Parameter Set-up' [RA SYSLOC].
+  
+ * The data dictionary for file #79.1, IMAGING LOCATIONS, field #.01, 
+   LOCATION, has been modofied to disallow entry of more than one record
+   for the same location name.  Thus, in the example above, the user would
+   not be able to enter more than one 'OPC RADIOLOGY' location into file
+   #79.1, IMAGING LOCATIONS.
+  
+ Related NOIS
+ ------------
+ ALX-0703-71738
+ MAC-0601-61694 
+  
+  
+ This patch also renamed file #79, RAD/NUC MED DIVISION, field #175, 
+ "PERFORM INDICATOR MAIL ADDRESS", to a new name, "PERF INDC SMTP E-MAIL
+ ADDRESS".  This affects the 'Enter/Edit OUTLOOK mail group' [RA PERFORMIN
+ MAIL GROUP ENTRY] option.
+  
+ Also, this field's help prompt has been expanded to include instructions
+ for getting OUTLOOK SMTP addresses and a detailed example.
+  
+  
+ Documentation
+ -------------
+ The 'Radiology/Nuclear Medicine User Manual' and the 'Radiology/Nuclear 
+ Medicine ADPAC Guide' will be modified to illustrate the changes to the 
+ 'Location Parameter Set-up' option.
+  
+ Test Sites
+ ---------- 
+ Alexandria VAMC
+ Manchester VAMC
+ White River Junction VAMC
+  
+ The second lines of the routines now look like:
+ ;5.0;Radiology/Nuclear Medicine;**[patch number]**;Mar 16, 1998
+  
+                        CHECK^XTSUMBLD results
+ Name          Before Patch       After Patch       Patch List
+ ----------------------------------------------------------------
+ RASYS           9298540            9411563           **42**
+  
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+ The install time for this patch is less than two minutes.  Since there
+ are data dictionary changes, this patch should be installed when all 
+ Rad/Nuc Med users are off the system.
+   
+  NOTE:  MailMan and Kernel patches must be current on the target system to
+         avoid problems loading and installing this patch.
+   
+  1. If the above routine is mapped, disable mapping for it.
+  
+  2. Use the 'INSTALL/CHECK MESSAGE' option of your PackMan menu to load
+     the KIDS distribution onto your system.
+   
+  3. On the 'Kernel Installation & Distribution System' Menu (KIDS), select
+     the 'Installation' menu.
+   
+     From this menu you may choose the following options prior to
+     installing this patch:
+   
+      a. Backup a Transport Global - this option will create a backup
+         message of any routines exported with the patch.  It will NOT
+         backup any other changes such as data dictionaries or templates.
+  
+      b. Compare Transport Global to Current System - this option will
+         allow you to view all changes that will be made when the patch is 
+         installed.  It compares all components of the patch (routines,
+         DDs, templates, etc.)
+   
+      c. Verify Checksums in Transport Global - this option will allow you
+         to ensure the integrity of the routine that is in the transport
+         global.
+   
+  4. Use the 'Install Package(s)' option under the 'Installation' menu.
+        When prompted for INSTALL NAME, enter: RA*5.0*42.
+   
+        When prompted "Want KIDS to INHIBIT LOGONs during the install?
+        YES//", respond NO.
+   
+        When prompted "Want to DISABLE Scheduled Options and Menu Options?
+        YES//", respond YES.      
+  
+        When prompted "Enter options you wish to mark
+        as 'Out of Order':", enter the following: 
+      
+           RA SYSLOC                 Location Parameter Set-up
+           RA PERFORMIN MENU         Performance Indicator ...  
+  
+        When prompted "Enter protocols you wish to mark as 'Out of
+        Order':", just press the Enter key to skip this prompt. 
+  
+     5. Verify that the patch installation completed correctly by using the
+        KIDS 'Utilities...' [XPD UTILITY] option 'Install File Print' [XPD
+        PRINT INSTALL FILE] and selecting this patch (RA*5.0*42).
+  
+     6. On a mapped system, rebuild your map set.
+
+Routine Information:
+====================
+
+Routine Name:
+  - RASYS
+
+ The routine 'RASYS' is modified to display the imaging location that the
+ user selects.  Previous to this patch, the routine did not display the 
+ imaging location selected by the user.
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : CEBELINSKI,GREGORY            Date Entered  : JUL 30, 2003
+Completed By: PATRICK,PAT                   Date Completed: AUG 14, 2003
+Released By : HINES,RICK                    Date Released : AUG 18, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

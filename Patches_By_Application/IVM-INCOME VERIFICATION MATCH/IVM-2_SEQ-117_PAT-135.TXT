@@ -1,0 +1,235 @@
+$TXT Created by WINTERTON,STEVEN B at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 02/25/09 at 10:43
+=============================================================================
+Run Date: DEC 11, 2009                     Designation: IVM*2*135
+Package : IVM - INCOME VERIFICATION MATCH     Priority: Mandatory
+Version : 2       SEQ #117                      Status: Released
+                  Compliance Date: JAN 11, 2010
+=============================================================================
+
+Associated patches: (v)IVM*2*14    <<= must be installed BEFORE `IVM*2*135'
+
+Subject: SUPPRESS INTERACTIVE I/O FOR IB INSURANCE INTERFACE
+
+Category: 
+  - Routine
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ This patch is being implemented in support of the Insurance Capture Buffer
+ (ICB) application which will provide a Graphical User Interface (GUI)
+ front end to the Integrated Billing (IB) insurance update/editing
+ functionality. The ICB application requires that there be no write
+ statements or interactive reads when using the existing IB ACCEPT/REJECT
+ Insurance Buffer logic. This logic is found in the Process Insurance
+ Buffer [IBCN INSURANCE BUFFER PROCESS] option which uses the following
+ protocols:
+     Reject Entry [IBCNB PROCESS REJECT]
+     Accept Entry [IBCNB PROCESS ACCEPT]
+  
+ The UPDATE^IVMLINS4 API is updated to comply with ICBs requirements.
+ Integration Control Registration (ICR) # 2530 documents this supported
+ interface between IB and IVM.
+  
+ This patch will add two additional input parameters, IVMREPTR and 
+ IVMSUPPR, to the UPDATE^IVMLINS4 API as follows:
+         UPDATE(DFN,IVMINSST,IVMID,IVMREPTR,IVMSUPPR) 
+  
+      IVMREPTR variable is an input variable to pass the IVM REASONS FOR
+      NOT UPLOADING (#301.91) Internal Entry Number into this application.
+      This variable will be optional. When an Insurance Segment is rejected
+      based on the ICB application rejecting an IVM Insurance entry from
+      the IVM application, the pointer value for the reason it isn't
+      uploaded will be pass and store in the REASON NOT UPLOADING INSURANCE
+      (#.08) field of the IVM PATIENT (#301.5) file.
+  
+      The IVMSUPPR variable is an input variable which when passed will
+      suppress what is written to the screen and the interactive read of
+      the IVM REASON FOR NOT UPLOADING (#301.91) file within the UPDATE
+      API.
+  
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+ There is no NSR associated with this patch.
+  
+  
+ This patch addresses the following Remedy tickets:
+ ----------------------------------------------------
+ There are no remedy tickets associated with this patch.
+  
+  
+ Test Sites:
+ -----------
+ North FLorida/South Georgia  (Gainesville)
+ Bay Pines, FL
+ Memphis,TN 
+  
+         ================INSTALLATION INSTRUCTIONS =================
+  
+  If installed during the normal workday, it is recommended that the
+  following selection in the OPTION (#19) file be disabled to prevent
+  possible conflicts while running the KIDS Install:
+  
+     Process Insurance Buffer [IBCN INSURANCE BUFFER PROCESS]
+  
+  Install Time - less than 5 minutes
+  
+  1.  LOAD TRANSPORT GLOBAL
+      ---------------------
+      Choose the PackMan message containing this patch and invoke the
+      INSTALL/CHECK MESSAGE PackMan option.
+  
+  2.  START UP KIDS
+      -------------
+      Start up the Kernel Installation and Distribution System Menu [XPD
+      MAIN]:
+  
+           Edits and Distribution ...
+           Utilities ...
+           Installation ...
+  
+  Select Kernel Installation & Distribution System Option: INStallation
+                                                           ---
+           Load a Distribution
+           Print Transport Global
+           Compare Transport Global to Current System
+           Verify Checksums in Transport Global
+           Install Package(s)
+           Restart Install of Package(s)
+           Unload a Distribution
+           Backup a Transport Global
+  
+  Select Installation Option:
+  
+  
+  3.  Select Installation Option:
+      ---------------------------
+  NOTE:  The following are OPTIONAL - (When prompted for the INSTALL NAME,
+         enter IVM*2.0*135):
+  
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when this patch is
+         installed.  It compares all components of this patch (routines,
+         DD's, templates, etc.).
+     c.  Verify Checksums in Transport Global - This option will allow you
+         to ensure the integrity of the routines that are in the transport
+         global.
+  
+  
+  4.  Select Installation Option: Install Package(s)
+                                  ------------------
+     **This is the step to start the installation of this KIDS patch:
+  
+     a.  Choose the Install Package(s) option to start the patch install.
+     b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+         YES//' answer NO.
+     c.  When prompted 'Want to DISABLE Scheduled Options , Menu Options,
+         and Protocols? YES//' answer YES.
+     d.  When prompted 'Enter options you wish to mark as 'Out Of Order':'
+         Enter the following options:
+  
+             Process Insurance Buffer [IBCN INSURANCE BUFFER PROCESS]
+  
+     e.  When prompted 'Enter protocols you wish to mark as 'Out Of 
+ Order':'
+         Enter the following protocols:
+  
+             Reject Entry [IBCNB PROCESS REJECT]  
+             Accept Entry [IBCNB PROCESS ACCEPT]
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;2.0;INCOME VERIFICATION MATCH;**[Patch List]**; 21-OCT-94;Build 1
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: IVMLINS4
+    Before: B14942950   After: B16013068  **14,135**
+ Description of Changes:
+  Added two new parameters to the UPDATE API that allows the IVM Reasons For
+  Not Uploading to be passed and to allow write statements to be suppressed
+  and not do interactive call to get the IVM Reasons For Not Uploading.
+   
+  UPDATE subroutine
+   
+  Before:
+  UPDATE(DFN,IVMINSST,IVMID) ;
+      ;
+      ; Input:       DFN  --  internal entry number of PATIENT file
+      ;         IVMINSST  --  upload status 1-accepted  0-rejected
+      ;            IVMID  --  ins. co. name ^ street add[line 1] ^ group #
+      ;
+   
+  After:
+  UPDATE(DFN,IVMINSST,IVMID,IVMREPTR,IVMSUPPR) ;
+      ;
+      ; Input:       DFN  --  internal entry number of PATIENT file
+      ;         IVMINSST  --  upload status 1-accepted  0-rejected
+      ;            IVMID  --  ins. co. name ^ street add[line 1] ^ group #
+      ;         IVMREPTR  --  IVM REASONS FOR NOT UPLOADING (#301.91) IEN
+      ;                       (Optional)
+      ;         IVMSUPPR  --  Suppress Write and Interactive Lookup when > 0
+      ;                       (Optional)
+      ;
+   
+   
+  PROCESS subroutine
+   
+  Before:
+           ;
+           ; - if the insurance data is rejected do
+           ; - ask for reason why
+           ;
+           W !!,"The 'Reject IVM Insurance Policy' action has been 
+  selected."
+           ;
+           W !,"Please select a reason for rejecting the IVM insurance 
+  information."
+           S DIC="^IVM(301.91,",DIC("A")="Select reason for rejecting: 
+  ",DIC(0)="QEAMZ"
+           D ^DIC K DIC I Y<0!($D(DTOUT))!($D(DUOUT)) S IVMIBERR="No reason 
+  selected" G EXIT
+           S IVMREPTR=+Y
+           ;
+   
+  After:
+           ;
+           ; - if the insurance data is rejected and writes/prompts not
+  suppressed 
+           ;   then ask for reason why
+           ;
+           D:$G(IVMSUPPR)'>0
+           . W !!,"The 'Reject IVM Insurance Policy' action has been 
+  selected."
+           . W !,"Please select a reason for rejecting the IVM insurance
+  information."
+           . S DIC="^IVM(301.91,",DIC("A")="Select reason for rejecting:
+  ",DIC(0)="QEAMZ"
+           . D ^DIC K DIC I Y<0!($D(DTOUT))!($D(DUOUT)) S IVMREPTR=0 Q
+           . S IVMREPTR=+Y
+           ;
+           ;If IVMREPTR hasn't been defined, give error message and exit
+           I $G(IVMREPTR)'>0 S IVMIBERR="No reason selected" G EXIT
+           ;
+
+ 
+Routine list of preceding patches: 14
+
+=============================================================================
+User Information:
+Entered By  : HARTLEY,PETER                 Date Entered  : NOV 24, 2008
+Completed By: SBERRO,SANDRA                 Date Completed: NOV 18, 2009
+Released By : GROOMS,ANTHONY E              Date Released : DEC 11, 2009
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

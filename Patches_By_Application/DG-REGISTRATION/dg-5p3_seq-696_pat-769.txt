@@ -1,0 +1,275 @@
+$TXT Created by BOWEN,MARY JANE at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 03/19/08 at 14:19
+=============================================================================
+Run Date: OCT 08, 2008                     Designation: DG*5.3*769
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #696                    Status: Released
+                  Compliance Date: NOV 08, 2008
+=============================================================================
+
+Associated patches: (v)DG*5.3*582  <<= must be installed BEFORE `DG*5.3*769'
+                    (v)DG*5.3*647  <<= must be installed BEFORE `DG*5.3*769'
+
+Subject: PATIENT LOOKUP WARNINGS
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ This patch addresses issues regarding the patient sensitivity/security
+ check, and the check for same last name and last 4 digits of SSN.
+  
+ ASSOCIATED REMEDY TICKETS:
+ ==========================
+ HD0000000063423 - ISP-0203-N0929  Patient Lookups - Security and other 
+  
+ Duplicates:
+ HD0000000067918 - BUT-0304-21374  Enter/Edit Encounter and Sensitive 
+ HD0000000186241 - Question about Restricted Record prompt.
+  
+ ASSOCIATED NSRs:
+ =================
+  
+ N/A
+   
+ PARTICIPATING TEST SITES:
+ =========================
+ Richmond, VA
+ Tennessee Valley HCS
+ Louisville, KY
+   
+ REMEDY OVERVIEW:
+ ================
+  
+ Problem:
+ ========
+ The below sensitivity/security check is not done under certain 
+ circumstances:
+  
+                                  ***WARNING***
+                             ***RESTRICTED RECORD***
+  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+  * 
+  * This record is protected by the Privacy Act of 1974 and the Health
+  * Insurance Portability and Accountability Act of 1996. If you elect
+  * to proceed, you will be required to prove you have a need to know.
+  * Accessing this patient is tracked, and your station Security 
+  * Officer will contact you for your justification.
+  *
+  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+  
+   Do you want to continue processing this patient record? No// 
+  
+  
+ The above sensitivity/security alert is not properly completed under 
+ certain circumstances:
+  
+   
+ The check resulting in this alert does not occur when a patient lookup 
+ is done from a file which points to the PATIENT file (#2), but from a
+ field other than its .01 field. There are over one hundred such files.  
+ This issue is documented in Remedy ticket HD63423.
+   
+ When the PATIENT File (#2) lookup is done from a sub-file, and the .01 
+ field of the sub-file points to the PATIENT file (#2), the
+ sensitive/security patient check is completed, but the user's response is
+ not handled properly. If the lookup was done in preparation to add a
+ record in the requesting package's sub-file, and the user responds "no" to
+ the alert,  a sub-file record is still added. This issue is documented in
+ Remedy tickets HD67918 and HD186241.
+  
+  
+ Solution:
+ =========
+ All lookups will use routine DPTLK for the processing of 
+ sensitivity/security checks and warnings.  This includes lookups from
+ files where the .01 field points to the PATIENT File (#2).
+  
+ This patch does not address the issue raised by ticket 63423, namely 
+ that having an "I" in DIC(0) as part of the patient lookup results in not
+ doing the sensitivity/security check or any other checks/warnings done by
+ DPTLK. That is working as designed.
+  
+ In the course of testing this solution, we found that "??" is sometimes
+ displayed by FileMan after the user responds to the patient check.
+ This can be safely ignored by users as it doesn't have any adverse effect.
+ We also found that FileMan will continue to print data from certain 
+ records which point to the PATIENT file (#2), much as it did before this
+ patch. A FileMan patch to resolve either of these issues would be too
+ extensive. Sites interested in requesting such a patch can file a New IT
+ Services and Commercial Technologies Evaluation Request Form at the below
+ address:
+    
+    http://vista.med.va.gov/pas/NewITRequestForm.asp
+  
+  
+ DATA DICTIONARY:
+ ================
+ Post-init routine DG53P769 will change the data dictionary for the PATIENT
+ file (#2) as follows:
+  
+ from:
+ ^DD(2,0,"ACT")=I '$G(DICR),$G(DIC(0))'["I" D ^DGSEC
+  
+ to:
+ ^DD(2,0,"ACT")=I $G(DIC(0))'["I" D ^DGSEC 
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ This patch may be installed with users on the system.
+ Installation will take less than 5 minutes.
+   
+ 1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu to unload
+     the KIDS distribution included with this message.
+     NOTE:  If the required patches are not installed, the transport global
+            will be removed.  If the transport global is removed you will
+            need to repeat this step.
+   
+ 2.  From the Kernel Installation and Distribution System Menu, select
+     the Installation menu.
+   
+ 3.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter DG*5.3*769):
+     a.  Compare Transport Global to Current System  - this option will
+         allow you to view all changes that will be made when the patch
+         is installed.  It compares all components of the patch (routines,
+         DDs, templates, etc.).
+     b.  Verify Checksums in Transport Global - this option will
+         allow you to ensure the integrity of the routines that are in
+         the transport global.
+     c.  Print Transport Global - this option will allow you to view the
+         components of the KIDS build.
+     d.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+   
+ 4.  Use the Install Package(s) option and select the package DG*5.3*769.
+   
+ 5.  When Prompted, 'Want KIDS to Rebuild Menu Trees Upon Completion of 
+     Install? NO// NO', respond NO.
+  
+ 6.  When prompted, 'Want KIDS to INHIBIT LOGONs during the install?
+     NO//', respond NO.
+   
+ 7.  When prompted, 'Want to DISABLE Scheduled Options, Menu Options, and
+     Protocols? NO//', respond NO.
+  
+ Routine DG53P769 can be deleted after the patch has been succcessfully
+ installed.
+  
+ PLEASE NOTE:
+ ============
+   Routine DGSEC, distributed in this patch, references routines
+   A7RDPACT, MPRCHK and GMRPNCW.  These routines are no longer part of the
+   national Class I routine set, but may still be in use at some sites.
+  
+   If  DG*5.3*769  is installed in an account where those routines are not 
+   present, XINDEX may display this message:  "Reference to routine (one of
+   the above). That isn't in this UCI."  This alert message can be ignored.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.3;Registration;**[Patch List]**;Aug 13, 1993;Build 2
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: DG53P769
+    Before:       n/a   After:   B239808  **769**
+Routine Name: DGSEC
+    Before: B41818093   After: B42705118  **32,46,197,214,249,281,352,
+                                           391,425,582,769**
+ Description of Changes:
+  DGSEC.INT.1                   |"PATVEE"|DGSEC.INT.1  
+  **************************************************************************
+  *****
+  DGSEC.INT.1
+   +2         
+  ;;5.3;Registration;**32,46,197,214,249,281,352,391,425,582,769**;Au
+  g 13, 1993
+  ...................
+  |"PATVEE"|DGSEC.INT.1
+   +2         
+  ;;5.3;Registration;**32,46,197,214,249,281,352,391,425,582**;Aug 13
+  , 1993
+  ---------------------------------------
+  DGSEC.INT.1
+   +5         I +$G(Y)=+$G(^DISV(DUZ,"^DPT(")),$G(DPTBTDT) K DPTBTDT Q
+  ...................
+  |"PATVEE"|DGSEC.INT.1
+  **************************************************************************
+  *****
+
+Routine Name: DPTLK
+    Before: B65590603   After: B66931183  **32,72,93,73,136,157,197,232,
+                                           265,277,223,327,244,513,528,
+                                           541,576,600,485,633,629,647,
+                                           769**
+ Description of Changes:
+  DPTLK.INT.1                   |"PATVEE"|DPTLK.INT.1  
+  **************************************************************************
+  *****
+  DPTLK.INT.1
+   +2         
+  ;;5.3;Registration;**32,72,93,73,136,157,197,232,265,277,223,327,24
+  4,513,528,541,576,600,485,633,629,647,769**;Aug 13, 1993
+  ...................
+  |"PATVEE"|DPTLK.INT.1
+   +2         
+  ;;5.3;Registration;**32,72,93,73,136,157,197,232,265,277,223,327,24
+  4,513,528,541,576,600,485,633,629,647**;Aug 13, 1993
+  ---------------------------------------
+  DPTLK.INT.1
+   +99        ;I '$G(DICR),DPTDFN>0,DIC(0)["E",$$BS5^DPTLK5(+DPTDFN) D  G 
+  ASKPAT:
+  DIC(0)["A"&(%'=1),QK:DPTDFN<0
+   +100       I DPTDFN>0,DIC(0)["E",$$BS5^DPTLK5(+DPTDFN) D  G 
+  ASKPAT:DIC(0)["A"&
+  (%'=1),QK:DPTDFN<0  ;*TEST*
+  ...................
+  |"PATVEE"|DPTLK.INT.1
+   +99        I '$G(DICR),DPTDFN>0,DIC(0)["E",$$BS5^DPTLK5(+DPTDFN) D  G 
+  ASKPAT:D
+  IC(0)["A"&(%'=1),QK:DPTDFN<0
+   
+            
+  ---------------------------------------
+  DPTLK.INT.1
+   +107       ;I '$G(DICR),DPTDFN>0 S Y=DPTDFN D ^DGSEC S DPTDFN=Y G 
+  ASKPAT:DIC(0
+  )["A"&(DPTDFN<0),QK:DPTDFN<0
+   +108       I DPTDFN>0,DIC(0)["E" S Y=DPTDFN D ^DGSEC S DPTDFN=Y G 
+  ASKPAT:DIC(0
+  )["A"&(DPTDFN<0),QK:DPTDFN<0 S DPTBTDT=1
+  ...................
+  |"PATVEE"|DPTLK.INT.1
+   +106       I '$G(DICR),DPTDFN>0 S Y=DPTDFN D ^DGSEC S DPTDFN=Y G 
+  ASKPAT:DIC(0)
+  ["A"&(DPTDFN<0),QK:DPTDFN<0
+  ---------------------------------------
+  DPTLK.INT.1
+   +138       K:'$G(DICR) DPTBTDT  ; IF DICR LEAVE FOR DGSEC TO HANDLE
+  ...................
+  |"PATVEE"|DPTLK.INT.1
+  **************************************************************************
+  *****
+
+ 
+Routine list of preceding patches: 582, 647
+
+=============================================================================
+User Information:
+Entered By  : THEROUX,JOHN                  Date Entered  : SEP 13, 2007
+Completed By: SESSLER,APRIL                 Date Completed: OCT 08, 2008
+Released By : FRANCE,KATHI                  Date Released : OCT 08, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

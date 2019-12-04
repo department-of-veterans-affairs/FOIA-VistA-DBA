@@ -1,0 +1,304 @@
+$TXT Created by BAUMANN,SCOTT A at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 08/19/04 at 15:15
+=============================================================================
+Run Date: DEC 14, 2004                     Designation: FB*3.5*82
+Package : FB - FEE BASIS                      Priority: Mandatory
+Version : 3.5        SEQ #76                    Status: Released
+                  Compliance Date: JAN 14, 2005
+=============================================================================
+
+Associated patches: (v)FB*3.5*77   <<= must be installed BEFORE `FB*3.5*82'
+                    (v)DG*5.3*605  <<= must be installed BEFORE `FB*3.5*82'
+
+Subject: PTF INTERFACE UPDATE
+
+Category: 
+  - Routine
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ This patch modifies the Fee Basis software to use two new PTF (Patient
+ Treatment File) APIs when creating or deleting Non-VA PTF records. It also
+ corrects a fault that prevented deletion of the Non-VA PTF Record when a
+ Community Nursing Home (CNH) authorization was cancelled.
+  
+ Associated NOIS:
+ ================
+ N/A
+  
+ Associated E3R:
+ ===============
+ N/A 
+  
+ Test Sites:
+ =============
+ Montana HCS
+ San Francisco, CA
+ Tuscaloosa, AL
+ Upstate New York HCS
+ Walla Walla, WA
+  
+ The changes made by this patch are described below:
+  
+ 1. USE NEW PTF APIS
+  
+    When certain events occur in Fee Basis, the software attempts to create
+    or delete Non-VA PTF records in the Registration package.  Integration
+    Agreements (IAs) #226, #993, #994, and #1010 permit this access.  The
+    Fee Basis events that can result in the creation or deletion of a
+    Non-VA PTF record are listed below:
+  
+    Note: CH  = Civil Hospital
+          CNH = Community Nursing Home
+  
+    Create PTF Event  Associated Option(s)
+    ----------------  ----------------------------------------------------
+    Set-Up CH 7078    Legal Entitlement [FBCH LEGAL ENTITLEMENT]
+                      Medical Entitlement [FBCH MEDICAL ENTITLEMENT]
+                      Set-up a 7078 [FBCH 7078 SETUP] 
+  
+    Admit to CNH      Enter CNH Authorization [FBCNH ENTER AUTHORIZATION]
+                      Admit To CNH [FBCNH ADMIT]
+  
+    Pay Unauth. CH    Payments for Unauthorized Claims [FBUC PAYMENTS]
+  
+  
+    Delete PTF Event  Associated Option(s)
+    ----------------  ----------------------------------------------------
+    Cancel CH 7078    Cancel 7078 Entered in Error [FBCH CANCEL 7078]
+  
+    Cancel CNH 7078   Cancel Authorization Entered in Error [FBCNH CANCEL
+                      7078]
+  
+    Registration patch DG*5.3*605 added two new application programming 
+    interfaces (APIs) for the creation and deletion of Non-VA PTF records.
+    These APIs are documented in integration agreement (IA) #4436.
+  
+    This patch, FB*3.5*82, modifies the Fee Basis software to use the new
+    APIs instead of the old method when attempting to create or delete a
+    PTF record.
+  
+  
+ 2. FIX PROBLEM DELETING PTF RECORD ASSOCIATED WITH CNH ADMISSION
+  
+    When a patient is admitted to a Community Nursing Home (CNH), the Fee 
+    Basis software calls the Registration package to create a Non-VA PTF 
+    record with both the date and time of the admission.  If the associated
+    7078 authorization is cancelled, the software attempts to delete the
+    PTF record.  However, the PTF deletion always fails because only the
+    date (without a time) is used to select the PTF record.  The fault was
+    discovered during the creation of this patch.
+  
+    The CNH admission time is not stored with the CNH 7078 authorization.  
+    It is only stored in the FEE CNH ACTIVITY (#162.3) file which contains
+    the movements (admission, discharge, transfer).  The software requires
+    all associated movements to be deleted before a CNH authorization can
+    be cancelled so the time is no longer available when a CNH
+    authorization is cancelled.
+  
+    This patch modifies the Fee Basis software so the PTF record deletion 
+    will occur when a CNH admission is deleted via the Admission Delete
+    [FBCNH DELETE ADMISSION] option instead of when the authorization is
+    cancelled with the Cancel Authorization Entered in Error [FBCNH CANCEL
+    7078] option.
+  
+    Note: The local PTF record is not deleted if it has already been
+    closed or transmitted to Austin.
+  
+ ====================== INSTALLATION INSTRUCTIONS ====================== 
+ If installed during the normal workday it is recommended that the
+ following menu options (File #19) and all of their descendants be
+ disabled to prevent possible conflicts while running the KIDS Install.
+ Other VISTA users will not be affected.
+  
+    Legal Entitlement [FBCH LEGAL ENTITLEMENT]
+    Medical Entitlement [FBCH MEDICAL ENTITLEMENT]
+    Set-up a 7078 [FBCH 7078 SETUP] 
+    Enter CNH Authorization [FBCNH ENTER AUTHORIZATION]
+    Admit To CNH [FBCNH ADMIT]
+    Payments for Unauthorized Claims [FBUC PAYMENTS]
+    Enter Invoice/Payment [FBCH ENTER PAYMENT]
+    Reimbursement for Inpatient Hospital Invoice [FBCH REIMBURSEMENT 
+      INVOICE]
+    Cancel 7078 Entered in Error [FBCH CANCEL 7078]
+    Cancel Authorization Entered in Error [FBCNH CANCEL 7078]
+    Admission Delete [FBCNH DELETE ADMISSION]
+  
+ Install Time -
+   The estimated install time for this patch is approximately 2 minutes.
+  
+  1.  LOAD TRANSPORT GLOBAL 
+      ---------------------
+      Choose the PackMan message containing this patch and invoke the 
+      INSTALL/CHECK MESSAGE PackMan option.  
+              
+  2.  DISABLE ROUTINE MAPPING   (DSM for Open VMS sites only) 
+      -----------------------
+      Disable routine mapping on all systems for the routines listed in 
+      step 3 below.  
+      NOTE:  If the routines included in this patch are not currently in 
+      your mapped routine set, please skip this step.
+   
+  3.  COMPONENTS SENT WITH PATCH 
+      --------------------------
+      The following is a list of the routines included in this patch.  
+      The second line of each of these routines now looks like: 
+     
+          ;;3.5;FEE BASIS;**[patch list]**;JAN 30, 1995 
+   
+                   CHECK^XTSUMBLD results
+  
+        Routine   Before Patch  After Patch  Patch List 
+        --------  ------------  -----------  ----------
+        FBCH780   3773342       3286147      82
+        FBCHC78   11229364      10845919     82
+        FBCHEP    19747622      18625498     4,61,77,82
+        FBNHDLAD  5489319       5752432      82
+        FBNHEA    9042749       8628536      82
+        FBUTL6    new           1181847      82
+  
+      Total number of routines: 6
+      Number of new Routines: 1
+  
+   
+  4.  START UP KIDS 
+      -------------
+      Start up the Kernel Installation and Distribution System Menu 
+      [XPD MAIN]: 
+    
+           Edits and Distribution ...  
+           Utilities ...  
+           Installation ...  
+    
+      Select Kernel Installation & Distribution System Option: INStallation
+                                                               ---
+           Load a Distribution 
+           Print Transport Global 
+           Compare Transport Global to Current System 
+           Verify Checksums in Transport Global 
+           Install Package(s) 
+           Restart Install of Package(s) 
+           Unload a Distribution 
+           Backup a Transport Global 
+    
+      Select Installation Option: 
+    
+  5.  Select Installation Option: 
+      --------------------------
+      NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+             NAME, enter FB*3.5*82):
+       
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch.  It will not
+          backup any other changes such as DD's or templates.
+      b.  Compare Transport Global to Current System - This option will
+          allow you to view all changes that will be made when this patch
+          is installed.  It compares all components of this patch
+          (routines, DD's, templates, etc.).
+      c.  Verify Checksums in Transport Global - This option will allow
+          you to ensure the integrity of the routines that are in the
+          transport global.
+      
+  6.  Select Installation Option: Install Package(s) 
+                                  ----------------
+      **This is the step to start the installation of this KIDS patch: 
+    
+      a.  Choose the Install Package(s) option to start the patch install.
+      b.  When prompted 'Want KIDS to Rebuild Menu Trees Upon Completion of
+          Install? YES//' answer NO.
+      c.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+          YES//' answer NO.
+      d.  When prompted 'Want to DISABLE Scheduled Options, Menu Options,
+          and Protocols? YES//' answer YES
+      e.  Note that the following eleven options have already been
+          specified in the KIDS build as Disable During Install and 
+          are pre-loaded in the list.  If necessary, options can be removed
+          from the list by entering '-' following by an option name.
+  
+          Legal Entitlement [FBCH LEGAL ENTITLEMENT]
+          Medical Entitlement [FBCH MEDICAL ENTITLEMENT]
+          Set-up a 7078 [FBCH 7078 SETUP] 
+          Enter CNH Authorization [FBCNH ENTER AUTHORIZATION]
+          Admit To CNH [FBCNH ADMIT]
+          Payments for Unauthorized Claims [FBUC PAYMENTS]
+          Enter Invoice/Payment [FBCH ENTER PAYMENT]
+          Reimbursement for Inpatient Hospital Invoice [FBCH REIMBURSEMENT
+            INVOICE]
+          Cancel 7078 Entered in Error [FBCH CANCEL 7078]
+          Cancel Authorization Entered in Error [FBCNH CANCEL 7078]
+          Admission Delete [FBCNH DELETE ADMISSION]
+  
+          When prompted 'Enter options you wish to mark as 'Out Of Order':'
+          press <return> to accept the pre-loaded list.
+      f.  When prompted 'Enter protocols you wish to mark as 'Out Of
+          Order':' press <return>.
+  
+  7.  REBUILD MAPPED ROUTINE(S)  (DSM for Open VMS sites only)
+      -------------------------
+      Optional - Include the routines distributed with this patch in the
+      mapped routine set.
+      
+      NOTE: This step is only necessary if you performed step 2 or if you
+      wish to include the routines in your mapped set.
+
+Routine Information:
+====================
+
+Routine Name:
+  - FBCH780
+
+ Update method used to create PTF record for CH 7078 set-up.
+
+Routine Checksum:
+
+Routine Name:
+  - FBCHC78
+
+ Update method used to delete PTF record and only perform if cancelled 7078
+ authorization is for Civil Hospital (CH).
+
+Routine Checksum:
+
+Routine Name:
+  - FBCHEP
+
+ Update method used to create PTF record when Civil Hospital unauthorized
+ claim is paid.
+
+Routine Checksum:
+
+Routine Name:
+  - FBNHDLAD
+
+ Add code to delete PTF record when CNH admission is deleted.
+
+Routine Checksum:
+
+Routine Name:
+  - FBUTL6
+
+ New routine that contains the calls to the PTF APIs.  It is invoked by the
+ other Fee Basis routines when a PTF record should be created or deleted.
+
+Routine Checksum:
+
+Routine Name:
+  - FBNHEA
+
+ Update method used to create PTF record for CNH admission.
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : BAUMANN,SCOTT A               Date Entered  : AUG 10, 2004
+Completed By: TORRANCE,LORI                 Date Completed: DEC 14, 2004
+Released By : JACKSON,SHERYL                Date Released : DEC 14, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

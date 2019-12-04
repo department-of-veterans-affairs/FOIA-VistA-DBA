@@ -1,0 +1,763 @@
+Verified XM*7.1*4 SEQ #3
+Extracted from mail message
+XM0
+XM0 ;(WASH ISC)/CAP/THM-MailMan Main - Miscelaneous ;10/15/90  13:05 ;
+ ;;7.1;MailMan;**4**;Jun 02, 1994
+MULTI ;From XM - If not the first sign-on for this person into MailMan
+ W *7,!!,"It appears someone is signed on as you already."
+ W !!,"YOU MAY NOT SEND MAIL OR RESPOND TO MAIL IN THIS SESSION !!!"
+ W !,"(Only the 1st of multiple MailMan sessions may send or respond to mail.)"
+ S XMNOSEND=1 Q
+ ;
+CHECK ;CHECK MAILMAN NAME SYNTAX
+CHDOM N I
+ I $L(X)>99 W !,*7,"Domain names must be less than 99 characters." G ER
+ S X1=$TR(X,"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+ I $TR(X1,"()<>@,;:\[]"_$C(34),"")'=X1 W !,*7," Domain names must contain only alpha, numeric, or '_' characters."  G ER
+ F I=1:1:$L(X1,".") I $P(X1,".",I)'?1A.E1AN!($P(X1,".",I)'?.E1AN) W !,*7," Domain name must begin with a letter and end with a letter or number."  G ER
+ F I=1:1:$L(X1,".") I $L($P(X1,".",I))>12!($L($P(X1,".",I))<1) W !,*7," Each ""."" piece must be 1 to 12 characters long." G ER
+ I '$D(DIFROM) F XMA0=0:0 S XMA0=$O(^DIC(4.2996,XMA0)) Q:XMA0'>0  S XMB0=$P(^DIC(4.2996,XMA0,0),"^") I $E(X1,1,$L(XMB0))=XMB0 W !,*7," Domain name must not match or partial match with Internet reserved domain names." G ER
+ K XMA0,XMB0,X1 Q
+ER R !,"Do you want HELP on NETWORK DOMAIN NAMES ? ",ANS:DTIME
+ I '$T!(ANS'="Y") G ER1
+ S XQH="XMDOMAIN" D EN^XQH
+ER1 K X Q
+
+XMA
+XMA ;(WASH ISC)/THM/CAP-MailMan READ/NEW OPTIONS ;3/19/91  08:40 ;
+ ;;7.1;MailMan;**4**;Jun 02, 1994
+NW W !!,"You have 'NEW' mail in more than one basket.",!
+ Q
+SCANNEW ;
+ D INIT^XMAK I XMDUZ'=DUZ,$D(XMPRIV) G ER:$P(XMPRIV,U,2)'["y"
+ S %=$P(^XMB(3.7,XMDUZ,0),U,6),(XMA0,XMZ)=0 G Q1:+%=0
+ S XMK=$O(^XMB(3.7,XMDUZ,"N0",0)) I XMK="" S $P(^XMB(3.7,XMDUZ,0),U,6)="" G Q1
+ I %=1 S XMZ=$O(^XMB(3.7,XMDUZ,"N0",XMK,0)),XMKN=$P(^XMB(3.7,XMDUZ,2,XMK,0),U) G ^XMAK:'$D(^XMB(3.9,XMZ,0)) S XMR=^(0) D P G ^XMAK
+ I XMK,$O(^XMB(3.7,XMDUZ,"N0",XMK)) D NW
+NC R !,"NEW MAIL OPTION: READ by Basket// ",X:DTIME Q:X["^"
+ I "Ss"[$E(X_" ") S XMK=0 G N
+ I "BLOPblop"[X,$L(X)=1 D NEW^XMA0A G NQ
+ I $S(X="?":1,"Rr"'[X:1,1:0) D HLP^XMA0A G NC
+ ;
+ ;New mail in only one basket
+ S X=$O(^XMB(3.7,XMDUZ,"N0",0)) I '$O(^(X)) S XMK=X,XMZ=0 D N0 G ^XMAK
+ ;
+1 G ^XMAK:X["^" K DIC S XMKN=$P(^XMB(3.7,XMDUZ,2,XMK,0),U),XMK=0,DIC("A")="Read NEW mail in",DIC("S")="I $P(^(0),U,2)" D BASKET G ^XMAK:X["^"!$D(DTOUT)!(Y<1)
+ S XMK=+Y,XMKN=$P(Y,U,2),XMZ=0 D N0 G Q:X[U!$D(DUOUT)!$D(DTOUT)
+ S Y=$O(^XMB(3.7,XMDUZ,"N0",0)) G ^XMAK:'Y S X=$O(^(XMK)),XMK=$S('X:Y,1:X) I X,Y'=X D NW
+ W !!,"Done with NEW mail in your '",XMKN,"' Basket.",!! G 1
+NQ G ^XMAK:'$O(^XMB(3.7,XMDUZ,"N0",0)),NC
+N S XMK=$O(^XMB(3.7,XMDUZ,"N0",XMK)) Q:'XMK  S XMZ=0 D N0 G N:X'[U,Q
+N0 Q:XMK=""  S XMAS="N0",XMZ=$O(^XMB(3.7,XMDUZ,"N",XMK,XMZ)) G O
+M S XMAS="M",XMZ=$O(^XMB(3.7,XMDUZ,"N0",XMK,XMZ))
+O I 'XMZ G M:XMAS="N0" S %="^XMB(3.7,XMDUZ,2,XMK,0)" L +@% S:'$O(^XMB(3.7,XMDUZ,"N0",XMK,0)) $P(@%,U,2)="" L -@% K XMAS Q
+ S (XMR,X)=$S($D(^XMB(3.9,XMZ,0)):^(0),1:"") I X="" D KL^XMA1B G @XMAS
+ I $F(":Y:y:",":"_$P(X,U,11)_":"),XMDUZ'=DUZ S X="" G @XMAS
+ I $D(^XMB(3.7,XMDUZ,2,XMK,0)) S XMKN=$P(^(0),U)
+ D P Q:X[U  G @XMAS
+P K XMA0 I $F(":Y:y:",":"_$P(XMR,U,11)_":"),XMDUZ'=DUZ W !,"The message (Subj: ",$P(XMR,U),") is confidential.",!,"You may not read it !" H 1 Q
+ S %=XMK_U_$G(XMKN),XMANEW=1 N XMK,XMKN S XMK=+% S:$L($P(%,U,2)) XMKN=$P(%,U,2) D ENTCRT^XMAP K XMP,XMANEW Q
+REC ;READ MAIL
+ D INIT^XMAK I XMDUZ'=DUZ,$D(XMPRIV) G ER:$P(XMPRIV,U,2)'["y"
+ K DIC S XMK=1,XMKN="IN",DIC("A")="Read" D BASKET I X["^"!$D(DTOUT) K XMK,XMKN S XMBASK=1 Q
+ S XMA0=0 I X=XMKN!(X="") G ^XMA0
+ S XMK=+Y,XMKN=X G ^XMA0
+USER D DSP^XM:'$D(XMDISPI) S X1=$S(('$D(^VA(200,X1,0))):X1,X1:$P(^(0),U)_$S($D(XMS0A):X1,XMDISPI'["I":X1,$D(^XMB(3.7,X1,6000)):" ("_$P(^(6000),U)_")",1:""),1:X1) Q
+ Q
+ERR K ^XMB(3.7,XMDUZ,2,XMK,1,XMZ) Q
+ER W !!,*7,"You do not have read privileges as a surrogate for ",XMDUN,! Q
+Q1 W !,"No new messages or responses." G ^XMAK
+NEW ;UNNEW MESSAGE
+ L +^XMB(3.7,XMDUZ):1
+ F K=0:0 S K=$O(^XMB(3.7,XMDUZ,"N0",K)) G QNEW:'K I $D(^(K,XMZ)) K ^(XMZ),^XMB(3.7,XMDUZ,"N",K,XMZ) Q
+ S Y=$P(^XMB(3.7,XMDUZ,0),U,6) I $D(^(2,K,1,XMZ,0)),$P(^(0),U,3) S $P(^(0),U,3,4)="^"_DT,$P(^XMB(3.7,XMDUZ,0),U,6)=$S(Y<2:"",1:Y-1),Y=$P(^(2,K,0),U,2),$P(^(0),U,2)=$S(Y<2:"",1:Y-1)
+ ;
+QNEW L -^XMB(3.7,XMDUZ) Q
+NNEW ;
+ L +^XMB(3.7,XMDUZ) G NNEWQ:'$D(^XMB(3.9,XMZ))
+ S K=$O(^XMB(3.7,"M",XMZ,XMDUZ,0)) I K'="" K ^XMB(3.7,XMDUZ,"N",K,XMZ)
+ I K<1 D KL^XMA1B S XMKM=1 D S2^XMA1B S K=1
+ G NNEWQ:$D(^XMB(3.7,XMDUZ,"N0",K,XMZ)) S ^(XMZ)="" I $D(^XMB(3.9,XMZ,0)),$P(^(0),U,7)["P" S Y=$O(^XMB(3.9,XMZ,1,"C",XMDUZ,0)) I Y>0,'$P($G(^XMB(3.9,XMZ,1,Y,0)),U,9) S ^XMB(3.7,XMDUZ,"N",K,XMZ)=""
+ S Y=^XMB(3.7,XMDUZ,0),$P(Y,U,6)=$P(Y,U,6)+1,^(0)=Y,Y=^(2,K,0),$P(Y,U,2)=$P(Y,U,2)+1,^(0)=Y,$P(^(1,XMZ,0),U,3,4)=1_U_$S($D(DT):DT,1:"")
+NNEWQ L -^XMB(3.7,XMDUZ) Q
+BASKET ;ASK BASKET
+ D C S DIC("A")=DIC("A")_" MAIL BASKET: "
+ I XMKN'="" S DIC("A")=DIC("A")_XMKN_"// "
+B D ^DIC S %=DIC("A") K DIC S DIC("A")=%
+ I X="" S X=0,Y=$O(^XMB(3.7,XMDUZ,2,"B",XMKN,0))_U_XMKN
+ I +Y K DIC Q
+ W *7,"  ???" D C G B
+C S DIC="^XMB(3.7,XMDUZ,2,",DIC(0)="AEQNZ",DIC("W")="N % S XMA0=^(0),%=$P(XMA0,U,5),XMA0=$P(XMA0,U,2) I % W ""  (""_%_"" message""_$S(%>1:""s"",1:""""),$S('XMA0:"")"",1:"" : ""_XMA0_"" 'NEW')"")"
+ Q
+DT ;TIME OPTION
+ Q:X<20000  S Y=$E(X,6,7)_" "_$P("Jan^Feb^Mar^Apr^May^Jun^Jul^Aug^Sep^Oct^Nov^Dec",U,$E(X,4,5))_" "_$E(X,2,3) S:X\1'=X %2=$P(X,".",2)_"0000",Y=Y_" "_$E(%2,1,2)_":"_$E(%2,3,4) S X=Y
+ Q
+Q K DUOUT,DTOUT Q
+
+XMA02
+XMA02 ;(WASH ISC)/CAP/THM-Queued print ;10/15/90  11:56 ;
+ ;;7.1;MailMan;**4**;Jun 02, 1994
+ENT ;Queue Printing of NEW messages
+ D GETTIME Q:X=U  S XMLROU="ZTSK3^XMA02",ZTDESC="NEW message PRINT"
+ S ZTSAVE("XMDUZ")="" D QUE G EXIT
+EN1 ;Entry to queue for printing a single message
+ D GETTIME Q:X=U
+ S XMLROU="ZTSK1^XMA02"
+ F I="XMDISPI","XMZ","XMTYPE","DUZ","XMDUZ","XMK","XMKN" S ZTSAVE(I)=""
+ D QUE G EXIT
+EN2 ;Entry to queue for printing a selection of messages
+ D GETTIME Q:X=U  S XMLROU="ZTSK2^XMA02",%=Y*86400+$P(Y,",",2) I $H*86400+$P($H,",",2)-Y<90 S %=%+90,Y=%\86400_","_(%#86400)
+ F I="XMBEG","XMDISPI","XMTYPE","DUZ","XMDUZ","XMK","XMKN" S ZTSAVE(I)=""
+ D QUE S %=0
+EXIT W "Task #"_ZTSK_" queued by request",!
+QQ K %,%0,ZTSK,XMLROU
+ Q
+GETTIME ;
+READ R !,"Requested time to print: NOW// ",X:DTIME S:'$T X="^" I X="" S X="NOW"
+ I X["?" G SYNTAX
+ I X["^" S X="^" Q
+STRIP I $E(X)=" " S X=$E(X,2,255) G STRIP
+ S X=$TR(X,"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+ I $F(",N,NO,NOW,",","_$E(X,1,3)_",")>1 S Y=$H Q
+ I X'["@" S X="T@"_X
+ S %DT="TEX",%DT(0)=0 D ^%DT K %DT(0) I Y<0 G SYNTAX
+ S X=+Y D H^%DTC S Y=Y_"000",Y=%H_","_($E(Y,9,10)*60+$E(Y,11,12)*60)
+ Q
+SYNTAX W ! I X'["?" W !,?7,"I'm sorry, but I don't understand your answer. Please"
+ W !,"Enter: NOW, or press the RETURN key, if you want your selection"
+ W !,?7,"queued up to be printed out now, or",!
+ W !,"Enter: The TIME at which you want the printing to begin, i.e.:"
+ W !,?14,"10 (for 10am today), or"
+ W !,?14,"9:15PM, etc."
+ W !,?7,"You may also include a date, for example:"
+ W !,?14,"T@10 (for Today At 10AM), or"
+ W !,?14,"T+2@4:45PM (for 2 days from today), or"
+ W !,?14,"Jan 22@11:10AM, etc."
+ W !,?7,"In any case, you must specify a Time, either now or in the"
+ W !,?7,"future. Otherwise",!
+ W !,"Enter: ^ (up-arrow) to go back to a previous question.",!
+ W ! G READ
+QUE W ! S ZTDTH=Y X ^%ZOSF("UCI")
+ S %=$S($D(ION)#2:ION,1:IO) I $D(IOST)#2,IOST]"" S %=%_";"_IOST I $D(IOM)#2,IOM S %=%_";"_IOM I $D(IOSL)#2,IOSL S %=%_";"_IOSL
+ S ZTIO=% I $D(IOT),IOT="SPL" K ZTIO
+ S ZTRTN=XMLROU,ZTUCI=Y,ZTSAVE("XMP")="",ZTSAVE("XMA1P")=""
+ I '$D(ZTDESC) S ZTDESC="Queued print for "_$S($D(XMDUN):XMDUN,1:$P(^VA(200,DUZ,0),U))
+ D ^%ZTLOAD K ZTUCI,ZTDTH,ZTSAVE,ZTRTN,ZTDESC,ZTIO
+ Q
+ZTSK1 ;
+ S ZTREQ="@"
+ U IO D TOP^XMS2,ENTPRT^XMAP W !!! I $P(XMTYPE,";",5) D QE2^XMA5
+ Q
+ZTSK2 S (XMC,%)=0,XMT2=$P(XMTYPE,";",3) G Q:'$L(XMT2)
+ K ^TMP("XMA02",$J) S %=0
+E I $S('$D(XMBEG):1,XMBEG="":1,1:0) S %=$O(XMBEG("")) G Y:'% S XMBEG=XMBEG(%) K XMBEG(%)
+ F %0=0:0 G E:XMBEG="" S %=$P(XMBEG,","),XMBEG=$P(XMBEG,",",2,99) I % S %0=$O(^XMB(3.7,XMDUZ,2,XMK,1,"C",%,0)),XMC=XMC+1,^TMP("XMA02",$J,XMC)=%0
+Y S %=$O(^TMP("XMA02",$J,0)) G Q:'% S XMZ=^(%) K ^(%) G Y:XMZ=""
+ S XMR=^XMB(3.9,XMZ,0) I $TR($P(XMR,U,11),"y","Y")="Y",DUZ'=XMDUZ G Y
+ G Y:XMZ="" S XMC=XMC+1,XMRC=$O(^XMB(3.9,XMZ,1,"C",XMDUZ,0)) D @XMT2
+ G Y
+ZTSK3 G ZTSK^XMA0A
+Q W @IOF S ZTREQ="@" Q
+QU2 W !,"If YES the recipient list will be printed at the end.",! Q
+
+XMA21
+XMA21 ;(WASH ISC)/CAP-MailMan name server ;3/18/92  11:23 ;
+ ;;7.1;MailMan;**4**;Jun 02, 1994
+DESTXM S:$D(^XMB(3.7,XMDUZ)) XMMG=XMDUN S:'$D(XMLOC) XMLOC=0
+ G:'$D(^XMB(3.9,XMZ,2,0)) KILL^XMA3
+DE2A K XMQ K:'$D(XMCOPY) XMY,XMY0,^TMP("XMY",$J),^TMP("XMY0",$J) I $D(XMYD) S X=XMYD,X=$S(+X'=X&(X'=0):X,'$D(^VA(200,X,0)):X,1:$P(^(0),U)) I X'="" W !!,"In addition to ",X,":" S ^TMP("XMY",$J,X)=XMYD(1),^TMP("XMY0",$J,X)=""
+ W !!
+DESXM D WHOM^XMA24 Q:X=""&$S($O(^TMP("XMY",$J,""))'="":1,$O(^TMP("XMY0",$J,""))'="":1,1:0)!$D(XMOUT)
+ S XMLOC="" D:$E(X)'="*"&$L(X) WHOXM K XMMG G DESXM
+ Q
+WHOXM S:'$D(XMN) XMN=0 K XMMG S XMMG=""
+ D WT^XMA210,W1:'$L(XMMG)
+ I $D(XMLOC),(XMMG'=""),'$D(ZTQUEUED) W:$L(XMMG)+$X>IOM ! W "  ",XMMG
+ Q
+W0 S X1=X N X,XMLOC S X=X1,XMMG=""
+ENT ;From XMAD1X
+W1 I X["!" S X=$P(X,"!",2)_"@"_$P(X,"!")_".UUCP"
+ I X["@" G ^XMA21B
+W3 I $E(X)=" " S X=$E(X,2,999) G:X'="" W3 S XMMG="blank name" Q
+ I X?1"D.".E!(X?1"d.".E) G DEV
+ I X?1"S.".E!(X?1"s.".E) G SER
+W2 I X?1"G.".E!(X?1"g.".E) S X=$P(X,".",2,99) G MG
+ I $D(XMCHAN) G W5:X="" S Y=$O(^VA(200,"B",X,0)) I Y G W:'$O(^(Y))
+ S DIC("W")="I $D(^XMB(3.7,Y,""L"")) W:$X>45 !,?5 W "" Last used MailMan: "",$P(^(""L""),U) W:$D(^XMB(3.7,Y,""B"")) !,?10,^(""B"")"
+ S DIC("S")="I $L($P(^(0),U,3)),$D(^XMB(3.7,+Y,2))",DIC="^VA(200,",DIC(0)="FZMN"_$E("E",$D(XMLOC))
+ I XMN,$G(XMZ) S DIC("S")=DIC("S")_",$D(^TMP(""XMY"",$J,+Y))"
+ I X?.E1L.E S X=$TR(X,"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+ D ^DIC K DIC("W"),DIC("S") S DIC="^XMB(3.7,",DIC(0)=$TR(DIC(0),"M","")
+ G W:Y>0 S D="C" D MIX^DIC1 G W:Y>0
+ ;
+ ;Incoming netmail
+ G W:$D(XMCHAN),W:$G(XMA21AL),W:'$O(^XMD(4.2997,0))
+ ;
+ I '$D(ZTQUEUED),'$D(XMCHAN) W !,"<< Not a local user, checking Remote User Directory ! >>",!,*7
+ I Y<0 S D="B" D DIC^XMA210 I Y'["^",+Y<0 S D="F" D DIC^XMA210
+ K XMA21A
+ I +Y>0,$P(Y(0),U,7)["@" Q:$G(XMLOCQ)="QUIT"  D REC^XMA210 G ^XMA21B
+W I Y>0,XMN W $S($D(^TMP("XMY",$J,+Y)):"  Deleted.",1:"  Not a current recipient") K ^(+Y),^TMP("XMY0",$J,+Y) Q
+ G W4:Y'>0,W4:XMN
+ S XMA21Y=+Y,XMR=$S('$G(XMZ):"",1:$G(^XMB(3.9,XMZ,0)))
+ I +Y=.6,$L(XMR) F %=9,11 I ":Y:y:"[(":"_$P(XMR,U,%)_":") G NOS^XMA210
+ S ^TMP("XMY",$J,+Y)="",I=$S($D(^XMB(3.7,+Y,0)):^(0),1:"")
+ S:'$D(XMA21G) ^TMP("XMY0",$J,+Y)=""
+ S:$P(I,U,2)'="" ^TMP("XMY",$J,+Y,"F")=$P(I,U,2)_U_$P(I,U,8)
+ D J,WO K XMA21Y
+ Q
+WO S %=Y N Y S Y=%
+ D:'$D(XMCHAN) ENTB^XMA24:Y-.6=0,BAS^XMA24:$S(XMA21Y=.6:0,XMDUZ=+Y:1,1:0)
+ Q
+W4 S DIC="^XMB(3.8,",DIC(0)="M" D ^DIC
+ G W5:Y'>0 S XMMG="Enter 'G.groupname' to identify a mail group."
+Q S Y=-1 Q
+W5 S XMMG="Not Found." S:$G(XMA21B1) XMMG("XMA21-LOCAL")=1
+ G Q
+MG G ENT^XMA21G
+INSR S X=$P(Y,U),XMN=0 K XMLOC D INST^XMA21A
+ Q
+INSTXM G INST^XMA21A
+CHK I $D(^XMB(3.8,Y,1,"B",XMDUZ)) Q
+ Q
+DEV ;
+ S X1=X,X=$P(X,".",2),DIC(0)="Z",DIC="^%ZIS(1,"
+ D ^DIC I Y<0 S XMMG="Invalid device name "_X Q
+ I Y["P-MESSAGE" S XMMG="You may not use P-Message in an address" G Q
+DE4 G D:XMN S ^TMP("XMY",$J,X1)=+Y
+ I '$D(XMA21(X1,"F")),X1=+X1 S %=$G(^XMB(3.7,X1,0)) I $L($P(%,U,2)) S XMA21(X1,"F")=$P(%,U,2)_U_$P(%,U,8)
+ I $D(XMA21(X1,0)) S ^TMP("XMY",$J,X1,0)=XMA21(X1,0)
+ I $D(XMA21(X1,1)) S ^TMP("XMY",$J,X1,1)=XMA21(X1,1)
+ I $D(XMA21(X1,"F")) S ^TMP("XMY",$J,X1,"F")=XMA21(X1,"F")
+ I '$D(XMA21G) S ^TMP("XMY0",$J,X1)=""
+ I $D(XMA21(X1,"D")) S ^TMP("XMY",$J,X1,"D")=XMA21(X1,"D")
+ Q
+D Q:'$D(^TMP("XMY",$J,X1))  K ^(X1),^TMP("XMY0",$J,X1) W "  deleted." Q
+ ;
+SER S X1=X,Y=0,X=$P(X,".",2),DIC(0)="FZ",DIC="^DIC(19," D ^DIC
+ I Y<0 S XMMG="Invalid server name "_X Q
+ S (X,X1)="S."_$P(Y,U,2)
+ G DE4
+DX D DESXM,INST^XMA21A Q:Y<0
+ S Y=+Y D PSP^XMA210 W " PATH: ",$P(^DIC(4.2,Y,0),U) G DX
+ Q
+MMM S X9="" F Y=0:0 D ^DIC Q:Y>0  S X9=X9_$S($L(X9):".",1:"")_$P(X,"."),X=$P(X,".",2,999) I X="" S XMMG="Domain not found." Q
+ Q
+ ;INFO:, CC:...
+J ;Mark rcpt w/prefix (XMA0) on input (INFO:, CC:...)
+ I +Y,$D(XMA0),$L(XMA0),$S('$G(XMZ):1,'$D(^XMB(3.9,XMZ,1,"C",+Y)):1,1:0),Y-$P(XMR,U,2)'=0 S ^TMP("XMY",$J,+Y,1)=XMA0
+ Q
+REDO ;Parse recipient list from callable interfaces (XMB,XMD)
+ N %X,%Y,X,X1,XMFINAL,XMN,Y,XMA21
+ S XMFINAL=1,XMN=0,%X="XMY(",%Y="XMA21(" D %XY^%RCR
+ S %X="XMY(",%Y="^TMP(""XMY0"",$J," D %XY^%RCR K XMY
+R S X=$O(XMA21(""))
+ I $S(+X=X:1,X="* (Broadcast to all local users)":1,1:0) S X1=X,Y=0 D DE4 K XMA21(X) G R
+ I $L(X) S XMA21=X D WHOXM K XMA21(XMA21) G R
+ Q
+WHO ;Human input
+ N DA,DIC,DIE,DR D WHOXM,SW Q
+INST ;Correct domain ?
+ N DA,DIC,DIE,DR,XMDF,XMQF S XMDF=1,XMQF=1 D INSTXM,SW Q
+DES ;Network addresses
+ N DA,DIC,DIE,DR D DESXM,SW Q
+DEST N DA,DIC,DIE,DR D DESTXM,SW Q
+SW S %X="^TMP(""XMY"","_$J_",",%Y="XMY(" D %XY^%RCR
+ K ^TMP("XMY",$J),^TMP("XMY0",$J)
+ Q
+
+XMA21A
+XMA21A ;(WASH ISC)/CAP-MailMan name server (CONT) ;10/15/90  12:44 ;
+ ;;7.1;MailMan;**4**;Jun 02, 1994
+ Q
+INST ;Check domain
+ S:$E(X)="<" X=$E(X,2,999) S X=$P(X,">"),X1=X,%Z=""
+ F %="INFO:","I:","CC:" I X[% S %Z=%,X=$P(X,%,2)
+ I "G."=$E(X,1,2)!($E(X,1,2)="g.") S XMR=$S($D(XMR):XMR,'$D(XMZ):"",$D(^XMB(3.9,XMZ,0)):^(0),1:"") I $S($D(XMDUZ):XMDUZ,1:DUZ)'=$P(XMR,U,2),$P(XMR,U,7)["P",'$D(XMCHAN) K %Z G ER^XMA21G
+ S X1=X,X=$TR(X,"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ"),X=$P(X,"@",2)
+2 I X'=^XMB("NETNAME") S X1=%Z_X1 G 3
+ S Y=^XMB("NUM")
+ I $P(X1,"@")'["%" S X1=%Z_X1 G LOCAL
+ S X1=$TR(X1,"._+",", .")
+ S Y=$P(X1,"@"),X=$P(Y,"%",$L(Y,"%")),X1=$P(Y,"%",1,$L(Y,"%")-1)_"@"_X
+ G 2
+3 S DIC="^DIC(4.2,",DIC(0)="ZM"_$E("E",$D(XMLOC)) D I2 Q:Y<0  S $P(Y(0),U)=$S('$D(X9):$P(X,"@",2),$L(X9):X9_"."_X,1:$P(Y,U,2)) K X9
+ I $P(X1,"@")="" S XMMG="Missing recipient name" S Y=-1 Q
+ I '$D(^XMB("NUM")) S XMMG="This domain not christened" S Y=-1 Q
+ I +Y=^XMB("NUM") G LOCAL
+ I '$D(XMDF),$P(Y(0),U,2)["C",$P(Y(0),U,2)'["S" S XMMG="MailMan access to "_$P(Y,U,2)_" closed." S Y=-1 Q
+ I '$D(XMDF),$P(Y(0),U,11)'="",'$D(^XUSEC($P(Y(0),U,11),DUZ)) S XMMG="You don't hold this domain's KEY.",Y=-1 Q
+ I '$D(XMDF),$P(Y(0),U,2)["N" S XMMG="NO forwarding to this domain.",Y=-1 Q
+ S %=$P(Y(0),U)
+ I $TR(%,"()<>@,;:\[]"_$C(34),"")'=% S XMMG="Domain name must not contain punctuation other than hyphens or dots.",Y=-1 Q
+ I %'?1A.E1AN S XMMG="Domain name must begin with a letter and end with a letter or number.",Y=-1 Q
+ I $G(XMZ),$$NO(XMZ) W:'$D(ZTQUEUED) *7 S XMMG="<< Messages longer than "_$$NO(XMZ)_" lines may NOT be sent across the network. >>",Y=-1 Q
+ ;
+ S Y1=$P(X1,"@")_"@"_%
+ I $L(Y1)>104!($L($P(Y1,"@")_Y(0,0))>103) S Y=-1,XMMG="Address parsing unsuccessful !" Q
+ G I:$G(XMN)
+ ;Add RCPT (XMN is either zero or undefined)
+ D PSP^XMA210 S ^TMP("XMY",$J,$S('$D(^DIC(4.2,"C",$P(Y1,"@",2))):Y1,1:$P(Y1,"@")_"@"_Y(0,0)))=+Y
+ I '$D(XMA21G) S ^TMP("XMY0",$J,Y1)=""
+ Q:$D(XMCHAN)
+ ;
+ ;Display for interactive users (XMCHAN not defined above)
+ S XMMG="via "_$P(^DIC(4.2,+Y,0),U)_$S($P(^(0),U,2)["S":"",1:" (Queued)")
+ S XMQ(+Y)="" Q
+ ;Remove RCPT
+I Q:'$D(^TMP("XMY",$J,Y1))  K ^TMP("XMY",$J,Y1),^TMP("XMY0",$J,Y1) W "  Deleted."
+ Q
+I2 S X9="",XMA21A=^XMB("NUM") I $L(X,".")>1!$D(XMCHAN) S %Z=$P(X,".",$L(X,".")) I %Z="MIL"!(%Z="DE") S DIC(0)=DIC(0)_"MXO"
+ F Y=0:0 D ^DIC Q:$S(Y-XMA21A=0&'$L(X9):1,Y-XMA21A'=0&(Y>0):1,1:0)  S X9=X9_$S($L(X9):".",1:"")_$P(X,"."),X=$P(X,".",2,999) I X="" K XMA21A G I3:$E(X9)="#" S XMMG="Domain not found." Q
+ Q
+ ;X400 ADDRESSING
+I3 S X="#" D ^DIC I Y>0 K X9 S X=X1 Q
+ S XMMG="X.400 DOMAIN not found. MUST HAVE '#' as it's SYNONYM" Q
+LOCAL ;Recipient is local
+ ;Recipient name
+ S X=$P(X1,"@")
+ ;Call Local Name Server Y>0=success
+ D W3 S X=$P(X1,"@")
+ Q:$S(Y>0:1,".D.G.S.d.g.s."[$E(X_" ",1,2):1,X'[".":1,1:0)
+ ;If not successful first time, convert first "," to "." - try again
+ S X=$TR(X,"._+",", ."),XMMG=""
+ G W3GO
+W3 N %,XMA21AL S %=X1,XMA21AL=1 N X1 S X1=%
+W3GO N XMLOCQ S XMLOCQ="QUIT" D W3^XMA21
+ Q
+NO(X) ;Do not allow message to be sent across network if too long
+ ;according to field 8.3 of file 4.3
+ I $S($D(XMCHAN):1,$D(XMDF):1,$D(^XUSEC("XMMGR",DUZ)):1,1:0) Q 0
+ N % S %=$P($G(^XMB(1,1,"NETWORK-LIMIT")),U),%=$S(%:%,1:2000)
+ I $P($G(^XMB(3.9,X,2,0)),U,4)>% Q %
+ Q 0
+
+XMAH1
+XMAH1 ;(WASH ISC)/CAP- Network Responses ;3/25/91  20:13 ;
+ ;;7.1;MailMan;**4**;Jun 02, 1994
+ENTA G AQ:XMK>.999,AQ:"Yy"[$E($P(XMR,U,12)_" ")
+ S Y=$O(^XMB(3.9,XMZ,1,"C",XMDUZ,0))
+ I Y,$D(^XMB(3.9,XMZ,1,Y,"T")) G AZ:^("T")="I"
+ W *7,!!,"   << Message SAVED in IN Basket ! >>",!
+ S (XMK,XMKM)=1,XMKN="IN",XMKD=.5 D NEW^XMA,KL^XMA1B,S2^XMA1B K XMKD,XMKM S XMKS=""
+AQ ;Is it a network response ?  (current code just checks sender)
+ K XMNETREC I XMDUZ'=.6,$S($P(XMR,U,2)["@":1,1:0) S XMNETREC=1
+ D REPLY^XMA11 K XMSUB I X[U K XMNETREC G AZ
+ W !!," << LOCAL Reply Sent >>",!
+ I $S('$D(XMNETREC):0,XMNETREC:1,1:0) K XMCHAN D AR
+AZ G C1^XMA1
+AR K XMY,XMY0,^TMP("XMY",$J),^TMP("XMY0",$J)
+ ;
+ G ARN:$D(XMCHAN) D ZIS
+ARA W *7,$S($D(IORVON):IORVON,1:""),!,"Do you wish to send this reply across the network ? NO//",$S($D(IORVOFF):IORVOFF,1:"") R X:DTIME
+ G ARS:X["^" S X=$TR(X,"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+ G ARS:$E("NO",1,$L(X))=X,ARN:$E("YES",1,$L(X))=X
+ W !!,$C(7)_"Enter 'Yes' if you wish to send this message across the network."
+ W !,"Enter 'No' if you wish your response to remain local."
+ W !,"The sender of this message will not see your response if you answer 'No'."
+ W !!,"CAUTION !!!",!!
+ W "A network response will go to all message recipients on the mail system"
+ W !,"of the sender.  FOR EXAMPLE, If the sender's address ends '@FORUM.VA.GOV'"
+ W !,"and the message had 500 recipients on FORUM, then a response sent across"
+ W !,"the network will be delivered to 500 recipients.  If you prefer to send a"
+ W !,"response only to the sender, you should create a new message.",!!
+ G ARA
+ARN S XMNETREC(0)=XMZ,XMSUB="Reply to: "_$E($P(XMR,U),1,50)
+ S XMNETREC("XMR")=XMR,XMR=^XMB(3.9,XMNETREC,0),$P(XMR,U,8)=XMZ,XMZ=XMNETREC I $D(XMCHAN) S $P(XMR,U)=XMSUB,^(0)=XMR
+ I '$D(XMCHAN) S X=0 D ENTS^XMA20 W !
+ I $S(X=U:1,'$D(^XMB(3.9,XMZ,0)):1,1:0) G ARS
+ S Y=$P(^XMB(3.9,XMZ,0),U) I $L(Y) K ^XMB(3.9,"B",$E(Y,1,30),XMZ)
+ S ^XMB(3.9,"B",$E(X,1,30),XMZ)="",$P(XMR,U,1,2)=X_U_$S($D(XMDUZ):XMDUZ,1:DUZ),^XMB(3.9,XMZ,0)=XMR,XMN=0
+ ;
+ ;Send Network Response to Sender's home system
+ S (Y1,X)=$P($$NET^XMRENT(XMNETREC(0)),U,3) I $G(X)="" S (Y1,X)=$P(^XMB(3.9,XMNETREC(0),0),U,2)
+ I X["@" D ACHK I Y<0,'$D(XMCHAN) W !,"Reply NOT sent to sender.",*7 S Y=$S($P(X,"@")["POSTMASTER":"No responses allowed to remote Postmaster",1:"no known path") W !,*7,"(",$S('$D(XMMG):Y,XMMG="":Y,1:XMMG),")"
+ S Y=$S($D(^XMB(3.9,XMNETREC(0),5)):^(5),1:XMNETREC(0)_"@"_^XMB("NETNAME")),%=$S($D(^XMB(3.9,XMNETREC(0),"K")):^("K"),1:""),^XMB(3.9,XMZ,"IN")=Y I $L(%) S ^("K")=%
+ D ENT1^XMAD1 D POP I '$D(XMCHAN) W !,"Network Reply complete !"
+ARQ K XMNETREC,XMSUB Q
+ARS W !!,"Response will only be local !",!! D POP G ARQ
+ACHK I X["@",$P(X,"@")["POSTMASTER" S Y=-1,XMMG="Replies to message from remote POSTMASTERS not allowed !"_$C(7) Q
+ N % D INSTXM^XMA21 Q
+ZIS Q:$D(IORVON)  S X="IORVON;IORVOFF;IOBON;IOBOFF" D ENDR^%ZISS Q
+POP Q:'$D(XMNETREC(0))  S XMZ=XMNETREC(0),XMR=XMNETREC("XMR") Q
+
+XMBPOST
+XMBPOST ;(WASH ISC)/THM/RWF/CAP- Create Task ;3/12/93  16:08 ;
+ ;;7.1;MailMan;**4**;Jun 02, 1994
+ ;
+ ;*******XXX/KCMO - MODIFIED AT TIM
+ ;
+ ;XMB("SCRIPT")=Zero node of Script last run
+ ;XMB("SCRIPT",0)=Pointer to last script used
+ ;
+ ;Schedule a Task: 1=BASKET DROP,2=BULLETIN,3=MESSAGE TRANSMISSION
+ ;
+ ;Skip next logic if not network mail task
+ G 0:'$D(XMINST),0:XMB("TYPE")'=3
+ ;
+ ;No new task for Network Transmission if one already scheduled
+ S %=$P($G(^XMBS(4.2999,XMINST,3)),U,7) I % Q:$$CHK^XMS5(%)
+ ;
+ZTSK ;Entry if Requeue from Task
+ ;No task if TCP Poll Flag set
+ ; Q:$D(^DIC(4.2,"ATCP",1,XMINST))
+ ;
+ ;Transmission Script zero node
+ S %=$G(XMB("SCRIPT",0)) I %="" S %=$$SCR(XMINST,"") D XMB
+ ;
+ ;Use TRANSMISSION SCRIPT according to priority & number of attempts
+ I XMB("TRIES")'<$P($G(XMB("SCRIPT")),U,3)!'$G(XMB("SCRIPT",0)) S %=$$SCR(XMINST,%) D XMB S XMB("TRIES",0,"$H")=$H
+ S %=$P(XMB("SCRIPT"),U,5),XMIO=$S($D(XMIO("DSERV")):XMIO("DSERV"),$L(%):%,1:$P(^DIC(4.2,XMINST,0),U,17)),XMB("TRIES")=XMB("TRIES")+1
+ ;
+ ;Set-up
+0 I '$D(XMS5("RETURN_TASK#")) N ZTSK
+ N XMJ,XMP,ZTDTH,ZTPAR,ZTUCI,ZTSAVE,ZTIO,ZTDESC,ZTRTN
+ ;
+ ;Preserve X and Y coming in
+ S:$D(X)#10 XMP=X S:$D(Y)#10 $P(XMP,U,2,3)=Y_U_"*"
+ ;
+ ;Device
+ I '$D(XMIO),XMB("TYPE")=3 S Y=$P($G(^DIC(4.2,XMINST,0)),U,17),XMIO=$S($L(Y):Y,1:"")
+ ;
+ ;Time
+TIM I '$D(XMDT) S XMDT="N"
+ S %DT="XT",X=XMDT,%DT(0)=0 D ^%DT I Y<0 K XMDT G TIM
+ S X=+Y D H^%DTC S %=$E(Y,9,10)*60+$E(Y,11,12)*60
+ ;
+ ;Pause if remote transmission
+ I $G(XMB("TYPE"))=3,$G(XMB("TRIES"))>1 S %=%+(60*XMB("TRIES"))
+ ;
+ I %/86400>1 S %H=%H+1,%=%#86400
+ S Y=%H_","_%
+ I Y<0 K XMDT G TIM
+ S ZTDTH=Y
+ ;
+ ;Which UCI
+ X ^%ZOSF("UCI") S ZTUCI=Y
+ ;
+ ;Bulletin name
+ I $D(XMB)#2 S XMB("A")=XMB
+ ;
+ ;Defaults
+ D SW S X="MailMan",ZTRTN="ZTSK^XMB",ZTIO=$S($D(XMIO):XMIO,1:"")
+ F I="XMB*","XMIO","ION","XMY*","XMYBLOB","XMDUZ" S ZTSAVE(I)=""
+ I $D(XMBTEXT)>9 S ZTSAVE("XMBTEXT*")=""
+ I XMB("TYPE")=2 S X="Bulletin: "_XMB
+ I XMB("TYPE")=3 S X="Network Mail to "_XMB("XMSCRN"),ZTSAVE("DUZ")=.5
+ E  F I="^TMP(""XMY"",$J,","^TMP(""XMY0"",$J," S ZTSAVE(I)=""
+ S ZTDESC=X,ZTPAR=3
+ ;
+ ;Schedule Task
+ D ^%ZTLOAD
+ I $D(XMB("XMSCR")) S $P(^XMBS(4.2999,XMB("XMSCR"),3),U,7)=ZTSK
+ ;
+ ;Handle return for Device server (d.device_name addresses)
+ I $D(XMP) S X=$P(XMP,U) I $P(XMP,U,3)="*" S Y=$P(XMP,U,2)
+ ;
+ ;Clean up and Quit
+PK K XMJ,XMI,XMIO,XMKK,XMTEXT,XMBTEXT,XMTSK,%DT Q
+ ;
+ ;Move Text array input to alternative array
+SW Q:$G(XMTEXT)=""  S Y=0,%X=XMTEXT,%Y="XMBTEXT(" K XMBTEXT D %XY^%RCR
+ Q
+ ;Get Transmission Script Data
+SCR(D,%) ;Parameter1=pointer to domain
+ ;Parameter2=pointer to last script used
+ ;RETURNS  ptr to script ^ 0 node of script
+ ;
+ ;If no transmission scripts are prioritized use old data/defaults
+ N I,J,X
+ S %=+$G(^XMB(1,1,"NETWORK")),X=^DIC(4.2,D,0),I=$O(^(1,0)),X=I_U_$P(X,U)_"^0^"_$S(%:%,1:10)_"^SMTP^"_$P(X,U,17)_U_$P(X,U,12)
+ ;
+ ;If only one script - default
+ I '$O(^DIC(4.2,D,1,I)) G GO
+ ;
+ ;Get priority to start at
+ S J=$S(%="":"",1:+$P($G(^DIC(4.2,D,1,%,0)),U,2))
+ ;
+ ;Quit if no scripts have a priority
+ I $O(^DIC(4.2,D,1,"AC",0))="" G GO
+ ;
+ ;Quit if no other script has a priority
+ I $O(^DIC(4.2,D,1,"AC",0))=I,$O(^(I))="" G GO
+ ;
+ ;Find prioritized transmission script
+S S J=+$O(^DIC(4.2,D,1,"AC",J)),I=$O(^(J,0))
+ ;
+ I 'I S I=0 G S
+ ;
+ ;Pickup data from selected script
+GO S %=I_U_^DIC(4.2,D,1,I,0)
+ ;
+ ;Use defaults if no data in transmission script fields
+ F I=2:1 Q:$P(X,U,I,999)=""  I $P(%,U,I)="" S $P(%,U,I)=$P(X,U,I)
+ Q %
+XMB ;Set up XMB array
+ K XMB("TRIES")
+ S XMB("TRIES")=0,XMB("SCRIPT",0)=+%,%=$P(%,U,2,$L(%,U)),XMB("SCRIPT")=%
+ Q
+ ;Set up for Requeing netmail delivery task
+ZTSK0 S %=XMINST,XMB("TYPE")=3,(XMSCR,XMB("XMSCR"))=%,XMB("XMSCRN")=$S($D(XMB("XMSCRN")):XMB("XMSCRN"),$D(XMSITE):XMSITE,1:$P(^DIC(4.2,%,0),U)),XMQ(%)=""
+ G ZTSK
+DSERV ;Device Server comes in here
+ S XMIO("DSERV")=XMIO G XMBPOST
+
+XMC1
+XMC1 ;(WASH ISC)/THM-SCRIPT INTERPRETER ;10/3/90  14:28 ;
+ ;;7.1;MailMan;**4**;Jun 02, 1994
+ S XMINST=XMSCR
+ENT I '$D(XMSDOM) S (XMSDOM,XMRDOM)=XMINST
+ I '$D(XMR0) D ENT1^XMR0
+ S X="^XMCTRAP",@^%ZOSF("TRAP")
+ K ^TMP("XMY",$J),^TMP("XMY0",$J),XMTURN,XMLER,XMLIN,XMLINE,XMCNT
+ S XMBF=1,(ER,XMCI,XMSTK)=0,XMBUF="RT",XMERC=0,XMERMSG=""
+ I '$D(XMTALKER) L +^DIC(4.2,XMINST,"XMNETSEND"):0 E  S ER=1,XMTRAN="Netmail transmission in progress on another channel. (XMC1)" D TRAN Q
+ D IN I XMINST L -^DIC(4.2,XMINST,"XMNETSEND") Q
+ E  L  Q
+IN S %=$G(XMDUZ) N XMDUZ S XMDUZ=$S($G(%):%,1:.5)
+ S XMTRAN="Script: "_XMSCRN_" from "_^XMB("NAME")_" beginning "_$E(DT,4,5)_"-"_$E(DT,6,7)_"-"_$E(DT,2,3) D TRAN
+ D STAT(XMSCR):'$D(^XMBS(4.2999,XMSCR,0)) S %=$S($D(^XMBS(4.2999,XMSCR,3))#10:^(3),1:""),$P(%,U)=$H,^(3)=$P(%,U,1,20)
+ D EN Q:$D(XMTALKER)
+ I ER S XMB(4)=XMTRAN,XMTRAN=$G(XMERMSG) I XMTRAN'="" D TRAN
+ S XMTRAN="Script Complete !!" D TRAN S XMER=ER
+ G CLOSE^XMC3
+EN D NXT Q:+XMCI<1  D INT Q:ER  G EN
+INT S ER=0 S:$E(X)?1L X=$C($A(X)-32)_$E(X,2,999) I "EFCXOHMDLTSW"'[$E(X) S ER=1,XMTRAN="Error-Invalid script command '"_X_"' at line "_XMCI_"." D TRAN Q
+ S XMC1=$P(X," ",2,999),ER=0 D @$E(X) S:'$D(ER) ER=0 Q
+L ;LOOK FOR STRING
+ G LOOK^XMC1A
+W ;WAIT FOR XMC1 SECONDS
+ S XMTRAN="Waiting "_XMC1_" seconds" D TRAN H +XMC1
+ Q
+M ;SEND MAIL
+ I '$G(XMRDOM) S (XMSDOM,XMRDOM)=XMINST
+ S XMSITE=$P(^DIC(4.2,XMINST,0),U),XMTRAN="Beginning sender-SMTP service"
+ D TRAN D ^XMS
+ I $G(ER) S XMTRAN="ER="_$G(ER)_" - Y="_$G(Y)
+ Q
+D G D^XMC11
+T I $D(XMTALKER) S XMCI=999999 S XMTRAN="Entering Talk mode" D TRAN Q
+ Q
+F S XMTRAN="Flushing buffer" D TRAN G BUFLUSH^XML ;FLUSH BUFFER
+E S XMERMSG=XMC1,XMTRAN="Error message set to '"_XMERMSG_"'" D TRAN Q  ; SET ERROR MESSAGE TO BE DISPLAYED.
+H G H^XMC11
+S ;SEND LINE
+ G SEND^XMC1A
+O ;OPEN DEVICE, PROTOCOL, AND HOST
+ G OPEN^XMC1A
+X S XMTRAN="Xecuting "_XMC1 D TRAN X XMC1 Q
+NXT S XMCI=$O(@(XMDIC_XMCI_")")) Q:+XMCI<1  S X=@(XMDIC_XMCI_",0)") Q
+TRAN D TIME S:'$D(XMBF) XMBF=0
+ S %=$E(XMC_" ",1,$L(XMTRAN)<245*99),%=%_$E(XMTRAN,1,245-$L(%)),XMBF=XMBF+1
+ ;TRACE / DEBUG TRANSMISSION PROBLEMS
+ I $D(XMS0C) S ^TMP("XMC",XMR0,XMBF,0)=%
+ I $G(XM)["D" U IO(0) W !,% W:$D(XMLER) $S('XMLER:"",1:"("_XMLER_")") I IO'="",IOT'="RES" U IO
+ K % Q
+TIME N %,I S %=$P($H,",",2),XMC=%\3600_":"_$J(%#3600\60,2)_":"_$J(%#60,2) F I=1:1 Q:XMC'[" "  S XMC=$P(XMC," ")_0_$P(XMC," ",2,4)
+ Q
+INDIR ;GET INDIRECT REFERENCE
+ S XMC2=$P(XMC1,"@",2,99) I '$D(@XMC2) S XMTRAN="Undefined reference to "_XMC2,ER=1 D TRAN Q
+ S XMC1=@XMC2 Q
+C ;CALL A SUBROUTINE
+ G CALL^XMC1A
+STAT(X) ;Set up zero node for 4.2999 file
+ I '$D(^XMBS(4.2999,X,0)) N % S ^(0)=X,^XMBS(4.2999,"B",X,X)="",%=^XMBS(4.2999,0),$P(^(0),U,3,4)=X_U_($P(%,U,4)+1) Q
+ Q
+SCRIPT ;API for script processing
+ I '$D(XMDUZ) S XMDUZ=$S($G(DUZ):DUZ,1:.5)
+ S Y=XMSCR,XMINST=XMSCR,XMSITE=XMSCRN D ENT,KL1^XMC
+ K DIC,X,Y,XMSCRN,XMSITE,XMINST,XMB,XMQ,XMUT,XMDIC,ZTPAR
+ Q
+
+XMPZ
+XMP ;(WASH ISC)/THM/CAP-PackMan Version 1.01 ;7/6/90  14:13 ;
+ ;;7.1;MailMan;**4**;Jun 02, 1994
+NOKL G F:$D(^DOPT("XMP"))
+GO K ^DOPT("XMP") S DIK="^DOPT(""XMP"","
+ S ^DOPT("XMP",0)="PackMan function^1N^"
+ F I=1:1 S X=$E($T(TABLE+I),4,99) Q:X=""  S ^DOPT("XMP",I,0)=X
+ D IXALL^DIK Q:$D(DIFROM)!'$D(XMZ)
+F D NEW Q:Y<0
+FX S DIC="^DOPT(""XMP"",",DIC(0)="AEQZ" D ^DIC K DIC
+ S XMR=^XMB(3.9,XMZ,0) G Q:Y<0 S X=$P(Y(0),U,2,99) K DD,DO,Y
+ I $D(^XMB(3.9,XMZ,2,0)) S XCNP=$P(^(0),U,3)
+ I $D(XCNP),XCNP>1,X["LOAD"!(X["PACK") S Y=$O(^XMB(3.9,XMZ,1,"C",0)) I $L(Y),$S(Y'=XMDUZ&Y:1,Y'=$P(XMR,U,2):1,$O(^(Y))'="":1,1:0) W !,"This message has already been SENT.  You may not CHANGE it.",*7 G FX
+ I X["LOAD"!(X["PACK"),$S('$D(DUZ(0)):1,DUZ(0)="@":0,$D(^XUSEC("XUPROG",DUZ)):0,1:1) W !,"You do not have the privilege to LOAD packages nor routines nor globals.",*7 G FX
+ I X="XI^XMP2",$S('$D(DUZ(0)):1,DUZ(0)="@":0,$D(^XUSEC("XUPROGMODE",DUZ)):0,1:1)
+ I  W !!,*7,"You may only check the security of this message.",!,$S($P(^XMB(3.9,XMZ,0),U,10)'="":"You will not be allowed to install it.",1:"This message was not secured -- nothing done"),!!
+ D @X D ^%ZISC D Q G FX
+Q W ! K DIE,DIF,XMSUB,XCNP
+ Q
+TABLE ;;;DESCRIPTION^PROGRAM OR TAG^PROGRAM
+ ;;ROUTINE LOAD^LOAD^XMPH
+ ;;GLOBAL LOAD^LOAD^XMPG
+ ;;PACKAGE LOAD^PACK^XMPH
+ ;;SUMMARIZE MESSAGE^XS^XMP2
+ ;;PRINT MESSAGE^XP^XMP2
+ ;;INSTALL/CHECK MESSAGE^XI^XMP2
+ ;;INSTALL SELECTED ROUTINE(S)^XR^XMP2
+ ;;TEXT PRINT/DISPLAY^XT^XMP2
+ ;;COMPARE MESSAGE^XC^XMP2
+ ;;
+ ;;DATA LOAD^LOAD^XMPDAT  ***** FILEMANAGER DATA MOVE ***** NOT READY
+ ;;
+ ;;
+NEW I $S($D(DIFROM):1,$D(ZTQUEUED):1,$D(XMDF):1,1:0) G DIFROM
+ W !,"Please enter description of PACKMAN Message",!,*7
+ S DWPK=1,DWLW=75,DIC="^TMP(""XMP"",$J," D EN^DIWE
+DIFROM S %="Created ",(DIF,DIE)="^XMB(3.9,XMZ,2,"
+ I $D(DUZ),$D(^VA(200,DUZ,0)) S %=%_"by "_$P(^(0),U)_" "
+ I $D(^XMB("NAME")) S %=%_"at "_$P(^("NAME"),U)_" "
+ I $D(DIFROM) S %=%_" (DIFROM) "
+ S %DT="T",X="NOW",XMA0=% D ^%DT
+ S (XMA,X)=Y D DW^%DTC
+ S XMA=$E(XMA_"0000",1,12),@(DIF_"0)")="^3.92A^2^2^"_$P(XMA,"."),^(1,0)="$TXT "_XMA0_"on "_X_", "_$E(XMA,4,5)_"/"_$E(XMA,6,7)_"/"_$E(XMA,2,3)_" at "_$E(XMA,9,10)_":"_$E(XMA,11,12)
+ I '$O(^TMP("XMP",$J,0)) S ^XMB(3.9,XMZ,2,2,0)="$END TXT",XCNP=2 G OLD
+ S I=2,J=0,^XMB(3.9,XMZ,2,2,0)=" "
+ F  S J=$O(^TMP("XMP",$J,J)) Q:J=""  S %=" "_^(J,0),I=I+1,^XMB(3.9,XMZ,2,I,0)=%
+ S ^XMB(3.9,XMZ,2,I+1,0)=" ",^XMB(3.9,XMZ,2,I+2,0)="$END TXT",XCNP=I+2,^XMB(3.9,XMZ,2,0)="^3.92A^"_XCNP_U_XCNP_U_$P(XMA,".") K ^TMP("XMP",$J),XMA0,%
+OLD S XCN=0 K ^XMP("XMP",$J),XMA0 I '$D(ZTQUEUED) W !
+O1 D NT Q:+XCN'=XCN  Q:X'["$TXT"  W:'$D(ZTQUEUED) !,$P(X,"TXT",2,999) G O1
+NT S XCN=$O(@(DIE_XCN_")")) Q:+XCN'=XCN  S X=^(XCN,0) Q
+MM S (DIE,DIF)="^XMB(3.9,XMZ,2," G FX
+
+XMR0B
+XMR0B ;(WASH ISC)/THM/CAP-SMTP (HELO/MAIL) [ARPANET RFC 821] ;3/18/92  12:37 ;
+VER ;;7.1;MailMan;**4**;Jun 02, 1994
+HELO ;;HELLO COMMAND
+ I XMP="" S XMSG="501 Missing domain specification" X XMSEN Q
+ I '$D(^XMB("NETNAME")) S XMSG="550 Unchristened local domain" X XMSEN Q
+ D R1^XMR S X=$P(XMP,"<") I $E(X,$L(X))="." S XMSG="Invalid Domain Name" X XMSEN Q
+ S XMSITE("XMP")=X,Y=$$DOMAIN(X)
+ S XMINST=+Y S:'$G(XMRDOM) XMRDOM=XMINST L +^DIC(4.2,+Y,"XMSSEND") I '$D(^XMBS(4.2999,+Y,0)) D STAT^XMC1(+Y)
+ G H:XMBT S XMU=$P($P(XMP,"<",2),">")
+ S Y(0)=^DIC(4.2,+Y,0) I XMU'=$P(Y(0),U,15) S XMB="XMVALBAD",XMB(1)=$P(XMP,"<") D ^XMB S XMSG="550 Bad validation number" X XMSEN G HQ
+ I $L(XMU) S XMU=($R(8000000)+1000000)
+ S XMSG="250 OK "_^XMB("NETNAME")
+ ;Extra set below protect replicated DIC global by failing on 1st set
+ ;Global does not get out of synch
+ I $L(XMU) S XMSG=XMSG_" <"_XMU_">",^DIC(4.2,+Y,0)=Y(0),$P(Y(0),U,15)=XMU,^(0)=Y(0) K XMU
+ S XMSG=XMSG_" ["_$P($T(VER),";",3)_",DUP,SER,FTP]"
+H S XMSITE=$P(Y,U,2),XMSTATE="^MAIL^",XMCONT=XMCONT_"TURN^MESS^"
+ X XMSEN
+HQ L -^DIC(4.2,XMINST,"XMSSEND") Q
+ ;
+DOMAIN(X) ;Domain name of sender acceptable ?
+ N DIC,ER,X9,XMA21A,XMP,XMR0B,XMSEN
+ S DIC=4.2,DIC(0)="FM",XMR0B=X D I2^XMA21A
+ I Y>0 Q Y
+ N % S (%,X)=XMR0B X ^%ZOSF("UPPERCASE") S XMR0B=Y
+ F  S Y=$O(^DIC(4.2,"C",XMR0B,0)) D  Q:Y>0!'$L(XMR0B)
+ . I Y>0 Q
+ . S XMR0B=$P(XMR0B,".",2,$L(XMR0B,"."))
+ . Q
+ I Y>0 Q $$DQ(Y)
+ Q $$DN(%)
+DQ(Y) Q Y_"^"_$P(^DIC(4.2,+Y,0),U)
+DN(X) ;Add new Domain
+ N DA,DD,DO,XMR0B
+ X ^%ZOSF("UPPERCASE") S (XMR0B,X)=$P(Y,".",$L(Y,".")),XMR0B("X")=Y
+ S DIC="^DIC(4.2,",DIC("DR")="1///C"_$S(^XMB("NETNAME")="FORUM.VA.GOV":"",1:";2///FORUM.VA.GOV") D FILE^DICN
+ K DA,DD,DO
+ S ^DIC(4.2,+Y,1,0)="^4.21^1^1"
+ S ^DIC(4.2,+Y,1,1,0)="AUTO^^^OTHER",^(1,0)="^^1^1^"_DT,^(1,0)="X Q"
+ S ^DIC(4.2,+Y,1,"NOTES",0)="^^1^1^"_DT,^(1,0)="Auto-Created-XMR0B"
+ N XMDUZ,XMSUB
+ S XMDUZ=.5,XMSUB="New Domain created - "_$P(Y,U,2),XMTEXT="A("
+ S A(1)="An incoming transmission from this previously undefined"
+ S A(2)="domain ("_XMR0B("X")_") caused this new domain"
+ S A(3)="("_$P(Y,U,2)_") to be created"
+ S A(4)="",A(5)="to limit the number of entries that are created."
+ S A(5)="The Internet Suffix is used for this purpose."
+ S A(6)="Statistics are then collected for that level of activity."
+ S XMY("G.POSTMASTER")="" D ^XMD
+ I '$O(^DIC(4.2996,"B",X,0)) S DIC="^DIC(4.2996,",DIC("DR")="1///AUTOMATIC-XMR0B" D FILE^DICN
+ Q $P(Y,U,1,2)
+MAIL ;;START
+ S XMP=$P(XMP,":",2,999) I XMP="" S XMSG="501 Invalid reverse-path specification" X XMSEN Q
+ I $$REJ(XMP) S XMSG="502 No message receipt authorization." X XMSEN Q
+ K XMY,XMY0,^TMP("XMY",$J),^TMP("XMY0",$J),XMA21G D G2^XMA2 S XMZHOLD=XMDUZ,XMDUZ=.5,XMKM=.95
+ I '$D(^XMB(3.7,.5,2,.95,0)) S ^(0)="ARRIVING",^XMB(3.7,.5,2,"B","ARRIVING",.95)=""
+ D S2^XMA1B
+ S XMDUZ=XMZHOLD,XMBCK=XMP,XMSG="250 OK Message-ID:"_XMZ_"@"_^XMB("NETNAME"),XMSTATE="^LOCK^RCPT^DATA",XMLOCK="" X XMSEN Q:ER
+ S X="N",%DT="T" D ^%DT S ^XMB(3.9,XMZ,0)="^^"_Y,X=Y,Y=$E(X,6,7)_" "_$P("Jan^Feb^Mar^Apr^May^Jun^Jul^Aug^Sep^Oct^Nov^Dec",U,$E(X,4,5))_" "_$E(X,2,3) S:X\1'=X %=$P(X,".",2)_"0000",Y=Y_" "_$E(%,1,2)_":"_$E(%,3,4)
+ S XMD=Y I $G(XMCHAN)="" S XMCHAN="Turn Around"
+ S X=XMCHAN,X=$S(X'?.N:X,$D(^DIC(3.4,X,0)):$P(^(0),U),1:"")
+ ;DON'T CHANGE ORDER OF .001 & .002 LINES !
+ S ^XMB(3.9,XMZ,2,.001,0)="Received: "_$S($L($G(XMSITE("XMP"))):"from "_XMSITE("XMP")_" by "_^XMB("NETNAME")_", MailMan "_$P($T(VER),";",3)_"/"_X,1:"BATCH")_" ; "_XMD_" "_^XMB("TIMEZONE")
+ Q
+REJ(X) ;Check Senders rejected list
+ I '$O(^XMBX(4.501,0)) G Q0
+ N A,B,C,D,Y S C=^%ZOSF("UPPERCASE") X C S D=Y,A=""
+ F  S A=$O(^XMBX(4.501,"B",A)) G Q0:A="" S X=A X C I D[Y S B=$O(^(A,0)) I B,'$P($G(^XMBX(4.501,B,0)),U,2) Q
+ Q 1
+Q0 Q 0
+
+XMSM
+XMSM ;(WASH ISC)/CAP-SMTP ERROR MESSAGE(S) ;3/18/92  12:49 ;
+ ;;7.1;MailMan;**4**;Jun 02, 1994
+ ;
+ENTR ;NON-DELIVERY TO RECIPIENT (XMS)
+ ;
+ S XMA0=$P(^XMB(3.9,XMZ,0),U),XMHOLD=XMZ_U_XMINST_U_XMSITE_U_J_U_XMDUZ,XMSUB=$P(XMDES,U)_" NOT FOUND",XMDUZ=.5
+ ;
+ ;NO error message if 1) it is a 554 reject or 2) 3.9 file unavailable
+ G QQ:XMRG["554" D GET G QQ:XMZ<1
+ S X=^XMB(3.9,XMZ,0),$P(X,U,4)="",^(0)=X,^(2,0)="^3.92A^6^6^"_DT,^(1,0)="Message (SUBJECT: "_XMA0_") not delivered.",%=$P(XMDES,U)
+ S ^XMB(3.9,XMZ,2,2,0)="to "_%_".",^XMB(3.9,XMZ,2,3,0)=" "
+ S ^XMB(3.9,XMZ,2,4,0)="The error was: "_$P(XMRG," ",2,99)_"."
+ S ^XMB(3.9,XMZ,2,5,0)=" ",^XMB(3.9,XMZ,2,6,0)="  <"_XMDER_">"
+ K XMY,XMY0,^TMP("XMY",$J),^TMP("XMY0",$J),XMA0
+ S ^XMB(3.9,+XMHOLD,1,J,0)=$P(XMDES_"^^^",U,1,3)_"^^"_XMD_U_$P(XMRG," ",2,99)
+ D RCPT I '% D KILL^XMA3 G QQ
+ D SEND G QQ
+SEND N XMA21AL,ZTQUEUED,XMCHAN S XMA21AL=99,ZTQUEUED=1,XMCHAN=1
+ D ENT1^XMD
+ Q
+RCPT N XMA21AL,ZTQUEUED,XMCHAN S XMA21AL=99,ZTQUEUED=1,XMCHAN=1
+ S %=$$GETRCPT^XMSM1(+XMHOLD,XMR,J)
+ Q
+QQ S XMZ=+XMHOLD,XMINST=$P(XMHOLD,U,2),XMSITE=$P(XMHOLD,U,3),J=$P(XMHOLD,U,4),XMDUZ=$P(XMHOLD,U,5)
+ K %,XMY,XMY0,^TMP("XMY",$J),^TMP("XMY0",$J),XMSUB,XMHOLD
+ G R1^XMSMAIL
+ ;
+ENTE ;POSTMASTER MESSAGE ON QUEUE FAILURE (XMS0)
+ ;
+ N XMSM S XMSM("TRIES")=$G(XMB("TRIES")),%X="XMB(""TRIES"",",%Y="XMSM(""TRIES""," D %XY^%RCR N XMB D S
+ S XMSUB="TRANSMISSION FAILURE TO "_$S(XMSITE="":XMSCRN,1:XMSITE)
+ D GET G ENTEQ:XMZ<1
+ S X="T+3",%DT=(0)=DT,%DT="F" D ^%DT
+ K XMY,XMY0,^TMP("XMY",$J),^TMP("XMY0",$J) S ^TMP("XMY",$J,.5)="",^TMP("XMY",$J,.5,"D")=Y,^XMB(3.9,XMZ,2,0)="^3.92A^15^15^"_DT,^(1,0)="Transmission has failed to "_$S($L(XMSITE):XMSITE,1:XMSCRN)_" a number of times."
+ S ^XMB(3.9,XMZ,2,2,0)="The following errors occurred:"
+ S ^XMB(3.9,XMZ,2,3,0)=" ",Y=0,I=3
+ F  S Y=$O(XMSM("TRIES",Y)) Q:'Y  S I=I+1,^XMB(3.9,XMZ,2,I,0)=XMSM("TRIES",Y)
+ F I=I+1,I+2 S ^XMB(3.9,XMZ,2,I,0)=" "
+ S I=I+1,^XMB(3.9,XMZ,2,I,0)="A transcript of the last delivery attempt follows:"
+ S I=I+1,^XMB(3.9,XMZ,2,I,0)=" "
+ F J=0:0 S J=$O(^TMP("XMC",XMR0,J)) Q:J=""  S I=I+1,X=^(J,0),^XMB(3.9,XMZ,2,I,0)=X
+ F I=I:1:15 S ^XMB(3.9,XMZ,2,I,0)=" "
+ I I>15 S $P(^XMB(3.9,XMZ,2,0),U,3,4)=I_U_I
+ D SEND,T
+ENTEQ K %,XMY,XMY0,^TMP("XMY",$J),^TMP("XMY0",$J),XMSUB,XMHOLD Q
+ENTS ;NO SERVER MESSAGE
+ S XMSUB="SERVER MESSAGE NOT FOUND" D GET Q:XMZ<1
+ S X=^XMB(3.9,XMZ,0),^(2,0)="^3.92A^4^4^"_DT,^(1,0)="Message not delivered TO SERVER: "_XMXX
+ S ^XMB(3.9,XMZ,2,2,0)="The message for task# "_ZTSK_" was not in the message file (3.9)."
+ S ^XMB(3.9,XMZ,2,3,0)="The task has been left on file for your information."
+ S ^XMB(3.9,XMZ,2,4,0)="You may delete it as appropriate."
+ K XMY,XMY0,^TMP("XMY",$J),^TMP("XMY0",$J)
+ S ^TMP("XMY",$J,.5)="",^TMP("XMY0",$J,.5)="" D SEND Q
+GET S XMSMTRY=0
+G S XMSMTRY=XMSMTRY+1 S:'$D(XMDUZ) XMDUZ=.5 D XMZ^XMA2 Q:$G(XMZ)>0  H 9 G G:XMSMTRY<9 K XMSMTRY Q
+ENTM ;NILL NODE FOR MESSID
+ S XMTRAN="Message transmission aborted - remote message with no remote-message ID" D TRAN^XMC1
+ D S S XMSUB="MESSAGE ORIGINATED OFF-SITE, BUT HAD NO (5) NODE",^TMP("XMY",$J,.5)="" D GET G QQ:XMZ<1
+ S ^XMB(3.9,XMZ,2,1,0)="Message # "_$P(XMHOLD,U,2)_" originated off-site.  It should have had a",^XMB(3.9,XMZ,2,2,0)="'Remote-Message-ID' on node 5.  This was missing.  To prevent duplicate"
+ S ^XMB(3.9,XMZ,2,3,0)="message deliveries, it was not delivered."
+ S ^XMB(3.9,XMZ,2,0)="^3.92A^3^3" D SEND,T
+ G RESET^XMS
+S S:'$D(XMSITE) XMSITE=XMSCRN S XMHOLD=XMINST_U_XMZ_U_XMSITE_U_XMDUZ Q
+T S XMZ=$P(XMHOLD,U,2),XMINST=$P(XMHOLD,U),XMSITE=$P(XMHOLD,U,3) Q
+
+
+

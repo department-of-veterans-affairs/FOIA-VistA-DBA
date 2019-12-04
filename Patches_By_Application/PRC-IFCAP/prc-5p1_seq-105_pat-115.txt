@@ -1,0 +1,285 @@
+$TXT Created by BECKWITH,RALPH at MNTVBB.FO-WASH.MED.VA.GOV  (KIDS) on Friday, 10/24/08 at 11:07
+=============================================================================
+Run Date: DEC 04, 2008                     Designation: PRC*5.1*115
+Package : PRC - IFCAP                         Priority: Mandatory
+Version : 5.1       SEQ #105                    Status: Released
+                  Compliance Date: JAN 04, 2009
+=============================================================================
+
+Associated patches: (v)PRC*5.1*112 <<= must be installed BEFORE `PRC*5.1*115'
+
+Subject: CARRY FORWARD OPTION ERROR;INVALID COST CENTER IN PO;424.1 PURGE PROBLEM
+
+Category: 
+  - Routine
+  - Other
+
+Description:
+============
+
+ This patch will address the following 3 issues:
+  
+ 1. Can't run the Carry Forward Quarterly option [CARRY FORWARD QUARTERLY]
+    due to an infinite loop. Will modify the PRCSUT3 routine, cancelling or
+    killing transactions to be reused by the Carry Forward process.
+  
+ 2. Invalid Cost Centers in Purchase Order when using Edit Detailed
+    Purchase Card Order option [PRCH EDIT DETAILED ORDER]. Will modify 
+    routine PRCHNPO3 checking Cost Centers to insure they are valid Cost
+    Centers.
+  
+ 3. 1358 AUTHORIZATION DETAIL (#424.1) file for Fiscal Year (FY) 08 data
+    hanging after archive/purge of 98 and 99. Will create a new Clean 
+    Files 424/424.1 after purging option [PRCG CLEAN 424/424.1 FILES], 
+    using the new routine PRCGF424.
+  
+  
+ ASSOCIATED REMEDY TICKETS:
+ ==========================
+ 1.  HD0000000243727  Can't run Carry Forward option.
+ 2.  HD0000000187298  Impossible Cost Center in Purchase Order.
+ 3.  HD0000000216554  1358 AUTHORIZATION DETAIL (#424.1) file for FY 08
+                      data hanging after archive of 98 and 99.
+  
+  
+      
+ ASSOCIATED NSR(s):
+ ==================
+ N/A
+      
+ PARTICIPATING TEST SITES:
+ =========================
+ Boston HCS
+ Ann Arbor, MI.
+ Richmond, VA.
+      
+ REMEDY OVERVIEW:
+ ================
+ 1.  HD0000000243727   Can't run Carry Forward option.
+  
+  
+ Problem:
+ --------
+ When running Carry Forward Quarterly option [CARRY FORWARD QUARTERLY] the
+ processing goes into infinite internal loop looking for an open sequence
+ number available to use, but the Fund Control Point (FCP) for quarter has
+ exhausted all sequence numbers.
+  
+  
+ Resolution:
+ -----------
+ Modify routine PRCSUT3 to look for cancelled transaction for FY/quarter 
+ and kill transaction to be reused by Carry Forward processing.
+  
+ 2.  HD0000000187298  Impossible Cost Center in Purchase Order.
+  
+ Problem:
+ --------
+ When editing an incomplete Purchase Order in Edit Detailed Purchase Card 
+ Order option [PRCH EDIT DETAILED ORDER] and the user modifies the previous
+ Fund Control Point they are allowed to hit return at Cost Center for the
+ Cost Center associated with the originally entered Fund Control Point,
+ causing an invalid Cost Center to be associated with the new Fund Control
+ Point.
+  
+  
+ Resolution:
+ -----------
+ Modify routine PRCHNPO3 to check that the Cost Center entered or
+ defaulted is in fact a valid Cost Center for the new Fund Control Point
+ and force user to enter valid Cost Center when found invalid.
+  
+  
+ 3.  HD0000000216554  1358 AUTHORIZATION DETAIL (#424.1) file for FY 08
+                      data hanging after archive of 98 and 99.
+  
+ Problem:
+ --------
+ Entries in 1358 AUTHORIZATION DETAIL (#424.1) file are not purged
+ when the Fiscal Year digit in BILL NUMBER is the same due to reusing 
+ last digit of fiscal year every 10 years (ex. 1998 and 2008).
+  
+  
+ Resolution:
+ -----------
+ Created new Clean Files 424/424.1 after purging option
+ [PRCG CLEAN 424/424.1 FILES] under parent IFCAP Archive/Purge Master Menu
+ option [PRCG ARCHIVE/PURGE MASTER MENU] using new routine PRCGF424 that
+ will check the 1358 AUTHORIZATION DETAIL (#424.1) file entries for same
+ Fiscal Year digit, but dates between the linked entry in 1358 DAILY RECORD
+ (#424) file and 1358 AUTHORIZATION DETAIL (#424.1) file field Date/Time
+ bill entered to be greater than 9 years and delete the 1358 AUTHORIZATION
+ DETAIL (#424.1) file entry if determined to be true.
+  
+ Also, steps 11 & 12 in the site user guide IFCAP Archive and Purge 
+ Process have been incorporated into this cleansing to remove any 1358 
+ DAILY RECORD (#424) file entries with null on invalid link to PROCUREMENT
+ & ACCOUNTING TRANSACTIONS (#442) file and 1358 AUTHORIZATION DETAIL
+ (#424.1) file entries with invalid link to 1358 DAILY RECORD (#424) file.
+ The audit trail will be kept for 6 months in work file ^XTMP("PRCGF424")
+ for retrieval purposes:
+  
+            1. Find 1358 DAILY RECORD (#424) file with missing 0 node
+            2. Find 1358 DAILY RECORD (#424) file entries with null
+               PROCUREMENT & ACCOUNTING TRANSACTIONS (#442) file-Obligation
+               pointer
+            3. Find 1358 DAILY RECORD (#424) file entries with invalid
+               PROCUREMENT & ACCOUNTING TRANSACTIONS (#442) file-Obligation
+               pointer
+            4. ** NOT USED ** 
+            5. Find AUTHORIZATION DETAIL (#424.1) file with missing 0 node
+            6. Find AUTHORIZATION DETAIL (#424.1) file with null 1358 DAILY
+               RECORD (#424) file pointer
+            7. Find AUTHORIZATION DETAIL (#424.1) file with invalid 1358
+               DAILY RECORD (#424) file pointer
+            8. Find AUTHORIZATION DETAIL (#424.1) file with 1358 DAILY
+               RECORD (#424) file pointer 10 yrs in future due to re-using
+               fiscal year single LAST digit in Auth #
+            9. Find AUTHORIZATION DETAIL (#424.1) file with missing date
+               **NOT PURGED**
+           10. Find 1358 DAILY RECORD (#424) file with missing date **NOT
+               PURGED**
+  
+     *********************************************************
+     * This option SHOULD be run at all sites as soon as     *
+     * possible, especially for those stations that have     *
+     * 9+ years of data.                                     *
+     *********************************************************
+  
+  
+ DOCUMENTATION DISTRIBUTION:
+ ===========================
+ Sites may retrieve the documentation directly via FTP (using BIN mode).  
+ The preferred method is to FTP the files from:
+  
+        download.vista.med.va.gov
+  
+ This transmits the files from the first available FTP server.  
+ Sites may also elect to retrieve the documentation directly from the
+ ANONYMOUS.SOFTWARE directory from a specific server as follows:
+  
+  Albany:                 ftp.fo-albany.med.va.gov    anonymous.software
+  Hines:                  ftp.fo-hines.med.va.gov     anonymous.software
+  Salt Lake City:         ftp.fo-slc.med.va.gov       anonymous.software
+  FIRST AVAILABLE SERVER  download.vista.med.va.gov   anonymous.software
+  
+ Filename                    Description
+ ========                    ===========
+ IFCP5_1TECH_MANUAL.PDF      Technical Manual
+  
+ The updated manual will be available on the VDL upon the release of
+ this patch.
+  
+  
+  
+ ================INSTALLATION INSTRUCTIONS =================
+    
+   This patch can be installed with users on the system, however several 
+   options will need to be disabled (see step 4).
+  
+   Install Time - less than 2 minutes.  
+      
+      
+   1.   LOAD TRANSPORT GLOBAL 
+        ---------------------
+        Choose the PackMan message containing this patch and invoke the 
+        INSTALL/CHECK MESSAGE PackMan option.  
+      
+   2.   START UP KIDS 
+        -------------
+        Start up the Kernel Installation and Distribution System Menu 
+        [XPD MAIN]: 
+      
+               Edits and Distribution ...  
+               Utilities ...  
+               Installation ...  
+      
+        Select Kernel Installation & Distribution System Option: 
+  
+               INStallation 
+               Load a Distribution 
+               Print Transport Global 
+               Compare Transport Global to Current System 
+               Verify Checksums in Transport Global 
+               Install Package(s) 
+               Restart Install of Package(s) 
+               Unload a Distribution 
+               Backup a Transport Global 
+    
+   3.   Select Installation Option: 
+        ---------------------------
+        NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+               NAME, enter PRC*5.1*115):
+      
+        a.  Backup a Transport Global - This option will create a backup
+            message of any routines exported with this patch. It will not
+            backup any other changes such as DD's or templates.
+        b.  Compare Transport Global to Current System - This option will
+            allow you to view all changes that will be made when this patch
+            is installed.  It compares all components of this patch
+            (routines, DD's, templates, etc.).
+        c.  Verify Checksums in Transport Global - This option will allow
+            you to ensure the integrity of the routines that are in the
+            transport global.
+      
+   4.   Select Installation Option: Install Package(s) 
+                                    ------------------
+        **This is the step to start the installation of this KIDS patch: 
+      
+        a. Choose the Install Package(s) option to start the patch install.
+    
+        b. When prompted 'Want to Rebuild MENU TREES after install?
+            NO//' answer YES.
+  
+        c. When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+           NO//' answer NO
+    
+  
+        d. When prompted 'Want to DISABLE Scheduled Options, Menu Options, 
+           and Protocols? NO//' answer YES
+       
+        e. When prompted 'Enter options you wish to mark as 'Out Of 
+           Order':'  Enter the following options:
+      
+    Carry Forward Quarterly            [PRCB CARRY FORWARD QUARTERLY]
+    Edit Detailed Purchase Card Order  [PRCH EDIT DETAILED ORDER]
+    IFCAP Archive/Purge Master Menu    [PRCG ARCHIVE/PURGE MASTER MENU]
+      
+        f. When prompted 'Enter protocols you wish to mark as 'Out Of 
+           Order':' press <return>.
+  
+ 5.   Post install
+  
+      New purging process in option [Clean Files 424/424.1 after purging]
+      should be run as soon as possible using the fiscal same
+      date as the last archive/purge that was completed.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+V ;;5.1;IFCAP;**[Patch List]**;Oct 20, 2000;Build 12
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PRCGF424
+    Before:       n/a   After: B10015845  **115**
+Routine Name: PRCHNPO3
+    Before: B38584901   After: B39295710  **112,115**
+Routine Name: PRCSUT3
+    Before:  B9277554   After: B12106720  **115**
+ 
+Routine list of preceding patches: 112
+
+=============================================================================
+User Information:
+Entered By  : BECKWITH,RALPH                Date Entered  : DEC 03, 2007
+Completed By: DUCKWORTH,TIM                 Date Completed: DEC 03, 2008
+Released By : NELSON,VICKI M                Date Released : DEC 04, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

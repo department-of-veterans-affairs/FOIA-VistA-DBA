@@ -1,0 +1,575 @@
+
+=============================================================================
+Run Date: JUL 15, 2004                     Designation: PX*1*130
+Package : PX - PCE PATIENT CARE ENCOUNTER     Priority: Mandatory
+Version : 1       SEQ #108                      Status: Released
+                  Compliance Date: AUG 15, 2004
+=============================================================================
+
+Associated patches: (v)PX*1*96     <<= must be installed BEFORE `PX*1*130'
+                    (v)PX*1*113    <<= must be installed BEFORE `PX*1*130'
+                    (v)PX*1*115    <<= must be installed BEFORE `PX*1*130'
+                    (v)PX*1*116    <<= must be installed BEFORE `PX*1*130'
+                    (v)PX*1*117    <<= must be installed BEFORE `PX*1*130'
+                    (v)PX*1*121    <<= must be installed BEFORE `PX*1*130'
+                    (v)PX*1*122    <<= must be installed BEFORE `PX*1*130'
+
+Subject: COMBAT VETERAN PHASE II - PCE
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+  The Chief Business Office (CBO) is requesting modifications to several
+  Veterans Health Information Systems and Technology Architecture (VistA)
+  packages to support implementation of VHA Directive 2002-049 - "Combat
+  Veterans Are Eligible For Medical Services For 2-Years After Separation
+  From Military Service Notwithstanding Lack Of Evidence For Service
+  Connection", which iterates VA's policy to provide medical care and other
+  medical services to combat veterans despite the absence of proof of service
+  connection.
+  
+  Software to support the Combat Veteran (CV) initiative is being developed
+  and introduced in a phased implementation strategy. The reason for this
+  type of deployment is due to the complexity of the functionality and the
+  number of product line dependencies.  Phase I: Combat Veteran Interim
+  Solution (CVIS) was a VistA only solution that involved development in the
+  Integrated Billing (IB) and Registration/Enrollment product lines.  It
+  provided the logic to identify those veterans who met the criteria for the
+  combat veteran eligibility and provided billing reports cross-referenced
+  against this identifier to aid in the copayment billing process.  Phase II
+  of this initiative will involve multiple product lines and additional VistA
+  only development.  The main goals of Phase II will be to fully automate the
+  copayment billing processing of combat vets based on episode of care by
+  providing the appropriate questions at check-out as supplied by CPRS.
+  
+  Product lines that have a stake in Phase II development include
+  Enrollment/Registration (VistA), IB, Outpatient Pharmacy, Consolidated Mail
+  Outpatient Pharmacy (CMOP), CPRS/TIU, Patient Care Encounter (PCE),
+  Ambulatory Care, Event Capture, Scheduling and PTF.  The National Patient
+  Care Database (NPCD) will also require modifications to capture workload
+  reporting.  The patches are listed below in the order that they must be
+  installed.  It should be noted all patches with the exception of the PIMS
+  host file have been previously released and the installation status of
+  those patches should be validated at your site prior to installation the
+  PIMS build:
+  
+   Outpatient Pharmacy:
+     PSO*7*157  - Release Date, May 13, 2004
+     PSX*2*50   - Release Date, May 13, 2004
+  
+   CPRS:
+     OR*3.0*190 - Release Date, July 12, 2004
+  
+   Integrated Billing:
+     IB*2.0*247 - Release Date, June  9, 2004
+  
+   PCE/PTF/Event Capture/Scheduling  PIMS Host file
+     PX*1.0*130
+     SD*5.3*325
+     DG*5.3*565
+     EC*2.0*54
+    
+  Product Features
+  There are three main areas addressed by this enhancement:
+    a.  Identification/Notification of a CV Status veteran seeking medical
+        care
+        o  The clinical applications shall obtain the CV Status for those
+           veterans who qualify as such per the directive
+        o  The CV Status identification shall be displayed to the appropriate
+           audience (pharmacist, clinician providing care, intake personnel,
+           schedulers, etc.)
+        o  Provider shall be able to identify whether care provided CV veteran
+           was for a condition potentially related to combat service in the same
+           manner as identification of exposure related care; care for SC
+           conditions, etc.
+    b.  Assistance in the communication of a treatment being determined as
+        Combat Related
+        o  Provide a means for the billing and pharmacy software package to
+           identify these patients and services provided care for a combat
+           related condition
+    c.  Automatically precludes inpatient and outpatient medical care,
+        prescription and Long-term care copayments for CV Status veterans whose
+        treatment/service has been deemed combat related by provider or unless
+        changed by pharmacist.
+  
+  
+  This patch distributes the changes to PCE in support of the Combat Veteran
+  initiative.
+  
+  
+  Functional Changes
+  ------------------
+  1. A new prompt, 'Was treatment related to Combat?' has been added to
+     the current classification prompts within the PCE Encounter Data Entry
+     options and the ADD STANDALONE ENC and the UPDATE ENCOUNTER actions on
+     the Encounter List screen.
+  
+       --- Classification --- [Required]
+       Was treatment for SC Condition?
+       Was treatment related to Combat?
+       Was treatment related to Agent Orange Exposure?
+       Was treatment related to Ionizing Radiation Exposure?
+       Was treatment related to Environmental Contaminant Exposure?
+       Was treatment related to Military Sexual Trauma?
+       Was treatment related to Head and/or Neck Cancer?
+  
+  2. The List By Encounter [PXCE ENCOUNTER LIST] action on the PCE 
+     Encounter Viewer [PXCE ENCOUNTER VIEWER] option has been
+     modified to display the Combat Veteran values.
+   
+  3. The protocol PXCE ADD/EDIT DISPLAY DETAIL (Display Detail) will now
+     display the Combat Veteran title and value.
+  
+       1 Encounter Date and Time:  NOV 02, 2003@09:00
+         Patient Name:  BIRD,ROBIN
+         Hospital Location:  GENERAL MEDICINE AT ALBANY
+         Clinic Stop:  301  GENERAL INTERNAL MEDICINE
+         Service Connected:  NO
+         Combat Veteran:  YES
+         Agent Orange Exposure:  NO
+         Ionizing Radiation Exposure:  NO
+         Environmental Contaminant Exposure:  NO
+         Military Sexual Trauma:  NO
+         Head and/or Neck Cancer:  NO
+  
+  4. When editting an existing visit/encounter, PCE will delete previously
+     answered classification questions if it is no longer applicable (ex:
+     changing Service Connected from NO to YES will automatically delete
+     the values for Agent Orange, Ionizing Radiation, and Environmental
+     Contaminants).  When doing the deletion, PCE would delete the value
+     from the OUTPATIENT CLASSIFICATION file (#409.42) but not the VISIT
+     file (#9000010).  This has been corrected to delete the value from
+     both files.
+  
+  5. When fixing PCE to correctly delete classification questions that were
+     no longer applicable (see #4), the API $$DATA2PCE^PXAPI began to delete
+     previously stored values for classification questions when the nodes
+     for this information were not included in the input array.  Since the
+     documentation for this API was vague on how not setting these nodes
+     would be handled, it was decided to maintain backwards compatibility
+     and adjust the API so that it only deletes classification questions if
+     explicitely told to [by setting the array node equal to '@'].
+  
+  6. Added 'Head/Neck Cancer' and 'Combat Veteran' to DIALOG number
+     8390001.003 (Warning message for service connectedness).
+  
+  
+  API Changes
+  -----------
+  1. The following Database Integration Agreements were affected by the
+     changes made to introduce the new Combat Veteran classification and 
+     were updated accordingly.
+  
+     2.1     DATA2PCE        - DBIA 1889-A                           1889
+     2.2     PXCA            - DBIA 1889-A                           1899
+     2.3     PXUTLSCC        - SERVICE CONNECTED CONDITIONS          2348
+     2.6     VSIT LOOKUP     - DBIA 1900-G                           1906
+     2.7     VSIT UPD        - DBIA 1900-B                           1901
+     2.8     VSIT TRACKING   - DBIA 489                              489
+  
+  
+  File Changes
+  ------------
+  1.   VISIT file (#9000010)
+         FIELD:  (#80007) COMBAT VETERAN
+         DATA TYPE:  SET OF CODES  - 1 will stand for Yes
+                                     0 will stand for No
+         DESCRIPTION:  This field is used to indicate that the visit 
+                       represents treatment of a VA patient for a
+                       problem that is related to Combat Veteran.
+  
+  2.   V POV file (#9000010.07)
+         FIELD:  (#80005) MILITARY SEXUAL TRAUMA
+         DATA TYPE:  SET OF CODES  - 1 will stand for Yes
+                                     0 will stand for No
+         DESCRIPTION:  This field will be used to indicate if this Diagnosis
+                       code was related to a Military Sexual Trauma problem.
+  
+         FIELD:  (#80006) HEAD AND/OR NECK CANCER
+         DATA TYPE:  SET OF CODES  - 1 will stand for Yes
+                                     0 will stand for No
+         DESCRIPTION:  This field will be used to indicate if this Diagnosis
+                       code was related to Head and/or Neck Cancer.
+  
+         FIELD:  (#80007) COMBAT VETERAN
+         DATA TYPE:  SET OF CODES  - 1 will stand for Yes
+                                     0 will stand for No
+         DESCRIPTION:  This field is used to indicate that the visit 
+                       represents treatment of a VA patient for a
+                       problem that is related to Combat Veteran.
+  
+  
+  
+  ROUTINE SUMMARY:
+  ================
+  The following is a list of the routines included in this patch.  The
+  second line of each of these routines will look like:
+  
+      <tab>;;1.0;PCE PATIENT CARE ENCOUNTER;**[patch list]**;Aug 12, 1996
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  PXAI                   6706979              6706979      15,74,69,102,111
+                                                                112,130
+  PXAICPTV               5803989              5953784      15,73,74,111,121
+                                                                  130
+  PXAIPOV                6121994              6162167      28,73,69,108,112
+                                                                  130
+  PXAIVST                5345807              5382765        5,9,15,74,111
+                                                                96,130
+  PXAIVSTV              26840870             29044768       9,15,19,74,111
+                                                                116,130
+  PXAPIDEL               9931203              9931254         1,9,22,130
+  PXBAPI1                8539757              8671561        1,9,23,56,104
+                                                          111,113,122,116,130
+  PXBAPI21               4799017              4799017             130
+  PXBPL                  6176999              6193998        11,94,115,130
+  PXCADXP2              13416693             13977169           115,130
+  PXCAPL                16453215             16956420        24,27,115,130
+  PXCAPL1                2908993              2953008         33,115,130
+  PXCAPL2                4089605              4133867         33,115,130
+  PXCAPOV               13370975             14955427      24,27,33,121,130
+  PXCAVST               19256683             20209379      14,33,74,111,116
+                                                                  130
+  PXCAVST1               5891356              6004913      73,74,111,121,130
+  PXCEAPPM               4309094              4521435        22,74,111,130
+  PXCEE800               1195024              1268146         74,111,130
+  PXCESIT                5841021              6053362        22,74,111,130
+  PXCEVST                4309379              4521720        22,74,111,130
+  PXKFPOV                 598703               631277           22,130
+  PXKFVST                2825465              1810564        22,56,111,130
+  PXKMAIN               10724796             10854965       22,59,73,88,69
+                                                                117,130
+  PXKVST                 7817620              7898662         56,111,130
+  PXUTLSCC               8958561             12450381       74,107,111,130
+  VSITDEF                9943631             10118922         76,111,130
+  VSITFLD                4105975              4330103        76,81,111,130
+  VSITHLP                6982136              7040067         76,111,130
+  
+  
+  
+  SOFTWARE AND DOCUMENTATION RETRIEVAL
+  ====================================
+  The software for this patch is not being distributed through the National
+  Patch Module.  This patch is being distributed as a host file.  The host
+  file is a multi-package build containing four (4) KIDS builds.
+  
+          Host file name: COMBAT_VET_PHASE_II_PIMS.KID
+     Multi-Package Build: COMBAT VET PHASE II PIMS 1.0
+                  Builds: PX*1.0*130
+                        : SD*5.3*325
+                        : DG*5.3*565
+                        : EC*2.0*54
+  
+  Sites may retrieve the software and documentation directly using FTP
+  from the ANONYMOUS.SOFTWARE directory at the following OI Field Offices:
+  
+             Albany: ftp.fo-albany.med.va.gov
+              Hines: ftp.fo-hines.med.va.gov
+     Salt Lake City: ftp.fo-slc.med.va.gov
+  
+  The following files will be available:
+   
+     File Name                         Description
+     ---------                         -----------
+     COMBAT_VET_PHASE_II_PIMS.KID      Host file containing KIDS software
+                                       distribution
+     EC2_0P54.EXE                      Event Capture GUI
+    
+ Change Pages to the following documentations are included in the files below.
+     DG_53_P565_UM.PDF                 PIMS V5.3 User Manual
+     EC_2_P54_CB.PDF                   Event Capture V2.0 Cook Book
+     EC_2_P54_UM.PDF                   Event Capture V2.0 User Manual
+     PX_1_P130_TM.PDF                  PCE V1.0 Technical Manual
+     PX_1_P130_UM.PDF                  PCE V1.0 User Manual
+     SD_53_P325_TM.PDF                 PIMS V5.3 Technical Manual
+     SD_53_P325_UM.PDF                 PIMS V5.3 User Manual
+   
+     * Note: Use ASCII mode when transferring the .KID file.  Use Binary
+             mode when transferring the .EXE and .PDF files.  The .PDF files
+             can be read on a PC using the Adobe Acrobat Reader program.
+  
+  
+  INSTALLATION INSTRUCTIONS:
+  ==========================
+  ** It is recommended that this patch NOT be installed less **
+  ** than seven days before AmbCare's monthly close-out      **
+  
+  This patch can be installed with users on the system, however it should
+  be installed during off hours to minimize disruption to users.
+  
+  This patch affects the check-out process and must be installed when the
+  SCDX AMBCAR NIGHTLY XMIT background job is not running.  Installation will
+  take less than 10 minutes.
+  
+  Note: The following is a list of REQUIRED builds for this multi-package
+        distribution.  KIDS will not allow the installation of this patch
+        without the prior installation of them.
+ 
+             DG*5.3*497     DG*5.3*510     DG*5.3*524     DG*5.3*576
+             DG*5.3*590     DG*5.3*602     EC*2.0*49      EC*2.0*50
+             SD*5.3*244     SD*5.3*254     SD*5.3*258     SD*5.3*293
+             PX*1.0*96      PX*1.0*112     PX*1.0*115     PX*1.0*116
+             PX*1.0*121     PX*1.0*122     PX*1.0*117
+   
+   1. Download the KIDS file COMBAT_VET_PHASE_II_PIMS.KID from the
+      ANONYMOUS.SOFTWARE directory of either Albany, Hines or the Salt Lake
+      OIFO to the appropriate directory on your system.
+  
+   2. Use LOAD A DISTRIBUTION option on the KIDS INSTALLATION menu, and
+      enter: COMBAT_VET_PHASE_II_PIMS.KID
+  
+   3. Review your mapped set.  If any of the routines listed in the
+      ROUTINE SUMMARY section are mapped, they should be removed
+      from the mapped set at this time.
+  
+   4. From the Kernel Installation and Distribution System Menu, select
+      the Installation menu.
+  
+   5. From this menu, you may elect to use the following options
+      (when prompted for INSTALL NAME, enter the appropriate patch
+      designation - PX*1.0*130, SD*5.3*325, DG*5.3*565, EC*2.0*54):
+  
+        a.  Backup a Transport Global - this option will create a backup
+            message of any routines exported with the patch.  It will NOT
+            backup any other changes such as DDs or templates.
+        b.  Compare Transport Global to Current System  - this option will
+            allow you to view all changes that will be made when the patch
+            is installed.  It compares all components of the patch
+            (routines, DDs, templates, etc.).
+        c.  Verify Checksums in Transport Global - this option will
+            allow you to ensure the integrity of the routines that are in
+            the transport global.
+        d.  Print Transport Global - this option will allow you to view the
+            components of the KIDS build.
+   
+   6. Use the Install Package(s) option and select the package COMBAT VET
+      PHASE II PIMS 1.0.
+  
+   7. When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+      YES//',respond NO.
+  
+   8. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols? YES//', respond YES.  When prompted to select the
+      options you would like to place out of order, enter the following:
+  
+        SCDX AMBCAR NIGHTLY XMIT         Ambulatory Care Nightly
+                                         Transmission to NPCDB
+        SDAM APPT MGT                    Appointment Management
+        SDAM APPT CHECK IN/OUT           Appointment Check-in/Check-out
+        SDADDEDIT                        Add/Edit Stop Codes
+        SDAPP                            Appointment Menu
+        SDI                              Check-in/Unsched. Visit
+        SDM                              Make Appointment
+        PXCE ENCOUNTER DATA ENTRY        PCE Encounter Data Entry
+        PXCE ENCOUNTER ENTRY & DELETE    PCE Encounter Data Entry & Delete
+        PXCE ENCOUNTER ENTRY NO DELETE   PCE Encounter Entry Without Delete
+        PXCE ENCOUNTER ENTRY SUPER       PCE Encounter Data Entry -
+                                         Supervisor
+        ECENTER                          Event Capture Data Entry
+        EC NIGHT                         Nightly Data Feed to PCE
+  
+      When prompted to select the protocols you would like to place out
+      of order, enter the following:
+  
+        SDAM PCE EVENT                   Process PCE Event Data
+        PXK VISIT DATA EVENT             VISIT RELATED DATA
+        PXCA DATA EVENT                  PCE Device Interface Module's
+                                         Data Event
+  
+   9. If routines were unmapped as part of step 3, they should be
+      returned to the mapped set once the installation has run to
+      completion.
+  
+  10. The pre and post install routines SD53325 and SD53325A can be deleted
+      after receiving the message that the SD*5.3*325 post init has run to
+      completion.
+
+Routine Information:
+====================
+
+Routine Name:
+  - PXAI
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXAICPTV
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXAIPOV
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXAIVST
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXAIVSTV
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBAPI1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBPL
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCAPOV
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCADXP2
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCAPL
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCAPL1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCAPL2
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCAVST
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCEAPPM
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCEE800
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCESIT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCEVST
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXKFVST
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXKVST
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXUTLSCC
+
+
+Routine Checksum:
+
+Routine Name:
+  - VSITDEF
+
+
+Routine Checksum:
+
+Routine Name:
+  - VSITFLD
+
+
+Routine Checksum:
+
+Routine Name:
+  - VSITHLP
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCAVST1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXBAPI21
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXKMAIN
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXAPIDEL
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXKFPOV
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : BRICKER,DENNIS                Date Entered  : NOV 04, 2003
+Completed By: OLINGER,BRIAN                 Date Completed: JUL 14, 2004
+Released By : GROOMS,ANTHONY E              Date Released : JUL 15, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

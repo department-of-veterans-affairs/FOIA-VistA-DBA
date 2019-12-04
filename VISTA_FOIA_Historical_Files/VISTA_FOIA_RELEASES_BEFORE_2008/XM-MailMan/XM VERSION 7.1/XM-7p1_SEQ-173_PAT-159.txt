@@ -1,0 +1,277 @@
+$TXT Created by BEUSCHEL,GARY at MAILMAN.ISC-SF.VA.GOV  (KIDS) on MONDAY, 05/14/01 at 13:53
+=============================================================================
+Run Date: MAY 17, 2001                     Designation: XM*7.1*159
+Package : XM - MAILMAN                         Priority: Mandatory
+Version : 7.1       SEQ #173                     Status: Released
+=============================================================================
+
+Associated patches: (v)XM*7.1*120  <<= must be installed BEFORE `XM*7.1*159'
+                    (v)XM*7.1*136  <<= must be installed BEFORE `XM*7.1*159'
+
+Subject: Warn Users of Impending Date Purge
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Enhancement (Mandatory)
+  - Other
+
+Description: 
+============
+
+ Patch XM*7.1*159
+  
+ Test Sites:  FORUM, Puget Sound HCS
+  
+ E3R: 3753
+ Recognize and support the vaporize days field which is in file #3.6,
+ BULLETIN.  (This is field #5, RETENTION DAYS, which has been there since
+ 1994, but never used!) If the field is filled in, the bulletin will be set
+ to vaporize that many days from the time the bulletin is sent. 
+  
+ NOIS: PUG-0800-50981
+ E3R: 2736, 2765, 3286, 8959, 10302, 12540
+ Warn the user of an impending purge-by-date a certain number of days before
+ the messages are actually purged.  The warning will be a broadcast bulletin,
+ which will vaporize on the purge date.  This patch includes updated options
+ XMKSP and XMPURGE-BY-DATE, new bulletin XM DATE PURGE WARNING, and two new
+ fields in file #4.3, MAILMAN SITE PARAMETERS.  Read on for details.
+  
+ Two new fields have been added to file #4.3 MAILMAN SITE PARAMETERS.  The
+ option XMKSP, to edit those parameters, has been updated to include them.
+  
+ STANDARD DATA DICTIONARY #4.3 -- MAILMAN SITE PARAMETERS FILE
+ STORED IN ^XMB(1,
+ DATA       NAME                  GLOBAL        DATA
+ ELEMENT    TITLE                 LOCATION      TYPE
+ ----------------------------------------------------------------------------
+ 4.3,10.03  DATE PURGE CUTOFF DAYS .18;1 NUMBER
+            INPUT TRANSFORM:  K:+X'=X!(X>9999)!(X<365)!(X?.E1"."1N.N) X
+            LAST EDITED:      NOV 17, 2000 
+            HELP-PROMPT:      Type a Number between 365 and 9999, 0 Decimal 
+                              Digits 
+            DESCRIPTION:      This field is used by the option
+                              XMPURGE-BY-DATE.  When this option is run, the
+                              date purge will be set to purge all messages
+                              originating this many days ago and before.  
+                                  
+                              If this field is null, the default will be 730
+                              days (2 years).  
+  
+ 4.3,10.04  DATE PURGE GRACE PERIOD .18;2 NUMBER
+            INPUT TRANSFORM:  K:+X'=X!(X>31)!(X<3)!(X?.E1"."1N.N) X
+            LAST EDITED:      NOV 17, 2000 
+            HELP-PROMPT:      Type a Number between 3 and 31, 0 Decimal 
+                              Digits 
+            DESCRIPTION:      This is the number of days' warning the users
+                              get before the date purge, XMPURGE-BY-DATE, is
+                              run.  
+                                  
+                              This field is used by the option
+                              XMPURGE-BY-DATE only if that option is
+                              scheduled, not if it is run interactively.  
+                                 
+                              At the scheduled date/time, the bulletin, XM
+                              DATE PURGE WARNING, is broadcast to all users
+                              to warn them of the coming date purge, and the
+                              actual date purge is then queued to run this
+                              many days later.  
+                                  
+                              If this field is null, the date purge will run
+                              at the scheduled date/time, and no bulletin
+                              will be sent.  
+  
+ You are now able to schedule the option XMPURGE-BY-DATE.  You couldn't do
+ that before.
+  
+ NAME: XMPURGE-BY-DATE
+   MENU TEXT: Purge Messages by Origination Date
+   TYPE: run routine                     CREATOR: POSTMASTER
+   LOCK: XMMGR                           PACKAGE: MAILMAN
+  DESCRIPTION:   You must hold the XMMGR and XMSTAR keys to run this option.  
+   
+  XMPURGE-BY-DATE will delete *all* messages originating before a cutoff
+  date. It will delete those messages from users' mailboxes, and then delete
+  them from the MESSAGE file, along with any responses chained to them. This
+  flexible option can be run interactively or scheduled to run on a
+  recurring basis, the cutoff date can be controlled, users may or may not
+  be sent a warning bulletin to warn them of the purge ahead of time, and
+  the option may produce a report to show how many messages and responses it
+  deleted.
+  
+  When the option is run interactively:
+  
+  1) It asks for the cutoff date. The default is based on the DATE PURGE
+  CUTOFF DAYS field (10.03) in the MAILMAN SITE PARAMETERS file (4.3). If
+  that field is null, it defaults to 730 days (2 years) in the past.
+  
+  2) It asks whether to run the option in Test mode. In Test mode, the
+  option will not purge any messages, just report how many and which would
+  have been purged.
+  
+  3) It asks for the output device on which to print the report. The purge
+  and report can be queued here to run later.
+  
+  4) If it's queued more than 3 days in the future, the option immediately
+  broadcasts the XM DATE PURGE WARNING bulletin to all users to notify them
+  of the upcoming purge and give them a chance to save off old messages
+  beforehand.
+  
+  5) If it's queued less than 3 days in the future, or is not queued, no
+  bulletin is sent.
+  
+  When the option is scheduled:
+  
+  1) The option runs at the scheduled time, as specified by the QUEUED TO
+  RUN AT WHAT TIME field (2) of the OPTION SCHEDULING file (19.2).
+  
+  2) If the RESCHEDULING FREQUENCY field (6) of file 19.2 is set, the option
+  is scheduled to run repeatedly.
+  
+  3) It uses the DATE PURGE CUTOFF DAYS field, or the default of 730 days if
+  it's empty, to calculate the cutoff date.
+  
+  4) It does not run in Test mode.
+  
+  5) If the DATE PURGE GRACE PERIOD field (10.04) of file 4.3 is empty, the
+  purge runs at the time for which the option is scheduled.
+  
+  6) Otherwise, at the scheduled time the option only broadcasts the XM DATE
+  PURGE WARNING bulletin to all users and queues a second task to perform
+  the date purge GRACE PERIOD number of days later.
+  
+  7) If the DEVICE FOR QUEUED JOB OUTPUT field (3) of file 19.2 is empty,
+  the purge runs without printing a report.
+  
+  8) Otherwise it prints the report on the selected device.
+  
+  *Messages in SHARED,MAIL's mailbox and messages in the POSTMASTER's remote
+  transmit queues and server baskets (including released patch messages on
+  FORUM) are exempt from the purge.  
+   ROUTINE: ENTER^XMA32                  SCHEDULING RECOMMENDED: YES
+   UPPERCASE MENU TEXT: PURGE MESSAGES BY ORIGINATION 
+  
+ Here's the new warning bulletin:
+  
+ OUTPUT FROM WHAT FILE: BULLETIN// 
+ NAME: XM DATE PURGE WARNING             SUBJECT: Date Purge Scheduled for |1|
+   PRIORITY?: YES
+  MESSAGE:   Attention!  On |1|, all* messages (and their responses) sent on
+  or before |2| will be  deleted from the system.  They will be gone forever.
+   
+  You can find out if this will affect any messages in your mailbox and take
+  appropriate measures.  
+   
+  From the main MailMan menu, respond to the prompts as follows: 
+   
+  Select MailMan Menu Option: Query/Search for Messages 
+                              =
+  Select message search method: M  Search my Mailbox by multiple criteria 
+                                =
+  Select search action: Enter 'Subject contains' string// DB  Enter 'Message
+  sent on or before' date                                 ==
+  Message sent on or before: |2| 
+                             |3|
+   
+  This search will find all of your messages which will be deleted.  
+   
+  * Messages in SHARED,MAIL's mailbox, and messages in the POSTMASTER's remote
+  transmit queues and server baskets (includes released patches on FORUM) are
+  exempt from the purge.  
+  DESCRIPTION:   This is the warning bulletin that is broadcast to all users
+  whenever option XMPURGE-BY-DATE is used to purge messages older than a
+  certain  date.  See that option for more information.
+ PARAMETER: 1
+  DESCRIPTION:   The date that the date purge will run.  
+ PARAMETER: 2
+  DESCRIPTION:   All messages this date and older will be purged.  
+ PARAMETER: 3
+  DESCRIPTION:   A line of '=' as long as parameter 2
+  
+ NOTE: This patch should be installed during off hours, when user activity
+ is at a minimum.  It requires MailMan patches XM*7.1*120 & XM*7.1*136.
+ ============================================================================ 
+  
+ ROUTINES:
+ The second line of the routine now looks like:
+        ;;7.1;MailMan;**[patch list]**;Jun 02, 1994
+  
+               Before          After
+ Name          Checksum        Checksum        Patch List
+ --------------------------------------------------------------------
+ XMA32          6537619         8333956        37,50,159
+ XMA32A         9915667         9150003        27,37,44,55,50,136,159
+ XMXBULL        5258679         5447862        50,107,120,159
+ * Checksums produced by CHECK^XTSUMBLD
+  
+ This patch introduces no new routines.
+ ===========================================================================
+  
+ INSTALLATION:
+ NOTE: This patch should be installed during off hours, when user activity
+ is at a minimum.  It requires MailMan patches XM*7.1*120 & XM*7.1*136.
+ 1.  Users may be on the system during installation of this patch.
+ 2.  DSM Sites: If any of these routines is mapped, disable mapping for the 
+     affected routine(s).  
+ 3.  On the PackMan menu, use the 'INSTALL/CHECK MESSAGE' option.  This loads 
+     the patch into a Transport Global on your system.  
+ 4.  You do not need to stop TaskMan or the background filer.
+     Users may be on the system.
+ 5.  On the KIDS:Installation menu, use the following options to install the
+     Transport Global:
+        Verify Checksums in Transport Global
+        Print Transport Global
+        Compare Transport Global to Current System
+        Backup a Transport Global
+        Install Package(s)
+  Select INSTALL NAME:    XM*7.1*159    Loaded from Distribution  <date/time>
+                          ==========
+  Install Questions:
+  Want KIDS to Rebuild Menu Trees Upon Completion of Install? YES// YES
+                                                                    ===
+  Want KIDS to INHIBIT LOGONs during the install? YES// NO
+                                                        ==
+  Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// NO
+                                                                        ==
+  Enter the Device you want to print the Install messages.
+  You can queue the install by enter a 'Q' at the device prompt.
+  Enter a '^' to abort the install.
+  
+  DEVICE: HOME// <It's up to you.  You may queue it if you wish.>
+                 ------------------------------------------------
+ 6.  DSM Sites: After patch has installed, rebuild your map set, if necessary.
+ ===========================================================================
+
+Routine Information:
+====================
+
+Routine Name:
+  - XMA32
+
+
+Routine Checksum:
+
+Routine Name:
+  - XMA32A
+
+
+Routine Checksum:
+
+Routine Name:
+  - XMXBULL
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : BEUSCHEL,GARY                  Date Entered : NOV 20, 2000
+Completed By: SINGH,GURBIR                  Date Completed: MAY 16, 2001
+Released By : GRAY,STEPHEN                  Date Released : MAY 17, 2001
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

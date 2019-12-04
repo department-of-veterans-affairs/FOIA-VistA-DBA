@@ -1,0 +1,270 @@
+$TXT Created by HARTIN,JAMES at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 01/30/03 at 09:56
+=============================================================================
+Run Date: FEB 26, 2003                     Designation: IB*2*203
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #183                       Status: Released
+                  Compliance Date: MAR 29, 2003
+=============================================================================
+
+Associated patches: (v)IB*2*161    <<= must be installed BEFORE `IB*2*203'
+
+Subject: CLAIMSMANAGER CANCEL BILL BUG FIX 
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+ This patch addresses the problem where a bill is canceled on the VistA 
+ side, but the cancellation transaction is not sent to ClaimsManager. 
+  
+ ASSOCIATED E3R(s):
+ ==================
+ N/A
+  
+ ASSOCIATED NOIS:
+ ================
+ 1. PRE-1002-60250      Duplicate Errors (ClaimsManager): Copy/Cancel/Clone
+    Duplicate(s):
+        PRO-0802-11531      Unable to fix error message in EDI
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Phoenix, AZ
+ Prescott, AZ
+  
+ NOIS OVERVIEW:
+ ==============
+ 1. PRE-1002-60250      Duplicate Errors (ClaimsManager): Copy/Cancel/Clone
+  
+    Problem:
+    --------
+    The problem deals with canceling a bill on the VistA side by using 
+    the Cancel Bill [IB CANCEL BILL] or the Copy and Cancel [IB COPY AND 
+    CANCEL] options.  What's supposed to happen is that a transaction goes
+    to ClaimsManager in the background which will tell ClaimsManager to
+    delete all the line items on that bill so they don't get used in any
+    future analysis for that bill.  When the 3, 4, and 5 nodes of the
+    CLAIMSMANAGER BILLS (#351.9) file do not exist for the bill being
+    canceled, the code simply quit out of the routine that was supposed to
+    rebuild the 3, 4, and 5 nodes in the event of a cancel - incorrectly
+    assuming that they would always be present when sending to ClaimsManager.
+  
+    Resolution:
+    -----------
+    This patch corrects the faulty code so it will only quit when doing a
+    cancel AND the 3, 4, and 5 nodes are present.  If the 3, 4, and 5 nodes
+    are not there, then they will be rebuilt and the transmission will go
+    through to ClaimsManager.  It also corrects past bills which were
+    canceled in VistA, but not in ClaimsManager.
+  
+ TECHNICAL:
+ ==========
+ Routine IBCIADD1 has been modified to insure the canceling transaction is
+ sent to ClaimsManager when a bill is canceled in VistA.
+  
+ The purpose of the post-installation routine is to correctly "cancel" bills
+ on the ClaimsManager server, if they have already been canceled in VistA.
+ A bill is considered canceled in ClaimsManager when all of it's line items
+ have a status of deleted.  During the installation process (if the job is
+ running in the foreground and ClaimsManager is running at the site), the
+ post-installation routine will count the number of ClaimsManager
+ transactions that will be needed and then display that number so the user
+ has an idea of how long it will take.  Also, each "." displayed represents
+ 10 bills processed.  The user will see something like the following if they
+ run it in the foreground:
+  
+    Counting eligible bills ... Done
+  
+    The number of cancelled bills that will be sent to ClaimsManager is 88.
+  
+    Note:  Each "." below represents 10 bills.
+  
+    Sending cancelled bills to ClaimsManager ........ Done
+  
+  
+  
+  
+ ROUTINE SUMMARY 
+ ===============
+ The following is a list of the routines included in this patch.  
+ The second line of each of these routines now looks like: 
+  
+   <tab>;;2.0;INTEGRATED BILLING;**[PATCH LIST]**;21-MAR-94
+  
+                        CHECK^XTSUMBLD results
+ Routine name      Before Patch        After Patch       Patch List
+ ============      ============        ===========       ===========
+  IB20P203                  N/A            6712188       203
+  IBCIADD1             10382643           10444048       161,203
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+ This patch can be loaded with users in the system.  Installation time
+ will vary.
+  
+  1.  For sites RUNNING ClaimsManager, this patch should be queued to run
+      in the background during a period where the billers are not on the 
+      system and the ClaimsManager server is not down for backups.  However,
+      you don't need to inhibit logon's or disable any options.  The install
+      time will vary depending on the number of bills a site has sent
+      through to CM which have been canceled on VistA.
+  
+  2.  For sites NOT RUNNING ClaimsManager, this patch can be installed
+      anytime and will take less than 10 seconds to install.
+   
+  3.  Choose the PackMan message containing this patch and invoke the 
+      INSTALL/CHECK MESSAGE PackMan option.  
+  
+  4.  (DSM for Open VMS sites only) Disable routine mapping on all systems
+      for the routines listed in the Routine Summary.
+  
+      NOTE:  If the routines included in this patch are not currently
+      in your mapped routine set, please skip this step.
+  
+  5.  Start up the Kernel Installation and Distribution System Menu
+      [XPD MAIN]: 
+  
+           Edits and Distribution ...  
+           Utilities ...  
+           Installation ...  
+  
+      Select Kernel Installation & Distribution System Option: Installation
+                                                               ---
+           1      Load a Distribution
+           2      Verify Checksums in Transport Global
+           3      Print Transport Global
+           4      Compare Transport Global to Current System
+           5      Backup a Transport Global
+           6      Install Package(s)
+                  Restart Install of Package(s)
+                  Unload a Distribution
+  
+  6.  From this menu, you may elect to use the following options
+      (When prompted for the INSTALL NAME, enter IB*2.0*203):
+      
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will
+          not backup any other changes such as DD's or templates.
+      b.  Compare Transport Global to Current System - This option
+          will allow you to view all changes that will be made when
+          this patch is installed.  It compares all components of this
+          patch (routines, DD's, templates, etc.).
+      c.  Verify Checksums in Transport Global - This option will
+          allow you to ensure the integrity of the routines that are
+          in the transport global.
+  
+  7.  Use the Install Package(s) option and select the package
+      IB*2.0*203.
+  
+      a.  When prompted 'Want KIDS to INHIBIT LOGONs during the
+          install? YES//', answer NO.
+      b.  When prompted 'Want to DISABLE Scheduled Options and Menu 
+          Options and Protocols? YES//', answer NO.
+  
+  8.  (DSM for Open VMS sites only) Optional - Include the routines
+      distributed with this patch in the mapped routine set.
+  
+      NOTE: This step is only necessary if you performed step 3 or if
+      you wish to include the routines in your mapped set.
+  
+  9.  The post-installation routine, IB20P203, can be deleted
+      after successful installation.
+  
+  
+ INSTALLATION EXAMPLE:
+ ===================== 
+  
+ Select Installation Option: 6  Install Package(s)
+ Select INSTALL NAME:   IB*2.0*203    Loaded from Distribution    Loaded from
+ Distribution  12/12/02@23:58:06
+      => IB*2*203
+  
+ This Distribution was loaded on Dec 12, 2002@23:58:06 with header of 
+    IB*2*203
+    It consisted of the following Install(s):
+      IB*2.0*203
+ Checking Install for Package IB*2.0*203
+  
+ Install Questions for IB*2.0*203
+  
+  
+  
+ Want KIDS to INHIBIT LOGONs during the install? YES// NO
+ Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// NO
+  
+ Enter the Device you want to print the Install messages.
+ You can queue the install by enter a 'Q' at the device prompt.
+ Enter a '^' to abort the install.
+  
+ DEVICE: HOME//   TELNET
+  
+  
+  
+  
+  Install Started for IB*2.0*203 : 
+                Dec 12, 2002@23:58:40
+                                    IB*2.0*203           
+ ----------------------------------------------------------------------------
+  
+ Build Distribution Date: Dec 03, 2002
+  
+  Installing Routines:
+                Dec 12, 2002@23:58:40
+  
+  Running Post-Install Routine: ^IB20P203
+ Counting eligible bills ... Done
+  
+ The number of cancelled bills that will be sent to ClaimsManager is 88.
+  
+ Note:  Each "." below represents 10 bills.
+  
+ Sending cancelled bills to ClaimsManager ........ Done
+  
+  Updating Routine file...
+  
+  Updating KIDS files...
+  
+  IB*2.0*203 Installed. 
+                Dec 12, 2002@23:58:41
+  
+  Not a production UCI
+  
+  NO Install Message sent 
+ ----------------------------------------------------------------------------
+           +------------------------------------------------------------+
+   100%    |             25             50             75               |
+ Complete  +------------------------------------------------------------+
+  
+  
+  
+ Install Completed
+
+Routine Information:
+====================
+
+Routine Name:
+  - IBCIADD1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IB20P203
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : HARTIN,JAMES                   Date Entered : OCT 18, 2002
+Completed By: PHELPS,TY                     Date Completed: FEB 26, 2003
+Released By : BOTTINI,STEVE                 Date Released : FEB 26, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

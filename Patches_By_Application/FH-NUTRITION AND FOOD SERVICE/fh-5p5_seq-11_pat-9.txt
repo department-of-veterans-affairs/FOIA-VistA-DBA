@@ -1,0 +1,236 @@
+$TXT Created by UNDERHILL,GARDNER at DAYT17.FO-BAYPINES.MED.VA.GOV  (KIDS) on Tuesday, 12/11/07 at 16:30
+=============================================================================
+Run Date: JAN 24, 2008                     Designation: FH*5.5*9
+Package : FH - DIETETICS                      Priority: Mandatory
+Version : 5.5        SEQ #11                    Status: Released
+                  Compliance Date: FEB 24, 2008
+=============================================================================
+
+Associated patches: (v)FH*5.5*8    <<= must be installed BEFORE `FH*5.5*9'
+
+Subject: ADDRESSES ISSUES WITH TWO REPORTS AND A BAD INDEX IN THE FOOD NUTRIENTS FILE
+
+Category: 
+  - Informational
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+  
+ Test Sites:
+ ============
+ Altoona, PA
+ Central Texas, HCS
+ Puget Sound, HCS
+ ============
+  
+  
+ Problem 1: HD0000000152560
+ =========
+ When a CPRS user has selected an outpatient and decides to view the 
+ patient's dietetics profile, the food preferences listed are incomplete.
+  
+ Solution:
+ =========
+ The problem is in routine FHOMPP. This routine builds the report of the 
+ outpatient's dietetics profile. The logic used to loop through the food
+ preferences has a flaw that allows the code to stop processing after
+ the first food preference record for each meal filed for the 
+ patient.  Routine FHOMPP has been modified to complete the
+ processing of all food preference records for each meal stored for the
+ selected outpatient.
+  
+ Problem 2: HD0000000152560
+ ==========
+ This issue was found during the SQA testing for this patch. It was found 
+ that if the user in CPRS GUI looked at an outpatient's dietetics profile 
+ and then selected a new outpatient without quitting CPRS GUI and looked 
+ at the second patient's dietetics profile the user would see in the Food 
+ Preferences a combined list of both patient's likes and dislikes. As long 
+ as the user did not log out of GUI and selected several outpatients in a 
+ row the likes/dislikes list would continue to combine the food 
+ preferences for all of these patients together. This was an unknown 
+ problem before. It was not discovered until the solution for problem 1 
+ was tested by SQA.
+  
+ Solution:
+ =========
+ The problemm is in routine FHOMPP. This routine did not properly clean up 
+ the temporary globals created by the process to make the Dietetics 
+ Profile report displayed in CPRS GUI. Routine FHOMPP has been modified to 
+ clean up the temporary globals between each running of the report.
+  
+ Problem: HD0000000188896
+ ========
+ It is possible for a patient to have a food preference without a meal 
+ associated with it. When the report option Print Nutrition Profile is run 
+ for a patient that has a food preference without an associated
+ meal, the routine called by this option, FHASP1, will error out.
+ Routine, FHASP1, sorts the food preferences by meal. To do this it builds
+ a temporary index using the meal among other values. If a food preference
+ does not have an associated meal the routine will try to use a null value 
+ to build the index and M does not allow that to happen.
+  
+ Solution:
+ =========
+ Routine FHASP1 has been modified to test the food preference record to
+ make sure it has an associated meal. If it does not, the routine will
+ assume the food preference record in question is for all meals and will 
+ use the value for all meals when it adds this record to the index.
+  
+ Problem: HD0000000202836
+ ========
+ The cross reference for field # 99, INACTIVE?, in file # 112, FOOD 
+ NUTRIENTS, is incorrect. It is intended to kill the node ^FHNU(DA,"I") if 
+ the user selects N for no or deletes the stored value. It is written to 
+ kill node ^FH(112,DA,"I"). This is a node that is never created. So 
+ nothing is killed. Since node ^FHNU(DA,"I") continues to exist the record 
+ will remain flagged as inactive.
+  
+ Solution:
+ =========
+ The cross reference for field # 99, INACTIVE?, in file # 112, FOOD 
+ NUTRIENTS, has been changed from K ^FH(112,DA,"I") to K ^FHNU(DA,"I"). 
+ The exact change is documented in the data dictionary section of this 
+ patch description.
+  
+ ASSOCIATED REMEDY TICKET(S):
+ ============================
+ HD0000000152560 - CPRS Dietetics Profile does not jive
+ HD0000000188896 - Error in FHASP1
+ HD0000000202836 - REPLETE WITH FIBER is INACTIVE
+  
+  
+ DATA DICTIONARY CHANGES:
+ ========================
+ File - FOOD NUTRIENTS(#112)
+ Field - INACTIVE?(#99)
+  
+ Before:
+ -------
+ STANDARD DATA DICTIONARY #112 -- FOOD NUTRIENTS FILE   
+ STORED IN ^FHNU(
+  
+ DATA          NAME                  GLOBAL        DATA
+ ELEMENT       TITLE                 LOCATION      TYPE
+ --------------------------------------------------------------------------
+  
+ 112,99        INACTIVE?              I;1 SET
+  
+                                 'Y' FOR YES; 
+                                 'N' FOR NO; 
+               LAST EDITED:      FEB 23, 2000 
+               HELP-PROMPT:      Type a Number between 0 and 99999, 3 
+                                 Decimal Digits
+               DESCRIPTION:      This field, if answered YES, will 
+                                 prohibit further selection of this entry.
+  
+               CROSS-REFERENCE:  112^AC^MUMPS 
+                                 1)= K:X'="Y" ^FH(112,DA,"I")
+                                 2)= K ^FH(112,DA,"I")
+                                 This cross-reference is used to create an 
+                                 'I' node for inactive entries.
+ After:
+ ------
+ STANDARD DATA DICTIONARY #112 -- FOOD NUTRIENTS FILE   
+ STORED IN ^FHNU(
+  
+ DATA          NAME                  GLOBAL        DATA
+ ELEMENT       TITLE                 LOCATION      TYPE
+ --------------------------------------------------------------------------
+  
+ 112,99        INACTIVE?              I;1 SET
+  
+                                 'Y' FOR YES; 
+                                 'N' FOR NO; 
+               LAST EDITED:      AUG 20, 2007 
+               HELP-PROMPT:      Type a Number between 0 and 99999, 3 
+                                 Decimal Digits
+               DESCRIPTION:      This field, if answered YES, will 
+                                 prohibit further selection of this entry.
+  
+               CROSS-REFERENCE:  112^AC^MUMPS 
+                                 1)= K:X'="Y" ^FHNU(DA,"I")
+                                 2)= K ^FHNU(DA,"I")
+                                 This cross-reference is used to create an
+                                 'I' node for inactive entries.
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+  This patch can be loaded with users in the system, but it should be
+  installed during non-peak hours.  Installation time will be less than
+  two minutes.
+  
+  1.  Choose the PackMan message containing this patch and invoke the
+      INTALL/CHECK MESSAGE Packman option.
+  
+  2.  Start up the Kernel Installation and Distribution System Menu [XPD
+      MAIN]:
+  
+             Edits and Distribution ...
+             Utilities ...
+             Installation ...
+  
+      Select Kernel Installation & Distribution System Option:
+      Installation
+  
+             1      Load a Distribution
+             2      Verify Checksums in Transport Global
+             3      Print Transport Global
+             4      Compare Transport Global to Current System
+             5      Backup a Transport Global
+             6      Install Package(s)
+                    Restart Install of Package(s)
+                    Unload a Distribution
+  
+  3.  From this menu, it is highly recommended that you use the following
+      options (When prompted for the INSTALL NAME, enter FH*5.5*9):
+  
+      a.  Verify Checksums in Transport Global - This option will verify 
+          the checksums of routines included in this patch.
+      b.  Print Transport Global - This option will print out a list of all
+          the components exported in this patch.
+      c.  Compare Transport Global to Current System - This option will
+          allow you to view all changes that will be made when this patch 
+          is installed.  It compares all components of this patch
+          (routines, DD's, templates, etc.).
+      d.  Backup a Transport Global - This option will back up the current
+          versions of the routines in this patch before it is installed.
+  
+  4.  Use the Install Package(s) option and select the package FH*5.5*9.
+  
+      a.  When prompted "Want KIDS to INHIBIT LOGONs during the install?
+          YES//", answer NO.
+      b.  When prompted "Want to DISABLE Scheduled Options and Menu Options
+          and Protocols? YES//", answer NO.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.5;DIETETICS;**[Patch List]**;Jan 28, 2005;Build 7
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: FHASP1
+    Before: B16943415   After: B17033671  **8,9**
+Routine Name: FHOMPP
+    Before: B15901336   After: B16009965  **9**
+ 
+Routine list of preceding patches: 8
+
+=============================================================================
+User Information:
+Entered By  : UNDERHILL,GARDNER D           Date Entered  : JUL 14, 2006
+Completed By: CRICHLOW,SHERRY               Date Completed: JAN 24, 2008
+Released By : KREUZ,SHERI B                 Date Released : JAN 24, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,198 @@
+$TXT Created by FORT,WALLY at NXT.KERNEL.ISC-SF.VA.GOV  (KIDS) on THURSDAY, 09/20/01 at 13:17
+=============================================================================
+Run Date: NOV 21, 2001                     Designation: XU*8*199
+Package : XU - KERNEL                          Priority: Mandatory
+Version : 8       SEQ #179                       Status: Released
+=============================================================================
+
+Associated patches: (v)XU*8*112    <<= must be installed BEFORE `XU*8*199'
+                    (v)XU*8*175    <<= must be installed BEFORE `XU*8*199'
+
+Subject: IOPAR corrupting tasks
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+ Patch XU*8*199: IOPAR Corrupting Tasks
+ ================================
+  
+ Per the patch description below, this patch was intended to correct a problem 
+ identified in NOIS reports NOIS: NAS-0700-31644, CHA-0700-32007, 
+ MIW-0201-40662, DAY-0401-41059, and BRX-0501-10502.
+  
+ Test Sites: Bronx, NY; Central Alabama HCS; Charleston, SC; Dayton, OH;
+ Milwaukee,WI; OIFO Albany; Tennessee valley, HCS
+  
+ Problem Statement:
+ ==============
+  
+ The Text Integration Utility (TIU) has been encountering run away jobs at
+ some sites due to the IO variable IOPAR being left behind by an earlier
+ task.  After a lot of work by the sites, National Vista Support (NVS), and
+ TIU developers, the following pattern has been identified:  Because the
+ IOPAR variable is left behind by an earlier task, it overrides the normal
+ Open parameter in the DEVICE file (#3.5) if either conditions exist:
+  
+   * When TIU (or any routine making a call %ZTLOAD) queues to a Host File 
+     System (HFS) device, they could experience this problem depending on what 
+     devices had been used before.
+  
+   * If TaskMan opens the device for a task which cannot be opened,
+     TaskMan reschedules the task incorrectly using that same IOPAR variable, 
+     which is still in the symbol table.
+  
+  
+ Patch Solution:
+ ===========
+  
+ Several places in the code have been fixed to ensure that extra IO variables 
+ are not left behind after tasks have finished processing. This patch corrects 
+ the problem that the TIU has come across by changing the routine %ZTMS2 to 
+ kill the IOPAR variable before setting up the task. The %ZTMS2 routine now
+ kills all IO variables before setting up a call to open a device. In
+ addition, any special IO variables for that device are killed when the
+ routine %ZISC is called to closed the device.
+  
+ This patch also introduces a new extrinsic function UNIQUE^ZISUTL, which 
+ creates a unique IO parameter. This parameter takes the string $H_"-"_$J and 
+ runs a CRC32 on it to get a 10 digit number.  If UNIQUE^ZISUTL is called
+ using a parameter, it will concatenate the number just before the last
+ period (.) in the parameter string. Here are some examples on this:
+  
+    W $$UNIQUE()       >>2987896688
+    W $$UNIQUE("last") >>last_9041564
+    W $$UNIQUE("$USR:[USER.FORT.EDIT]TEST.TMP")
+                 >>$USR:[USER.FORT.EDIT]TEST_2603399923.TMP
+  
+ Routine Summary
+ The following routines are included in this patch.  The second line of each
+ of these routines now looks like:
+  ;;8.0;KERNEL;<patchlist>;JUL 10, 1995
+  
+                  Checksum
+ Routine         Old       New      2nd Line
+ ZIS           9454725   9332342    **18,23,69,112,199**
+ ZIS1         10540675   9968286    **18,49,69,104,112,199**
+ ZISC          8004258   8130420    **24,36,49,69,199**
+ ZISUTL        2307058   2825748    **18,24,34,69,118,127,199**
+ ZTMS2         7001305   7090453    **2,18,23,36,67,118,127,163,167,175,199**
+  
+ List of preceding patches: 112, 175
+ Sites should use CHECK^XTSUMBLD to verify checksums.
+ ========================================================================= 
+ Installation:
+  
+ >>>Do not allow users to log in to the system during installation.
+ >>>Users may remain on the system. They may get EDITED error if they
+    are selecting a device at the time.
+ >>>TaskMan does need to be in a wait state.
+  
+   1.  DSM sites - Some of these routines are usually mapped,
+       so you will need to disable mapping for the affected routines.
+       
+   2.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This
+       option will load the KIDS package onto your system.
+       
+   3.  The patch has now been loaded into a Transport global on your
+       system. You now need to use KIDS to install the Transport global.
+       On the KIDS menu, under the 'Installation' menu, use the following
+       options:
+       
+          Verify Checksums in Transport Global
+          Print Transport Global
+          Compare Transport Global to Current System
+          Backup a Transport Global
+          
+  4.  Users could remain on the system. They may get a EDITED error if they
+      are selecting a device at the time.
+      This patch can not be queued.
+      Also place TASKMAN in a wait state. (DO WAIT^ZTMKU)
+      Inhibit users from login into the system. (If you install when few
+      users are on the system and the possibility of some CLOBER errors is
+      acceptable, then users can stay on the system.)
+       
+   5.  In Programmer mode:
+       Use "D ^XPDKRN" then
+          Install Package(s)  'XU*8.0*199'
+                               =========
+                               
+         Want KIDS to INHIBIT LOGONs during the install? YES// YES
+         
+         No Options or Protocols need to be placed out-of-order.
+         Want to DISABLE Scheduled Options, Menu Options, and Protocols? NO
+                                                                         ==
+       
+   8.  After installing this patch,
+       Cache Sites - you don't need to move anything, skip this step. 
+       DSM/MSM sites - you need to move several routines from 
+       your production account to each manager account:
+       
+ ZIS
+ ZIS1
+ ZISC
+ ZISUTL
+ ZTMS2
+       
+   9.  And in the manager account,  (OpenM sites remain in VAH)
+       All sites:
+       DO RELOAD^ZTMGRSET
+       Select the System
+       Patch number to load: 199
+                             ===
+        
+  10.  DSM Sites, after patch has installed, rebuild your map set.
+  
+  11.  Enable user's login.
+       Remove TASKMAN from the wait state. (DO RUN^ZTMKU)
+  
+  
+ =========================================================================
+
+Routine Information:
+====================
+
+Routine Name:
+  - ZIS
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZIS1
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZISC
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZISUTL
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTMS2
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : FORT,WALLY                     Date Entered : MAY 01, 2001
+Completed By: SINGH,GURBIR                  Date Completed: NOV 21, 2001
+Released By : GIBBONS,JOE                   Date Released : NOV 21, 2001
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

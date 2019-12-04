@@ -1,0 +1,407 @@
+
+=============================================================================
+Run Date: AUG 31, 2005                     Designation: SR*3*119
+Package : SR - SURGERY                        Priority: Mandatory
+Version : 3       SEQ #137                      Status: Released
+                  Compliance Date: OCT 01, 2005
+=============================================================================
+
+Associated patches: (v)SR*3*50     <<= must be installed BEFORE `SR*3*119'
+                    (v)SR*3*105    <<= must be installed BEFORE `SR*3*119'
+                    (v)SR*3*107    <<= must be installed BEFORE `SR*3*119'
+                    (v)SR*3*125    <<= must be installed BEFORE `SR*3*119'
+                    (v)SR*3*127    <<= must be installed BEFORE `SR*3*119'
+
+Subject: SURGERY CLINICAL INDICATOR DATA CAPTURE
+
+Category: 
+  - Enhancement (Mandatory)
+  - Routine
+  - Data Dictionary
+  - Input Template
+  - Informational
+
+Description:
+============
+
+ This patch is the Surgery Package part of Clinical Indicator Data
+ Capture (CIDC) project.  There are no NOIS messages or E3Rs associated
+ with this patch.
+  
+ Overview
+ ========
+ This patch provides the ability to capture, store, and transmit to
+ Patient Care Encounter (PCE) data elements required for billing 
+ purposes.  
+  
+ Functional Description
+ ======================
+  1.  Modifications to the Anesthesia Data Entry [SROANES-D] menu option
+      allow the entry of multiple anesthesia start and end times, as well
+      as a calculation of total billable anesthesia time.
+  
+  2.  An Anesthesia Care Questionnaire will be added to allow a more
+      complete capture of clinical data, which will support coding and
+      billing efforts.
+  
+  3.  An Anesthesia Billable Time API will be provided to return new 
+      multiple anesthesia start and end times to Integrated Billing.
+  
+  4.  The existing fields for entry of Referring Physician information will
+      be enhanced to allow users to automatically populate the Surgery data
+      using data from the NEW PERSON file (#200).
+  
+  5.  A process allowing a procedure code-level association to diagnosis
+      will be provided.
+  
+  6.  A process allowing a diagnosis code-level association to Service
+      Connected/Environmental Indicators will be provided.
+  
+  7.  New Environmental Indicator, Combat Veteran, will be provided.
+  
+  8.  The update to PCE will be modified to include the new billing data
+      associations.  The Surgery Site Parameter UPDATES TO PCE will be
+      modified to force all case data to PCE.  The Surgery Site Parameter
+      ASK CLASSIFICATION QUESTIONS will be modified to always ask the
+      questions.
+  
+  9.  The PCE Filing Status Report will be modified to reflect the changes
+      in data required for PCE.
+  
+  10.  A new field, Prin Pre-OP ICD Diagnosis Code will be provided to
+       capture pre-operative information and be sent to PCE.
+  
+  11.  Features provided by this patch are described in the Surgery
+       Clinical Indicator Data Capture Release Notes.
+  
+  
+ Test Sites:
+ ===========
+ Loma Linda, CA
+ Cleveland, OH
+ Dayton, OH
+ Boston, MA
+ Memphis, TN
+ Charleston, SC
+  
+  
+ Routine Summary
+ ===============
+ The following routines are included in this patch. The second line of each
+ routine will look like:
+  
+     ;;3.0; Surgery ;**[patch list]**;24 Jun 93
+  
+  
+  Routine Name   Before Patch   After Patch   Patch List
+  ------------   ------------   -----------   ----------
+  SR119PI        N/A            459039        119
+  SROADX         N/A            18795317      119
+  SROADX1        N/A            17568272      119
+  SROADX2        N/A            8637892       119
+  SROANEST       N/A            22475851      119
+  SROCON         7363157        7630009       78,119
+  SROCON1        842158         1857672       78,107,119
+  SROPCE         15911635       24960367      58,62,69,88,105,119
+  SROPCE0        20241119       21809130      58,62,69,77,50,119
+  SROPCE1        15377134       19572075      58,105,119 
+  SROPCEX        6617925        7315597       58,62,69,86,119
+  SROVER         14654486       16285703      7,34,38,86,88,100,119
+  SROVER1        8656456        9154621       18,67,88,127,119
+  SROVER2        15388627       16522795      86,88,100,127,119
+  SROVER3        14521432       18910306      86,88,127,119
+  SROWL          10656478       16270257      58,119
+  
+     Total number of routines - 16
+  
+ Note: The post install routine (SR119PI) is included in this patch to
+ set the UPDATES TO PCE field (#18) of the SURGERY SITE PARAMETERS
+ file (#133) value to "A". It also sets the ASK CLASSIFICATION QUESTIONS
+ field (#19) to "YES". This routine is deleted automatically by the KIDS
+ installation process 
+  
+ DATA DICTIONARY SUMMARY
+ ========================
+ This patch adds the following new fields:
+  - File: SURGERY file (#130)
+  
+    Field: Combat Vet (#.024)     SET
+  
+    Field: ANES CARE TIME BLOCK (#.213)    (Multiple,sub-file #130.213)
+    Sub-Field: ANES CARE MULTIPLE START TIME (#.01)     DATE
+    Sub-Field: ANES CARE MULTIPLE END TIME (#1)     DATE
+  
+    Field: ANES CARE BILLABLE TIME FLAG (#.214)     SET
+  
+    Field: ANES CARE BILLABLE TIME (#.218)     COMPUTED
+  
+    Field: ANES PERSONALLY PERFORMED (#.3511)     SET
+  
+    Field: NUMBER OF CONCURRENT ANES CASES (#.3512)     SET
+  
+    Field: ANES CONCURRENT CASES (#.3513) (Multiple, sub-file #130.3513)
+    Sub-Field: ANES CONCURRENT CASES (#.01)     POINTER
+  
+    Field: ANES MEDICALLY DIRECTED (#.3514)     SET
+  
+    Field: ANES PHYSICIAN AVAILABLE (#.3515)     SET
+  
+    Field: PRIN ASSOC DIAGNOSIS (#27.5) (Multiple, sub-file #130.275)
+    Sub-Field: PRIN ASSOCIATED DIAGNOSIS (#.01)     NUMERIC
+  
+    Field:  PRIN PRE-OP ICD DIAGNOSIS CODE (#32.5)     POINTER
+  
+  - Sub-File: REFERRING PHYSICIAN (#130.03)
+  
+    Field: REF PHY 200 LINK (#6)     POINTER
+  
+  - Sub-File: OTHER PROCEDURES (#130.16)
+  
+    Field: OTHER ASSOCIATED DIAGNOSIS (#5) (Multiple,sub-file #130.165)
+       Sub-File: OTHER ASSOCIATED DIAGNOSIS (#130.165)
+       Sub-Field: OTHER ASSOCIATED DIAGNOSIS (#.01)     NUMBER
+  
+  - Sub-File: OTHER POSTOP DIAGS (#130.18)
+  
+    Field: SERVICE CONNECTED (#4)     SET
+  
+    Field: AGENT ORANGE EXPOSURE (#5)     SET
+  
+    Field: IONIZING RADIATION EXPOSURE (#6)      SET
+  
+    Field: MILITARY SEXUAL TRAUMA (#7)     SET
+  
+    Field: HEAD AND/OR NECK CANCER (#8)      SET
+  
+    Field: ENVIRONMENTAL CONTAMINANTS CANCER (#9)     SET
+  
+    Field: COMBAT VET (#10)     SET
+  
+  - Sub-File: REFERRING PHYSICIAN (#133.801)
+  
+    Field: COMBAT VET (#23)     SET
+  
+  - File: SURGERY WAITING LIST file (#133.8)
+  
+  - Sub-File: REFERRING PHYSICIAN (#133.8013)
+  
+    Field: REF PHY 200 LINK (#6)     POINTER
+  
+ This patch modifies the following fields:
+  - File: Surgery file (#130)
+  
+    Field: PRINCIPAL PROCEDURE (#26)     FREE TEXT
+  
+    Field: PRINCIPAL PROCEDURE CODE (#27)     POINTER 
+  
+    Field: PRINCIPAL PRE-OP DIAGNOSIS (#32)     FREE TEXT
+  
+    Field: PRINCIPAL DIAGNOSIS (#33)     FREE TEXT
+  
+    Field: PRINCIPAL POST-OP DIAG (#34)     FREE TEXT
+  
+    Field: PRIN DIAGNOSIS CODE (#66)     POINTER
+  
+  - Sub-File: REFERRING PHYSICIAN (#130.03)
+  
+    Field: REFERRING PHYSICIAN (#.01)     FREE TEXT
+  
+  - Sub-File: OTHER PROCEDURES (#130.16)
+  
+    Field: OTHER PROCEDURE (#.01)     Free Text    
+  
+    Field: OTHER PROCEDURE CPT CODE (#3)     POINTER   
+  
+  - Sub-File: OTHER POSTOP DIAGS (#130.18)
+  
+    Field: OTHER POSTOP DIAGS (#.01)     FREE TEXT
+  
+    Field: ICD DIAGNOSIS CODE (#3)     POINTER
+  
+  - File: SURGERY WAITING LIST file (#133.8)
+  
+  - Sub-File: REFERRING PHYSICIAN (#133.8013)
+  
+    Field: REFERRING PHYSICIAN (#.01)     FREE TEXT
+  
+  - File: Surgery Site Parameters (#133)
+  
+    Field: UPDATES TO PCE (#18)     SET
+  
+    Field: ASK CLASSIFICATION QUESTIONS (#19)     SET
+  
+  
+ This patch modifies the following input templates:
+  SROARPT
+  SROMEN-ANES
+  SRNON-OR
+  SROMEN-OPER
+  SROMEN-OUT
+  SREQUEST
+  SRSRES-ENTRY
+  SROMEN-START
+  SROMEN-POST
+  SRSCHED-UNREQUESTED
+  SRPARAM
+  SRSRES1
+  
+  
+ SOFTWARE AND DOCUMENTATION RETRIEVAL
+ ====================================
+ The software for this patch is being distributed in host file
+ PX_CLINICAL_INDICATOR_DATA_CAPTURE.KID.  The host file will contain
+ six KIDS builds. The builds contained in the CIDC multi-package
+ distribution are:
+  
+       Package                         Patch
+       -------                          ---------
+       PCE PATIENT CARE ENCOUNTER      PX*1.0*124
+       INTEGRATED BILLING              IB*2.0*260
+       RADIOLOGY/NUCLEAR MEDICINE      RA*5.0*41
+       SURGERY                         SR*3.0*119
+       PROSTHETICS                     RMPR*3.0*78
+       OUTPATIENT PHARMACY             PSO*7.0*143
+   
+   
+ Please refer to the 'Software and Documentation Retrieval' section of the
+ PX*1.0*124 patch description for instructions on how to acquire the patch
+ software and install instructions.
+  
+  
+      The documentation for this patch can be found in the following
+      [ANONYMOUS.SOFTWARE] directories:
+    
+                                    Preferred Address
+                                    -------------------------
+       First available FTP server   download.vista.med.va.gov
+    
+       Specific Field Office        FTP Address
+       ---------------------        ------------------------
+       Albany                       ftp.fo-albany.med.va.gov
+       Hines                        ftp.fo-hines.med.va.gov
+       Salt Lake City               ftp.fo-slc.med.va.gov
+    
+    
+       File Name              Description                      Format
+       --------------         -------------                    --------
+       Change page docs:
+       SR_3_P119_UM_CP.PDF    Surgery V. 3.0 User Manual       BINARY
+                              Change Pages
+       SR_3_P119_TM_CP.PDF    Surgery V. 3.0 Technical Manual  BINARY
+                              Change Pages
+   
+       Updated manuals:
+       SR_3_P119_UM.PDF       Surgery V. 3.0 User Manual       BINARY
+       SR_3_P119_TM.PDF       Surgery V. 3.0 Technical Manual  BINARY
+
+Routine Information:
+====================
+
+Routine Name:
+  - SROADX
+
+
+Routine Checksum:
+
+Routine Name:
+  - SROADX1
+
+
+Routine Checksum:
+
+Routine Name:
+  - SROANEST
+
+
+Routine Checksum:
+
+Routine Name:
+  - SROCON
+
+
+Routine Checksum:
+
+Routine Name:
+  - SROCON1
+
+
+Routine Checksum:
+
+Routine Name:
+  - SROPCE
+
+
+Routine Checksum:
+
+Routine Name:
+  - SROPCE1
+
+
+Routine Checksum:
+
+Routine Name:
+  - SROVER
+
+
+Routine Checksum:
+
+Routine Name:
+  - SROVER1
+
+
+Routine Checksum:
+
+Routine Name:
+  - SROVER2
+
+
+Routine Checksum:
+
+Routine Name:
+  - SROVER3
+
+
+Routine Checksum:
+
+Routine Name:
+  - SROWL
+
+
+Routine Checksum:
+
+Routine Name:
+  - SROADX2
+
+
+Routine Checksum:
+
+Routine Name:
+  - SROPCEX
+
+
+Routine Checksum:
+
+Routine Name:
+  - SROPCE0
+
+
+Routine Checksum:
+
+Routine Name:
+  - SR119PI
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : HACKETT,THOMAS                Date Entered  : JUN 11, 2003
+Completed By: LYNCH,MARY F.                 Date Completed: AUG 30, 2005
+Released By : CONSENTINO,ALBERT             Date Released : AUG 31, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

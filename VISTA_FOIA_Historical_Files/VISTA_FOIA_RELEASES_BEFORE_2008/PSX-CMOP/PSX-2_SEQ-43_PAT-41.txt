@@ -1,0 +1,719 @@
+$TXT Created by WESLEY,PAUL at MNTVAA.FO-BIRM.MED.VA.GOV  (KIDS) on Wednesday, 10/01/03 at 16:45
+=============================================================================
+Run Date: NOV 06, 2003                     Designation: PSX*2*41
+Package : PSX - CMOP                          Priority: Mandatory
+Version : 2        SEQ #43                      Status: Released
+                  Compliance Date: DEC 07, 2003
+=============================================================================
+
+Associated patches: (v)PSX*2*21    <<= must be installed BEFORE `PSX*2*41'
+                    (v)PSX*2*36    <<= must be installed BEFORE `PSX*2*41'
+                    (v)PSX*2*38    <<= must be installed BEFORE `PSX*2*41'
+                    (v)PSX*2*42    <<= must be installed BEFORE `PSX*2*41'
+                    (v)PSX*2*43    <<= must be installed BEFORE `PSX*2*41'
+
+Subject: FACILITY CMOP TRANSMISSION RE-DESIGN 
+
+Category: 
+  - Data Dictionary
+  - Enhancement (Mandatory)
+  - Routine
+
+Description:
+============
+
+ NOTE:
+ Facilities are required to have installed PSO*7*126.
+ There is a partner patch that is being distributed previous to PSX*2*41.
+ The partner patch is Outpatient Pharmacy V. 7.0 PSO*7*126. This will be
+ tested in the environmental checking phase of the installation and not in
+ the KIDs required patches section. Consolidated Mail Outpatient Pharmacy
+ (CMOP) hosts are not required to install PSO*7*126. There is also a
+ companion ORDER ENTRY / RESULTS REPORTING (OE/RR) patch OR*3*183 that is
+ needed to complete the locking and ownership/protection of prescriptions
+ across the VistA applications.
+  
+ NOTE:
+ CMOP hosts will see the expected following error messages as the software
+ will be installing data fields for the facilities in files that the CMOP
+ hosts do not have.
+  
+        Installing Data Dictionaries:
+  
+        ** ERROR IN DATA DICTIONARY FOR FILE # 550 **
+        Data Dictionary not installed; Partial DD/File does not exist
+  
+        ** ERROR IN DATA DICTIONARY FOR FILE # 550.1 **
+        Data Dictionary not installed; Partial DD/File does not exist
+  
+        ** ERROR IN DATA DICTIONARY FOR FILE # 550.2 **
+        Data Dictionary not installed; Partial DD/File does not exist
+  
+ CMOP hosts may ignore a portion of the installation instructions as they
+ pertain to functionalities found only at the remote facilities.
+  
+ NOTE: If you have batches (transmissions) that you are planning to
+ re-transmit, do so prior to installing PSX*2*41. The Re-transmit CMOP
+ Data [PSXR RETRANSMIT] option has been re-coded to match the new data
+ architecture being used in PSX*2*41 and will not be able to resend batches
+ prior to installation of PSX*2*41.
+  
+  
+ 1. Problem: Controlled Substance (CS) and Non-Controlled Substance
+ (NON-CS) prescriptions are being mixed into the same batches when the
+ recovery process is cleaning up a broken transmission. The original
+ recovery process was written when there was only one type of prescription
+ being sent and it includes remnants of the previous transmission in
+ the current transmission.
+  
+ Solution: The recovery process has been re-written to reset the
+ prescriptions to a state as if they were just queued waiting for
+ transmission.
+  
+ 2. Problem: There have been instances where the prescriptions of two
+ patients have been merged into the same HL7 order in the CMOP RX QUEUE
+ file (#550.1).
+  
+ Solution: The use of the CMOP RX QUEUE file (#550.1) has been redesigned
+ to be only used in the building of the HL7 order messages and it is
+ cleared out prior to and after each transmission. The access to the CMOP
+ RX QUEUE file (#550.1) is locked by the transmission job when it
+ first starts up and is released as the last step as the transmission
+ finishes.
+  
+ 3. Problem: Several sites have reported that they were not able to
+ re-direct the scheduling of their transmissions to another
+ Consolidated Mail Outpatient Pharmacy (CMOP). There are several fields
+ within the scheduling that have a database required criteria set. This
+ makes it difficult for the software to clear them and reset them.
+  
+ Solution: The scheduling of transmissions has been redesigned to use the
+ Kernel Option Scheduling and its utilities. This streamlines the user
+ input and control of the scheduling of the transmissions. Transmissions
+ must now be scheduled no closer than two hours apart.
+  
+ 4. Problem: The beginning message number within a transmission sometimes
+ differs from the notation within the message.
+  
+ Solution: The use of the CMOP RX QUEUE file (#550.1) has been redesigned.
+ It is now cleared out prior to each transmission and each transmission
+ now starts with the number one.
+  
+ 5. Enhancement: Other Language - Data elements in the HL7 messages are
+ being activated that will enable the SIG and PMI sheets to be printed in
+ another language. This is in co-ordination with the emerging Outpatient
+ Pharmacy V. 7.0 'Other Language' patch PSO*7*117.
+  
+ 6. Problem: It is possible to create duplicate active prescriptions
+ through the renewal and copy prescription functions if the prescription
+ is a part of a currently running CMOP transmission.
+  
+ Solution: The transmission software has been modified so that the
+ setting of prescription status flags occurs in a manner that will keep
+ the renewal and copy functions from accessing prescriptions that are
+ being loaded into a CMOP transmission. A prescription may be locked by a
+ user and if so that prescription is skipped and a "RX OERR/CPRS Locked"
+ error is itemized with other correctable prescription errors and sent to
+ the holders of the "PSXMAIL" key.
+  
+ 7. Problem: A prescription that has been sent to CMOP, not filled, and
+ then is canceled locally is selectable for resubmission to the CMOP and
+ generates a program error when being processed.
+  
+ Solution: The software has been amended to not allow the resubmission of
+ prescriptions when that particular fill for resubmission has been
+ canceled.
+  
+ 8. E3R 18029 It is possible for the remote sites to input more 
+ information into the NARRATIVE REFILLABLE RX (#1004), NARRATIVE
+ NON-REFILLABLE RX (#1005), and NARRATIVE FOR COPAY DOCUMENT (#1006) text
+ fields in the Outpatient Site file (#59), than can be printed at the
+ CMOPs.
+  
+ Solution: The transmission process will now load only up to seven lines
+ (80 characters per line) of information from each of these fields. The
+ following warning message is also sent to the facility CMOP users when a
+ transmission has had to limit the number of lines being sent to the CMOP.
+  
+ Subj: >>WARNING<< CMOP Outpatient Site narrative Instructions [#140709]
+ 05/16/03@15:21  8 lines
+ From: Smith,John  In 'IN' basket.   Page 1
+ --------------------------------------------------------------------------
+ The following Outpatient Site file (#59) narrative field(s) exceed seven 
+ lines.
+ This exceeds CMOP limits.
+ Lines beyond seven are not being sent to the CMOP.
+  
+ Outpatient Site: TROY
+ NARRATIVE REFILLABLE RX     36 lines
+ NARRATIVE NON REFILLABLE RX     49 lines
+ NARRATIVE FOR COPAY DOCUMENT     16 lines
+  
+  
+ 9. Problem: It has been found that during the building of a transmission
+ other VistA applications are able to perform edits, refills, copies, and
+ deletions of prescriptions that are being loaded into the CMOP
+ transmission.
+  
+ Solution: The use of a new integration agreement with Order Entry /
+ Results Reporting (OE/RR) version 3 provides a way to let CMOP identify 
+ the prescriptions that are being transmitted so that they will not be
+ processed by other VistA applications. A related OE/RR patch OR*3*183 has
+ been released that will complete the ability for CMOP to identify the
+ prescriptions.
+  
+ 10. Problem: Prescriptions have been processed to the CMOPs when they 
+ should have dropped out of CMOP processing because of the patient's 
+ mailing status.
+  
+ Solution: The code has been changed so that the prescriptions are dropped 
+ out of CMOP suspense for patients who have an incompatable mailing status 
+ for CMOP processing.
+  
+ NOTE: There have been several fields added to the CMOP SYSTEM file (#550)
+ and the CMOP TRANSMISSION file (#550.2) to support the changes listed
+ for this patch.
+  
+ Associated NOIS:
+ ================
+ ALB-0402-50904
+ AMA-0802-72324
+ CAH-0402-30073
+ CHS-0302-42460
+ CLE-0303-41063
+ CMC-0502-31569
+ CMC-0502-32238
+ CMC-1001-30549
+ CMH-0102-N1286
+ CMH-0402-N1309
+ CMH-0502-N0490
+ CMM-0302-N2263
+ CMM-0402-N0936
+ CMM-0402-N1324
+ CPH-0702-41954
+ CTX-0302-71183
+ IRO-1101-40012
+ LAH-0402-61331
+ LAS-0103-60384
+ LAS-0302-62218
+ LIT-0802-72060
+ MIW-0302-42482
+ OKL-1202-70156
+ PAL-0502-61743
+ PUG-1102-50441
+ SBY-0203-30128
+ SPO-0203-52152
+ TAM-0402-30836
+ TUC-1102-60227
+ TUC-1102-60229
+ TUC-1102-62298
+ UNY-0302-13040
+ WPB-0103-31480
+ ROS-0503-50437
+ MAC-0603-61985
+ BAY-0403-30333
+ BAY-0103-30486 
+ CHS-0302-42460 
+ CLE-0703-41511 
+ CMH-1202-N1206
+ COS-1102-41088 
+ ERI-0403-20999 
+ FGH-1002-30032 
+ HWH-0403-41548 
+ LOM-0303-61792 
+ MAC-0603-61985 
+ NYH-0403-10468 
+ PAL-0802-62103
+  
+ Associated E3Rs:
+ ================
+ 18029
+  
+ Test Sites:
+ ===========
+ CMOP-HINES, IL
+ OKLAHOMA CITY, OK
+ NORTH CHICAGO, IL
+ IRON MOUNTAIN, MI
+ MILWAUKEE, WI
+ PALO ALTO HCS, CA
+ CENTRAL TEXAS HCS
+ SPOKANE, WA
+  
+ Routine Summary:
+ ================
+ The following routines are included in this patch.
+ The second line of the routines now look like:
+  
+ <tab>;;2.0;CMOP;**[patch list]**;11 Apr 97
+  
+                CHECK^XTSUMBLD results
+  
+ Routine Name   Before Patch     After Patch     Patch List
+ ------------   ------------     -----------     ---------
+ PSX41NDX          N/A             299519        41
+ PSX41PRE          N/A            7093762        41
+ PSX41PST          N/A            3855067        41
+ PSXAUTO         28401448        15623217        1,2,3,24,28,36,41
+ PSXAUTOC        22365739           29633        23,28,36,41
+ PSXBLD          16755147        17772839        3,23,29,28,43,41
+ PSXBLD1         10124930        11111107        3,18,19,42,41
+ PSXERR          14871191        14892039        1,3,28,30,42,41
+ PSXMISC1        13455207        13719856        3,18,23,28,30,42,41
+ PSXMSGS         13073582        13312225        1,2,4,24,23,27,30,41
+ PSXNEW           7110527         6456643        41
+ PSXNOTE         19083368        19059224        1,27,30,38,41
+ PSXPURG         13243419        12212442        28,41
+ PSXRCVRY        13665238        11449496        1,3,28,41
+ PSXRESUB         9689086         9894942        3,20,21,41
+ PSXRPPL         14569865        18445799        3,23,33,28,40,42,41
+ PSXRSUS         15041985        22060364        2,3,24,23,26,28,41
+ PSXRSUS1          N/A            4767404        41
+ PSXRSYU         12530626        12156613        1,18,41
+ PSXRTR           7992825         8509051        18,23,27,31,28,41
+ PSXRTRA1          N/A            3930253        41
+ PSXRTRAN        24460929        24907156        18,27,31,41
+ PSXRXQU          9415289         7343926        7,12,25,33,40,41
+ PSXRXU           8539314         9135679        3,28,41
+ PSXSITE         17082043        18026230        1,18,24,27,38,41
+ PSXSRST         23788026        23743931        3,23,41
+ PSXSTAT         15237690        14445536        41
+ PSXSYS          12819990        10988526        1,18,23,41
+  
+  
+ Documentation Retrieval:
+ ========================
+ The documentation manuals are available on the ANONYMOUS.SOFTWARE
+ directory at one of the following Office of Information (OI) Field
+ Offices.
+  
+ Sites may retrieve documentation in one of the following ways:
+  
+ (1) The preferred method is to FTP the files from
+ download.vista.med.va.gov, which will transmit the files from the first
+ available FTP server.
+  
+ (2) Sites may also elect to retrieve documentation directly from a
+ specific server as follows:
+  
+ Albany          ftp.fo-albany.med.va.gov
+ Hines           ftp.fo-hines.med.va.gov
+ Salt Lake City  ftp.fo-slc.med.va.gov
+ or              ftp.download.vista.med.va.gov
+  
+ FILE NAMES                   DESCRIPTION
+  
+ PSX_2_P41_UM_CP.PDF         User Manual Change Pages
+ PSX_2_UM_R1003.PDF          User Manual
+ PSX_2_P41_TM_CP.PDF         Technical Manual Change Pages
+ PSX_2_TM_R1003.PDF          Technical Manual
+  
+ (3) Documentation can also be retrieved from VISTA Document Library (VDL)
+ on the VA Intranet at the following address, http://vista.med.va.gov/vdl.
+  
+ The location of the information for scheduling the CMOP automatic
+ transmissions has been moved into the Kernel Option Scheduling facility.
+ It will be necessary to disable the current automatic transmissions and
+ then enable the automatic transmissions under their new structure.
+  
+ Facility transmission processing must be stopped to install this patch.
+ Installation may take thirty minutes or more.
+  
+ Environmental Check:
+ ====================
+ An environmental check routine will investigate and report the following
+ possible problems.  Some of the problems, if found, may need to have
+ National Vista Support (NVS) assistance for their resolution.
+  
+ The problems identified will need to be addressed and resolved prior to
+ PSX*2*41 being able to be installed.
+  
+  a.  A transmission is in progress, try later.
+  b.  Non-CS Auto transmissions are scheduled.  Please unschedule all
+      transmissions.
+  c.  CS Auto transmissions are scheduled.  Please unschedule all
+      transmissions.
+  d.  The CMOP TRANSMISSION file (#550.2) has entries that have a
+      'CREATED' status. 
+  
+      Note *** It is possible to use FileMan functions to print or search
+      the files for the conditions noted in (d) to preview what problems
+      may need resolution without having to load the software.
+  
+  
+      IRM/CMOP instruction of resolving above problem (d). These problems 
+      indicate that batches and their prescriptions are in a status that 
+      means their prescriptions may have not been received and processed by
+      the CMOP. Contact the CMOP to verify the condition of the batch(es).
+      After resolving the status of the batches and prescriptions with the
+      CMOP, use FileMan to edit the Status field (#1) of the CMOP
+      Transmission file (#550.2) to 'CLOSED'. This will clear the problem
+      (d) detected by the environmental check.
+  
+ NOTE: If you have batches (transmissions) that you are planning to
+  re-transmit, do so prior to installing PSX*2*41. The Re-transmit CMOP
+  Data [PSXR RETRANSMIT] option has been re-coded to match the new data
+  architecture being used in PSX*2*41 and will not be able to resend 
+  batches prior to installation of PSX*2*41.
+  
+  
+ Installation Instructions:
+ ==========================
+ The location of the information for scheduling the CMOP automatic
+ transmissions has been moved into the Kernel Option Scheduling facility.
+ It will be necessary to disable the current automatic transmissions and
+ then enable the automatic transmissions under their new structure.
+  
+ Facility transmission processing must be stopped to install this patch.
+ Installation may take approximately thirty minutes as the post install 
+ will be rescanning/setting the 'CMP' index of the RX SUSPENSE file
+ (#52.5).
+  
+   1. Prior to installation of the new software Un-schedule the automatic
+      transmissions using the following options.
+  
+      PSXR AUTO TRANSMIT       Setup Auto-transmission
+      PSXR AUTO TRANSMIT CS    Setup CS Auto-transmission
+  
+   2. Install the new software using the following steps.
+  
+   3. Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+  
+   4. Review your mapped set. If the routines are mapped, they should
+      be removed from the mapped set at this time. Currently there are no
+      routines that are recommended by the package to be placed into the
+      mapped set.
+  
+   5. From the Kernel Installation & Distribution System menu, select
+      the Installation menu.
+  
+     a. Backup a Transport Global - this option will create a backup
+        message of any routines exported with the patch. It will NOT
+        backup any other changes such as DDs or templates.
+     b. Compare Transport Global to Current System - this option will
+        allow you to view all changes that will be made when the patch
+        is installed. It compares all components of the patch (routines,
+        DDs, templates, etc.).
+     c. Verify Checksums in Transport Global - this option will ensure
+        the integrity of the routines that are in the transport global.
+  
+   6. Use the Install Package(s) option and select the package PSX*2.0*41.
+  
+   7. When prompted "Want KIDS to Rebuild Menu Trees Upon Completion of
+      Install? YES//" respond NO.
+  
+   8. When prompted "Want KIDS to INHIBIT LOGONs during the install?
+      YES//" respond NO.
+  
+   9. When prompted "Want to DISABLE Scheduled Options, Menu Options,
+      and Protocols? YES//" respond NO.
+  
+  10. If any routines were unmapped as part of step 4, they should be
+      returned to the mapped set once the installation has run to
+      completion.
+  11. In Taskman add the new options that will hold the automatic 
+     transmissions schedules.  Use the Schedule/Unschedule Options [XUTM
+     SCHEDULE] option located within the Kernel Taskman Management [XUTM
+     MGR] option.
+  
+         New Options:
+         PSXR SCHEDULED CS TRANS     Scheduled CS Transmission
+         PSXR SCHEDULED NON-CS TRANS     Scheduled Non-CS Transmission
+  
+     ***NOTE *** The two options "listed below" were formerly used for 
+     scheduling auto transmissions, they >>>are not<<< to be loaded into 
+     the Option Scheduling file (#19.2).
+  
+         1   PSXR AUTO TRANSMIT       Setup Auto-transmission
+         2   PSXR AUTO TRANSMIT CS       Setup CS Auto-transmission
+  
+  12. Edit the automatic transmission schedules by running the CMOP
+      transmission scheduling options.
+         PSXR AUTO TRANSMIT       Setup Auto-transmission
+         PSXR AUTO TRANSMIT CS    Setup CS Auto-transmission
+     
+     The existing CMOP options will schedule the automatic transmissions 
+     using the scheduling as presented in the Kernel Option 
+     Scheduling functionality. 
+     
+     Schedule the Controlled Substance (CS) transmissions to begin before 
+     the Non-CS transmissions. The software requires a separation of a
+     least two hours between transmissions.
+     
+         NOTE *** A scheduling frequency MUST be entered. If one is not
+         entered the option will remove itself the first time it is run.
+  
+ EXAMPLE
+ =======
+ The following is an example of editing the transmission schedules through
+ either of the CMOP options.
+  
+      Setup Auto-transmission [PSXR AUTO TRANSMIT] option
+  or  Setup CS Auto-transmission [PSXR AUTO TRANSMIT CS] option
+  
+ = = = = =
+                          CS Transmission               Non-CS Transmission
+ Scheduled to Run
+ Frequency (hrs)
+ Thru days
+ Tasking ID
+  
+      Select one of the following:
+  
+           C         Controlled Substance
+           N         NON-Controlled Substance
+  
+ Edit     CS <C>  or  NON-CS <N> :C
+  
+ = = = = =
+  
+   QUEUED TO RUN AT WHAT TIME: AUG 19,2002@21:00
+  
+ DEVICE FOR QUEUED JOB OUTPUT:
+  
+  QUEUED TO RUN ON VOLUME SET:
+  
+       RESCHEDULING FREQUENCY: 24H
+  
+              TASK PARAMETERS:
+  
+             SPECIAL QUEUEING:
+  
+ CS DAYS TO TRANSMIT: 5//
+  
+ = = = = =
+  
+  
+                          CS Transmission               Non-CS Transmission
+ Scheduled to Run         AUG 19,2002@21:00
+ Frequency (hrs)          24H
+ Thru days                5
+ Tasking ID               1117268
+  
+      Select one of the following:
+  
+           C         Controlled Substance
+           N         NON-Controlled Substance
+  
+ Edit     CS <C>  or  NON-CS <N> :N
+  
+ = = = = =
+  
+                           Edit Option Schedule
+     Option Name: PSXR SCHEDULED NON-CS TRANS
+     Menu Text: Scheduled Non-CS Transmission             TASK ID:
+  
+   QUEUED TO RUN AT WHAT TIME: AUG 19,2002@23:00
+  
+ DEVICE FOR QUEUED JOB OUTPUT:
+  
+  QUEUED TO RUN ON VOLUME SET:
+  
+       RESCHEDULING FREQUENCY: 24H
+  
+              TASK PARAMETERS:
+  
+             SPECIAL QUEUEING:
+  
+ NON-CS DAYS TO TRANSMIT: 8//
+  
+ = = = = =
+  
+                          CS Transmission               Non-CS Transmission
+ Scheduled to Run         AUG 19,2002@21:00             AUG 19,2002@23:00
+ Frequency (hrs)          24H                           24H
+ Thru days                5                             8
+ Tasking ID               1117268                       1117269
+  
+      Select one of the following:
+  
+           C         Controlled Substance
+           N         NON-Controlled Substance
+  
+ Edit     CS <C>  or  NON-CS <N> :
+ NON-CS New Schedule Sent to CMOP
+ CS New Schedule Sent to CMOP
+
+Routine Information:
+====================
+
+Routine Name:
+  - PSXAUTO
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSXAUTOC
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSXBLD
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSXMSGS
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSXNEW
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSXPURG
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSXRCVRY
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSXRPPL
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSXRSUS
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSXRSYU
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSXRTR
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSXRTRAN
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSXRXQU
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSXRXU
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSXSITE
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSXSRST
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSXSYS
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSXRTRA1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSX41NDX
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSX41PRE
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSX41PST
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSXSTAT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSXBLD1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSXMISC1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSXNOTE
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSXRESUB
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSXRSUS1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSXERR
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : CROSSMAN,PAM                  Date Entered  : APR 01, 2002
+Completed By: NEVEU,MIKE                    Date Completed: NOV 06, 2003
+Released By : PARRIS,CHRIS                  Date Released : NOV 06, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

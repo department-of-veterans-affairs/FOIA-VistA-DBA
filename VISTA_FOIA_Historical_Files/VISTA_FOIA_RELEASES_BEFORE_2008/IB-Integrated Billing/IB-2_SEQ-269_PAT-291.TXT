@@ -1,0 +1,318 @@
+$TXT Created by KOPP,TERRY at DEVFEY.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 12/20/04 at 16:33
+=============================================================================
+Run Date: FEB 03, 2005                     Designation: IB*2*291
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #269                      Status: Released
+                  Compliance Date: MAR 06, 2005
+=============================================================================
+
+Associated patches: (v)IB*2*288    <<= must be installed BEFORE `IB*2*291'
+                    (v)IB*2*290    <<= must be installed BEFORE `IB*2*291'
+
+Subject: ALLOW FORCE PRINT OF SSN BY INSURANCE COMPANY
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Input Template
+  - Other
+
+Description:
+============
+
+ This patch includes three minor changes to third party claims processing
+ in Integrated Billing.
+  
+ 1.  The first change is a modification to the printed claim forms.  After
+ release of the EDI Enhancement patch (IB*2*232) that converted the VistA
+ electronic claims to HIPAA compliant format, an issue was identified
+ regarding the printing of the provider's SSN on the claims.  A 'quick fix'
+ was implemented in a subsequent patch (IB*2*290) that prevented the
+ provider's SSN from EVER being printed locally on these two forms.  This
+ patch provides the final long term fix for this issue where the SSN ID is
+ printed locally ONLY if it is required to do so by the payer. For HCFA
+ 1500 claims that are sent electronically, and the payer requires a
+ performing provider's SSN to print on the claim form, the SSN is sent as a
+ secondary ID.  WebMD is changing their print logic ONLY for the HCFA 1500
+ to check for the SSN as a secondary ID before printing it at Express Bill.
+ Because WebMD will not be able to print the SSN on the UB92 claim forms,
+ if an insurance company requires the SSN to print on the UB92, these
+ claims MUST be printed locally.
+  
+ Two new parameters were added to the option for INSURANCE COMPANY
+ ENTRY/EDIT [IBCN INSURANCE CO EDIT] to allow the site to indicate, for
+ each insurance company, whether the provider's SSN is required to print on
+ the UB92 and the HCFA 1500 claim form.  These new parameters are found
+ under the PROVIDER ID (ID) action on the main menu.
+  
+ The print form locators affected by this change are:
+  
+          UB92: PERFORMING PROVIDER ID data in form locators 82 and 83   
+     HCFA 1500: REFERRING PROVIDER ID data in box 17A
+  
+  
+ 2.  The second change is a modification to the transmitted claims.  The
+ EDI Enhancement patch (IB*2*232) added a restriction to the field output
+ for the billing facility's GROUP or PIN number so it could no longer be
+ overridden by the output formatter.  It has since been discovered that the
+ standard VistA software does not accommodate all of the provider ID
+ scenarios required by payers.  As a result, this field will be re-opened
+ for sites to add a local override for this data element if deemed
+ necessary.
+  
+  
+ 3.  The third change included in this patch is a correction to the text 
+ displayed for the provider function when using the ?ID action within the 
+ billing screens.  Only the rendering/attending provider function is
+ displayed correctly.  For all other provider functions, the wrong function
+ type may be displayed.  For example, the REFERRING provider's name and id 
+ may be reported as the OPERATING provider.
+  
+  
+ Technical Description:
+ ----------------------
+  
+ The code to determine the default performing provider ID was modified in 
+ routine DEFID^IBCEF74.  The change was made so that the performing 
+ provider's SSN is used as a default provider secondary id only if there is
+ no other secondary id that is valid for the insurance company and provider
+ combination AND if the new parameter for the claim form type indicates an
+ SSN is required for the performing provider ID on printed forms.
+  
+ The code to send the provider's SSN as a secondary provider ID if the 
+ corresponding parameter for the insurance company and form type indicates
+ the provider's SSN should print on a HCFA 1500 claim was added in routine 
+ PROVINF^IBCEF74.
+  
+ The code to force a UB92 claim form to print locally for an insurance
+ company that requires the SSN as the secondary id to print locally was
+ added to routine IBCBB21.  The logic is used if the new UB92 parameter is
+ set for an EDI activated insurance company (or the following insurance
+ company in the case of an MRA request), AND the insurance company does not
+ have an electronic routing id or the id ends in PRNT.  A new error message
+ was added to the billing inconsistencies checks that will be displayed
+ when the conditions are met for this change.
+  
+ The two new parameter fields were added to the INSURANCE COMPANY file
+ (#36) and are REQUIRE SSN ID FOR HCFA PRINT (#3.11) and REQUIRE SSN ID FOR
+ UB92 PRINT (#3.12).  The routine IBCNSC1 was modified to display these new
+ parameters in list manager.  The input template [IBEDIT INS CO1] from 
+ the INSURANCE COMPANY file (#36) was modified to allow editing of these
+ two new fields.
+  
+ The output formatter file entry modified to allow the local override is found
+ in file IB FORM SKELETON DEFINITION (#364.6) and is entry #1316.  The
+ field modified was LOCAL OVERRIDE ALLOWED (#.07) and was set to 1 (YES).
+  
+ The code to fix the text displayed for the provider function when using 
+ the ?ID action in the billing screens is fixed in routine DISPID^IBCEF74.
+ The wrong variable was being used as the basis of the interpretation of 
+ the provider function code.
+  
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+ There is no NSR associated with this patch.
+  
+  
+ This patch addresses the following NOIS/Remedy message(s):
+ ----------------------------------------------------------
+ There are no NOIS/Remedy messages associated with this patch.
+   
+   
+ TEST SITES:
+ ===========
+ ALTOONA (VMS/CACHE)
+ MONTANA HCS (NT/CACHE)
+ UPSTATE NEW YORK HCS (VMS/CACHE)
+ BATTLE CREEK (VMS/CACHE)
+  
+        ================INSTALLATION INSTRUCTIONS =================
+  
+ This patch should be installed after normal working hours when no 
+ Integrated Billing users are using the system. Install Time - 2 minutes or
+ less. Other VISTA users will not be affected.  The following menus/options
+ should be disabled prior to the start of the installation:
+  
+         Integrated Billing Master Menu [IB MANAGER MENU] 
+         Billing Supervisor Menu [IB BILLING SUPERVISOR MENU]
+         Billing Clerk's Menu [IB BILLING CLERK MENU]
+         Insurance Company Entry/Edit [IBCN INSURANCE CO EDIT]
+  
+ Also, make sure the auto-transmit of electronic claims option (Queue Auto
+ Transmit EDI Bills [IBCE 837 AUTO TRANSMIT]) is not scheduled to run while
+ the patch is being installed.  It's best to check with your Billing section
+ on this.  There is an IB Site Parameter (file #350.9) called HOURS TO
+ TRANSMIT BILLS (field #8.06) that may contain specific times to transmit
+ bills.  If there are no specific times set up in this parameter, claims will
+ be transmitted when the [IB MT NIGHT COMP] job runs.
+  
+ 1. LOAD TRANSPORT GLOBAL
+    ---------------------
+    Choose the PackMan message containing this patch and invoke the
+    INSTALL/CHECK MESSAGE PackMan option.
+  
+ 2. DISABLE ROUTINE MAPPING (DSM for Open VMS sites only)
+    -----------------------
+    Disable routine mapping on all systems for the routines listed in Step 3
+    below.
+  
+    NOTE: If the routines included in this patch are not currently in your
+    mapped routine set, please skip this step.
+  
+ 3. COMPONENTS SENT WITH PATCH 
+    --------------------------
+    The following is a list of the routines included in this patch.  
+    The second line of each of these routines now looks like: 
+  
+    <tab>;;2.0;INTEGRATED BILLING;**[patch list]**;21-MAR-94
+  
+                             CHECK^XTSUMBLD results
+  
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  IBCBB21                6600756              8144075     51,137,210,232,155
+                                                                  291
+  IBCEF74               21978087             22808327    232,280,155,290,291
+  IBCNSC1                6463359              7188752       62,137,232,291 
+  
+       Total number of routines modified: 3
+       Total number of new routines: 0
+       Total number of deleted routines: 0
+      
+       Total number of routines: 3
+  
+  
+   The following is a list of fields included in this patch:
+   Note: The fields in the INSURANCE COMPANY file (#36) are new fields.
+  
+        Field Name (Number)                  File Name (Number)
+        -------------------                  ------------------
+        REQUIRE SSN FOR PRINT HCFA (#3.11)   INSURANCE COMPANY (#36)
+        REQUIRE SSN FOR PRINT UB92 (#3.12)   INSURANCE COMPANY (#36)
+        CURRENT BILL PAYER SEQUENCE (#.21)   BILL/CLAIMS (#399)
+        PRIMARY INSURANCE CARRIER (#101)     BILL/CLAIMS (#399)
+        SECONDARY INSURANCE CARRIER (#102)   BILL/CLAIMS (#399) 
+  
+   The following is a list of templates included in this patch:
+  
+        Template Name     Type        File Name (Number)
+        -------------     ----        ------------------
+        IBEDIT INS CO1    INPUT       INSURANCE COMPANY (#36)
+        IB SCREEN3        INPUT       BILL/CLAIMS (#399) 
+  
+   The following is a list of files included in this patch:
+   --------------------------------------------------------- 
+                                          UP   SEND  DATA                
+                                          DATE SEC.  COMES   SITE   RSLV
+     FILE #  NAME                         DD   CODE  W/FILE  DATA   PTS
+     --------------------------------------------------------------------
+      36     INSURANCE COMPANY            YES    NO    NO
+  
+     350.8   IB ERROR                     NO     NO    YES   OVER   NO
+             File entry sent: IB327
+  
+     364.6   IB FORM SKELETON DEFINITION  NO     NO    YES   OVER   YES
+             File entry number sent: 1316
+  
+     399     BILL/CLAIMS                  YES    NO     NO   
+  
+  
+ 4. START UP KIDS
+    -------------
+    Start up the Kernel Installation and Distribution System Menu
+    [XPD MAIN]:
+  
+         Edits and Distribution ...
+         Utilities ...
+         Installation ...
+  
+  
+    Select Kernel Installation & Distribution System Option: INStallation
+                                                             ---
+    1      Load a Distribution
+    2      Verify Checksums in Transport Global
+    3      Print Transport Global
+    4      Compare Transport Global to Current System
+    5      Backup a Transport Global
+    6      Install Package(s)
+           Restart Install of Package(s)
+           Unload a Distribution
+  
+  
+    Select Installation Option:
+  
+ 5. SELECT INSTALLATION OPTION
+    --------------------------
+    NOTE: The following are OPTIONAL (When prompted for the INSTALL NAME,
+          enter IB*2.0*291): 
+  
+    a. Backup a Transport Global - This option will create a backup message
+       of any routines exported with this patch. It will not backup any other
+       changes such as DD's or templates.
+    b. Compare Transport Global to Current System - This option will allow you
+       to view all changes that will be made when the patch is installed.
+       It compares all components of this patch (routines, DD's, templates,
+       etc.).
+    c. Verify Checksums in Transport Global - This option will allow you to
+       ensure the integrity of the routines that are in the transport global.
+  
+ 6. INSTALL KIDS BUILD
+    ------------------
+    a. Choose the Install Package(s) option of the Installation menu to start
+       the patch install.
+    b. When prompted 'Want KIDS to INHIBIT LOGONs during the install? YES//',
+       answer NO. 
+    c. When prompted 'Want to DISABLE Scheduled Options and Menu Options?
+       YES//', take the default (YES). 
+    d. When prompted "Enter options you wish to mark as 'Out of Order':",
+       enter the following options:
+  
+          Integrated Billing Master Menu [IB MANAGER MENU] 
+          Billing Supervisor Menu [IB BILLING SUPERVISOR MENU]
+          Billing Clerk's Menu [IB BILLING CLERK MENU]
+          Insurance Company Entry/Edit [IBCN INSURANCE CO EDIT]
+  
+    e. When prompted 'Enter protocols you wish to mark as 'Out Of Order':',
+       press <return>.
+  
+ 7. REBUILD MAPPED ROUTINES (DSM for Open VMS sites only)
+    -----------------------
+    Optional - Include the routines distributed with this patch
+    in the mapped routine set.
+      
+    NOTE: This step is only necessary if you performed step 2 or 
+          if you wish to include the routines in your mapped set.
+
+Routine Information:
+====================
+
+Routine Name:
+  - IBCEF74
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNSC1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCBB21
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : KOPP,TERRY M                  Date Entered  : OCT 21, 2004
+Completed By: TORRANCE,LORI                 Date Completed: FEB 02, 2005
+Released By : JACKSON,SHERYL                Date Released : FEB 03, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

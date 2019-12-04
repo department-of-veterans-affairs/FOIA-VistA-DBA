@@ -1,0 +1,242 @@
+$TXT Created by HSI,TUAN at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Friday, 08/28/09 at 16:31
+=============================================================================
+Run Date: FEB 17, 2010                     Designation: PX*1*189
+Package : PX - PCE PATIENT CARE ENCOUNTER     Priority: Mandatory
+Version : 1       SEQ #149                      Status: Released
+                  Compliance Date: MAR 20, 2010
+=============================================================================
+
+Associated patches: (v)PX*1*48     <<= must be installed BEFORE `PX*1*189'
+                    (v)PX*1*61     <<= must be installed BEFORE `PX*1*189'
+                    (v)PX*1*72     <<= must be installed BEFORE `PX*1*189'
+
+Subject: PCE PROVIDER ENCOUNTER COUNTS & CASELOAD PROFILE BY CLINIC REPORTS
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch addresses three issues:
+ 1. Changes the existing code for the Caseload Profile by Clinic [PXRR
+ CASELOAD PROFILE BY CL] report by removing the existing direct global read
+ so that data will be pulled from the PXRMINDX index.
+  
+ 2. Modifies the report logic that displays historical encounters with no
+ LOC. OF ENCOUNTER (#.06) field populated in the VISIT (#9000010) file when
+ running the Provider Encounter Counts [PXRR PROVIDER ENCOUNTER COUNTS]
+ report and selecting Service Category "EVENT (HISTORICAL)". It returns
+ very few or no encounters. The fix for the historical encounters that
+ occurred at Non-VA sites will be included as well.
+  
+ 3. Fixes the letter 'O' being displayed after accepting the default value
+ "N" from a prompt when running the Provider Encounter Counts [PXRR
+ PROVIDER ENCOUNTER COUNTS] report.  (The display should show "NO".)
+  
+  
+ ASSOCIATED NSR(s):
+ ==================
+ N/A
+  
+  
+ ASSOCIATED REMEDY TICKETS:
+ ==========================
+ 1)  HD0000000245063 - Need to remove direct global read and use PXRMINDX
+                       index
+ 2)  HD0000000114258 - No Encounters Returned
+     Duplicate: 
+     HD0000000272420 - Provider Encounter Counts report problem - 
+                       Non-VA sites
+ 3)  HD0000000276146 - 'O' displayed after accepting default value N
+  
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Southern Arizona HCS
+ Tampa, FL
+ Sioux Falls, SD
+ Charleston, SC
+  
+  
+ REMEDY TICKET OVERVIEW:
+ =======================
+ 1)  HD0000000245063 - Need to remove direct global read and use PXRMINDX
+                       index
+  
+     Problem:
+     --------
+     The Hines OIFO is currently developing a new package called CLINICAL
+     OBSERVATIONS (CliO) which will collect additional patient information.
+     It will also collect existing information such as patient vital
+     signs/measurements (e.g., blood pressure).  CliO will not be storing
+     patient vitals data in the GMRV VITAL MEASUREMENT (#120.5) file.
+     Instead, CliO will update the Clinical Reminders index (i.e.,
+     '^PXRMINDX(120.5,').  The Vitals package also updates the PXRMINDX
+     index whenever a patient's vital signs/measurements are taken.  The
+     Clinical Reminders package uses this index to quickly find the vitals
+     data it needs to resolve patient reminders.  This index is similar to
+     the Vitals package cross-reference ('^GMR(120.5,"AA",') that Vitals
+     and CPRS currently use to find patient records.
+     
+     Hines OIFO is working on modifying the existing Vitals APIs to use
+     the PXRMINDX index so the existing APIs will continue to work without
+     any difference to where the record is stored. Since Caseload Profile 
+     by Clinic [PXRR CASELOAD PROFILE BY CL] report is doing a direct
+     global read of GMRV VITAL MEASUREMENT (#120.5) file, it is important
+     that the applicable routine be changed to use the PXRMINDX index.
+  
+     Resolution:
+     -----------
+     Routine PXRRPCE5 will be modified to remove the existing direct global
+     read of GMRV VITAL MEASUREMENT (#120.5) file and change it to pull
+     data from the PXRMINDX index.
+  
+  
+ 2)  HD0000000114258 - No Encounters Returned
+  
+     Problem:
+     --------
+     When running the Provider Encounter Counts [PXRR PROVIDER ENCOUNTER 
+     COUNTS] report and selecting Service Category "EVENT (HISTORICAL)",
+     it returns very few or no encounters.
+  
+     Also, when running the above report, the historical encounters that 
+     have occurred at non-VA sites are not being included in the report.
+  
+     Resolution:
+     -----------
+     Modified routine PXRRECSE to use Hospital Location to get the facility
+     to match the selected facility for the report since historical
+     encounters do not populate the LOC. OF ENCOUNTER (#.06) file in the
+     VISIT (#9000010) file if it is created via CPRS GUI.
+  
+     Moreover, this facility will not be stored in the LOC. OF ENCOUNTER 
+     (#.06) field in the VISIT (#9000010) file. It is just for reporting
+     purposes. The name of the facility will be displayed on the report 
+     if the encounter occurred at VA site.
+  
+     Routine PXRRPRSP and PXRRPRDP have been modified to make sure the 
+     encounters that occurred at non-VA sites are included in both 
+     Provider Encounter Counts summary and detail reports.
+  
+  
+ 3)  HD0000000276146 - 'O' displayed after accepting default value N
+  
+     Problem:
+     --------
+     When running the PCE Provider Encounter Counts [PXRR PROVIDER 
+     ENCOUNTER COUNTS] report, the system issues the following prompt: Do
+     you want to display encounters at Non-VA sites ? N//
+     When the user accepts this default value 'N', the letter 'O' is
+     displayed.  For example, Do you want to display encounters at Non-VA
+     sites ? N//  O. This 'O' will be corrected to display as "NO".
+  
+     Resolution:
+     -----------
+     When using FileMan API call DIR, variable DIR("B") to provide a
+     default response; routine PXRRLCSC has been modified to set
+     DIR("B")="NO" so that when the user presses the Enter/Return key to
+     accept the default, the default response 'NO' would not be displayed.
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ If installed during the normal workday, it is recommended that the users
+ be off the system. 
+  
+ Install Time - less than 3 minutes.
+  
+ 1)  LOAD TRANSPORT GLOBAL
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the
+     INSTALL/CHECK MESSAGE PackMan option.
+  
+ 2)  START UP KIDS
+     -------------
+     Start up the Kernel Installation and Distribution System Menu 
+     [XPD MAIN]:
+  
+         Edits and Distribution ...
+         Utilities ...
+         Installation ...
+  
+     Select Kernel Installation and Distribution System Option:
+     INStallation
+     ---
+         1.  Load a Distribution
+         2.  Verify Checksums in Transport Global
+         3.  Print Transport Global
+         4.  Compare Transport Global to Current System
+         5.  Backup a Transport Global
+         6.  Install Package(s)
+             Restart Install of Package(s)
+             Unload a Distribution
+  
+ 3)  From this menu, you may elect to use the following options (when
+     prompted for INSTALL NAME, enter PX*1.0*189):
+  
+     a.  Backup a Transport Global - This option will create a backup 
+         message of any routines exported with this patch. It will NOT
+         backup any other changes such as DDs or templates.
+  
+     b.  Compare Transport global to Current System - This option will
+         allow you to view all changes that will be made when the patch
+         is installed. It compares all components of the patch (routines, 
+         DDs, templates, etc.)
+  
+     c.  Verify Checksums in Transport Global - This option will ensure
+         the integrity of the routines that are in the transport global.
+  
+     d.  Print Transport global - This option will allow you to view the 
+         components of the KIDS build.
+  
+ 4)  Use the Install Package(s) option and select the package PX*1.0*189.
+     
+     a.  When prompted "Want KIDS to INHIBIT LOGONs during the install?
+         NO//", answer NO.
+  
+     b.  When prompted "Want to DISABLE Scheduled Options and Menu Options
+         and Protocols? Yes/", answer YES.
+  
+     c.  When prompted "Enter options you wish to mark as "Out of Order":",
+         enter the following option:
+  
+         Provider Encounter Counts [PXRR PROVIDER ENCOUNTER COUNTS]
+         Caseload Profile by Clinic [PXRR CASELOAD PROFILE BY CL]
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;1.0;PCE PATIENT CARE ENCOUNTER;**[Patch List]**;Aug 12, 1996;Build 13
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PXRRECSE
+    Before: B49433031   After: B59966884  **3,10,12,18,72,189**
+Routine Name: PXRRLCSC
+    Before: B20357975   After: B21063120  **12,18,20,72,189**
+Routine Name: PXRRPCE5
+    Before: B16550525   After: B20348077  **189**
+Routine Name: PXRRPRD
+    Before:  B6708144   After:  B6825949  **3,10,12,18,61,189**
+Routine Name: PXRRPRDP
+    Before: B30293995   After: B30581269  **3,10,12,18,48,189**
+Routine Name: PXRRPRSP
+    Before: B26159984   After: B26422525  **3,10,12,18,189**
+ 
+Routine list of preceding patches: 48, 61, 72
+
+=============================================================================
+User Information:
+Entered By  : CURTIS,RICHARD                Date Entered  : SEP 26, 2007
+Completed By: TSAIMEUCHONG,BRENDA           Date Completed: FEB 03, 2010
+Released By : BENBOW,PHYLLIS O              Date Released : FEB 17, 2010
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,382 @@
+$TXT Created by FORT,WALLY at PAT-XWB.FO-OAKLAND.MED.VA.GOV  (KIDS) on Thursday, 12/09/04 at 15:43
+=============================================================================
+Run Date: JAN 20, 2005                     Designation: XWB*1.1*35
+Package : XWB - RPC BROKER                    Priority: Mandatory
+Version : 1.1        SEQ #30                    Status: Released
+                  Compliance Date: FEB 20, 2005
+=============================================================================
+
+Associated patches: (v)XWB*1.1*22  <<= must be installed BEFORE `XWB*1.1*35'
+                    (v)XWB*1.1*26  <<= must be installed BEFORE `XWB*1.1*35'
+
+Subject: NON-callback server
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ Patch Tracking #: 35993506
+ Test Sites: Puget Sound HCS(VMS/CACHE), SAN DIEGO, CA(VMS/CACHE),
+             MEMPHIS, TN(VMS/CACHE), LOMA LINDA, CA(VMS/CACHE),
+            
+ Blood Bank Clearance: 7/18/2003
+  
+ **This patch includes updates to current Broker routines that will    **
+ **help sites even if they don't want to set up the VMS tcpip service. **
+  
+ ** Sites may want to decrease the Broker Activity Timeout field (#230)**
+ ** in the Kernel Site Parameters file (#8989.3) to a value of 30 to   **
+ ** 45 seconds to decrease the time between when a job goes inactive   **
+ ** due to a loss of connection between the client and the server      **
+ ** before the job is terminated and locks are removed.  This can be   **
+ ** accomplished by going to the Operations | Kernel Management |      **
+ ** Enter/Edit Kernel Site Parameters and change the value of Broker   **
+ ** Timeout to a value of 30 to 45 seconds.                            **
+  
+ This is the first of two patches to resolve the Firewall issue.  The 
+ second patch is a Broker BDK patch (XWB*1.1*40) that will go to GUI 
+ developers. Installing Patch XWB*1.1*35 should have no negative impact 
+ on current Broker applications.  Patch XWB*1.1*35 becomes active once 
+ the TCPIP service is turned on. After installing Patch XWB*1.1*35 there 
+ is time to test the VMS TCPIP service before switching to its use.
+  
+ New Service Request: RPC Broker - Firewall Issue  Request #20021001.
+ NOIS: ALB-0300-52352
+  
+ Requestor: John Deltognoarmanasco, WAN Manager for VISN 18. 
+  
+ Endorser: James Laub, VISN 18 Chief Information Officer (CIO).
+  
+ Request: An enhancement to the RPC Broker software to provide local sites 
+ with the ability to control the range of ports used in connecting to joint 
+ and/or contracting facilities. 
+  
+ As a security measure, participating sites or joint facilities (i.e., DoD 
+ and universities that have firewalls set up to prevent intrusion) lack 
+ access to clinics outside the firewall; this prevents session connections 
+ from thin clients to CPRS.   With the use of the RPC Broker, which enables 
+ clients to communicate and exchange data over the network, sites could 
+ minimize security risks by controlling the range of available ports that 
+ would be open for connection. 
+  
+ Fix: This patch modifies the manner by which the RPC Broker makes a 
+ connection.  The RPC Broker will now connect using the same methodology
+ as used by most TCP/IP applications. One benefit to this is that the
+ RPCBroker component becomes a VMS TCPIP service and is managed at the
+ VMS level.  However, it does require some work to get set up the first
+ time.  It is similar to the XMINET and HLSEVEN TCPIP service setup.  
+  
+ Updates to the Broker software in this patch allow the same connection to 
+ handle both the old Broker and the new non-call back Broker. 
+ Before installing this patch, you must stop the XWBTCPL routine, failure
+ to do so will cause errors. After the install you can restart the XWBTCPL
+ routine while completing the setup. 
+ Because VMS takes care of starting the RPCSERVER as a TCPIP service at 
+ system boot, VMS sites can remove it from any startup scripts or 
+ from the TaskMan scheduled options file. 
+ On Cache/NT systems, you will continue to use the XWB LISTENER STARTER 
+ option.
+  
+ Further information is provided in a separate document titled: RPC 
+ Broker TCP/IP Supplement (Patch XWB*1.1*35), file xwb1_1p35um.pdf. The
+ sample XWBSERVER_START.COM file is also available at the same location.
+ These document can be obtained by using FTP from the appropriate 
+ Customer Service directory:
+  
+  
+    OI FIELD OFFICE    FTP ADDRESS      DIRECTORY
+    ======================================================
+                      download.vista.med.va.gov
+    Albany            ftp.fo-albany.med.va.gov
+    Hines             ftp.fo-hines.med.va.gov
+    Salt Lake City    ftp.fo-slc.med.va.gov
+    
+     Host File Names: XWB1_1p35um.pdf 
+                      xwbserver_start.com
+  
+ The RPC Broker TCP/IP Supplement (Patch XWB*1.1*35) can also be
+ downloaded from the VISTA Documentation Library (VDL) on the Remote
+ Procedure Call (RPC) Broker Web page:
+  
+    http://www.va.gov/vdl/Infrastructure.asp?appID=23
+    
+ Also included are changes made to the current Broker listener and server 
+ after a review by some folks at intersystems.  These changes should help 
+ improve the stability of the current Broker.
+  
+  
+ The RPC BROKER SITE PARAMETERS file (#8994.1) was changed. The screen on 
+ field BOX-VOLUME PAIR (#8994.17, .01) has been removed to make editing less 
+ troublesome.  The field PORT (#8994.171, .01) has had the range of values 
+ expanded from 9000 - 9999 to 9000 - 32000. To allow starting the new broker 
+ listener on Cache/NT system. In the PORT subfile (#8994.171) the un-used 
+ UCI field (#.5) was changed to TYPE OF LISTENER (#.5). The XWB LISTENER 
+ EDIT template was modified to ask the new field.
+ The option XWB LISTENER STARTER was changed to call RESTART^XWBTCP.
+ Added a new option XWB LISTENER STOP ALL to call STOPALL^XWBTCP.
+  
+ 8994.171,.5   TYPE OF LISTENER       0;3 SET
+  
+                                 '0' FOR Original; 
+                                 '1' FOR New Style; 
+               LAST EDITED:      MAR 31, 2003 
+               DESCRIPTION:      This is a flag to tell a Cache/NT site what
+                                 kind of RPCBroker listener to start.  It 
+                                 should not be needed for other types of
+                                 RPCBroker listeners because they will be
+                                 under the control of TCPIP service.  
+  
+ A Debug LOG has been added:
+ A new entry was added to the PARAMETER Definition file (#8989.51). Entry 
+ XWBDEBUG 'RPCBroker debug logging' is a set of codes. The values are 0 = 
+ No, 1=Yes, 2=Verbose, 3=Very Verbose.  Setting this parameter to Yes, 
+ Verbose or Very Verbose will cause the Broker Server to log info into 
+ ^XTMP("XWBLOG"_$J).  Each log file has the kill date is set to T+7. Debug 
+ management is thru new options on the RPC Broker Management Menu. This 
+ parameter can be edited with the new option Debug Parameter Edit (XWB DEBUG 
+ EDIT),  To view or clear the debug logs use the following options:
+  Clear XWB Log Files [XWB LOG CLEAR]
+  View XWB Log [XWB LOG VIEW]
+ The Verbose and Very Verbose settings will save a lot of data into the 
+ global.
+  
+ This patch modifies the behavior of the server when a null string is used
+ as an argument in a CreateContext method.  Patch XWB*1.1*10 modified
+ processing related to attempts to create context which resulted in errors,
+ e.g., no such option on the server, to result in throwing an exception
+ which would indicate the type of error encountered. 
+  
+ In some cases, however, it is desirable to be able to test whether a
+ specific context option is available to the user.  In the case where the
+ option is not available an exception is thrown.  The SharedRPCBroker
+ recognizes a context option which was originally successfully created as
+ still being active although it is not.  The current patch provides a means
+ of restoring a prior context option following such an exception which has
+ been trapped using try..except..finally.
+  
+ 1. Passing a null string as the Context Option will continue to clear the
+ current Context Option as in the past, but will now return a value
+ indicating success, where it previously returned a value indicating
+ failure.  The user may then restore the original context.
+  
+ It has also been pointed out that the period during which a job will wait
+ for the signon via RPCBroker (90 seconds) results in some individuals with
+ disabilities not being able to sign on before the connection is broken. 
+ This patch increases the timeout for the initial signon to 180 seconds.
+  
+ CPRS developers requested this fix, and the following NOIS call is
+ resolved:
+  
+ SLC-0602-51965   Getting error when broker's createContext function failed
+  
+ The routine XWBSEC was also modified to include the Remote Procedure 'XUS 
+ GET TOKEN' as one that does not need to be included in an application's
+ context option.
+  
+ NOIS from testing that have been fixed.
+ VAC-1104-21636   Intermittant connectivity to Claims
+ OTH-0504-N1419   Set up of CPRS                   
+ SLC-0602-51965   Getting error when broker's 
+ BOI-0202-51989   Broker disconnects and data loss
+  
+ The routine XWBTCPC was also modified to improve clean up following 
+ unrecoverable errors and to prevent recurring errors in the error trap 
+ resulting from allocation errors.
+  
+ Routine XWBDLOG is used for Debug logging.
+ Routine XWBRW is used for reads and sending data back to the client.
+ Routine XWBTCPM is the new message Broker.
+ Routine XWBTCPM1 is the link to the old broker for backward support.
+ Routine XWBPRS does the new message parsing.
+  
+ Routine Summary
+ The following routines are included in this patch.  The second line of each
+ of these routines now looks like:
+  ;;1.1;RPC BROKER;**[Patch List]**;Mar 28, 1997
+  
+                  Checksum
+ Routine         Old       New      Patch List
+ XWBBRK        5758866   6139375    **2,4,10,16,26,35**
+ XWBDLOG           n/a   2480414    **35**
+ XWBEXMPL      1441211   2239266    **22,35**
+ XWBLIB        3479070   3552411    **6,10,26,35**
+ XWBPRS            n/a   6653519    **35**
+ XWBRW             n/a   2942074    **35**
+ XWBSEC        2425405   3059911    **3,6,10,35**
+ XWBTCP       10677300  11064833    **1,9,35**
+ XWBTCPC       7570128   7813560    **2,5,4,6,9,16,26,35**
+ XWBTCPL      10414009  13635674    **1,7,9,15,16,35**
+ XWBTCPM           n/a   9208839    **35**
+ XWBTCPM1          n/a   3225153    **35**
+  
+ List of preceding patches: 22, 26
+ Sites should use CHECK^XTSUMBLD to verify checksums.
+  
+ =========================================================================
+ >>>Stop the Broker Listener
+ >>>Roll and Scroll Users may remain on the system.
+ >>>TaskMan does *not* need to be put into a wait state.
+  
+ Installation:
+  
+    1.  Get the TCPIP service setup document.
+        Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This
+        option will load the KIDS package onto your system.
+  
+    2.  During the installation, do not run any RPC-Broker-based Client/Server
+        software (e.g., CPRS, PCMM, BCMA).  No Broker-based client/server 
+        software should be running while installing this patch on the 
+        server.  You can identify these jobs by checking the system status 
+        and verifying if any XWBTCPC routines are running (i.e., Broker 
+        Handler).  If you find any of these jobs running on the system,  
+        notify users to logoff or FORCEX the jobs.  Active users may get 
+        NOSOURCE or CLOBBER errors.  
+  
+    3.  Stop the Broker Listener on the server.  Do this by first 
+        checking the system status, then verifying if the XWBTCPL 
+        routine is running (i.e., Broker Listener).  If you find this 
+        routine running on your system, STOP IT.  To stop the Broker 
+        Listener, do the following: 
+  
+            a.  Log into your M server.                   
+            b.  Enter the following command at the M prompt: 
+  
+                >D STOP^XWBTCP(Listener port) 
+                (Typically, the Listener port is 9200) 
+                
+            c.  Remove the startup of XWBTCPL from startup
+                scripts or ZSTU    
+  
+    4.  Stop any users that are using Broker applications. This applies
+        to any job in XWBTCPC or in CPRS.
+        
+    5.  DSM sites - If any of these routines are mapped,
+        you will need to disable mapping for the affected routines.
+  
+  
+    6.  The patch has now been loaded into a Transport global on your
+        system. Now you need to use KIDS to install the Transport global.
+        On the KIDS menu, under the 'Installation' menu, use the following
+        options:
+  
+           Verify Checksums in Transport Global
+           Print Transport Global
+           Compare Transport Global to Current System
+           Backup a Transport Global
+                  
+    7.  Roll and Scroll Users can remain on the system.
+        TaskMan can remain running.
+  
+    8.  This part of the installation will take less than 1 minute.
+        On the KIDS menu, under the 'Installation' menu, use the following
+        option:
+         Install Package(s)  'XWB*8.0*35'
+                              ==========
+  
+      Want KIDS to Rebuild Menu Trees Upon Completion of Install? YES// NO
+        
+      Want KIDS to INHIBIT LOGONs during the install? YES// NO
+  
+      Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// NO
+        
+    9.  Get the TCPIP service setup document, if you haven't already.
+        This part can only be done by someone with SYSPRI at the VMS
+        level and could take 30 to 60 minutes.
+        Now do the VMS TCPIP service setup work to a test account. When 
+        you are ready to go live, stop the Broker Listener and enable the 
+        TCPIP service RPCSERVER. Users should not notice any difference. 
+  
+   10.  DSM Sites, after patch has installed, rebuild your map set.
+ ============================================================================
+
+Routine Information:
+====================
+
+Routine Name:
+  - XWBTCP
+
+
+Routine Checksum:
+
+Routine Name:
+  - XWBTCPM
+
+
+Routine Checksum:
+
+Routine Name:
+  - XWBTCPM1
+
+
+Routine Checksum:
+
+Routine Name:
+  - XWBPRS
+
+
+Routine Checksum:
+
+Routine Name:
+  - XWBLIB
+
+
+Routine Checksum:
+
+Routine Name:
+  - XWBTCPC
+
+
+Routine Checksum:
+
+Routine Name:
+  - XWBTCPL
+
+
+Routine Checksum:
+
+Routine Name:
+  - XWBSEC
+
+
+Routine Checksum:
+
+Routine Name:
+  - XWBBRK
+
+
+Routine Checksum:
+
+Routine Name:
+  - XWBRW
+
+
+Routine Checksum:
+
+Routine Name:
+  - XWBDLOG
+
+
+Routine Checksum:
+
+Routine Name:
+  - XWBEXMPL
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : FORT,WALLY                    Date Entered  : DEC 17, 2002
+Completed By: SINGH,GURBIR                  Date Completed: JAN 19, 2005
+Released By : LASHLEY,ANTHONY               Date Released : JAN 20, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

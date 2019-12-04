@@ -1,0 +1,397 @@
+
+=============================================================================
+Run Date: APR 15, 2003                     Designation: IVM*2*77
+Package : IVM - INCOME VERIFICATION MATCH    Priority: EMERGENCY
+Version : 2        SEQ #60                      Status: Released
+                  Compliance Date: APR 16, 2003
+=============================================================================
+
+Associated patches: (v)IVM*2*69    <<= must be installed BEFORE `IVM*2*77'
+                    (v)EAS*1*23    <<= must be installed BEFORE `IVM*2*77'
+
+Subject: IVM MEANS TEST EDB-VISTA DATA EXCHANGE ENHANCEMENTS
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description: 
+============
+
+     
+     **********************************************************************
+     Note: This patch has been assigned a compliance date of April 16, 2003
+     **********************************************************************
+  
+  
+ Overview and Background:
+ ====================
+  
+ The release of IVM*2.0*69 and EAS*1*23, on March 11, 2003, provided the
+ framework for medical centers to receive an IVM Verified Means Test
+ Transmission (ORU~Z06) from the Enrollment Database (EDB) and to transmit
+ an IVM Billing/Collection Transmission (ORU~Z09) to the EDB.  These two
+ messages support the Income Verification Matching (IVM) program that
+ matches a veteran's self-reported income (that is below the Means Test
+ Threshold) with information obtained from the Internal Revenue Service
+ (IRS) and Social Security Administration (SSA).  The IVM program has been
+ implemented in the EDB and not in the Health Eligibility Center (HEC)
+ Legacy system.
+  
+ Functional Description
+ ===============
+  
+ The software for these patches, IVM*2*77 and EAS*1*30 are not being 
+ distributed through the National Patch Module.   These patches are being 
+ distributed as a single KIDS software distribution (host file).  This 
+ patch contains the informational portion of IVM*2*77 and provides field 
+ personnel with instructions on how to acquire, install and implement the 
+ patch software.  The transmission of IVM Converted means tests is 
+ expected to begin on April 17,2003, therefore the Business Office is 
+ requiring that all sites install IVM*2*77 and EAS*1*30 by April 16, 2003
+  
+ Functionality released with IVM*2*77 includes the following:
+  
+ Activates the Logical Links and Protocols to receive an ORU~Z06 from EDB 
+ and to transmit an ORU~Z09 to EDB
+  
+ Because the IVM program is being implemented in the EDB and not HEC 
+ Legacy, HEC Legacy will not share a test that has been sent from the EDB 
+ (referred to as a "Z06 MT via EDB").  These patches also implement the 
+ following:
+  
+ 1. Prevents the transmission of income information to HEC Legacy when all
+    of the following conditions are met
+      a. Source of test at the medical center is IVM
+      b. The IVM Patient file entry for that income year contains '6' 
+         (CONVERTED) in the 'CLOSURE REASON' field (#1.01).
+      c. The Annual Means test entry at the medical center contains "Z06 
+         MT via EDB" in the comments field.
+  
+ 2. Prevents the upload of a means test from HEC Legacy when all of the
+    following conditions are met:
+      a. Source of test at medical center is IVM
+      b. Test is primary for the income year
+      c. Income year for incoming test matches income test on file at the
+         medical center
+      d. Date of test for incoming test matches income test on file at the 
+         medical center
+      e. Test at medical center is identified as a "Z06 MT via EDB"
+      f. IVM Patient file contains 'Converted' indicating that test at
+         medical center has been closed, converted.
+      g. Comments section within IVM patient file contain verbage that 
+         the test at the medical center is a "Z06 MT via EDB"
+  
+ 3. Allow Means Test Signature evidence (ORF~Z06) to be attached to the
+    appropriate means test even if it is not the primary test.  Do not 
+    attach evidence of a signed means test to a "Z06 MT via EDB". 
+  
+ Associated NOIS: 
+ ===============
+ N/A  
+  
+ Associated E3R:
+ ==============
+ N/A 
+  
+  
+ Test Sites:
+ ===============
+ Altoona
+ Northampton
+  
+  
+ DATA DICTIONARY CHANGES
+ =======================
+ HL LOGICAL LINK (File #870) - the two entries that support the Z06/Z09  
+     transmissions of data between the VAMC's and the EDB will be updated: 
+         LLEDBIN - this is the Multi Listener logical link
+         LLEDBOUT - this is the Client (Sender) logical link
+  
+ PROTOCOL (File #101) - the two server protocols that support the Z06/Z09 
+     transmissions will be updated:
+  
+         EAS EDB ORU~Z06 SERVER (IVM Case Status/Unsolicited HEC/EDB to 
+                                 VAMC)
+         EAS EDB ORU~Z09 SERVER (IVM Billing/Collection Unsolicited VAMC to
+                                 HEC/EDB)
+  
+  
+ TECHNICAL DESCRIPTION
+ =====================
+  
+ There is a post-install process for the IVM*2*77 patch (IVM2077P) that 
+ will update the appropriate logical links and protocols.  When the patch 
+ is installed the 'Disable Text' field in file #101 will be set to 
+ <NULL>.  This will activate the 'EAS EDB ORU-Z06 SERVER' and 'EAS EDB 
+ ORU-Z09 SERVER' protocols.  Additionally, logical links 'LLEDBIN' and 
+ 'LLEDBOUT' will be updated with the production port # and TCP/IP address 
+ for e*Gate. 
+  
+ File# 870 - LOGICAL LINK
+  NODE: LLEDBIN                           LLP TYPE: TCP
+    DEVICE TYPE: Multi-threaded Server  AUTOSTART: Enabled
+    QUEUE SIZE: 10                         TCP/IP PORT: 5000
+    TCP/IP SERVICE TYPE: MULTI LISTENER PERSISTENT: NO
+   
+ NODE: LLEDBOUT                    LLP TYPE: TCP
+    DEVICE TYPE: Non-Persistent Client AUTOSTART: Enabled
+    QUEUE SIZE: 10                    RE-TRANSMISSION ATTEMPTS: 3
+    READ TIMEOUT: 90               ACK TIMEOUT: 270
+    EXCEED RE-TRANSMIT ACTION: restart TCP/IP ADDRESS: 10.224.132.103
+    TCP/IP PORT: 33001             TCP/IP SERVICE TYPE: CLIENT (SENDER)
+    PERSISTENT: NO
+  
+  
+ File# 101 - PROTOCOL
+  
+ NAME: EAS EDB ORU-Z06 SERVER
+   ITEM TEXT: IVM Case Status/Unsolicited HEC/Edb to VAMC
+   TYPE: event driver                    CREATOR: 0
+   TIMESTAMP: 59240,34274                SENDING APPLICATION: EDB eGate
+   TRANSACTION MESSAGE TYPE: ORU         EVENT TYPE: Z06
+   ACCEPT ACK CODE: AL                   APPLICATION ACK TYPE: AL
+   VERSION ID: 2.3.1          SUBSCRIBERS: EAS EDB ORU-Z06 CLIENT
+  
+ NAME: EAS EDB ORU-Z09 SERVER
+   ITEM TEXT: IVM BILLING/COLLECTION/Unsolicited VAMC to HEC/Edb
+   TYPE: event driver                    CREATOR: 0
+   TIMESTAMP: 59240,34274                SENDING APPLICATION: EAS EDB
+   TRANSACTION MESSAGE TYPE: ORU         EVENT TYPE: Z09
+   ACCEPT ACK CODE: AL                   APPLICATION ACK TYPE: AL
+   VERSION ID: 2.3.1
+   RESPONSE PROCESSING ROUTINE: D ACK^IVMPREC1
+   SUBSCRIBERS: EAS EDB ORU-Z09 CLIENT
+  
+  
+ SOFTWARE RETRIEVAL
+ ==================
+ The software for this patch is being distributed in a host file.  The 
+ host file will contain two KIDS builds.  The first build will be for the 
+ Income Verification Match patch, IVM*2*77, the second build will be for 
+ the Enrollment Application System patch, EAS*1*30. 
+  
+         Host file name: IVM_2_P77.KID
+  
+         Builds:  IVM*2*77
+                  EAS*1*30
+  
+  
+ Sites may retrieve the software directly using FTP from the 
+ ANONYMOUS.SOFTWARE directory at the following OI Field Offices:
+  
+            Albany:  ftp.fo-albany.med.va.gov
+             Hines:  ftp.fo-hines.med.va.gov
+    Salt Lake City:  ftp.fo-slc.med.va.gov
+  
+  
+  
+ ROUTINE SUMMARY
+ ===============
+ The following is a list of the routine(s) included in this patch. The 
+ second line of each of these routines will look like: 
+   
+ <tab>;;2.0;INCOME VERIFICATION MATCH;**[patch list]**;21-OCT-94
+  
+  
+                             CHECK^XTSUMBLD results
+    Routine        Before Patch     After Patch     Patch List
+    -------        ------------     -----------     ----------
+    IVM2077P          N/A             3116357       77
+    IVMCM            14786487        14433116       12,17,28,41,44,53,
+                                                    34,49,59,55,63,77
+    IVMCMZ            N/A              390686       77
+    IVMPREC7         14001576        14164207       1,17,44,34,77
+    IVMPTRN8         10348934        11333580       9,11,19,12,21,17,24,
+                                                    36,37,47,48,42,34,77
+  
+    Total Number of Routines - 5
+  
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+  
+ Special notes regarding Installation:
+  
+ The IVM Background job should not be running during this install.
+  
+ You may wish to stop the HL7 filers prior to the install to prevent 
+ possible 'No Source Errors' from occurring. No transmissions will be lost
+ if the filers are not stopped first, they will be picked up once the
+ filers are restarted.
+  
+ The patch should be installed during non-peak hours
+  
+ Install Time - less than 1 minute 
+  
+   Installation Steps:
+   ==================
+   
+   1. Download the KIDS file IVM_2_P77.KID from the ANONYMOUS.SOFTWARE
+      directory of either Albany, Hines, or the Salt Lake CIOFO to the
+      appropriate directory on your system.
+   
+   2. Use the 'LOAD A DISTRIBUTION' option on the KIDS INSTALLATION 
+      menu, and enter:  IVM_2_P77.KID
+   
+   3. Review your mapped set.  If any of the routines listed in the 
+      ROUTINE SUMMARY section of patches IVM*2*77 or EAS*1*30 are mapped, 
+      they should be removed from the mapped set at this time.
+   
+   4. From the 'Kernel Installation & Distribution System' menu, select 
+      the Installation menu.
+   
+   5. From this menu, you may elect to use the following options (when
+      prompted for INSTALL NAME, enter IVM*2.0*77).
+   
+      a. Backup a Transport Global - This option will create a backup
+         message of any routines exported with the patch.  It will NOT 
+         backup any other changes such as DDs or templates.
+   
+      b. Compare Transport Global to Current System - This option will 
+         allow you to view all changes that will be made when the patch 
+         is installed.  It compares all components of the patch 
+         (routines, DDs, templates, etc.).
+   
+      c. Verify Checksums in Transport Global - This option will allow 
+         you to ensure the integrity of the routines that are in the 
+         transport global.
+   
+      d. Print Transport Global - This option will allow you to view the
+         components of the KIDS build.
+         
+   6. Use the Install Package(s) option and select IVM*2.0*77
+     
+   7. When prompted 'Want KIDS to INHIBIT Logon's during the install? 
+      YES//', it is recommended you answer NO.
+   
+   8. When prompted 'Want to DISABLE Scheduled Options, Menu Options, 
+      and Protocols? YES//', respond YES.   When prompted to select 
+      the options you would like to place out of order, enter the
+      following:
+  
+      IVM BACKGROUND JOB             IVM Background Job
+            
+   
+   9. If routines were unmapped as part of Step 3, they should be 
+      returned to the mapped set once the installation has run to 
+      completion.
+  
+  10. After installation, if you had stopped them, be sure to restart the
+      HL7 filers.
+
+Routine Information:
+====================
+
+Routine Name:
+  - IVMPREC7
+
+ Add hook after ORF+24 to bypass EDB Z06 MT and retrieve the non-EDB Z06 
+ MT on file for that income year
+  
+ Before: .S DGLY=$$LYR^DGMTSCU1(IVMMTDT)
+         .; get means test to be updated
+         .N UPMTS
+         .S MTDATE=-IVMMTDT,IVMMTIEN="",MTFND=0
+         .F  S IVMMTIEN=$O(^DGMT(408.31,"AID",1,DFN,MTDATE,IVMMTIEN),-1) 
+            Q:MTFND!(IVMMTIEN="")  D
+         ..; match site completing in case multiple tests for same date
+  
+ After:  .S DGLY=$$LYR^DGMTSCU1(IVMMTDT)
+         .; get means test to be updated
+         .N UPMTS
+         .S MTDATE=-IVMMTDT,IVMMTIEN="",MTFND=0
+         .F  S IVMMTIEN=$O(^DGMT(408.31,"AID",1,DFN,MTDATE,IVMMTIEN),-1)
+            Q:MTFND!(IVMMTIEN="")  D
+         ..I $$Z06MT^EASPTRN1(IVMMTIEN) Q    ;EDB Z06 - Don't use this one
+         ..; match site completing in case multiple tests for same date
+
+Routine Checksum:
+
+Routine Name:
+  - IVMCM
+
+ Add hook to bypass EDB Z06 MT after MT+9
+  
+ Before: MT      ; If transmission is a Means Test
+         N NODE0,RET,CODE,DATA
+         S HLQ=$G(HL("Q"))
+         S:HLQ="" HLQ=""""""
+         I IVMTYPE=1 D  I $D(HLERR) G PROCQ
+         .S IVMMTDT=$$FMDATE^HLFNC($P($G(^TMP($J,"IVMCM","ZMT1")),HLFS,2))
+         .S TMSTAMP=$$FMDATE^HLFNC($P($G(^TMP($J,"IVMCM","ZMT1")),HLFS,25))
+         .S HSDATE=$$FMDATE^HLFNC($P($G(^TMP($J,"IVMCM","ZMT1")),HLFS,24))
+         .S SOURCE=$P($G(^TMP($J,"IVMCM","ZMT1")),HLFS,22)
+         .S IVMLAST=$$LST^DGMTU(DFN,$E(IVMMTDT,1,3)_1231,1)
+         .I '$$ELIG^IVMUFNC5(DFN) S ERRMSG="Means Test upload not 
+           appropriate for current patient"
+  
+ After: MT      ; If transmission is a Means Test
+         N NODE0,RET,CODE,DATA
+         S HLQ=$G(HL("Q"))
+         S:HLQ="" HLQ=""""""
+         I IVMTYPE=1 D  I $D(HLERR) G PROCQ
+         .S IVMMTDT=$$FMDATE^HLFNC($P($G(^TMP($J,"IVMCM","ZMT1")),HLFS,2))
+         .S TMSTAMP=$$FMDATE^HLFNC($P($G(^TMP($J,"IVMCM","ZMT1")),HLFS,25))
+         .S HSDATE=$$FMDATE^HLFNC($P($G(^TMP($J,"IVMCM","ZMT1")),HLFS,24))
+         .S SOURCE=$P($G(^TMP($J,"IVMCM","ZMT1")),HLFS,22)
+         .S IVMLAST=$$LST^DGMTU(DFN,$E(IVMMTDT,1,3)_1231,1)
+         .I $$Z06MT^EASPTRN1(+IVMLAST) Q                 ;IVM*2*77
+         .I '$$ELIG^IVMUFNC5(DFN) S ERRMSG="Means Test upload not 
+           appropriate for current patient"
+
+Routine Checksum:
+
+Routine Name:
+  - IVMPTRN9
+
+
+Routine Checksum:
+
+Routine Name:
+  - IVM2077P
+
+ This post-install program will update the protocol to activate the 
+ protocol (Disable text (field# 2) will be removed from file #101 and the 
+ logical links will be assigned the proper production port# and IP address.
+
+Routine Checksum:
+
+Routine Name:
+  - IVMCMZ
+
+ Line label DOM has been moved from IVMCM into this new routine.
+
+Routine Checksum:
+
+Routine Name:
+  - IVMPTRN8
+
+ Add hooks to create stubs for ZIC and ZIR segments within the Z07 message if the primary Means test is an EDB Z06 MT.  Defined new variable 'EDBMTZ06' that is New'd in beginning of program and is defined just prior to the generation of the veter
+ an's ZIC segment - 
+
+Routine Checksum:
+Add hooks to create stubs for ZIC and ZIR segments within the Z07 message 
+if the primary Means test is an EDB Z06 MT.  Defined new variable 
+'EDBMTZ06' that is New'd in beginning of program and is defined just prior
+to the generation of the veteran's ZIC segment - 
+ 
+      S EDBMTZ06=0 I $$VERZ06^EASPTRN1(DFN) S EDBMTZ06=1
+ 
+Prior to the creation of each ZIC and ZIR segment a check is made to see 
+if the primary Means test is an EDB Z06 MT.  Based upon this value of 
+'EDBMTZ06' will determine if a "stub" segment is created or a full segment
+is created.
+
+=============================================================================
+User Information:                               
+Entered By  : GUSTIN,ERIC                    Date Entered : MAR 10, 2003
+Completed By: DRESS,KEN                     Date Completed: APR 14, 2003
+Released By : GANUS,MAUNETTE                Date Released : APR 15, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

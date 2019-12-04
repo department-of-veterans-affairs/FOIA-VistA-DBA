@@ -1,0 +1,389 @@
+$TXT Created by WOLF,ED at BAY.FO-ALBANY.MED.VA.GOV  (KIDS) on Friday, 04/23/04 at 08:07
+=============================================================================
+Run Date: MAY 04, 2004                     Designation: SD*5.3*349
+Package : SD - SCHEDULING                     Priority: EMERGENCY
+Version : 5.3       SEQ #291                    Status: Released
+                  Compliance Date: MAY 06, 2004
+=============================================================================
+
+Associated patches: (v)SD*5.3*333  <<= must be installed BEFORE `SD*5.3*349'
+
+Subject: MODIFICATIONS TO PAIT
+
+Category: 
+  - Routine
+  - Sort Template
+
+Description:
+============
+
+ We appreciate your cooperation in meeting the installation compliance date 
+ of May 6th which is necessary in order to meet VACO requirements for this data.
+ The compliance date covers both patch installation and the requirement to 
+ schedule transmission of the data on either May 5 or May 6 as described in 
+ the patch.
+      ------------------------------------------------------------------
+ 
+ During installation and run of SD*5.3*333 - Patient Appointment Information 
+ Transmission - the following problems occurred in some locations:
+ 
+ 1. In several instances an entry in the Outpatient Encounter file, pointed 
+    to from the Outpatient Encounter field (#21) of the Appointment multiple 
+    sub file (#2.98) of the Patient file, was missing or was incomplete. 
+    This problem had not been anticipated in SD*5.3*333 and is addressed in 
+    this patch by verifying the existence of the entry pointed to, before trying 
+    to retrieve the desired data. If the pointed entry does not exist, PAIT
+    is trying to retrieve the Check Out Date/Time from the Hospital Location
+    Appointment multiple sub file (#44.001)
+ 
+ 2. An entry in the Appointment multiple sub file (#2.98) of the Patient file
+    did not exist while being pointed to from "ASADM" cross reference of
+    the Patient file. The pointer is ignored if the entry is not found.
+ 
+ 3. An error occurred if neither the Institution, nor the Division was setup
+    in the Hospital Location file. An error was cause by a call to 
+    $$SITE^VASITE() with NULL value. A call is executed without any entry
+    for a default set up.
+ 
+ 4. In several occasions the PAIT started too early and was restarted after
+    purging original log. Errors occurred when unexpected acknowledgements
+    for nonexistent batch entries were received. 
+ 
+ 5. Occasionally duplicate acknowledgements were sent by Austin Automation 
+    Center generating multiple records for the same acknowledged batch.
+    The particular acknowledgement will be processed only once.
+ 
+ 6. Several sites initiated the PAIT transmission outside the intended dates 
+    of the 1st and 15th of the month. A restriction in this patch will prevent 
+    that, but still allow starting within a 3 day grace period. If there is a 
+    need to override the restriction, temporarily remove the SD-PAIT TASKED 
+    TRANSMISSION and use the SD-PAIT MANUAL TRANSMISSION option.
+ 
+ 7. When an appointment was identified with 'RS'- Re-schedule Appointment 
+    Type and the Creation Date was the same as Cancellation Date,
+    the Reschedule Date/Time may have been equal to the Appointment Date.
+    That situation was eliminated.
+ 
+ 8. When an appointment in VistA is canceled and then another one is created
+    for the same date/time we have to deal with two appointments while 
+    having only one record in VistA. That problem was discovered during
+    testing and has been addressed. 
+ 
+ The following is a list of referred calls for SD*5.3*333, addressed by this 
+ patch:
+  
+ Call ID                        Subject    
+             
+ ECH-0304-51523         ERROR PAIT TASKED TRANSMISSION     
+ FGH-0304-31281         STATUS+35          
+ HWH-0304-41279         STATUS+35          
+ MIN-0304-41522         UNDEFINED GLOBAL REFERENCE                   
+ NOP-0304-11427         <UNDEF>STATUS+35             
+ NYH-0304-11306         STATUS+35          
+ PUG-0304-51317         Problems after installation of patch SD*5.3*333          
+ SBY-0304-31273         STATUS+35          
+ STX-0304-71402         Failed PAIT transmission           
+ UNY-0304-11267         STATUS+35          
+ ROS-0304-52662         Possible PAIT/Vitria Problem
+ ALT-0304-22152         subscript error
+ PTH-0304-22016         SD*5.3*333 status check
+ CHS-0304-41708         SD*5.3*333 patch problem
+ POR-0304-51260         SD*5.3*333 INSTALL
+ 
+    The following modifications have been implemented:
+ 
+ 1. The PAIT BACKGROUND JOB completion message was modified to include both
+    Starting Date and the Last Scanned Date, and they are sent to the Forum
+    server to reflect more accurate status of the site transmission in the 
+    completion report.
+ 
+ 2. Modification to interpretation of the Patient Status Code.
+ 
+ Old version:
+ 
+ Table 0216 - Patient Status Codes
+  
+ NTF    Patient did not have a prior appointment at this facility in the 
+         past 24 months; New To Facility           
+ SHB    Patient did  have a prior appointment at this facility in the past 
+         24 months; Seen Here Before.    
+ 
+ The patient status code indicates if a patient is new to a facility or not. 
+ The patient is new to the facility if he/she did not have another 
+ appointment in the same facility during  the last 24 months. The facility 
+ is determined from the Institution file if there is a pointer to it from 
+ the Hospital Location file; otherwise a call for the facility is executed 
+ with a pointer to the Division the Hospital Location is pointing to.
+ 
+ New version:
+ 
+ Table 0216 - Patient Status Codes
+     
+ NSF    Patient did not have a prior appointment at this Facility in the 
+         past 24 months; New to Parent and Sub Station     
+ SHB    Patient did have a prior appointment at this Parent and Sub 
+         Station in the past 24 months; Registered Here Before.    
+ OPN    Patient did not have a prior appointment at 
+         this Sub Station but was registered with Parent Station.        
+ 
+ The patient status code indicates if a patient is new to a facility or not. 
+ Both the Parent Station and the Substations are evaluated. The parent 
+ Station is evaluated with the primary DSS ID only; however, the substation 
+ is evaluated using both the DSS ID stop code and the DSS credit stop code.
+ The patient is new to the facility if he/she did not have another appointment
+ scheduled in the same facility during the last 24 months.
+ The facility is determined from the Institution file if there is a pointer to
+ it from the Hospital Location file; otherwise a call for the facility
+ is executed with a pointer to the Division the Hospital Location is
+ pointing to.
+ 
+ 3. The Sort Template: [SD-PAIT PEND EXCL FUTURE], used with option:
+    SD-PAIT PENDING has been modified to give users the ability to request
+    a certain range of records sorted by the Appointment Date.
+ 
+                 COMPONENTS SUBMITTED WITH THIS PATCH
+                 ====================================
+ 1. SORT TEMPLATE: [SD-PAIT PEND EXCL FUTURE]
+ 
+ 2. ROUTINE SUMMARY:
+  -----------------
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+ 
+      <tab>;;5.3;Scheduling;**[patch list]**;Aug 13, 1993
+ 
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  SDRPA00               22062812             21030898         290,333,349
+  SDRPA02                    N/A              3148669             349
+  SDRPA03                    N/A              7922096             349
+  SDRPA05                8315071              8714054         290,333,349
+  SDRPA06               11935236             12622184         290,333,349
+  SDRPA07               12888674             13059834         290,333,349
+  SDRPA08               12625194             14192786         290,333,349
+  
+                        New routines:      2
+                        Modified routines: 5
+ 
+ NOTE:
+ ==== 
+       The patch is being released with known issues, which include one 
+       routine over the size limit. Routine SDRPA06 exceeds SACC maximum size
+       of 10000 (10376) however this will not affect the patch installation and 
+       has been tested successfully. If you encounter a problem, please log a 
+       NOIS. The second comment line of several routines contain typographical 
+       errors. A follow-up patch will address these issues.
+ 
+ The following documentation will be available:
+ =============================================
+  
+     File Name                 Description
+     ---------                 -----------
+     SD_53_349_RN.PDF          PAIT - Release Notes Addendum to SD*5.3*333
+                               Released with SD*5.3*349
+ 
+ The preferred method is to FTP the file from:
+  
+     download.vista.med.va.gov
+  
+ Sites may retrieve the documentation directly using FTP from
+ the ANONYMOUS.SOFTWARE directory at the following OI Field Offices:
+  
+         Albany:  ftp.fo-albany.med.va.gov
+          Hines:  ftp.fo-hines.med.va.gov
+ Salt Lake City:  ftp.fo-slc.med.va.gov
+ 
+                           
+ DEVELOPMENT TEAM:
+ ================
+                  Ed Wolf    - (727) 320-1855
+                  Steve Owen - (727) 320 1825
+ 
+ TESTING SITES:
+ =============
+    
+ 518   BEDFORD, MA      
+ 649   PRESCOTT, AZ   
+ 656   ST CLOUD, MN  
+ 659   SALISBURY, NC 
+  
+ 
+            ============ INSTALLATION INSTRUCTIONS ==================
+  
+  NOTE: This patch installation requires previous installation of 
+        SD*5.3*333.
+ 
+        Verify that
+                     SD-PAIT TASKED TRANSMISSION   [Taskman PAIT Transmission]
+             
+        is not Scheduled to run at the time of installation.
+ 
+    This patch may be installed with users staying on the system.
+ 
+    Install Time - less than 1 minute
+ 
+ Disk Space affected by PAIT transmission.
+ -----------------------------------------
+ 
+ We expect the follow-up run to be 25% to 30% the volume of the 
+ seeding run at this time. This is an estimation of the update run to take place 
+ approximately 45 days since the seeding run has taken place. We should expect
+ proportionally lower increase with a regular bi-monthly schedule.
+  
+ 1.  LOAD TRANSPORT GLOBAL
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the
+     INSTALL/CHECK MESSAGE PackMan option.
+  
+ 2.  DISABLE ROUTINE MAPPING  (DSM for Open VMS sites only)
+     -----------------------
+     Disable routine mapping on all systems for the routines listed in
+     ROUTINE SUMMARY above.
+  
+     NOTE: If the routines included in this patch are not currently in
+     your mapped routine set, please skip this step.
+  
+ 3.  START UP KIDS
+     -------------
+     Start up the Kernel Installation and Distribution System Menu
+     [XPD MAIN]:
+  
+           Edits and Distribution ...
+           Utilities ...
+           Installation ...
+  
+ Select Kernel Installation & Distribution System Option: INStallation
+                                                          ---
+           Load a Distribution
+           Verify Checksums in Transport Global
+           Print Transport Global
+           Compare Transport Global to Current System
+           Backup a Transport Global
+           Install Package(s)
+           Restart Install of Package(s)
+           Unload a Distribution
+  
+ Select Installation Option: 
+  
+ 4.  Select Installation Option:
+     ---------------------------
+     NOTE: When prompted for the INSTALL NAME, enter SD*5.3*349
+  
+     a. Backup a Transport Global - this option will create a backup
+        message of any routines exported with the patch. It will not backup
+        any other changes such as DD's or templates.
+     b. Compare Transport Global to Current System  - This option will
+        allow you to view all changes that will be made when the patch
+        is installed. It compares all components of the patch.
+     c. Verify Checksums in Transport Global - This option will allow you
+        to ensure the integrity of the routines that are in the transport
+        global.
+  
+ 5.  Select Installation Option: Install Package(s)
+                                 ------------------
+     a. Choose the Install Package(s) option to start the patch install.
+  
+     b. When prompted "Want KIDS to INHIBIT LOGONs during the install? YES//
+        answer NO.
+  
+     c. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+        Protocols? YES//', answer 'YES'.
+  
+     d. When prompted 'Enter options you wish to mark as 'Out of Order':' 
+        Enter the following options:
+ 
+        SD-PAIT REPORTS                   PAIT Reports Menu 
+        SD-PAIT MANUAL TRANSMISSION       Manual Startup PAIT Transmission
+               
+     e. When prompted 'Enter protocols you wish to mark as "Out Of Order':'
+        press <return>,
+  
+ 6.  REBUILD MAPPED ROUTINE(S)  (DSM for Open VMS sites only)
+     -------------------------
+     NOTE: This step is only necessary if you performed step 2 or if you 
+     wish to include the routines in your mapped set.
+ 
+ 7.  Verify that SD-PAIT Logical Link is enabled, and if not start it.
+ 
+ 8.  Verify that you are a member of SD-PAIT Mail Group.
+ 
+ 9.  You should install this patch on Wednesday, May 5th 2004 and run PAIT
+     transmission on the same day.
+ 
+ NOTE: If you are unable to install the patch on May 5th or 6th, please log
+       a NOIS or call the National Help Desk.
+ 
+     After the patch is fully installed use option:
+ 
+      SD-PAIT MANUAL TRANSMISSION     Manual Startup PAIT Transmission
+ 
+     and respond 'NOW' to a prompt for queuing:
+ 
+     Queue to run:  NOW
+   
+ 10. Verify that the scheduled task started and is running.
+ 
+ 11. Using Taskman option Schedule/Unschedule Options schedule option 
+     SD-PAIT TASKED TRANSMISSION to run the 1st and 15th of every month
+     to establish the bi-monthly transmission schedule.
+ 
+    
+
+Routine Information:
+====================
+
+Routine Name:
+  - SDRPA00
+
+
+Routine Checksum:
+
+Routine Name:
+  - SDRPA02
+
+
+Routine Checksum:
+
+Routine Name:
+  - SDRPA05
+
+
+Routine Checksum:
+
+Routine Name:
+  - SDRAP07
+
+
+Routine Checksum:
+
+Routine Name:
+  - SDRPA06
+
+
+Routine Checksum:
+
+Routine Name:
+  - SDRPA03
+
+
+Routine Checksum:
+
+Routine Name:
+  - SDRPA08
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : WOLF,ED                       Date Entered  : MAR 18, 2004
+Completed By: OWEN,STEVEN W                 Date Completed: MAY 04, 2004
+Released By : HEUER,CINDY                   Date Released : MAY 04, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

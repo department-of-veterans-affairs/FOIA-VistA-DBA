@@ -1,0 +1,355 @@
+$TXT Created by CHESNEY,CHRISTINE M at DEVCRN.FO-ALBANY.MED.VA.GOV  (KIDS) on MONDAY, 06/10/02 at 07:14
+=============================================================================
+Run Date: JUN 18, 2002                     Designation: MPIF*1*21
+Package : MPIF - MASTER PATIENT INDEX VISTA Priority: Mandatory
+Version : 1        SEQ #20                      Status: Released
+=============================================================================
+
+Associated patches: (v)MPIF*1*9    <<= must be installed BEFORE `MPIF*1*21'
+                    (v)MPIF*1*11   <<= must be installed BEFORE `MPIF*1*21'
+                    (v)MPIF*1*17   <<= must be installed BEFORE `MPIF*1*21'
+                    (v)MPIF*1*18   <<= must be installed BEFORE `MPIF*1*21'
+                    (v)RG*1*23     <<= must be installed BEFORE `MPIF*1*21'
+                    (v)DG*5.3*440  <<= must be installed BEFORE `MPIF*1*21'
+                    (v)RG*1*25     <<= must be installed BEFORE `MPIF*1*21'
+
+Subject: Enhancement Project Patch
+
+Category: 
+  - Routine
+  - Enhancement (Mandatory)
+
+Description: 
+============
+
+   NOTE:  MPIF and RG patches should NOT be installed on Legacy systems to
+   avoid issues with the legacy systems ending up as Coordinating Master 
+   of Records (CMORs), Treating Facilities or Subscribers.
+  
+  
+   NOTE:  When the post init for this patch runs, the sites may see a jump 
+   in the number of exceptions to be resolved.  This was due to a problem 
+   with the way the exceptions were being logged as noted in issues #13 
+   of this patch and in RG*1.0*25 issue #6.
+  
+   
+   Issue 1:  A request was made for an entry point to allow the push of a 
+   CMOR to another site as a List Manager function. Entry point 
+   LM^MPIFCMRP has been created to support this request.
+  
+   Issue 2:  A site requested being able to easily tell if the 
+   Local/Missing ICN Resolution Background Job [MPIF LOC/MIS ICN RES] had
+   last been run to completion.  A new field, LOCAL/MISSING DATE LAST RAN
+   (#.04), has been created in the CIRN SITE PARAMETER (#991.8) file in
+   patch RG*1*23 to hold the last date the job ran.  This field will be
+   populated by routine MPIFRES.
+  
+   Issue 3:  During the Single Patient Initialization to MPI [MPIF IND MPI
+   LOAD] option the user can be presented with a list of potential
+   matches.  This list contains very little data about each patient the
+   user can select to match their patient with.  In order to assist the
+   user in making an educated match, two new actions have been created on
+   the list manager screen.  The first one is MPI Data View (MPI) which
+   will allow the user to expand one of the entries on the list and see all
+   fields that the Master Patient Index (MPI) has populated for this
+   patient (very similar to Display Only Query [MPIF DISPLAY ONLY QUERY TO
+   MPI] option).  The second one is CMOR's Data View (CMR) which will allow
+   the user to query the CMOR for the Patient MPI/PD Data Inquiry [RG
+   EXCEPTION TF INQUIRY] option data.  Two new protocols, MPIF REAL-TIME 
+   QUERY (CMOR PDAT) and MPIF REAL-TIME QUERY (MPI PDAT) have been added to
+   support these new actions.
+  
+   Issue 4: Several fields were added to the Display Only Query [MPIF 
+   DISPLAY ONLY QUERY TO MPI] option.  The fields are:  claim number, the
+   station number of the treating facility, and if there is an open Data
+   Management case; the case number, the case worker and the NOIS number
+   will be displayed.
+  
+   Issue 5:  Routine MPIFDEL had entry point DELETE modified to utilize 
+   the UPDATE line tag of routine MPIFAPI to delete the appropriate fields
+   during the inactivation of an Integration Control Number (ICN).  Also
+   updated was the PAT entry point to allow an inactivation to continue if
+   the CMOR field is missing AND the ICN is a local ICN.
+  
+   Issue 6:  When an existing patient has their Social Security Number 
+   (SSN) changed to start with 5 leading zeros, they have been turned into
+   a test patient (just like when the name is changed to start with ZZ).  
+   These patients should be inactivated from the Master Patient Index (MPI)
+   or have their Local ICN inactivated as an automatic function.  
+   DG*5.3*440 adds a cross reference to the SOCIAL SECURITY NUMBER field
+   (#.09) in the Patient (#2) file to facilitate this inactivation. This
+   patch provides the routine to support that automatic inactivation.  All
+   of the rules for inactivating a patient are enforced. The Post Init for
+   this patch will run though all patients with 5 leading zeros for the SSN
+   looking for those that have an ICN and inactivate them automatically.
+  
+   Issue 7: During the 1980s, the policy for creating patients in the 
+   Patient (#2) file that were also employees was to enter them as EEE,
+   their social security number (SSN).  That policy was subsequently
+   revoked but did not include any cleanup of the existing EEE patients.  
+   During the implementation phase of the Master Patient Index/Patient
+   Demographics (MPI/PD) application, a report was generated to identify
+   these patients. Some of them were changed to their correct names, but
+   many still have not been resolved.  It is possible for these EEE
+   patients to be assigned an ICN, either local or national.  Since this
+   data does not assist in the identification or sharing of patient data,
+   it has been decided that these patients should not be assigned an ICN of
+   any kind, nor should an exception be logged that they have been
+   touched.  Patients that have EEE as the first three characters of their
+   last name and have an ICN (local or National) will be inactivated
+   (following the rules for inactivation) from the MPI during the post init
+   for this patch.  These EEE patients will be included in the screen of
+   patients not to be sent to the MPI.
+  
+   Issue 8:  During the testing of the Health EVet application, it was 
+   discovered that if the variable DFN was not set prior to calling the
+   entry point MPIQ^MPIFAPI, the COORDINATING MASTER OF RECORD (#991.03) 
+   field in the PATIENT (#2) file could get erroneously overwritten. This
+   has been corrected in routines MPIFAPI and MPIF001.
+  
+   Issue 9: As part of an enhancement to the Master Patient Index Austin
+   (MPI) and the Master Patient Index VistA/Patient Demographics, date of
+   death will be stored on the MPI, if it is passed up from the sites.
+   There are several places in Master Patient Index VistA where date of
+   death is displayed or passed to/from the MPI, time will be included
+   when available. Routines MPIFSAQ and MPIFVTQ
+   have been modified to handle this change.
+  
+   Issue 10:  The Health Level Seven (HL7) message A30 Merge, as 
+   implemented in MPI/PD will be replaced in the near future.  Since the
+   A30 Merge message isn't being used by any application or database, QUIT
+   statements have been placed at all entry points until the cutover to the
+   new messages takes place.  This change is in routine MPIFMER.
+  
+   Issue 11:  It was reported in NOIS SLC-0202-51554 that when returning 
+   to the List Manager screen in Scheduling, after selecting the Load/Edit
+   action (a local modification), the site receives an undefined variable
+   VALMCNT.  The killing of the VALMCNT variable has been moved to prevent
+   this error and will not impact the killing of the variable.
+  
+   Issue 12:  Patch DG*5.3*244 makes the following change: "Logic related 
+   to the A28 message has been modified to prevent the COORDINATING MASTER
+   OF RECORD field (#991.03) [in the Patient (#2) file] from being 
+   populated prior to the ICN being returned from the MPI."  To support 
+   this change, the COORDINATING MASTER OF RECORD field (#991.03) must be
+   populated during the processing of the A31 message that was returned 
+   from the MPI as a result of the A28 message.  This change is in routine
+   MPIFA31I.  This patch does not require DG*5.3*244 to be installed.
+  
+   Issue 13:  It was reported by the MPI Data Quality Management team and 
+   the Milwaukee VAMC that there were missing exceptions for Local ICNs on 
+   their system.  The problem was that the Local/Missing ICN Resolution job
+   was processing the message back from the MPI, it wasn't always logging
+   the exception when a sensative patient was involved.  This has been
+   corrected in routines MPIFBT2 and MPIFBT3.  Post Init routine MPIF121P  
+   will reset the "AICNL" cross-reference so that all local ICNs will be
+   sent to the MPI again for resolution.
+  
+  
+   TEST SITES:
+   ==========
+    
+   Ashville
+   Battle Creek
+   Dayton
+   Fayetteville, NC
+   Milwaukee
+   
+  
+   Routine Summary:
+   ================
+   The following is a list of the routine(s) included in this patch.  The
+   second line of each of these routine(s) will look like:
+    
+   <TAB>;;1.0; MASTER PATIENT INDEX VISTA ;**[Patch List]**;30 Apr 99
+   CHECK^XTSUMBLD results:
+    
+   Routine       Before Patch       After Patch       Patch List
+   --------      ------------       ------------      ----------
+   MPIF001         9009403           10163316         1,3,9,16,18,21
+   MPIF121P        NEW        deleted after install   21
+   MPIFA31I        5381482            5104775         1,21
+   MPIFAPI         5909546           19426970         1,3,14,16,17,21
+   MPIFBT2        19875682           19947627         1,3,10,17,21
+   MPIFBT3        11411923           11390859         1,3,10,17,21
+   MPIFCMRP        8885059            8951506         11,21
+   MPIFDEL         8332610            9622923         1,3,9,19,17,21
+   MPIFMER         5191285            1257029         9,21
+   MPIFQ0         23133124           24126952         1,3,8,14,13,16,17,21
+   MPIFQ1         12612911           19167461         1,8,12,16,17,21
+   MPIFRES         4177646            4236352         1,7,10,15,17,21
+   MPIFSAQ        18115356           20182611         1,3,8,13,17,21
+   MPIFVTQ        17186633           15560739         1,9,17,21
+  
+   Note:  Routine MPIF121P is deleted by the installation. The checksum
+          prior to deletion is 2052494.
+  
+   INSTALLATION INSTRUCTIONS:
+   ==========================
+  
+    This patch should be loaded during non-peak hours to minimize
+    disruption to the users.   
+  
+    The time that this patch will take to install, due to the post
+    init will depend on the number of patients that have a last name
+    of EEE or have a social security number that starts with 5 leading
+    zeros and have an ICN (Local or National).
+   
+    1.  Users are allowed on the system during patch installation.
+        
+    2.  TaskMan does not need to be stopped or placed in a wait state. 
+   
+    3.  These routines are not usually mapped, so you will probably not
+        have to disable mapping. 
+  
+    4.  Via TaskMan, unschedule the Local/Missing ICN Resolution 
+        Background Job [MPIF LOC/MIS ICN RES] if it is scheduled to run 
+        during installation of this patch.
+  
+    5.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu. [Note:
+        TEXT PRINT/DISPLAY option in the PackMan menu will display the
+        patch text only.
+  
+    6.  From the Kernel Installation and Distribution System Menu, select
+        the Installation menu.  
+  
+    7.  From this menu, you may elect to use the following options:
+        a.  Backup a Transport Global - this option will create a backup
+            message of any routines exported with the patch.  It will NOT
+            backup any other changes such as DDs or templates.
+        b.  Compare Transport Global to Current System  - this option will
+            allow you to view all changes that will be made when the patch
+            is installed.  It compares all components of the patch
+            (routines, DDs, templates, etc.).
+        c.  Verify Checksums in Transport Global - this option will allow
+            you to ensure the integrity of the routines that are in the
+            transport global.
+        d.  Print Transport Global - this option will allow you to view the
+            components of the KIDS build.
+  
+    8.  Use the Install Package(s) option and select the package 
+        MPIF*1.0*21.
+   
+    9.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? '
+        YES//', respond No.
+   
+   10.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+        Protocols? YES//', respond Yes and enter the following options:
+  
+         Inactivate Patient from MPI             [MPIF PAT INACT]
+         Single Patient Initialization to MPI    [MPIF IND MPI LOAD]
+         Display Only Query              [MPIF DISPLAY ONLY QUERY TO MPI] 
+         Local/Missing ICN Resolution Background Job [MPIF LOC/MIS ICN RES]
+  
+         10-10T Registration             [DGRPT 10-10T REGISTRATION]     
+         Register a Patient              [DG REGISTER PATIENT]           
+         Load/Edit Patient Data          [DG LOAD PATIENT DATA]          
+         Electronic 10-10EZ Processing   [EAS EZ 1010EZ PROCESSING]
+    
+      
+   11.  If you unmapped routines in step 3, remap them after installation
+        has completed.
+  
+  
+   12.  Reschedule, via TaskMan, the Local/Missing ICN Resolution 
+        Background Job [MPIF LOC/MIS ICN RES] if unscheduled in step 4.
+
+Routine Information:
+====================
+
+Routine Name:
+  - MPIF001
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFAPI
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFCMRP
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFDEL
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFMER
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFQ0
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFQ1
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFRES
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFSAQ
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFVTQ
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIF121P
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFA31I
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFBT2
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFBT3
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : CHESNEY,CHRISTINE M           Date Entered : OCT 01, 2001
+Completed By: HERREN,CATHRYN                Date Completed: JUN 11, 2002
+Released By : BURTS,WANDA                   Date Released : JUN 18, 2002
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

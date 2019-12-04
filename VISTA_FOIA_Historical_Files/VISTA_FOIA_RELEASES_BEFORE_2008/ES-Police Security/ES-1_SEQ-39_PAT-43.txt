@@ -1,0 +1,206 @@
+$TXT Created by BECKWITH,RALPH at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 06/10/04 at 06:50
+=============================================================================
+Run Date: JUL 29, 2004                     Designation: ES*1*43
+Package : ES - POLICE & SECURITY              Priority: Mandatory
+Version : 1        SEQ #39                      Status: Released
+                  Compliance Date: AUG 29, 2004
+=============================================================================
+
+Associated patches: (v)ES*1*32     <<= must be installed BEFORE `ES*1*43'
+
+Subject: SYSTEM SKIPPING JOURNAL ENTRIES
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ Since the installation of patch ES*1*32 the system is not displaying 
+ the earliest (latest by time with designated time span for journal) 
+ journal entry time for activity time default..  Patch ES*1*32 was 
+ using the latest time with a single day time span, not allowing for
+ time spans across midnight.
+  
+ ASSOCIATED NOIS:
+ ================ 
+ WIM-0504-21720  SYSTEM SKIPPING JOURNAL ENTRIES
+  
+ DUPLICATE:
+ FAR-0604-40295  LAST TIME ENTERED
+ WBP-0604-20681  Problem w/Daily Operations Journal Time
+  
+ ASSOCIATED E3R(s):
+ ==================
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ =========================
+  
+ Wilmington, DE
+ Shreveport, LA
+ Manchester, NH
+ Alexandria, LA
+ Charleston, SC
+  
+ NOIS OVERVIEW:
+ =============
+ WIM-0504-27120  SYSTEM SKIPPING JOURNAL ENTRIES
+  
+    Problem:
+    --------
+ Since the installation of patch ES*1*32 the system is not displaying 
+ the earliest (latest by time with designated time span for journal) 
+ journal entry time for activity time default.  Patch ES*1*32 was using 
+ the latest time with a single day time span, not allowing for time 
+ spans across midnight.
+  
+   
+    Resolution:
+    ----------
+   
+ With a modification to routine ESPAJE the activity time default will 
+ now check for the "latest" time with the designated journal time span
+ allowing for time spans that crossover midnight into the next day.  
+ Eg. From: 5/22/04@2300 To: 5/23/04@2259.  In this case 0500 is 
+ later than 2400. 
+  
+  
+ ROUTINE SUMMARY
+ ===============
+ The following is a list of the routines included in this patch. The 
+ second line of each of these routines now looks like: 
+  
+   <tab> ;;1.0;POLICE & SECURITY;**[PATCH LIST]**;Mar 31, 1994
+  
+  
+                        CHECK^XTSUMBLD results
+   Routine name     Before Patch     After Patch      Patch List
+   ------------     ------------     -----------      ----------
+  
+   ESPAJE              2119758         2025526        **17,18,23,24, 
+                                                          32,43**
+   
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+ This patch can be loaded with users in the system.  Installation time
+ will be less than 2 minutes.
+  
+  1.  Choose the PackMan message containing this patch and invoke the 
+      INSTALL/CHECK MESSAGE PackMan option.  
+  
+  2.  (DSM for Open VMS sites only) Disable routine mapping on all systems
+      for the routines listed in the Routine Summary.
+  
+      NOTE:  If the routines included in this patch are not currently
+      in your mapped routine set, please skip this step.
+  
+  3.  Start up the Kernel Installation and Distribution System Menu
+      [XPD MAIN]: 
+  
+           Edits and Distribution ...  
+           Utilities ...  
+           Installation ...  
+  
+      Select Kernel Installation & Distribution System Option: Installation
+                                                               ---
+           1      Load a Distribution
+           2      Verify Checksums in Transport Global
+           3      Print Transport Global
+           4      Compare Transport Global to Current System
+           5      Backup a Transport Global
+           6      Install Package(s)
+                  Restart Install of Package(s)
+                  Unload a Distribution
+  
+  4.  From this menu, you may elect to use the following options
+      (When prompted for the INSTALL NAME, enter ES*1.0*43):
+      
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will
+          not backup any other changes such as DD's or templates.
+      b.  Compare Transport Global to Current System - This option
+          will allow you to view all changes that will be made when
+          this patch is installed.  It compares all components of this
+          patch (routines, DD's, templates, etc.).
+      c.  Verify Checksums in Transport Global - This option will
+          allow you to ensure the integrity of the routines that are
+          in the transport global.
+  
+  5.  Use the Install Package(s) option and select the package
+      ES*1.0*43.
+  
+       a.  When prompted 'Want KIDS to INHIBIT LOGONs during the
+           install? YES//', answer NO.
+  
+       b.  When prompted 'Want to DISABLE Scheduled Options, Menu
+           Options, and Protocols? YES//' answer NO.
+      
+  6.  (DSM for Open VMS sites only) Optional - Include the routines
+      distributed with this patch in the mapped routine set.
+  
+      NOTE: This step is only necessary if you performed step 3 or if
+      you wish to include the routines in your mapped set.
+  
+
+Routine Information:
+====================
+
+Routine Name:
+  - ESPAJE
+
+ Before:
+ LAST+2  N TIME1,TIME2,ESPT,FCX,FC
+  
+ After:
+ LAST+2  N TIME1,TIME2,ESPT,ESPT1,FCX,FC
+  
+ Before:
+ LAST+6  S ESPT=$G(^ESP(916,ESPDAT,1))
+  
+ After:
+ LAST+6  S ESPT=$G(^ESP(916,ESPDAT,1)),ESPT1=$P($P(ESPT,"^"),"-",4)
+  
+ Before:
+ LAST+10  .S TIME1=""
+  
+ After:
+ LAST+10  .S TIME1="",TIME2=""  
+  
+ Before:
+ LAST+12:13  ..S X=DT_"."_TIME1 D H^%DTC
+                     ..S ^TMP($J,ESPDAT,%T)=TIME1   
+  
+ After:
+ LAST+12:13  ..S X=$S(TIME1<ESPT1:DT+1,1:DT)_"."_TIME1
+                     ..S:X>TIME2 TIME2=X
+  
+ Deleted:
+ LAST+11  ..S TME="" F  S TME=$O(^TMP($J,ESPDAT,TME)) Q:TME=""  
+                         S TIME2=^TMP($J,ESPDAT,TME)
+  
+ Before:
+ LAST+13  .S TIME2=$J(TIME2,4),TIME2=$TR(TIME2," ",0)
+  
+ After:
+ LAST+13  .S TIME2=$J($P(TIME2,".",2),4),TIME2=$TR(TIME2," ",0)
+  
+ Deleted:
+ LAST+14  .K ^TMP($J,ESPDAT)
+
+Routine Checksum:
+2025526
+
+=============================================================================
+User Information:
+Entered By  : BECKWITH,RALPH                Date Entered  : MAY 26, 2004
+Completed By: TSAIMEUCHONG,BRENDA           Date Completed: JUL 29, 2004
+Released By : COPELAND,ROLANDA              Date Released : JUL 29, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

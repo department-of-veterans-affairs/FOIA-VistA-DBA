@@ -1,0 +1,436 @@
+$TXT Created by WOLF,ED at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 07/01/08 at 16:53
+=============================================================================
+Run Date: DEC 08, 2008                     Designation: SD*5.3*528
+Package : SD - SCHEDULING                     Priority: Mandatory
+Version : 5.3       SEQ #443                    Status: Released
+                  Compliance Date: JAN 08, 2009
+=============================================================================
+
+Associated patches: (v)SD*5.3*177  <<= must be installed BEFORE `SD*5.3*528'
+                    (v)SD*5.3*376  <<= must be installed BEFORE `SD*5.3*528'
+                    (v)SD*5.3*446  <<= must be installed BEFORE `SD*5.3*528'
+
+Subject: EWL, PAIT and PCMM fixes.
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch addresses five problems related to PCMM, EWL and PAIT. 
+  
+  ASSOCIATED NSR(S):
+  ===================
+  N/A
+  
+  ASSOCIATED REMEDY TICKETS:
+  =========================
+  
+           1)  HD0000000063569 - RIC-0803-20101  PCMM Inconsistency Report not
+                                 working
+           2)  HD0000000221359 - Modify PAIT code when an incomplete entry
+                                 in the HOSPITAL LOCATION file exists,
+                                 see ticket 221097, to avoid PAIT interruption.
+           3)  HD0000000249964 - <UNDEFINED>CHKENC+28^SDWLQSC1
+           4)  HD0000000256121 - 120 days related entry in file 409.32
+                                 incorrectly created with institution taken
+                                 from the Institution field in file 44.
+           5)  HD0000000258287 - Modify PAIT to identify institution  from
+                                 a clinic entry  through the  DIVISION
+                                 field (#3.5) -->            
+   
+    PARTICIPATING TEST SITES:
+    =========================
+    Manila OC, PI
+    Salisbury, NY
+    Wilkes-Barre, PA
+    Oklahoma City, OK
+  
+    REMEDY OVERVIEW:
+    ===============
+  
+ 1)  HD0000000063569 - RIC-0803-20101  PCMM Inconsistency Report not
+                       working                              
+    Problem:
+    ========
+  
+    PCMM Inconsistency Report was not providing information for patients
+    meeting this criterion:
+    PATIENT HAS NO PCP ASSIGNED - Patient is assigned to a Primary Care Team
+    but has no Primary Care Practitioner assigned.
+    Routine SCRPV1A has code
+                            Q:$D(^SCPT(404.43,"APCPOS",DFN,1))
+    that incorrectly prevents subroutine CHECK28 from assigning
+    S ^TMP("PCMM PATIENT",$J,DFNNAM,DFN,2,TMN,POSN)=PTPI ;..........#2
+    that corresponds to a failure of generating the missing INCONSISTENCY #2 for
+    a patient with assignment to TMN team and POSN position.
+    Code Q:$D(^SCPT(404.43,"APCPOS",DFN,1)) does not determine properly if
+    a provider is assigned to a position the patient is assigned to.
+  
+    Solution:
+    =========
+    
+    Routine SCRPV1A will be modified to use the same call that is used
+    to compute the CURRENT PRACTITIONER field (# 304)
+    in the TEAM POSITION file (# 404.57):
+  
+    I $$GETPRTP^SCAPMCU2(POSI,DT)>0 Q
+  
+    where 
+         POSI - a pointer to the TEAM POSITION file (# 404.57) determined
+                earlier in the evaluated subroutine
+  
+    The implemented modification allows for proper identification and printing
+    of the PATIENT HAS NO PCP ASSIGNED inconsistency.
+  
+ 2)  HD0000000221359 - Modify PAIT code when an incomplete entry
+                       in the HOSPITAL LOCATION file exists,
+                       see ticket 221097, to avoid PAIT interruption.
+  
+    Problem:
+    =======
+    An incomplete node in HOSPITAL LOCATION file (#44) was reported in
+    ticket 2210997. New code related to consults and introduced with
+    SD*5.3*446 assumed that if a patient appointment node exists in the 
+    Hospital Location file it must have a 0 node with data, i.e., if 
+    ^SC(SDCL,"S",SDADT,1,SEQ) exists, then it assumes 
+    ^SC(SDCL,"S",SDADT,1,SEQ,0) exists. Investigation of the PAIT 
+    interruption caused by these incomplete nodes found that the
+    corresponding APPOINTMENT multiple field (#2.98) in the PATIENT file
+    (#2) showed the appointment 'canceled by patient' which means that its
+    record in the HOSPITAL LOCATION file (#44) should have been deleted.
+    So, routine SDRPA07 should assume that incomplete nodes should not
+    exist.
+  
+     ..N SEQ S SEQ=0,SDCDATE="" F  S SEQ=$O(^SC(SDCL,"S",SDADT,1,SEQ))
+  Q:+SEQ'=SEQ  
+  
+    I $P(^SC(SDCL,"S",SDADT,1,SEQ,0),"^")=DFN D  Q
+  
+    Solution:
+    ========
+  
+    Routine SDRPA07 was modified to check for a complete entry in the 
+    APPOINTMENT multiple field (#44.001) in the Hospital Location file (#44).
+  
+          ..;calculate consult date if applicable; 446
+          ..N SEQ S SEQ=0,SDCDATE="" F  S SEQ=$O(^SC(SDCL,"S",SDADT,1,SEQ)) Q:+SE
+ Q'=SEQ  I $P($G(^SC(SDCL,"S",SDADT,1,SEQ,0)),"^")=DFN D  Q  ;SD/528 added $G
+  
+    If PAIT encounters an incomplete node there will no longer be an 
+    error. 
+  
+ 3)  HD0000000249964 - <UNDEFINED>CHKENC+28^SDWLQSC1
+  
+    Problem:
+    =======
+    This error occurs infrequently, with the use of three different 
+    options:
+  
+    Enter/Edit Wait List (Sch/PCMM) [SD WAIT LIST ENTER/EDIT]
+    PCE Encounter Data Entry and Delete [PXCE ENCOUNTER ENTRY & DELETE]
+    Disposition Wait List (Sch/PCMM) Entry [SD WAIT LIST DISPOSITION ENTRY]
+    
+    This error is thought to be caused by evaluating ^TMP globals not
+    necessarily created by the same job because there is no check for a job
+    number in the looping process. Another job running at the same time
+    might create a similar, temporary global.
+  
+    The current code in routine SDWLQSC1:
+  
+  .I PROC N SS,SCNT S SS="^TMP("_$J_",""SDAMA301"")" F  S SS=$Q(@SS)
+   Q:SS'["SDAMA301"  D
+  ..N CL,SDP,SD S SDP=@SS S SD=+SDP,CL=+$P(SDP,U,2)
+  
+    Solution:
+    ========
+  
+    Routine SDWLQSC1 has been modified to include - Q:SS'[$J - that prevents
+    the looping from identifying incorrect data from another job.
+  
+  .I PROC N SS,SCNT S SS="^TMP("_$J_",""SDAMA301"")" F  S SS=$Q(@SS)
+   Q:SS'["SDAMA301"  Q:SS'[$J  D
+  ..N CL,SDP,SD S SDP=@SS S SD=+SDP,CL=+$P(SDP,U,2)
+  
+  
+ 4)  HD0000000256121 - 120 days related entry in file 409.32
+                       incorrectly created with institution taken
+                       from the Institution field in file 44.
+  
+    Problem:
+    ========
+  
+    Entries for clinics in SD WL CLINIC LOCATION file (#409.32) may be
+    incorrectly created with institution taken from the INSTITUTION field 
+    (#3) in the HOSPITAL LOCATION file (#44). This problem surfaced
+    during work on patch SD*5.3*446 and was missed during development of
+    patch SD*5.3*491.
+  
+    While testing patch SD*5.3*491 the following message came out after
+    installation of test v. 18:
+  
+ ----------------------------------------------------------------------------
+ Checking file 409.32 and 409.3 for valid national institutions, and pointers
+ that don't match institutions of the Medical Center Division of their
+ related Hospital Location
+  
+ The Medical Center Division for file 44 Clinic CLINIC (NNNN) has a
+ different Institution than the file 409.32 entry for EWL.
+ EWL Clinic INSTITUTION: ANYVAHCS - NNN
+ Clinic INSTITUTION: VAHCS - NNN
+ Updated EWL Clinic to match.
+  
+ -------------------------------------------------------------------------------
+    This message indicated that an EWL entry was created with an institution 
+    taken from the Institution field (#3) in the HOSPITAL LOCATION file
+    (#44), as it is before installation of patch SD*5.3*491.
+  
+    Routine SDM2 has the following code that as the first step identifies an
+    institution in the Institution field (#3) of the Hospital Location file
+    (#44).  Only if that field is NULL the institution value is retrieved from
+    file pointer path to determine the institution from a clinic entry in
+    the Hospital Location file (#44):  DIVISION field (#3.5) -->
+    MEDICAL CENTER DIVISION file (#40.8) --> INSTITUTION FILE POINTER field 
+    (#.07) --> INSTITUTION file (#4) rather than the INSTITUTION field (#3) 
+    in the HOSPITAL LOCATION file (#44).
+   
+ SDM2A    ; OG - MAKE APPOINTMENT - overflow routine due to SACC 10K limit. ; Co
+ mpiled August 28, 2007 16:08:18
+          ;;5.3;Scheduling;**446**;Aug 13 1993;Build 77
+ WL(SC)   ;Wait List Hook/teh patch 263 ;SD/327 passed 'SC'
+          N DA,DIE,DR,SBEG,SCSR,SDDIV,SDINST,SDPAR,SDWLDA,SDWLDFN,SDWLSCL
+          Q:$G(SC)'>0
+          I '$D(^SC(SC)) Q
+          S SDINST=$$GET1^DIQ(44,SC_",",3,"I")  ; get Inst
+          I SDINST="" S SDDIV=$$GET1^DIQ(44,SC_",",3.5,"I") S:SDDIV'="" SDINST=$$
+ GET1^DIQ(40.8,SDDIV_",",.07,"I")
+          I SDINST="" D  Q  ; sd/446
+          .N DIR
+          .D MESS2^SDWL120(SC)
+          .W !,"No Institution or Division is associated with this Clinic."
+          .W !,"Unable to create a Wait List Entry. Abandoning request."
+          .W !!,"A message is being sent to the administrators mail group"
+          .W !,"alerting them to the situation."
+          .S DIR(0)="E" D ^DIR
+          .Q
+  
+    Solution:
+    =========
+  
+    Routine SDM2A will be modified as follows:
+  
+ After:
+ -------
+ SDM2A ; OG - MAKE APPOINTMENT - overflow routine due to SACC 10K limit.  ;
+  Compiled August 28, 2007 16:08:18  ; Compiled June 13, 2008 16:32:51
+  ;;5.3;Scheduling;**446,528**;Aug 13 1993;Build 77
+ WL(SC) ;Wait List Hook/teh patch 263 ;SD/327 passed 'SC'
+  N DA,DIE,DR,SBEG,SCSR,SDDIV,SDINST,SDPAR,SDWLDA,SDWLDFN,SDWLSCL
+  Q:$G(SC)'>0
+  I '$D(^SC(SC)) Q
+  S SDINST="" ; initiated - SD*5.3*528
+  ;S SDINST=$$GET1^DIQ(44,SC_",",3,"I")  ; commented per SD*5.3*528
+  S SDDIV=$$GET1^DIQ(44,SC_",",3.5,"I") S:SDDIV'="" SDINST=$$GET1^DIQ(40.8,SDDIV
+ _",",.07,"I")
+  I SDINST="" D  Q  ; sd/446
+  .N DIR
+  .D MESS2^SDWL120(SC)
+  .W !,"No Institution in Division is associated with this Clinic."
+  .W !,"Unable to create a Wait List Entry. Abandoning request."
+  .W !!,"A message is being sent to the administrators mail group"
+  .W !,"alerting them to the situation."
+  .S DIR(0)="E" D ^DIR
+  .Q
+  
+    This modification will allow for filing entries in the SD WL CLINIC 
+    LOCATION file (#409.32) with institution taken from the 
+    file pointer path to determine the institution from a clinic
+    entry in the Hospital Location file (#44):  DIVISION field (#3.5) -->
+    MEDICAL CENTER DIVISION file (#40.8) --> INSTITUTION FILE POINTER field 
+    (#.07) --> INSTITUTION file (#4) rather than the INSTITUTION field (#3) 
+    in the HOSPITAL LOCATION file (#44)
+    
+ 5)  HD0000000258287   Modify PAIT to identify institution  from a clinic
+                       entry  through the  DIVISION field (#3.5) -->
+    Problem:
+    ========
+  
+      Appointments are occasionally transmitted in PAIT to 
+      Austin with invalid institutions. The institution is primarily 
+      determined by PAIT software as the INSTITUTION field (#3) in 
+      the HOSPITAL LOCATION file (#44). The only option that populates this 
+      field is the Record Tracking option Borrower Set-Up 
+      [RT SYS-INDIVD-BORROWERS] but the primary option used to set up or 
+      modify Hospital Location entries is Set up a Clinic [SDBUILD].  This 
+      option does not populate the INSTITUTION field (#3), but instead 
+      populates the DIVISION pointer field (#3.5) which indirectly determines 
+      the institution by pointing to the MEDICAL CENTER DIVISION file (#40.8) 
+      which in turn has an INSTITUTION FILE POINTER field (#.07) pointing to 
+      the INSTITUTION file (#4).
+  
+     Solution:
+     ========
+  
+      PAIT software will now implement a better design using the
+      following file pointer path to determine the institution from a clinic
+      entry in the Hospital Location file (#44):  DIVISION field (#3.5) -->
+      MEDICAL CENTER DIVISION file (#40.8) --> INSTITUTION FILE POINTER field 
+      (#.07) --> INSTITUTION file (#4) rather than the INSTITUTION field (#3) 
+      in the HOSPITAL LOCATION file (#44).
+        
+      All VistA facilities are responsible for proper configuration of their
+      Medical Center Divisions with institutions, and the INSTITUTION file 
+      (#4) is expected to be configured with correct Station Numbers. 
+      All other data transmissions to Austin Automation Center rely on this
+      path, and this approach will be consistent with the currently
+      adopted functionality by other VistA modules.
+  
+                       Routine: SDRPA08
+  
+  DOCUMENTATION RETRIEVAL:
+  ======================== 
+  The manuals that have changed with this patch are as follows:
+   
+  Patient Appointment Information Transmission
+  --------------------------------------------
+  Release Notes - Patch SD*5.3*333
+  Release Notes - Patch SD*5.3*349
+    
+  The updated manuals will be posted to the VistA Documentation Library
+  (VDL) immediately after the release of the patch.
+  
+ Sites may retrieve the updated documentation directly using FTP 
+  from  the ANONYMOUS.SOFTWARE directory at the following OI Field Offices:
+   
+              Albany:  ftp.fo-albany.med.va.gov
+               Hines:  ftp.fo-hines.med.va.gov
+      Salt Lake City:  ftp.fo-slc.med.va.gov
+   
+ The following documentation will be available: 
+      File Name                 Description
+      ---------                 -----------
+    SD_53_P349_RN.PDF      Revised SD*5.3*349 release notes
+    SD_53_P333_RN.PDF      Revised SD*5.3*333 release notes
+       
+ * Note: Use Binary mode when transferring the .PDF file.  
+         The .PDF files can be read on a PC using the Adobe
+         Acrobat Reader program.
+  
+  INSTALLATION INSTRUCTIONS:
+  ==========================
+  Users can be on the system during the installation of this patch.
+  Installation should take less than 5 minutes. Because some options will
+  be out of order during the install and post-init, it is recommended that
+  it be installed in off-peak hours. 
+  
+  NOTE:
+ ------
+  Verify if patch SD*5.3*491 has been released and installed in your system.
+  If patch SD*5.3*491 was already installed you have to run
+  SD WAIT LIST CLEANUP after installation of this patch to update entries
+  in the SD WL CLINIC LOCATION with correct institutions if they were created
+  automatically due to >120 days rule when creating an appointment.
+       
+  1.  LOAD TRANSPORT GLOBAL
+      ---------------------
+      Choose the PackMan message containing this patch and invoke the
+      INSTALL/CHECK MESSAGE PackMan option.
+   
+  2.  START UP KIDS
+      [XPD MAIN]
+            Edits and Distribution ...
+            Utilities ...
+            Installation ...
+      Select Kernel Installation & Distribution System Option:  INStallation
+                                                           --- 
+      1     Load a Distribution
+      2     Verify Checksums in Transport Global
+      3     Print Transport Global
+      4     Compare Transport Global to Current System
+      5     Backup a Transport Global
+      6     Install Package(s)
+            Restart Install of Package(s)
+            Unload a Distribution
+   
+  3.  From this menu, you may elect to use the following options
+      (when prompted for INSTALL NAME, enter SD*5.3*528):
+   
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch.  It will NOT
+          backup any other changes such as DDs or templates.
+   
+      b.  Compare Transport Global to Current System - This option will
+          allow you to view all changes that will be made when the patch
+          is installed.  It compares all components of the patch
+          (routines, DDs, templates, etc.).
+   
+      c.  Verify Checksums in Transport Global - This option will ensure
+          the integrity of the routines that are in the transport global.
+   
+      d.  Print Transport Global - This option will allow you to view
+          the components of the KIDS build.
+   
+  4.  Use the Install Package(s) option and select the package SD*5.3*528.
+   
+      a.  When prompted "Want KIDS to INHIBIT LOGONS during the
+          install? NO//" respond NO.
+   
+      b.  When prompted "Want to DISABLE Scheduled Options, Menu Options,
+          and Protocols? YES//" respond YES.
+   
+          1) When prompted "Enter options you wish to mark as "Out of
+             Order":" enter the following option:
+   
+             Appointment Management  [SDAM APPT MGT]
+             Make Appointment        [SDM]
+             Cancel Appointment      [SD CANCEL APPOINTMENT]
+             SC Veterans Awaiting Appointments [SCRPW SC VETS AWAITING APPTS]
+             Manual Startup PAIT Transmission  [SD-PAIT MANUAL TRANSMISSION]
+             Taskman PAIT Transmission   [SD-PAIT TASKED TRANSMISSION]
+             SD-PAIT Last Run Repair [SD-PAIT REPAIR]
+                    
+          2) When prompted "Enter protocols you wish to mark as "Out of
+             Order":" enter 'YES'.
+  
+             Enter the following protocols to be disabled:
+  
+             SD-PAIT-EVENT       PAIT TRANSMISSION EVENT  
+             SD-PAIT-SUBS       SC PAIT SUBSCRIBERS
+  
+ 5. If patch SD*5.3*491 has been already installed you need to run
+    SD WAIT LIST CLEANUP, see NOTE above.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.3;Scheduling;**[Patch List]**;AUG 13, 1993;Build 4
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: SCRPV1A
+    Before: B43993883   After: B44528362  **177,528**
+Routine Name: SDM2A
+    Before: B17556910   After: B17573653  **446,528**
+Routine Name: SDRPA07
+    Before: B59962530   After: B60226840  **290,333,349,376,446,528**
+Routine Name: SDRPA08
+    Before: B43490788   After: B40122267  **290,333,349,376,528**
+Routine Name: SDWLQSC1
+    Before: B18866005   After: B19655747  **446,528**
+ 
+Routine list of preceding patches: 177, 446
+
+=============================================================================
+User Information:
+Entered By  : WOLF,ED                       Date Entered  : NOV 19, 2007
+Completed By: SESSLER,APRIL                 Date Completed: DEC 04, 2008
+Released By : HEUER,CINDY                   Date Released : DEC 08, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

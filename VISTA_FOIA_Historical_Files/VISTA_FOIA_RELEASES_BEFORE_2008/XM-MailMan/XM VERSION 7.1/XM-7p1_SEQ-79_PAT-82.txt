@@ -1,0 +1,276 @@
+
+=============================================================================
+Run Date: AUG 27, 1999                     Designation: XM*7.1*82
+Package : XM - MAILMAN                         Priority: Mandatory
+Version : 7.1        SEQ #79                    Status: Released
+=============================================================================
+
+Associated patches: (v)XM*7.1*50   <<= must be installed BEFORE `XM*7.1*82'
+
+Subject: Fix MAIL GROUP File DD
+
+Category: 
+  - Informational
+
+Description: 
+============
+
+    *** It is VERY IMPORTANT that you READ THIS INFORMATIONAL PATCH. ***
+  
+ MailMan patch XM*7.1*50 may have corrupted the data dictionary for
+ the MAIL GROUP file.  If the DD is corrupted, we must fix it.
+ If you loaded the build dated 7/20 or 8/24, you are probably fine.
+ If you loaded the build dated 7/28, your DD is probably corrupted.
+  
+ Test Sites:  Indianapolis, IN
+  
+ First, let's check your data dictionary to see if it is corrupted.
+ Do the following global listing.  If you see two "AB" xrefs, as below,
+ then your data dictionary is corrupted, and this patch is for you.
+ If you see a "B" xref and an "AB" xref, then you can ignore this patch.
+  
+ Global ^DD(3.81,.01
+         DD(3.81,.01
+ ^DD(3.81,.01,0) = MEMBER^M*P200'^VA(200,^0;1^S DIC("S")="I 
+ $L($P(^(0),U,3)),$D(^XMB(3.7,+Y,0))" D ^DIC K DIC S DIC=DIE,X=+Y K:Y<0 X
+ ^DD(3.81,.01,.1) = Local Member
+ ^DD(3.81,.01,1,0) = ^.1
+ ^DD(3.81,.01,1,1,0) = 3.8^AB       <=== This should be a B xref
+ ^DD(3.81,.01,1,1,1) = S ^XMB(3.8,"AB",$E(X,1,30),DA(1),DA)=""
+ ^DD(3.81,.01,1,1,2) = K ^XMB(3.8,"AB",$E(X,1,30),DA(1),DA)
+ ^DD(3.81,.01,1,1,"DT") = 2990727
+ ^DD(3.81,.01,1,2,0) = 3.8^AB
+ ^DD(3.81,.01,1,2,1) = S ^XMB(3.8,"AB",$E(X,1,30),DA(1),DA)=""
+ ^DD(3.81,.01,1,2,2) = K ^XMB(3.8,"AB",$E(X,1,30),DA(1),DA)
+ ^DD(3.81,.01,3) = Enter a local user who should receive mail addressed to 
+ this group.
+ ^DD(3.81,.01,12) = User must have an access code and a mailbox.
+ ^DD(3.81,.01,12.1) = S DIC("S")="I $L($P(^(0),U,3)),$D(^XMB(3.7,+Y,0))"
+ ^DD(3.81,.01,21,0) = ^^2^2^2990308^^^^
+ ^DD(3.81,.01,21,1,0) = The local user who is a member of this mail group.
+ ^DD(3.81,.01,21,2,0) = The user must have an access code and a mailbox.
+ ^DD(3.81,.01,"DT") = 2990727
+  
+ You should only be here if you saw two "AB" xrefs, as above.
+  
+ We're going to manually correct the problem, because some of you are 
+ running FM 22, and some are running FM 21, and we want to make sure
+ it's done right.
+  
+ What we're going to do is delete all the xrefs on the .01 field of
+ the MEMBER multiple of the MAIL GROUP file.  Then we're going to create
+ the "B" xref for that field, and then we're going to create the whole-file
+ "AB" xref for that field.
+  
+ You can do this while users are on the system.
+  
+ Enter FileMan.
+  
+ >D Q^DI
+  ------
+  
+ ========================================================================
+  
+ Section I.  This is only for sites running FileMan version 22.
+  
+ VA FileMan 22.0
+  
+ If you are running FileMan 21.0, then exit FileMan and
+ skip ahead to section II.
+  
+ Select OPTION: UTILITY FUNCTIONS
+                ---
+ Select UTILITY OPTION: KEY DEFINITION  
+                        ---
+ MODIFY WHAT FILE: 3.8  MAIL GROUP         (xxxx entries)
+                   ---
+ Select Subfile: 2  MEMBER  (Subfile #3.81)
+                ---
+ Keys defined on subfile #3.81:
+  
+   A  PRIMARY KEY    Uniqueness Index: B
+          Field(s):  1) MEMBER (#.01)
+  
+ Choose V (Verify)/E (Edit)/D (Delete)/C (Create): DELETE
+                                                   ---
+ Which Key do you wish to delete? A// <press return>
+                                      --------------
+ Are you sure you want to delete the Key? No// YES
+                                               ---
+   Key 'A' of Subfile #3.81 deleted.
+  
+ Do you want to delete the 'B' Uniqueness Index (#2) on Subfile #3.81 
+ previously
+ used by Key 'A' of Subfile #3.81? YES
+                                   ---
+  
+   Index definition deleted.
+   Removing old index ...  DONE!
+  
+ Press RETURN to continue: <press return>
+                           --------------
+ There are no Keys defined on subfile #3.81.
+ Want to create a new Key for this file? No// <press return>  NO
+                                              --------------
+ Select UTILITY OPTION: <press return>
+                        --------------
+ Select OPTION: <press return>
+                --------------
+  
+ Now continue to Section II.
+  
+ ======================================================================
+ Section II.  This is for everyone, whether you're running FM v 21 or 22.
+  
+ From the programmer prompt, kill the following node.  You've got to do 
+ this, otherwise FM won't let you recreate the "B" xref.
+  
+ >K ^DD(3.81,0,"IX","B",3.81,.01)
+  -------------------------------
+  
+ Now, enter FileMan.
+  
+ >D Q^DI
+  ------
+  
+ VA FileMan 21.0 or 22.0
+  
+  
+ Select OPTION: UTILITY FUNCTIONS
+                ----
+ Select UTILITY OPTION: CROSS-REFERENCE A FIELD
+                        ---
+  
+ (FM v22 will ask you if you want a new or traditional xref.
+ Select traditional.)
+  
+ MODIFY WHAT FILE: 3.8  MAIL GROUP         (xxxx entries)
+                   ---
+ Select FIELD: 2  MEMBER    (multiple)
+              ---
+ Select MEMBER SUB-FIELD: .01  MEMBER
+                          ---
+  
+ CURRENT CROSS-REFERENCES:
+         1     REGULAR 'AB' INDEX OF FILE
+         2     REGULAR 'AB' INDEX OF FILE
+  
+ Choose E (Edit)/D (Delete)/C (Create): DELETE
+                                        -
+ WHICH NUMBER: 1
+              ---
+ Are you sure that you want to delete the CROSS-REFERENCE ? No// Y  (Yes)
+                                                                ---
+   ...OK
+  
+  
+ Select UTILITY OPTION: CROSS-REFERENCE A FIELD
+                        ---
+ MODIFY WHAT FILE: MAIL GROUP// <press return>
+                                --------------
+ Select FIELD: 2  MEMBER    (multiple)
+              ---
+ Select MEMBER SUB-FIELD: .01  MEMBER
+                          ---
+  
+ CURRENT CROSS-REFERENCE IS REGULAR 'AB' INDEX OF FILE
+  
+ Choose E (Edit)/D (Delete)/C (Create): DELETE
+                                        -
+ Are you sure that you want to delete the CROSS-REFERENCE ? No// Y  (Yes)
+                                                                ---
+   ...OK
+  
+  
+ Select UTILITY OPTION: CROSS-REFERENCE A FIELD
+                        ---
+ MODIFY WHAT FILE: MAIL GROUP// <press return>
+                                --------------
+ Select FIELD: 2  MEMBER    (multiple)
+              ---
+ Select MEMBER SUB-FIELD: .01  MEMBER
+                          ---
+  
+ NO CURRENT CROSS-REFERENCE
+ WANT TO CREATE A NEW CROSS-REFERENCE FOR THIS FIELD? No// Y  (Yes)
+                                                          ---
+ CROSS-REFERENCE NUMBER: 1// <press return>
+                             --------------
+ Select TYPE OF INDEXING: REGULAR//   <press return>
+                                      --------------
+ WANT TO CROSS-REFERENCE WHOLE FILE BY THIS FIELD? Yes// N  (No)
+                                                        ---
+ WANT CROSS-REFERENCE TO BE USED FOR LOOKUP AS WELL AS FOR SORTING?
+  Yes// <press return>  (Yes)
+        --------------
+ INDEX: B// <press return>              <=== Must be B!
+            --------------
+ ...
+  
+ NO-DELETION MESSAGE: <press return>
+                      --------------
+ DESCRIPTION:
+   No existing text
+   Edit? NO// <press return>
+              --------------
+  
+ ...SORRY, LET ME PUT YOU ON 'HOLD' FOR A SECOND...
+  
+  
+ Select UTILITY OPTION: CROSS-REFERENCE A FIELD
+                        ---
+ MODIFY WHAT FILE: MAIL GROUP// <press return>
+                                --------------
+ Select FIELD: 2  MEMBER    (multiple)
+              ---
+ Select MEMBER SUB-FIELD: .01  MEMBER
+                          ---
+  
+ CURRENT CROSS-REFERENCE IS REGULAR 'B' INDEX OF MEMBER SUB-FIELD
+  
+ Choose E (Edit)/D (Delete)/C (Create): CREATE
+                                        -
+ WANT TO CREATE A NEW CROSS-REFERENCE FOR THIS FIELD? No// Y  (Yes)
+                                                          ---
+ CROSS-REFERENCE NUMBER: 2// <press return>
+                             --------------
+ Select TYPE OF INDEXING: REGULAR//   <press return>
+                                      --------------
+ WANT TO CROSS-REFERENCE WHOLE FILE BY THIS FIELD? Yes// <press return>  
+ (Yes)
+                                                         --------------
+ WANT CROSS-REFERENCE TO BE USED FOR LOOKUP AS WELL AS FOR SORTING? Yes// N
+                                                                         ---
+   (No)
+ INDEX: AB// <press return>              <=== Must be AB!
+             --------------
+ ...
+  
+ NO-DELETION MESSAGE: <press return>
+                      --------------
+ DESCRIPTION:
+   No existing text
+   Edit? NO// <press return>
+              --------------
+  
+ ...EXCUSE ME, LET ME PUT YOU ON 'HOLD' FOR A SECOND...
+  
+  
+ Select UTILITY OPTION: <press return>
+                        --------------
+
+Routine Information:
+====================
+
+=============================================================================
+User Information:                               
+Entered By  : BEUSCHEL,GARY                  Date Entered : AUG 23, 1999
+Completed By: MAUNSELL,MICHAL L            Date Completed: AUG 26, 1999
+Released By : MROWCZYNSKI,EDWARD            Date Released : AUG 27, 1999
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

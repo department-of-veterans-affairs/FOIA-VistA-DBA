@@ -1,0 +1,304 @@
+$TXT Created by HOLLOWAY,THOMAS at MNTVBB.FO-WASH.MED.VA.GOV  (KIDS) on Tuesday, 07/31/07 at 15:33
+=============================================================================
+Run Date: APR 21, 2008                     Designation: PRC*5.1*110
+Package : PRC - IFCAP                         Priority: Mandatory
+Version : 5.1        SEQ #99                    Status: Released
+                  Compliance Date: MAY 22, 2008
+=============================================================================
+
+Associated patches: (v)PRC*5.1*83  <<= must be installed BEFORE `PRC*5.1*110'
+                    (v)PRC*5.1*101 <<= must be installed BEFORE `PRC*5.1*110'
+
+Subject: IFCAP MAINTENANCE PATCH - SPRING 2008 - 3 ITEMS
+
+Category: 
+  - Routine
+  - Input Template
+
+Description:
+============
+
+ This patch will address three unrelated maintenance items.
+  
+ The first issue is a <FRAMESTACK> error in routine PRCPUSEL which can occur
+ under rare circumstances.
+  
+ The second item is a DynaMed issue related to Repetitive Item Lists entries
+ not deleting properly.  This only affects DynaMed.
+   
+ The third item corrects a mail address issue that was interfering with the
+ 'Edit an Incomplete Requisition' option.
+   
+   
+ ASSOCIATED REMEDY TICKETS: 
+ =========================
+ 1.  HD183241  -  $ZE= <FRAMESTACK>V+21^PRCPUSEL
+     HD184019  -  <FRAMESTACK>V+21^PRCPUSEL
+ 2.  HD111243  -  DynaMed/IFCAP Interface Issue
+ 3.  HD133490  -  Source Code for Requisition is Undefined
+     HD142046  -  Edit an incomplete requisition menu option error
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ BUTLER, PA
+ BAY PINES, FL
+ UPSTATE NEW YORK HCS   
+  
+ REMEDY OVERVIEW:
+ ================
+  
+ 1.  HD183241  -  $ZE= <FRAMESTACK>V+21^PRCPUSEL
+  
+ Problem:
+ -----------
+ A few sites were occasionally getting the error <FRAMESTACK>V+21^PRCPUSEL.
+ The PRCPUSEL routine is called by many of the IFCAP options to allow the user
+ to select Station Number and Inventory Point.  On rare occasions a required
+ variable would not be set properly which caused the code to go into an 
+ "infinite loop" which resulted in the <FRAMESTACK> error.
+  
+ Resolution:
+ ------------
+ The code has been rewritten to detect the missing data element and execute
+ the correct code to fill it in properly before trying to continue.
+   
+ Item affected:  routine PRCPUSEL
+  
+  
+ 2.  HD111243  -  DynaMed/IFCAP Interface Issue
+  
+ Problem:
+ -----------
+ A problem occurs when an IFCAP Control Point User executes the 
+ "Generate Requests From Repetitive Item List Entry" [PRCSRI GENERATE] for a
+ DynaMed Repetitive Item List (RIL).  If the user prints to a device set up
+ for "forced queuing" within this process, the DynaMed RIL entry does not
+ delete from the REPETITIVE ITEM LIST file [#410.3] as it should.
+ Note:  this issue occurs only at sites using the DynaMed application.
+  
+ Resolution:
+ -----------
+ A review of the PRCSRIG1 routine showed that the lines of code involved in
+ the DynaMed activity needed to be moved to a spot prior to the queuing
+ command.  This will allow the DynaMed-specific code to execute before
+ control is transferred to the print function.
+   
+ Items affected:  routine PRCSRIG1
+  
+  
+ 3.  HD133490  -  Source Code for Requisition is Undefined
+   
+ Problem:
+ -----------
+ When using the 'Edit an Incomplete Requisition' option [PRCHPM RQ EDIT],
+ the user was unable to get past the ESTIMATED ORDER prompt.  They received
+ an error message indicating that "Source Code for Requisition is Undefined".
+ The message is misleading and was meant to trap a different error than the
+ one that is actually occurring.  
+ The underlying problem is that the Austin Automation Center changed their
+ mailing address from FMS to VA FSC but the IFCAP application is coded to
+ look for an address starting with FMS.  Those sites who edited the mailing
+ address in the ADMIN. ACTIVITY SITE PARAMETER file [#411] to contain the
+ new, correct address unfortunately ended up with an error and an inability
+ to use the 'Edit an Incomplete Requisition' option.
+   
+ Resolution:
+ -----------
+ The temporary resolution used by many sites was to edit the address back
+ to FMS.  This patch corrects the code so that it looks for the appropriate
+ address starting with VA FSC.  Since the application code will now be
+ correct, any sites who changed back to FMS will now have to re-correct the
+ address, or add a VA FSC entry.  There are steps in the patch installation 
+ instructions which detail this process.  The patch will check the MAIL INVOICE
+ LOCATION sub-file [#2] in the ADMIN. ACTIVITY SITE PARAMETER file [#411] for 
+ any old FMS addresses and send a MailMan message to the patch installer and 
+ to various purchasing administrators alerting them to any possible 
+ discrepancies in the MAIL INVOICE LOCATIONs [#.01].
+ 
+ As other applications may still be expecting FMS addresses, it is recommended
+ to add new VA FSC entries rather than deleting or modifying older FMS 
+ addresses.
+   
+ Items affected:
+   MAIL INVOICE LOCATION field [#.01] of the ADMIN. ACTIVITY SITE PARAMETER 
+   file [#411].
+   PRCHNREQ Input Template of the PROCUREMENT & ACCOUNTING TRANSACTIONS file
+   [#442].
+   
+   
+   
+ ================INSTALLATION INSTRUCTIONS =================
+    
+   This patch can be installed with users on the system, however one routine
+   in the patch potentially affects hundreds of IFCAP options so all IFCAP
+   users should be off the system during installation.  After-hours
+   installation is recommended.
+   
+   NOTE:
+ 
+   After installation, a MailMan message will be sent to the patch installer
+   and to various purchasing administrators alerting them to any addresses
+   that may need to be reviewed.  Please note that it is recommended to add 
+   new VA FSC addresses instead of deleting or modifying FMS addresses, as
+   some applications may still expect FMS addresses.  An example message is 
+   included at the end of the installation instruction section.   
+ 
+   Install Time - less than 20 minutes.
+ 
+   Post-install routine PRC51110 will be deleted automatically.
+   
+   1.   VERIFY THE 'VA FSC' ADDRESS IN THE ADMIN. ACTIVITY SITE PARAMETER FILE
+        --------------------------------------------------------------------
+        You may already have this address updated but you must verify it
+        in order not to lose any transmissions.  Any Station/Substation
+        for which invoices will be transmitted must have an entry for VA FSC
+        in its MAIL INVOICE LOCATION.  If a VA FSC entry does not exist, one 
+        should be added to the MAIL INVOICE LOCATION field.  To check the
+        existing entries, use FileMan to print the MAIL INVOICE LOCATION field
+        for all STATION/SUBSTATION CODEs.  Example:
+   
+    Select OPTION: PRINT FILE ENTRIES  
+   
+    OUTPUT FROM WHAT FILE: ADMIN. ACTIVITY SITE PARAMETER// 
+          
+    SORT BY: STATION/SUBSTATION CODE// 
+    START WITH STATION/SUBSTATION CODE: FIRST// 
+    FIRST PRINT FIELD: MAIL INVOICE LOCATION    (multiple)
+      FIRST PRINT MAIL INVOICE LOCATION SUB-FIELD: .01  MAIL INVOICE LOCATION
+      THEN PRINT MAIL INVOICE LOCATION SUB-FIELD: 
+    THEN PRINT FIELD: 
+    Heading (S/C): ADMIN. ACTIVITY SITE PARAMETER LIST  Replace 
+    DEVICE:   TCP    Right Margin: 80// 
+   
+        Use the resulting report to check for compliance with the address
+        requirement.  If there are Stations/Substations which do not have the
+        VA FSC address, you can add/edit the MAIL INVOICE LOCATION using the
+        Site Parameters [PRCH SITE EDIT] option which can be found on the
+        IFCAP Application Coordinator Menu [PRCHUSER COORDINATOR].
+        Once this is done you are ready to continue with the patch installation.
+           
+   2.   LOAD TRANSPORT GLOBAL
+        ---------------------
+        Choose the PackMan message containing this patch and invoke the
+        INSTALL/CHECK MESSAGE PackMan option.
+      
+   3.   START UP KIDS
+        -------------
+        Start up the Kernel Installation and Distribution System Menu
+        [XPD MAIN]:
+      
+           Edits and Distribution ...
+           Utilities ...
+           Installation ...
+   
+    
+   4.   Select Installation Option: 
+        ---------------------------
+   
+        Select Kernel Installation & Distribution System Option: INstallation
+   
+   
+           1      Load a Distribution
+           2      Verify Checksums in Transport Global
+           3      Print Transport Global
+           4      Compare Transport Global to Current System
+           5      Backup a Transport Global
+           6      Install Package(s)
+                  Restart Install of Package(s)
+                  Unload a Distribution
+   
+        NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+               NAME, enter PRC*5.1*110):
+      
+        a.  Backup a Transport Global - This option will create a backup
+            message of any routines exported with this patch. It will not
+            backup any other changes such as DD's or templates.
+        b.  Compare Transport Global to Current System - This option will
+            allow you to view all changes that will be made when this patch
+            is installed.  It compares all components of this patch
+            (routines, DD's, templates, etc.).
+        c.  Verify Checksums in Transport Global - This option will allow
+            you to ensure the integrity of the routines that are in the
+            transport global.
+      
+   5.   Select Installation Option: Install Package(s)
+                                    ------------------
+        **This is the step to start the installation of this KIDS patch:
+      
+        a. Choose the Install Package(s) option to start the patch install.
+    
+        b. When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+           YES//' answer NO
+    
+        c. When prompted 'Want to DISABLE Scheduled Options, Menu Options,
+           and Protocols? YES//' answer NO
+       
+        d. Although you are not disabling any options, be sure that no one
+           is using IFCAP during the installation time.
+ 
+ Example Mail Message
+ --------------------
+ 
+ Subj: IMPORTANT BULLETIN FROM IFCAP PATCH PRC*5.1*110  [#XXXXXX] XX/XX/XX@XX:XX
+ 27 lines
+ From: XXXXX,XXXXX  In 'IN' basket.   Page 1
+ -------------------------------------------------------------------------------
+ This message has been sent by patch PRC*5.1*110 at the completion of
+ the verification of the Mailing Address change for VA FSC.
+ The purpose of this message is to report any remaining addresses which
+ might need to be edited and to report any Stations/Substations which
+ might need the VA FSC address added.  You can use the 'Site Parameters'
+ option to edit the MAIL INVOICE LOCATION entries if necessary.
+  
+ As reported in the patch description, the Corporate Franchise Data Center
+ in Austin has changed the preferred address name for IFCAP communications
+ from FMS to VA FSC.  This report lists any stations in your system that
+ do not have a MAIL INVOICE LOCATION starting with VA FSC.  The necessity
+ for the address only applies to Stations/Substations that will be using
+ requisitions.  You will need to make a local determination as to which
+ stations this applies to at your facility.  Additionally, the report
+ lists addresses which contain the old FMS abbreviation.  These could
+ be considered for editing or deletion.  Again, this should be a local
+ determination that cannot be automated by this patch.
+   
+ The following Stations/Substations do not have a VA FSC address entry
+ in the ADMIN. ACTIVITY SITE PARAMETER file.
+   
+ The following Stations/Substations have an FMS address which may need
+ to be edited.
+ XXX    FMS VA X-XXX
+ XXX    FMS VAX-XXX
+ XXX    FMS
+ XXX    FMS-VAX-XXX
+ 
+ 
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.1;IFCAP;**[Patch List]**;Oct 20, 2000;Build 7
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PRC51110
+    Before:       n/a   After: B25809350  **110**
+Routine Name: PRCPUSEL
+    Before: B26828500   After: B26255042  **1,83,110**
+Routine Name: PRCSRIG1
+    Before: B18163336   After: B18160891  **13,81,101,110**
+ 
+Routine list of preceding patches: 83, 101
+
+=============================================================================
+User Information:
+Entered By  : HOLLOWAY,THOMAS J             Date Entered  : MAY 08, 2007
+Completed By: CHANDARANA,RISHAN             Date Completed: APR 17, 2008
+Released By : NELSON,VICKI M                Date Released : APR 21, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

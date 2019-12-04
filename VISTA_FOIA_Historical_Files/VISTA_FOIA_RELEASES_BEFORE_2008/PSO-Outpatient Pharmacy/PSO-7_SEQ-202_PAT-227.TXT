@@ -1,0 +1,296 @@
+$TXT Created by ALSAHAR,SAMI at CTST.FO-BIRM.MED.VA.GOV  (KIDS) on Thursday, 01/05/06 at 15:09
+=============================================================================
+Run Date: FEB 06, 2006                     Designation: PSO*7*227
+Package : PSO - OUTPATIENT PHARMACY           Priority: Mandatory
+Version : 7       SEQ #202                      Status: Released
+                  Compliance Date: MAR 09, 2006
+=============================================================================
+
+Associated patches: (v)PSO*7*160   <<= must be installed BEFORE `PSO*7*227'
+                    (v)PSO*7*163   <<= must be installed BEFORE `PSO*7*227'
+                    (v)PSO*7*182   <<= must be installed BEFORE `PSO*7*227'
+
+Subject: TRANSITIONAL PHARMACY BENEFIT INACTIVATION  
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Other
+
+Description:
+============
+
+ The Transitional Pharmacy Benefit (TPB) project that was providing 
+ functionality to furnish medications prescribed by Non-VA Physicians 
+ needs to be shut down as the period for its eligibility expired on 
+ October 22, 2004.  Inactivation of the TPB functionality will be done in 2
+ steps, a manual step and an automatic step.
+  
+ Step I-To make sure that the Health Level Seven (HL7) data transmission  
+       of TPB eligible patients to the Austin Automation Center (AAC) is 
+       shutdown.
+ Step II-The installation of this patch will automatically inactivate all
+      the TPB functionality.
+  
+ ***********************************************************************
+ ***                    Step I - Manual Step                         ***
+ ***********************************************************************
+ The data transmission of a TPB eligible patient from the TPB ELIGIBILITY
+ file (#52.91) is performed by the PSOTPBAAC HL7 logical link.
+  
+   a. To check whether this link is enabled or not, use the HL7 Main Menu 
+      [HL MAIN MENU] option and select the Systems Link Monitor 
+      [HL MESSAGE MONITOR] option, you should see the following screen:
+  
+                 SYSTEM LINK MONITOR for BIRMINGHAM, AL. (Test System)
+                 MESSAGES  MESSAGES   MESSAGES  MESSAGES  DEVICE
+      NODE       RECEIVED  PROCESSED  TO SEND   SENT      TYPE     STATE
+  
+      LL2VISN    51        51         85        51         NC      Open
+      NPTF       0         0          163       0          N       Halting
+      PSBCOTS1                        2397                         Shutdown
+      PSD HLLP                        38                   N       Halting
+      PSO DISP   1380      1380       10130     1380       NC      Openfail
+      PSO LLP1                        238                  N       Halting
+      PSOTPBAA                        28                           Enabled
+      PSU SEND                        13
+      TEST       21        21         21        21         SS      Idle
+  
+      Incoming filers running => Zero     TaskMan running
+      Outgoing filers running => Zero     ***LINK MANAGER NOT RUNNING!!!***
+                                              Monitor OVERDUE
+     Select a Command:
+  
+   b. If the PSOTPBAAC logical link is enabled then you need to shut down
+      the link by performing the following steps:
+      - Use the HL7 Main Menu Option [HL MAIN MENU] option
+      - Select the Filer and Link Management Options
+         [HL MENU FILER LINK MGT] option
+      - Select the 'Start/Stop Links' option [HL START] option
+      - At the 'Select HL LOGICAL LINK NODE: ' prompt, type PSOTPBAAC and
+        press enter. The system will prompt 'Okay to shut down this job?',
+        answer 'YES' and press enter.
+        The system will display the following message:
+        'The job for the PSOTPBAAC Lower Level Protocol will be shut down.'
+      - To ensure the link is shut down use the Systems Link Monitor [HL
+        MESSAGE MONITOR] option and make sure the status is 'Shutdown'
+        (step a. above).
+ ************************************************************************* 
+ *** Step II - Automated Step                                          ***
+ *************************************************************************
+ 1. This patch disables the following menu options by placing them out of
+    order.
+       - TPB HL7 Data Extract/Transmission [PSO TPB HL7 EXTRACT]
+       - TPB Institution Letter Enter/Edit [PSO TPB INSTITUTION LETTERS]
+       - Report TPB Patients Letters Printed/NOT Printed
+          [PSO TPB LETTERS PRINTED REPORT]
+       - Transitional Pharmacy Benefit Patient Enter/Edit
+          [PSO TPB PATIENT ENTER/EDIT]
+       - TPB Patient Report [PSO TPB PATIENT REPORT]
+       - Report of Patients with TPB and Non-TPB Rx's
+          [PSO TPB PATIENT RX REPORT]
+       - Print TPB Patient Letter(s) [PSO TPB PRINT LETTERS]
+       - TPB Rx (Prescription) Entry [PSO TPB RX ENTRY]
+  
+ 2. Inactivation of all active TPB patients
+    This patch will scan all the entries in the TPB ELIGIBILITY file
+    (#52.91) and will populate the INACTIVATION OF BENEFIT DATE field (#2)
+    of the active patients with today's date and the INACTIVATION REASON
+    CODE field (#3) with the code "10-PROGRAM ENDED".
+  
+ 3. When a prescription is discontinued, routine PSOTPCAN is called to
+    check if that's the last active TPB prescription for an Active TPB
+    patient, and if so, the patient TPB patient is inactivated from TPB
+    ELIGIBILITY file (#52.91). Based on the fact that there will be no
+    active TPB patient upon installing of this patch, routine PSOTPCAN is
+    modified to terminate without checking for last active TPB
+    prescription.
+  
+ 4. Prior to this patch, Outpatient Pharmacy software was notified by the
+    Scheduling software of each patient appointment at a VA clinic. If the
+    patient is eligible for the TPB benefit, the appointment was at a
+    clinic defined as primary care for the TPB program (determined through
+    a set of clinic stop codes) AND the patient does not have any "active"
+    TPB prescription(s) on file, this patient will have the TPB eligibility
+    automatically inactivated (introduced by PSO*7*160). As all active TPB
+    patient's will be inactivated (item #2 above), there is no need for
+    this functionality to continue. This patch will stop this functionality
+    by removing the PSO TPB SD SUB protocol entry from the SDAM APPOINTMENT
+    EVENTS Scheduling protocol.
+  
+ 5. This patch will set the AUTOSTART field (#4.5) of the HL LOGICAL LINK
+    file (#870) of the PSOTPBAAC Logical Link to "Disabled", to prevent
+    restarting of the PSOTPBAAC logical link by TaskMan after a system
+    reboot.
+  
+ 6. The TPB data extraction job is queued to run daily and transmit
+    data to the AAC every Sunday. This patch will remove the TPB HL7 Data
+    Extract/Transmission [PSO TPB HL7 EXTRACT] option from the Task
+    Manager.
+  
+ Note:
+      - The post install routine (PSO227PO) included in this patch
+        addresses all items in step II except #3.
+      - Most of the TPB routines that are transported in this patch are 
+        modified to "QUIT" if they are ever called by any other routine.
+  
+  
+ Associated Remedy Ticket(s):
+ ============================
+ N/A
+  
+  
+ Test Sites:
+ ===========
+ OKLAHOMA CITY, OK
+ PUGET SOUND HCS, WA
+ SAN FRANCISCO, CA
+ TUSCALOOSA, AL
+ GREATER LOS ANGELES HCS, CA
+  
+  
+ Routine Summary:
+ ================
+ The second line now reads as follows:
+  
+    <TAB>;;7.0;OUTPATIENT PHARMACY;**[patch list]**;DEC 1997
+                 CHECK^XTSUMBLD results:
+  
+  
+ Routine    Before Patch   After Patch   Patch List
+ ========================================================================
+ PSO227PO   N/A            2728128        227
+ PSOHELP1   19640487       19745306       23,36,88,146,227
+ PSOTPCAN   19317386       19372988       146,153,163,227
+ PSOTPCEE   4529963        4583192        145,153,227
+ PSOTPCL    8927095        9000534        145,227
+ PSOTPCLP   14371439       14444878       145,227
+ PSOTPCLR   4632895        4692196        145,227
+ PSOTPCRP   28501238       28574677       145,153,227
+ PSOTPHL1   8515472        8571074        146,153,227
+ PSOTPINA   2992949        3045004        160,227
+ PSOTPRP1   7084493        7127120        160,227
+ PSOTPRX1   21968034       22041473       146,182,227
+  
+ DATA DICTIONARY SUMMARY
+ ========================
+ This patch modifies the following field:
+  
+   Field: INACTIVATION REASON CODE (#3) of the TPB ELIGIBILITY file
+          (#52.91) to add new code "10-PROGRAM ENDED" to the existing set
+          of codes.
+                                                             
+  Documentation Retrieval:
+  ========================
+  Sites will retrieve VistA software and documentation from the following
+  FTP addresses. The preferred method is to FTP the files from
+  download.vista.med.va.gov. This transmits the files from the first
+  available FTP server. Sites may also elect to retrieve documentation
+  directly from a specific server as follows:
+  
+  OI FIELD OFFICE  FTP ADDRESS               DIRECTORY
+  
+  Albany           ftp.fo-albany.med.va.gov  anonymous.software
+  Hines            ftp.fo-hines.med.va.gov   anonymous.software
+  Salt Lake City   ftp.fo-slc.med.va.gov     anonymous.software
+  
+  FILE NAME                     DESCRIPTION/TITLE
+  PSO_7_TM_R0206.pdf            Outpatient Pharmacy V. 7.0 Technical
+                                  Manual / Security Guide
+  PSO_7_UM_R0206.pdf            Outpatient Pharmacy V. 7.0 User Manual
+  
+  PSO_7_P227_TM_CP.pdf          Outpatient Pharmacy V. 7.0 Technical Manual
+                                  Change Pages
+  PSO_7_P227_UM_CP.pdf          Outpatient Pharmacy V. 7.0 User Manual
+                                  Change Pages
+  
+ Once released, documentation can also be retrieved from the VistA
+ Documentation Library (VDL) on the Internet at the following address,
+ http://www.va.gov/vdl.
+  
+  
+ Installation Instructions:
+ ==========================
+ This patch should be installed when there are no Outpatient Pharmacy users
+ on the system. Installation of this patch should take no longer than 5
+ minutes.
+  
+   1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+  
+   2. Review your mapped set. If the routines are mapped, they should be
+      removed from the mapped set at this time.
+  
+   3. From the Kernel Installation & Distribution System menu, select the
+      Installation menu.
+  
+   4. From this menu, you may select to use the following options
+      (when prompted for INSTALL NAME, enter PSO*7.0*227):
+  
+     a. Backup a Transport Global - this option will create a backup
+        message of any routines exported with the patch. It will NOT
+        backup any other changes such as DDs or templates.
+     b. Compare Transport Global to Current System - this option will
+        allow you to view all changes that will be made when the patch
+        is installed. It compares all components of the patch (routines,
+        DDs, templates, etc.).
+     c. Verify Checksums in Transport Global - this option will ensure
+        the integrity of the routines that are in the transport global.
+  
+   5. Use the Install Package(s) option and select the package PSO*7.0*227.
+  
+   6. When prompted "Want KIDS to INHIBIT LOGONs during the install? YES//"
+      respond NO.
+  
+   7. When prompted "Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols? YES//" respond NO.
+  
+   8. If any routines were unmapped as part of step 2, they should be
+      returned to the mapped set once the installation has run to
+      completion.
+  
+   9. Use the HL7 Main Menu [HL MAIN MENU] option and select the Systems 
+      Link Monitor [HL MESSAGE MONITOR] option. If the PSOTPBAAC logical
+      link is enabled, shut it down as instructed in the patch description.
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PSO227PO
+    Before:            After:  B4735601  **227**
+Routine Name: PSOHELP1
+    Before: B45352547  After: B45597408  **23,36,88,146,227**
+Routine Name: PSOTPCAN
+    Before: B56276593  After: B56784820  **146,153,163,227**
+Routine Name: PSOTPCEE
+    Before:  B7754641  After:  B7950417  **145,153,227**
+Routine Name: PSOTPCL
+    Before: B20966442  After: B21264394  **145,227**
+Routine Name: PSOTPCLP
+    Before: B61856325  After: B62400881  **145,227**
+Routine Name: PSOTPCLR
+    Before: B10542060  After: B10932938  **145,227**
+Routine Name: PSOTPCRP
+    Before: B52762483  After: B53305181  **145,153,227**
+Routine Name: PSOTPHL1
+    Before: B71593697  After: B72097367  **146,153,227**
+Routine Name: PSOTPINA
+    Before:  B6285160  After:  B6448418  **160,227**
+Routine Name: PSOTPRP1
+    Before: B21571709  After: B22123133  **160,227**
+Routine Name: PSOTPRX1
+    Before: B51067568  After: B51610518  **146,182,227**
+
+=============================================================================
+User Information:
+Entered By  : AL-SAHAR,SAMI                 Date Entered  : NOV 09, 2005
+Completed By: GREER,MIKE                    Date Completed: FEB 02, 2006
+Released By : BARRON,LUANNE                 Date Released : FEB 06, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,781 @@
+$TXT Created by WOLF,ED at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 11/08/04 at 12:43
+=============================================================================
+Run Date: NOV 23, 2004                     Designation: SD*5.3*376
+Package : SD - SCHEDULING                     Priority: Mandatory
+Version : 5.3       SEQ #314                    Status: Released
+                  Compliance Date: NOV 26, 2004
+=============================================================================
+
+Associated patches: (v)XU*8*284    <<= must be installed BEFORE `SD*5.3*376'
+                    (v)SD*5.3*349  <<= must be installed BEFORE `SD*5.3*376'
+
+Subject: COMBAT VETERAN AND OTHER INFORMATION ADDED TO PAIT
+
+Category: 
+  - Routine
+  - Enhancement (Mandatory)
+  - Data Dictionary
+
+Description:
+============
+
+ This patch is a continuation of the Patient Appointment Information 
+  Transmission (PAIT) project. The previously released patches are:
+   
+  SD*5.3*290
+  SD*5.3*333
+  SD*5.3*349
+   
+  The following enhancements, modifications and fixes are addressed:
+   
+  1. COMBAT VETERAN (CV)
+   
+  The Chief Business Office (CBO) is requesting modifications to several 
+  Veterans Health Information Systems and Technology Architecture 
+  (VistA) packages to support implementation of VHA Directive 2002-049 - 
+  "Combat Veterans Are Eligible For Medical Services For 2-Years After 
+  Separation From Military Service Notwithstanding Lack Of Evidence For 
+  Service Connection", which iterates VA's policy to provide medical care and 
+  other medical services to combat veterans despite the absence of proof of 
+  service connection.
+   
+  A definition of the Combat Service taken from Attachment A of VHA DIRECTIVE 
+  2004-017, April 2004 is:
+   
+  Combat Service - Veterans who served in combat during a period of war after 
+  the Gulf War, or against a hostile force during a period of hostilities 
+  after November 11, 1998, qualify, and are eligible for hospital care, 
+  medical services, and nursing home care for 2 years after discharge from 
+  the military for any illness.  
+   
+  Software to support the Combat Veteran (CV) initiative has been developed 
+  and introduced in a phased implementation strategy.
+  The Combat Veteran information included in PAIT is evaluated and 
+  transmitted based on the already released related patches.
+    
+  New HL7 message segments have been created and existing message segments 
+  have been changed to incorporate CV data. The additions are described below, 
+  summarized with the following format for each data item:
+  
+  Data item  (source of data; assume Patient file if no other filename) - 
+  segment.sequence
+  
+  1.1   Combat Veteran Eligibility field (calculated by a call to the ZEL 
+        segment)  -  ZEL.37
+   
+  Identification/Notification of a CV Status veteran seeking medical care - 
+  CV eligibility will be calculated with the Appointment Creation Date passed 
+  as the treatment date. It indicates if the patient was eligible for CV 
+  status on the Appointment Creation Date. 
+  The result of the existing Registration API that creates the ZEL segment is 
+  modified by executing a separate call documented in DBIA # 4156 - NAME: 
+  COMBAT VETERAN STATUS. 
+  In the call to CVEDT^DGCV(DFN,DGDT), DGDT is now passed as
+  the appointment creation date, to reflect the CV Status in reference to 
+  this date. 
+  ZEL-37:  COMBAT VETERAN ELIGIBILITY is determined based on the Date 
+  Appointment Created, see SCH.11. The following values from table
+  VA01 are used:
+    1 (Yes) is sent if the patient was/is considered a combat veteran;
+    0 (No) is sent if the patient wasn't/isn't considered a combat veteran.
+   
+  1.2    Combat Veteran End Date field (.5295 of the Patient file) - ZEL.38
+   
+  This field represents the last day for combat veteran eligibility. The 
+  calculated CV End Date indicates that a veteran has been CV eligible at 
+  some point in time. Even if the CV eligibility has expired, this date will 
+  be populated.
+   
+   
+  1.3 Combat Veteran Indication (COMBAT VETERAN field # 80007 of the Visit 
+ file # 9000010) - [ZCL].3[7]
+   
+  The Combat Veteran classification question is asked during the check out 
+  process or when updating the appointment's classifications.
+  
+  A seventh repetition of the ZCL (VA Specific
+  Classification) segment was added that includes the answer to the Combat 
+  Veteran classification question, see table SD008:
+   
+  Table SD008 - Outpatient Classification Type
+   
+  VALUE  DESCRIPTION
+  --------------------
+  1      AGENT ORANGE
+  2      IONIZING RADIATION
+  3      SERVICE CONNECTED
+  4      ENVIRONMENTAL CONTAMINANTS
+  5      MILITARY SEXUAL TRAUMA
+  6      HEAD AND/OR NECK CANCER
+  7      COMBAT VETERAN
+   
+  This will be included in the existing ZCL segment in the same way as other 
+  
+  classifications are currently.
+   
+  2. MILITARY HISTORY
+   
+  The Military History data is retrieved and transmitted so that the waiting 
+  time experienced by service members recently returning from the Iraq war can
+  be calculated. A new ZMH segment is implemented - IE #: 4495.
+   
+  Table PAIT01 - Details of the field number for each field 
+                 transmitted with PAIT: 
+  Type
+  ------ 
+  SL     Service Separation Date [Last] (.327)    - ZMH4.2
+   
+  COMB   Combat Service Indicated (.5291)         - ZMH3.1
+         Combat Service Location (.5292)          - ZMH3.2
+   
+  GULF   Persian Gulf Service (.32201)            - ZMH3.1
+   
+   
+    Table PAIT02 - Indicators identified and transmitted with PAIT:
+   
+  Type   Indicator #1    Indicator #2    Indicator #3    To Date
+  ---------------------------------------------------------------
+  SL     Not used        Not used        Not used       Separated
+  COMB   Ind. 'Y',  'N'  Service Location
+  GULF   Ind. 'Y',  'N'  Not used        Not used       Not used        
+   
+  3. "Job Started" message on Forum server.
+   
+  A message will be generated from each site as soon as a new 
+  transmission starts and it will be sent to the Forum server.
+  A tasked job on the Forum server will identify any site that has not
+  started on the date following the PAIT scheduled date.
+  A related reporting function will be available on Forum for
+  the National Help Desk (NHD) and  Enterprise VistA Support (EVS).
+   
+  4. Post-installation updates:
+   
+    4.1 Update sites that have not received HL7 acknowledgement (ACK) 
+    messages during the seeding process due to communication problems.
+    Approximately 50% of seeding sites have not received
+    acknowledgements and the expected process of flagging rejected 
+    appointments and removing the final, acknowledged ones, has not been 
+    performed. A post-init routine, working as a driver, will identify a 
+    particular sites where there is a need to execute the acknowledgement 
+    process, by retrieving rejected appointments from routines containing
+    site-specific data only for sites with rejections. Appointments not
+    rejected are processed as acknowledged.
+   
+  NOIS addressed:
+   
+  UNY-0404-12154            PAIT SEEDING
+   
+    4.2 Clean up entries in the Patient Appointment Info file (#409.6) that 
+        report errors already resolved by later transmissions.
+   
+  Discrepancies have been identified between the error report that the site can
+  generate using the Rejected Transmission [SD-PAIT REJECTED] option and the 
+  error report generated by the Austin Automation Center (AAC). The causes of  
+  the discrepancies are acknowledgements not coming to some sites after each 
+  run, and acknowledgements not coming on time for the previous transmissions. 
+  Currently it is the acknowledgement process that initiates cleaning
+  the previously rejected entries. Patch SD*5.3*376 will perform a clean up
+  of all entries except of those in the pending status. 
+   
+  NOIS addressed:
+   
+  BIR-0604-30826                  PAIT- Rejected appointments
+   
+  5.  Forum Server accepts and processes new completion messages from the VistA 
+  Interface Engine and Austin Automation Center.
+   
+  6.  HL7 subcomponent modifications to Provider AIP.3 segment: 
+  If a middle initial and/or a suffix were not identified and transmitted, 
+  the HL7 message did not include '~' as the end of AIP.3. The optional 
+  delimiters are now included as requested by AAC.
+   
+  7.  Interrupted Transmission Repair Process Fix:
+  A separate option SD-PAIT Last Run Repair [SD-PAIT REPAIR] will be
+  available to repair the interrupted PAIT transmission, while the
+  follow-up finishing run may be scheduled independently. The SD-PAIT REPAIR
+  option must be run before the additional transmission is started.
+  If there is an attempt to start a new transmission but the previous one is 
+  not completed the task will abort, and a message will be sent to the SD-PAIT 
+  mail group:
+  
+  "The PAIT requested task has been terminated.
+   The previous task #: 2784037 run #: 9 has not been completed.
+   The previous run errored out, not repaired!
+   Address a problem and use option SD-PAIT REPAIR to fix the run." 
+  
+  Whenever an interrupted transmission is repaired a completion message to
+  the National Help Desk will be generated asking them to initiate a NOIS to
+  follow up with verification of the problem. An additional run must be started
+  by the site to transmit the expected appointments for the current time period
+  if the new transmission can be still processed by Austin Automation  
+  Center. 
+  
+  NOIS's addressed:
+    
+  CTX-0604-71174 PAIT JOB                
+  CHA-0504-30364 MANUAL TRANSMISSION FOR SD-PAIT ERRORING OUT    
+  HIN-0504-40339 Cannot run patch SD*5.3*349
+  CTX-0704-70058 SD-PAIT TRANS ERROR NULL SUBSCRIPT (
+  ECH-0704-50049 SD-PAIT TRANS ERROR NULL SUBSCRIPT
+  
+  8. Automated Verification on Forum server that requires
+  elements from:
+                - Vista Interface Engine messaging team
+                - AAC team
+   
+  VistA IE is expected to report the number of batches received per site, 
+  and AAC is expected to report the number of batches received and a total of 
+  all received appointments. Any discrepancies with the VistA completion  
+  messages will generate messages to the National Help Desk.
+   
+  9. Modification of completion messages
+  More descriptive information is generated with different PAIT completion 
+  messages.
+   
+   The existing completion message format that is sent to the local SD-PAIT 
+  Mail Group and to the Forum server is as follows:
+   
+  Subj: 500 - PAIT BACKGROUND JOB  [#1955306] 09/15/04@14:23  13 lines
+  From: POSTMASTER  In 'IN' basket.   Page 1  *New*
+  
+ -------------------------------------------------------------------------------
+   
+  The PAIT job has completed - TASK #: 2693498 Log #: 1 on 9/15/04@14:23
+  Started: 9/15/04                        Last Scanned: 9/14/04
+  Pending appointments:        398
+  Final appointments:          622
+                         ----------
+  Total appointments:         1020   Number of batches: 1
+   
+  Fac Log Bch Appt #  Date finished  IP Address  Gen Sent Com R Com P Status
+  -----------------------------------------------------------------------
+  500|  1|  1|   1020|9/15/04@14:23|10.6.208.19| 119| 118| 118 | 118 |Shutdown
+   
+   In addition to this existing completion message format the following
+  informational messages may be generated:
+   
+    9.1 If this is a clean run and totals of generated (Gen) and sent (Sent)
+        batches are the same the only additional message is:
+   
+       "SUCCESS: Transmission completed."
+   
+    9.2 If the number of (Gen-Sent) is less than the number of generated 
+       batches (Bch) that means that the transfer from the VistA site to 
+       the local Interface Engine (IE) is still in progress, and the following 
+       information will be sent:
+   
+        ex.: "WARNING: 2 out of 7 batches still have to be transmitted, 
+              please verify with the HL7 System Monitor."
+   
+    9.3 If PAIT is stopped by a user it will finish cleanly but the below
+        message will be sent additionally to the NHD.
+   
+        "WARNING: TASK STOPPED BY USER, NEEDS TO BE RESTARTED.
+        INITIATE a NOIS to FOLLOW UP."
+   
+   
+    9.4 If the SD-PAIT HL Logical Link is "Shutdown", as shown in the above 
+        example of a completion message, it will be sent with the   
+        following note to the NHD:
+   
+   
+        "SD-PAIT Logical Link has to be started!"
+         
+   
+    9.5 If (Gen)-(Sent) is not less than (Bch) and SD-PAIT Logical Link
+        status is not "Shutdown", the problem is probably related to
+        communication between VistA and the IE and the following message
+        will complement the completion message sent additionally to the NHD:
+        
+        "Initiate a NOIS for VistA Interface Engine - communication 
+         problem."
+   
+    9.6 When PAIT starts, it verifies that the prior transmission was 
+        completed. If it wasn't completed the following message is
+        generated if SD-PAIT MANUAL TRANSMISSION is used:
+  
+        "The previous run errored out, not repaired!
+         Please address a problem and then use option SD-PAIT REPAIR to fix
+         the run."
+  
+         If PAIT is queued and the last run is not completed a message is 
+          sent to the SD-PAIT Mail Group:
+  
+         "The PAIT requested task has been terminated.
+          The previous task #: 2784037 run #: 9 has not been completed.
+          The previous run errored out, not repaired!
+          Address a problem and use option SD-PAIT REPAIR to fix the run."
+   
+    9.7  If the last PAIT run is repaired from the SD-PAIT Repair option
+         the following note is added to the completion message:
+          
+         ex.:
+   
+         "WARNING!!!: Transmission of run#: 10 has been repaired.
+          Please create a NOIS to verify if the problem has been addressed."
+  
+         Additionally if (Gen)-(Sent) is not less than (Bch) the problem
+         is probably related to communication, and the following information
+         will be added:
+   
+       "WARNING!!!: Transmission communication problem, please review."
+   
+  10.  Appointment Selection Logic.
+   
+  The following issue will be addressed:
+   
+ Appointments with a NULL creation date or a 'bogus' value not representing
+ the VistA required date format for the DATE APPT. MADE field (# 20)
+ of the APPOINTMENT SUBFILE (# 1900) in the Patient file (# 2), have 
+ been identified at some sites, and can be categorized as data corruption. 
+ The NULL creation date values were transmitted and the appointments were 
+ rejected. With this patch, the "ASADM" cross-reference in the Patient file 
+ will be checked for duplicates to eliminate resending null creation dates 
+ where the appointment has since been edited and a creation date exists.
+   
+  NOIS's addressed:
+   
+  DAY-0504-41282 PAIT Transmission Reject - 450          
+  ATG-0504-31142 ERROR MESS #450 SD-PAIT TRANSMISSION REJECT     
+  SFC-0704-60302 How to process certain pait rejected transmissions
+   
+  11. Patient Class evaluation.
+   
+  The current scheduling API returns only an OUTPATIENT/INPATIENT 
+  status in relation to the Appointment sub file (#2.98).
+  It does not check the Patient Status In/Out field (#15002) in the Visit 
+  file (#9000010), therefore, returning under some conditions, a NULL value.
+  This patch will change the process so that both the Visit(#9000010) and 
+  the Outpatient Encounter (#409.68) files will be evaluated to determine the
+  proper Patient Class. 
+   
+  12. The cleaning process will be performed at the end of transmission 
+      instead of during the acknowledgement process. This change will make
+      the cleaning process independent of acknowledgements, see 4.1
+   
+  13. An informational message will be displayed to the user explaining why 
+      queuing of the manual option, Manual Startup PAIT Transmission 
+      [SD-PAIT MANUAL TRANSMISSION], is disallowed, when applicable.
+      The following message will be displayed:
+  
+  You attempted to start PAIT outside the authorized transmission dates.
+  Job has been terminated.
+   
+   NOIS addressed:
+   
+  ISB-0504-30390 Manual queue SD-PAIT MANUAL TRANSMISSION
+   
+  14. This patch protects against errors due to a missing entry in the 
+  Patient Appointment Info Log file (#409.6) with a false "Y" cross reference,
+  while scanning previously sent appointments.
+  
+  DAY-0704-41003  PAIT - transmitted 4 batches, no completion message
+   
+  15. Currently, if an appointment is newly created and then cancelled, its 
+  status as a count or non-count clinic is not known. Additional verification
+  is performed to determine the clinic type for canceled appointments,
+  and if the clinic is 'NON-COUNT' it will receive 'NC' or 'RSN' as its
+  appointment type. 'RSN' is a new Appointment Type value:
+   
+  RSN    Re-schedule for Non Count
+   
+  The following canceled appointments will be anticipated for the Schedule
+  Information Unsolicited (SIU) Message Type: 
+   
+  SIU Event Mapping Table
+   
+  SIU   SCH.25 Filler status     SCH.6 Event Reason      SCH.8 Appt Type
+   
+  S15   Final     Cancelled Terminated (CT)       
+  S15   Final     Cancelled Terminated (CT)       Non Count (NC)
+  S15   Final     Cancelled by Clinic (CC)        Re-schedule (RS)
+  S15   Final     Cancelled by Clinic (CC)        Re-schedule for Non Count (RSN)
+  S15   Final     Cancelled by Clinic (CC)        
+  S15   Final     Cancelled by Clinic (CC)        Non Count (NC)
+  S15   Final     Cancelled by Patient (CP)       Re-schedule (RS)
+  S15   Final     Cancelled by Patient (CP)       Re-schedule for Non Count (RSN)
+  S15   Final     Cancelled by Patient (CP)       
+  S15   Final     Cancelled by Patient (CP)       Non Count (NC)
+   
+  If Appointment Type is not indicated or is 'RS' it will be interpreted as 
+  scheduled for a 'COUNT' clinic.
+  
+  16 Field Name Change
+  --------------------
+  
+  The name of sub field #2 of Patient field #2 in file #409.6 was changed
+  from HL7 BATCH # to HL7 MESSAGE ID.
+  
+  17 Canceled Terminated Evaluation Modification
+  ----------------------------------------------
+  
+ If an appointment is canceled and another one is scheduled for the same 
+ Appointment Date/Time, then the previous one will get Canceled Terminated 
+ as the Event Reason, regardless of whether it was already canceled and 
+ transmitted in a previous run or if it was cancelled and transmitted in the 
+ current run with the new appointment that has the same Appointment 
+ Date/Time. This situation is automatically recognized when appointments have
+ the same Appointment Date/Time, but  different Creation Dates. The original 
+ Creation Date is retrieved from the Patient Appointment Info Log file 
+ #409.6, then overwritten in VistA by the Creation Date of the new appointment
+ that has the same Appointment Date/Time.
+  
+  This patch addresses the following New Service Request (NSR):
+  ------------------------------------------------------------
+   
+  There was not a formal NSR associated with this patch.
+   
+  This patch addresses the following NOIS messages(s):
+  ---------------------------------------------------
+  UNY-0404-12154 PAIT SEEDING
+  BIR-0604-30826 PAIT- Rejected appointments
+  CTX-0604-71174 PAIT JOB                
+  CHA-0504-30364 MANUAL TRANSMISSION FOR SD-PAIT ERRORING OUT    
+  HIN-0504-40339 Cannot run patch SD*5.3*349
+  CTX-0704-70058 SD-PAIT TRANS ERROR NULL SUBSCRIPT
+  DAY-0504-41282 PAIT Transmission Reject - 450          
+  ATG-0504-31142 ERROR MESS #450 SD-PAIT TRANSMISSION REJECT     
+  SFC-0704-60302 How to process certain PAIT rejected transmissions
+  ISB-0504-30390 Manual queue SD-PAIT MANUAL TRANSMISSION
+  ECH-0704-50049 SD-PAIT TRANS ERROR NULL SUBSCRIPT
+  
+  The following documentation will be available:
+  =============================================
+   
+      File Name                 Description
+      ---------                 -----------
+      SD_53_376_RN.PDF          PAIT - Release Notes with SD*5.3*376
+                                 
+  The preferred method is to FTP the file from:
+   
+      download.vista.med.va.gov
+   
+  Sites may retrieve the documentation directly using FTP from
+  the ANONYMOUS.SOFTWARE directory at the following OI Field Offices:
+   
+          Albany:  ftp.fo-albany.med.va.gov
+           Hines:  ftp.fo-hines.med.va.gov
+  Salt Lake City:  ftp.fo-slc.med.va.gov
+   
+  Development Team: 
+  -----------------
+                    Ed Wolf
+                    Steve Owen
+  TESTING SITES:
+  =============
+          
+  659   SALISBURY, NC
+  648   PORTLAND, OR
+  518   BEDFORD, MA
+  662   SAN FRANCISCO, CA
+  538   CHILLICOTHE, OH
+   
+ Additionally, the Patient Appointment Information Transmission repair 
+ process was tested in the COLUMBUS, OH (757) Production system where the 
+ regularly scheduled PAIT was interrupted because of the computer system
+ going down.
+  
+             ============ INSTALLATION INSTRUCTIONS ==================
+   
+   NOTE: This patch installation requires previous installation of 
+         SD*5.3*349.
+   
+         Verify that the tasked PAIT Transmission [SD-PAIT TASKED TRANSMISSION]
+         is not Scheduled to run at the time of installation.
+   
+     This patch may be installed with users staying on the system but 
+     because of the post-install process of updating outstanding 
+     acknowledgements it is advisable to run the installation when there is
+     low activity. 
+   
+     Install Time - less than 15 minutes
+    
+  1.  LOAD TRANSPORT GLOBAL
+      ---------------------
+      Choose the PackMan message containing this patch and invoke the
+      INSTALL/CHECK MESSAGE PackMan option.
+   
+  2.  DISABLE ROUTINE MAPPING  (DSM for Open VMS sites only)
+      -----------------------
+      Disable routine mapping on all systems for the routines listed in
+      ROUTINE SUMMARY above.
+   
+      NOTE: If the routines included in this patch are not currently in
+      your mapped routine set, please skip this step.
+   
+  3.  COMPONENTS SENT WITH PATCH
+      --------------------------
+   
+   The following is a list of the routine(s) included in this patch.  The
+   second line of each of these routine(s) will look like:
+   
+       <tab>;;5.3;Scheduling;**[patch list]**;Aug 13, 1993
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  SD376P                     N/A              2952283             376
+  SDRPA00               21030898             23456678       290,333,349,376
+  SDRPA02                3148669              4714175           349,376
+  SDRPA03                7922096              9714930           349,376
+  SDRPA04                    N/A             11477406             376
+  SDRPA05                8714054              8808704       290,333,349,376
+  SDRPA06               12622184             12341805       290,333,349,376
+  SDRPA07               13059834             14643245       290,333,349,376
+  SDRPA08               14192786             14482919       290,333,349,376
+  SDRPA10                    N/A              8202997             376
+  SDRPA11                    N/A              6829874             376
+  SDRPA12                    N/A             11762885             376
+  SDRPA13                    N/A             20203817             376
+  SDRPA14                    N/A              6822043             376
+  SDRPA15                    N/A              7383061             376
+  SDRPA16                    N/A              4035036             376
+  SDRPA17                    N/A             14437021             376
+  SDRPA18                    N/A              1098647             376
+  
+   The following is a list of new option introduced with this patch:
+   
+         Option Name                                File       New/Modified
+  -------------------------------------------------------------------------------
+   SD-PAIT Last Run Repair [SD-PAIT REPAIR]          #19                New
+   Patient HL7 Location
+             [SD-PAIT PATIENT HL7 LOCATION]          #19                New
+  
+         The following is a list of files included in this patch:
+   
+                                           UP    SEND  DATA               USER
+                                           DATE  SEC.  COMES  SITE   RSLV OVER
+  FILE #      NAME                         DD    CODE  W/FILE DATA   PTS  RIDE
+  
+ -------------------------------------------------------------------------------
+   
+  409.6  PATIENT APPOINTMENT INFO LOG YES   NO    NO                  NO
+  Partial DD: subDD: 409.69      fld: 2
+                                 fld: 8
+    DATA SCREEN:
+   
+    FIELD NAME:       APPOINTMENT TYPE
+   
+    FLD NUMBER:       8               FLD TITLE:  
+    NODE;PIECE:       0;9            HELP FRAME:  
+   
+        ACCESS:       RD:    DEL:    WR: 
+   
+     DATA TYPE:       Set of Codes
+                        AR:Action Required
+                        NAT:No Action Taken
+                        F:Future
+                        NC:Non Count
+                        I:Inpatient
+                        NCF:Non Count Future
+                        ABK:Auto Rebook
+                        RS:Rescheduled
+                        O:Outpatient
+                        RSN:Rescheduled Non Count
+   
+  4.  START UP KIDS
+      -------------
+      Start up the Kernel Installation and Distribution System Menu
+      [XPD MAIN]:
+   
+            Edits and Distribution ...
+            Utilities ...
+            Installation ...
+   
+  Select Kernel Installation & Distribution System Option: INStallation
+                                                           
+            Load a Distribution
+            Verify Checksums in Transport Global
+            Print Transport Global
+            Compare Transport Global to Current System
+            Backup a Transport Global
+            Install Package(s)
+            Restart Install of Package(s)
+            Unload a Distribution
+   
+  5. Select Installation Option: 
+     --------------------------
+   
+      NOTE: When prompted for the INSTALL NAME, enter SD*5.3*376
+   
+      a. Backup a Transport Global - this option will create a backup
+         message of any routines exported with the patch. It will not backup
+         any other changes such as DD's or templates.
+      b. Compare Transport Global to Current System  - This option will
+         allow you to view all changes that will be made when the patch
+         is installed. It compares all components of the patch.
+      c. Verify Checksums in Transport Global - This option will allow you
+         to ensure the integrity of the routines that are in the transport
+         global.
+   
+  6. Select Installation Option: Install Package(s)
+                                 -------------------
+      a. Choose the Install Package(s) option to start the patch install.
+   
+      b. When prompted 'Want KIDS to Rebuild Menu Trees Upon Competition of
+         Install? YES//' answer NO. 
+   
+      c. When prompted 'Want KIDS to INHIBIT LOGONs during the install
+         ?YES//' answer NO.
+   
+      d. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+         Protocols? YES//', answer 'YES'.
+   
+      e. When prompted 'Enter options you wish to mark as 'Out of Order':' 
+         Enter the following options:
+   
+         SD-PAIT REPORTS                   PAIT Reports Menu 
+         SD-PAIT MANUAL TRANSMISSION       Manual Startup PAIT Transmission
+                
+      f. When prompted 'Enter protocols you wish to mark as "Out Of Order':'
+         press <return>,
+ 
+         NOTE: If installing on a test environment, an informational
+        message, "NOT A PRODUCTION SYSTEM.  POST INIT CANCELLED" will be
+        displayed and the post-init will not be executed.
+   
+  7.  REBUILD MAPPED ROUTINE(S)  (DSM for Open VMS sites only)
+      -------------------------
+      NOTE: This step is only necessary if you performed step 2 or if you 
+      wish to include the routines in your mapped set.
+   
+  8.  Verify that SD-PAIT Logical Link is enabled, and if not start it.
+   
+  9.  Verify that you are a member of SD-PAIT Mail Group.
+   
+  10.  You must not install this patch on 1st, 2nd, 3rd, 15th, 16th or 17th of
+      any month.
+   
+  NOTE: If you feel you have to install the patch on any of the above listed 
+        dates, please log a NOIS or call the National Help Desk.
+    
+  11. Taskman PAIT Transmission [SD-PAIT TASKED TRANSMISSION] is scheduled 
+      to run the 1st and 15th of every month. 
+
+Routine Information:
+====================
+
+Routine Name:
+  - SDRPA00
+
+
+Routine Checksum:
+
+Routine Name:
+  - SDRPA06
+
+
+Routine Checksum:
+
+Routine Name:
+  - SDRPA03
+
+
+Routine Checksum:
+
+Routine Name:
+  - SDRPA02
+
+
+Routine Checksum:
+
+Routine Name:
+  - SDRPA05
+
+
+Routine Checksum:
+
+Routine Name:
+  - SDRPA07
+
+
+Routine Checksum:
+
+Routine Name:
+  - SDRPA08
+
+
+Routine Checksum:
+
+Routine Name:
+  - SDRPA10
+
+
+Routine Checksum:
+
+Routine Name:
+  - SDRPA11
+
+
+Routine Checksum:
+
+Routine Name:
+  - SDRPA12
+
+
+Routine Checksum:
+
+Routine Name:
+  - SDRPA13
+
+
+Routine Checksum:
+
+Routine Name:
+  - SDRPA14
+
+
+Routine Checksum:
+
+Routine Name:
+  - SDRPA15
+
+
+Routine Checksum:
+
+Routine Name:
+  - SDRPA16
+
+
+Routine Checksum:
+
+Routine Name:
+  - SDRPA17
+
+
+Routine Checksum:
+
+Routine Name:
+  - SDRPA18
+
+
+Routine Checksum:
+
+Routine Name:
+  - SD376P
+
+ This post-install routine will initiate updating entries from the seeding 
+ run that have not received acknowledgements.
+
+Routine Checksum:
+
+Routine Name:
+  - SDRPA04
+
+ This routine is called from the SD-PAIT Last Run Repair [SD-PAIT REPAIR]
+ option if the repairing process is needed.
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : WOLF,ED                       Date Entered  : JUN 03, 2004
+Completed By: LANIGAN,VASSER                Date Completed: NOV 22, 2004
+Released By : HEUER,CINDY                   Date Released : NOV 23, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,209 @@
+$TXT Created by HUA,PATRICK at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 12/08/03 at 12:34
+=============================================================================
+Run Date: JAN 26, 2004                     Designation: IB*2*255
+Package : IB - INTEGRATED BILLING             Priority: EMERGENCY
+Version : 2       SEQ #224                      Status: Released
+                  Compliance Date: JAN 28, 2004
+=============================================================================
+
+Associated patches: (v)IB*2*15     <<= must be installed BEFORE `IB*2*255'
+
+Subject: FIX RX COPAY EXEMPTION FOR IVM
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch is being released as EMERGENCY to prevent additional incorrect 
+ calculations of Rx Copay Exemptions.
+  
+ The upload of an IVM Converted Means Test (ORU~Z06) uses the same 
+ functionality as used in the upload of a Means Test for an INCOME TEST 
+ DATA (ORU~Z10) Transmission.  All uploaded Means Tests re-calculate the 
+ COPAY INCOME EXEMPTION STATUS (#.04) field in the BILLING PATIENT (#354) 
+ File.
+  
+ The HL7 message for an IVM Converted Means Test contains no financial 
+ information.  This causes the COPAY INCOME EXEMPTION STATUS to always be 
+ set to EXEMPT which is not always correct.
+  
+ This patch modifies the software so that the upload of an IVM Converted 
+ Means Test (ORU~Z06) no longer triggers a re-calculation of the COPAY 
+ INCOME EXEMPTION STATUS field in the BILLING PATIENT (#354) File.
+  
+ The COPAY INCOME EXEMPTION STATUS calculation will be blocked on the 
+ processing of an ORU~Z06 HL7 Transmission only.
+  
+ A subsequent patch (EAS*1.0*42 - Fix RX Copay Upload for IVM) will 
+ address the upload of an IVM Converted RX Co-Pay Test, where the updates 
+ to the RX COPAY CURRENT INCOME EXEMPTION STATUS field will be correctly 
+ handled.
+  
+ NOTE:  When used, the PRINT/VERIFY PATIENT EXEMPTION STATUS [IB RX PRINT 
+ VERIFY EXEMP] option will still re-calculate an exemption incorrectly and 
+ Update the BILLING PATIENT file with the incorrect status for veterans 
+ whose Means Test has been converted by IVM.  Patch IB*2.0*262 is under 
+ development to modify that option so that it will exclude IVM converted 
+ means tests when re-calculating exemptions.
+  
+  
+ This patch addresses the following E3R(s):
+ ------------------------------------------
+ There are no E3Rs associated with this patch.
+  
+  
+ This patch addresses the following NOIS message(s):
+ --------------------------------------------------- 
+ MAD-0503-40296 - IVM UPLOADS cause conflicts in status displays
+  
+  
+ Overview of NOIS Message(s):
+ ---------------------------
+ MAD-0503-40296: IVM UPLOADS cause conflicts in status displays
+  
+ Problem:
+ --------
+ The receipt of an IVM Converted Means Test changes the COPAY INCOME
+ EXEMPTION STATUS to EXEMPT.
+  
+ Resolution:
+ -----------
+ Correct the upload of a ORU~Z06 from IVM to not re-calculate the COPAY
+ INCOME EXEMPTION STATUS.
+  
+  
+ Test Sites:
+ -----------
+ Madison
+ West Palm Beach
+  
+  
+        ================INSTALLATION INSTRUCTIONS =================
+  
+        Install Time - 5 minutes
+  
+  
+   1.   LOAD TRANSPORT GLOBAL
+        ---------------------
+        Choose the PackMan message containing this patch and invoke the 
+        INSTALL/CHECK MESSAGE PackMan option.
+  
+   2.   DISABLE ROUTINE MAPPING   (DSM for Open VMS sites only) 
+        -----------------------
+        Disable routine mapping on all systems for the routines listed in 
+        step 3 below.
+  
+        NOTE:  If the routines included in this patch are not currently in 
+               your mapped routine set, please skip this step.
+  
+   3.   COMPONENTS SENT WITH PATCH 
+        --------------------------
+        The following is a list of the routines included in this patch.  
+        The second line of each of these routines now looks like:
+  
+            ;;2.0;INTEGRATED BILLING;**[patch list]**; 21-MAR-94
+  
+                            CHECK^XTSUMBLD results
+  
+        Routine       Before Patch     After Patch    Patch List 
+        -------       ------------     -----------    ----------
+        IBAMTED       3624105          3638236        15,255
+  
+         Total number of routines - 1
+    
+   4.   START UP KIDS 
+        -------------
+        Start up the Kernel Installation and Distribution System Menu 
+        [XPD MAIN]:
+  
+             Edits and Distribution ...  
+             Utilities ...  
+             Installation ...  
+  
+   Select Kernel Installation & Distribution System Option: INStallation 
+                                                            ---
+             Load a Distribution 
+             Print Transport Global 
+             Compare Transport Global to Current System 
+             Verify Checksums in Transport Global 
+             Install Package(s) 
+             Restart Install of Package(s) 
+             Unload a Distribution 
+             Backup a Transport Global 
+  
+   Select Installation Option:
+  
+   5.   Select Installation Option: 
+        --------------------------
+        NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+               NAME, enter IB*2.0*255):
+  
+        a.  Backup a Transport Global - This option will create a backup
+            message of any routines exported with this patch. It will not
+            backup any other changes such as DD's or templates.
+        b.  Compare Transport Global to Current System - This option will
+            allow you to view all changes that will be made when this patch
+            is installed.  It compares all components of this patch
+            (routines, DD's, templates, etc.).
+        c.  Verify Checksums in Transport Global - This option will allow
+            you to ensure the integrity of the routines that are in the
+            transport global.
+  
+   6.   Select Installation Option: Install Package(s) 
+                                    ----------------
+        **This is the step to start the installation of this KIDS patch:
+  
+       a.  Choose the Install Package(s) option to start the patch install.
+       b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+           YES//' answer NO.
+       c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+           Options, and Protocols? YES//' answer NO.
+  
+   7.   REBUILD MAPPED ROUTINE(S)  (DSM for Open VMS sites only)
+        -------------------------
+        Optional - Include the routines distributed with this patch
+        in the mapped routine set.
+  
+        NOTE: This step is only necessary if you performed step 2 or 
+              if you wish to include the routines in your mapped set.
+  
+   8.   When the installation is complete, be sure to re-start the filers 
+        if you chose to stop them.
+
+Routine Information:
+====================
+
+Routine Name:
+  - IBAMTED
+
+ Original Code:
+  
+      ; -- do medication copayment exemption processing
+      D ^IBAMTED1
+  
+  
+ Modified Code:
+  
+      ; -- do medication copayment exemption processing
+      D:'$D(EASZ06) ^IBAMTED1
+
+Routine Checksum:
+ 
+ 
+ 
+ 
+
+=============================================================================
+User Information:
+Entered By  : HUA,PATRICK                   Date Entered  : NOV 26, 2003
+Completed By: MULLER,RICHARD                Date Completed: JAN 26, 2004
+Released By : GANUS,MAUNETTE                Date Released : JAN 26, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

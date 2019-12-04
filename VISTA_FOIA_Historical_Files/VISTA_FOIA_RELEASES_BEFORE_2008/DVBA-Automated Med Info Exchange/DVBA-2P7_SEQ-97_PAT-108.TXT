@@ -1,0 +1,265 @@
+$TXT Created by STAGNER,TOM at DEVFEX.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 03/29/06 at 08:57
+=============================================================================
+Run Date: JUL 28, 2006                     Designation: DVBA*2.7*108
+Package : DVBA - AUTOMATED MED INFO EXCHANGE  Priority: Mandatory
+Version : 2.7        SEQ #97                    Status: Released
+                  Compliance Date: AUG 28, 2006
+=============================================================================
+
+Associated patches: (v)DVBA*2.7*73 <<= must be installed BEFORE `DVBA*2.7*108'
+                    (v)DVBA*2.7*90 <<= must be installed BEFORE `DVBA*2.7*108'
+
+Subject: MISC CAPRI FIXES
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch corrects four issues:
+  
+     1. The CAPRI version of the "Exam Requests by Date Range" Report is 
+        not working. Users are receiving the following error message: 
+  
+             Error encountered.
+             Function was: M ERROR=<UNDEFINED>EXAMBYDT+9^DVBABEBD
+  
+     2. The CAPRI version of the "Pending C&P Exams" report always returns 
+        "No pending request found for select parameters." when "status" is 
+        selected for the "sort by field".  The status type chosen has no 
+        effect on the outcome.
+  
+     3. The CAPRI version of the "Admission Inquiry By Date" report is not
+        working on certain sites when the user runs the report for all ROs.
+  
+     4. The CAPRI version of the "Admission Report for SC Veterans" report 
+        is not working on certain sites when the user runs the report for 
+        a specific date range.
+  
+ ASSOCIATED REMEDY TICKETS:
+ =========================
+ HD118674 - CAPRI Exam Requests by Date Range Report does not work 
+ HD133067 - CAPRI Pending C&P Exams Status Report Not Working
+ HD121522 - Admission Inquiry by Date report Not Working
+ HD133821 - Bay Pines S/C Admissions Report Not Working for 03-01-06
+  
+  
+ ASSOCIATED NSRs:
+ ================
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ ========================
+ Bay Pines,Fl
+ Miami,Fl
+ Central Alabama HCS
+  
+  
+ REMEDY TICKET OVERVIEW:
+ =======================
+ 1. HD118674 - CAPRI Exam Requests by Date Range Report does not work
+  
+     Problem:
+     --------
+     Several sites are reporting that the CAPRI version of the "Exam
+     Requests by Date Range" Report is not working. Users are receiving the
+     following error message: 
+  
+             Error encountered.
+             Function was: M ERROR=<UNDEFINED>EXAMBYDT+9^DVBABEBD
+  
+     Resolution:
+     -----------
+     The problem was related to bad data.  All of the sites that reported 
+     the problem had at least one incomplete entry in file 396.3 (2507 
+     REQUEST). The "0" node was missing and the code was assuming it would 
+     always be there (as it should be).  I added code to properly handle 
+     the bad nodes.   The root cause of the bad data could not be
+     identified at this time but all of the bad nodes in question were
+     very old.
+  
+ 2. HD133067 - CAPRI Pending C&P Exams Status Report Not Working
+  
+     Problem:
+     --------
+     The CAPRI version of the "Pending C&P Exams" report always returns 
+     "No pending request found for select parameters." when "status" is 
+     selected for the "sort by field".  The status type chosen has no 
+     effect on the outcome.
+  
+     Resolution:
+     -----------
+     There was a logic flaw in the code that handles the sorting of the 
+     report. This problem has been fixed.
+  
+ 3. HD121522 - Admission Inquiry by Date report Not Working
+  
+     Problem:
+     --------
+     The CAPRI version of the "Admission Inquiry By Date" report is not
+     working on certain sites when the user runs the report for all ROs.  
+     Users are getting the following error message:
+  
+     "RPC DVBAB REPORT ADMINQ could not be accessed!"
+  
+     After they click OK, they get the following message:
+  
+     "No data found for requested report criteria."
+  
+     The problem shows up in the VISTA error log as: 
+     <SUBSCRIPT>SET+1^DVBAADRP
+  
+     Affected Sites: 
+     Bay Pines (516) & North FL/South GA (Gainesville) (573) VAMCs 
+  
+     I also identified a problem with the date range on this report.  The 
+     CAPRI GUI was adding 1 day to the end date and the M side RPC would 
+     then add an additional half day.  This was meant to ensure that the 
+     ending date was included in the report since the data is stored as a 
+     date/time.  However, adding 1.5 days to the end date would extend the 
+     date range by 1 day.
+  
+     Resolution:
+     -----------
+     The problem is caused by a patient having a CLAIM FOLDER LOCATION 
+     (field #.314 of the PATIENT file) that points to an institution that
+     does not have a STATION NUMBER (field #99 of the INSTITUTION file) 
+     entered for it.  This is causing the M side to error out during the
+     RPC call that builds the report.  The code was checking for the 
+     existence of the node contains the station number (^DIC(4,D0,99)) and
+     if did not exist it was use "UNKNOWN" for the field for sorting 
+     purposes.   It was not checking for a null value of the station 
+     number and this was what was causing the problem.  I added code to 
+     also use "UNKNOWN" when the field is null.
+  
+     To correct the date range problem, I changed the M side to subtract 
+     half a day from the ending date that is passed in from the GUI side.  
+     This corrects the problem with the date range having 1 day added to 
+     it.
+  
+ 4. HD133821 - Bay Pines S/C Admissions Report Not Working for 03-01-06
+  
+     Problem:
+     --------
+     The CAPRI version of the "Admission Report for SC Veterans" report 
+     is not working on certain sites when the user runs the report for 
+     a specific date range.  Users are getting the following error message:
+  
+     "RPC DVBAB REPORT ADMISSIONS could not be accessed!"
+  
+     After they click OK, they get the following message:
+  
+     "No data found for requested report criteria."
+  
+     The problem shows up in the VISTA error log as: 
+     <SUBSCRIPT>SET^DVBAB54
+  
+     Affected Sites: 
+     Bay Pines (516)
+  
+     Resolution:
+     -----------
+     The problem is caused by a patient having a CLAIM FOLDER LOCATION
+     (field #.314 of the PATIENT file) that points to an institution that
+     does not have a STATION NUMBER (field #99 of the INSTITUTION file)
+     entered for it.  This is causing the M side to error out during the
+     RPC call that builds the report.  The code was checking for the
+     existence of the node contains the station number (^DIC(4,D0,99)) and
+     if did not exist it was use "UNKNOWN" for the field for sorting
+     purposes.   It was not checking for a null value of the station
+     number and this was what was causing the problem.  I added code to
+     also use "UNKNOWN" when the field is null.
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ This patch can be installed at any time.  Users do not have to be off the 
+ system.  Installation will take less than 2 minutes.
+  
+ 1.  Choose the PackMan message containing this patch and invoke the
+     INSTALL/CHECK MESSAGE PackMan option.
+  
+ 2.  Start up the Kernel Installation and Distribution System Menu
+     [XPD MAIN]:
+  
+          Edits and Distribution ...
+          Utilities ...
+          Installation ...
+  
+     Select Kernel Installation & Distribution System Option:  INStallation
+                                                               ---
+          Load a Distribution
+          Verify Checksums in Transport Global
+          Print Transport Global
+          Compare a Transport Global to Current System
+          Backup a Transport Global
+          Install package(s)
+          Restart Install of Package(s)
+          Unload a Distribution
+  
+ 3.  From this menu, you may elect to use the following options
+     (when prompted for the INSTALL NAME, enter DVBA*2.7*108):
+  
+     a.  Verify Checksums in Transport Global - This option will allow
+         you to ensure the integrity of the routines that are in the
+         transport global.
+     b.  Print Transport Global - This option will allow you to view
+         the components of the KIDS build.
+     c.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when this patch
+         is installed.  It compares all components of this patch
+         (routines, DDs, templates, etc.).
+     d.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch.  It will not
+         backup any other changes such as DD's or templates.
+  
+ 4.  Use the Install Package(s) option and select the package DVBA*2.7*108.
+  
+     a.  When prompted "Want KIDS to INHIBIT LOGONs during the install?
+         YES//", answer NO (unless otherwise indicated).
+     b.  When prompted "Want to DISABLE Scheduled Options, Menu Options,
+         and Protocols? YES//", answer NO.
+  
+  ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;2.7;AMIE;**[patch list]**;Apr 10, 1995
+  
+  OLD:                       CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+    DVBAADRP          12526371             12520813          17,42,53,108
+    DVBAB6            19544569             18801904            35,90,108
+    DVBABEBD           2271527              2437649             57,108
+    DVBAVDPT           6806166              6830666             57,108
+  
+ Number of Routines = 4
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: DVBAADRP
+    Before: B27858917  After: B28538442  **17,42,53,108**
+Routine Name: DVBAB6
+    Before: B29475564  After: B29419198  **35,90,108**
+Routine Name: DVBABEBD
+    Before:  B4109038  After:  B3978273  **57,108**
+Routine Name: DVBAVDPT
+    Before:  B9992968  After: B10113964  **57,108**
+
+=============================================================================
+User Information:
+Entered By  : STAGNER,THOMAS                Date Entered  : FEB 23, 2006
+Completed By: BOWEN,MARY JANE               Date Completed: JUL 24, 2006
+Released By : ALEXANDER,DIANNE              Date Released : JUL 28, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

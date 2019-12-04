@@ -1,0 +1,335 @@
+$TXT Created by HOLLOWAY,THOMAS at MNTVBB.FO-WASH.MED.VA.GOV  (KIDS) on Wednesday, 09/21/05 at 14:55
+=============================================================================
+Run Date: NOV 30, 2005                     Designation: PRC*5.1*87
+Package : PRC - IFCAP                         Priority: Mandatory
+Version : 5.1        SEQ #75                    Status: Released
+                  Compliance Date: DEC 31, 2005
+=============================================================================
+
+Associated patches: (v)PRC*5.1*34  <<= must be installed BEFORE `PRC*5.1*87'
+
+Subject: CORRECTIONS FOR PURCHASE CARD RECEIVING AND SUPPLY STATION PROCESSING
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+  This patch corrects two issues.  The first issue involves Purchase Card
+  orders which are marked as NO RECEIVING REQUIRED.  Through a certain
+  sequence of events these orders may cause an <UNDEFINED> ERROR.
+  The second issue relates to a problem that can occur with the
+  PROCESSOR FOR SUPPLY STATION TXNS background task if the HL7 id numbers
+  go above 99999999.   
+      
+  ASSOCIATED REMEDY TICKETS:
+  =========================
+  1. HD55300    POR-0702-51305  <UNDEF(ECODE)>REBUILD+7^PRCPPOLB
+     DUPLICATES:
+     HD55305    CAH-0802-30159   <UNDEFINED>REBUILD+7^PRCPPOLB
+     HD55313    SBY-0802-32252  ERROR - <UNDEF>OKFINAL+42^PRCPP
+     HD55314    SBY-0802-32258  ERROR - <UNDEF(ECODE)>REBUILD+7
+     HD55331    SHE-1102-51551  UNDEFINED REBUILD+7^PRCPPOLB
+     HD55446    TAM-1203-30034  ERROR - REBUILD+7^PRCPPOLB:1
+     HD55551    CTX-0604-71740  Undef Variable PRCPPART
+     HD55556    CHY-0604-52317  <UNDEFINED> REBUILD+7^PRCPPOLB
+     HD55652    ALB-1104-50134  <UNDEFINED>REBUILT+7^PRCPPOLB
+     HD62736    Error when receiving PC Order for GIP
+     HD65291    Undefined Errors in PRCPPOLB and PRCPPOL1
+     HD89346    Undefined, REBUILD+7^PRCPPOLB
+     HD95457    <UNDEFINED>REBUILD+7^PRCPPOLB
+     HD98123    DUPLICATE OF HD 55300
+   
+  2. HD55496    LAH-0304-61410  PROCESS+14^PRCPHLPO Error
+     DUPLICATES:
+     HD55584    Getting error $ZE= <SUBSCRIPT>PROCESS+28^PRCPHLPO
+     HD66884    file 447.1 is not getting populated
+     HD94407    HL7 link not updating GIP
+     HD94474    HL7 errors out about every five minute
+     HD92613    Problem with autogen feature
+   
+     
+  ASSOCIATED IT SERVICE REQUEST(S):
+  =================================
+  N/A
+     
+  PARTICIPATING TEST SITES:
+  =========================
+  West LA, CA
+  Cheyenne,WY
+  Boston HCS
+  Portland,OR 
+     
+  REMEDY OVERVIEW:
+  ==============
+  1. HD55300     <UNDEF(ECODE)>REBUILD+7^PRCPPOLB
+     
+    Problem:
+    -------- 
+    Sites are trying to receive Purchase Card orders into inventory using
+    the option Purchase Order Receiving To Inventory Point [PRCP RECEIVE
+    PURCHASE ORDER] when the items have been marked as RECEIVING REQUIRED: NO
+    and have been reconciled by marking COMPLETE ORDER RECEIVED: YES.
+    Designating an item as NO RECEIVING REQUIRED allows the system to take
+    certain processing short cuts but also places limitations on what can be
+    done with the item.  When trying to receive such an item into inventory
+    there are certain data elements missing from the record which cause the
+    program PRCPPOLB to encounter a hard error.
+   
+    Resolution:
+    -----------
+    One resolution is procedural:  Purchase Card items which are intended to
+    be received into inventory should not be marked as NO RECEIVING REQUIRED
+    when the PO is created.  However, this situation can happen accidentally
+    or unintentionally and should not result in a hard error.  The option
+    Purchase Order Receiving To Inventory Point [PRCP RECEIVE PURCHASE ORDER]
+    will be modified to detect Purchase Card orders in this category, warn
+    the user of the situation and exit gracefully.  The warning message will
+    be as follows:
+      Sorry, this Purchase Card order has been marked 'No Receiving Required'
+      and has been Reconciled as COMPLETE ORDER RECEIVED: YES. 
+      It may not be received into inventory in this status.
+   
+     
+  2. HD55584     Getting error $ZE=<SUBSCRIPT>PROCESS+28^PRCPHLPO
+     
+     Problem:
+     --------           
+     A few sites have reported a stream of errors coming from the a
+     Taskman task called PROCESSOR FOR SUPPLY STATION TXNS TASKMAN OPTION
+     [PRCP2 SUPPLY STATION TXN RUN].
+     The error is <SUBSCRIPT>PROCESS+28^PRCPHLPO and is caused by an
+     incomplete record in file 447.1 [AUTOMATED SUPPLY STATION PROCESSING
+     QUEUE].  This incomplete record has, in turn, been caused by the
+     growth of HL7 record numbers beyond what was allowed by the HL7 
+     TRANSACTION NUMBERS field of file 447.1 [AUTOMATED SUPPLY STATION
+     PROCESSING QUEUE].  The HL7 TRANSACTION NUMBER is composed of the
+     associated record numbers from file 773 and from file 772 with a
+     decimal point between them.  These numbers were limited to 9 digits
+     for the left side and 8 digits for the right side of the decimal.
+   
+     
+     Resolution:
+     ----------- 
+     The input transform on the HL7 TRANSACTION NUMBERS field needs to be
+     modified to allow more digits.  A temporary fix, which altered the
+     length from 8 digits to 9 digits, was installed at the sites which have
+     already encountered this issue.  The permanent fix, however, will
+     change the field to FREE TEXT and will allow up to 10 digits on either
+     side of the decimal point.
+                
+                                
+  Technical Description
+  =====================
+   1. HD55300     <UNDEF(ECODE)>REBUILD+7^PRCPPOLB
+   
+      The error at REBUILD+7^PRCPPOLB is due to the undefined variable
+      PRCPPART which is expected to exist when the code reaches this point.
+      The real problem is in routine PRCPPOLM which allows the code to get
+      that far even though the purchase order being acted on does not meet
+      the necessary requirements and thus has no PRCPPART.  Several lines of
+      code are added to the AUTH section of PRCPPOLM to detect purchase
+      orders which will fail if allowed to go further.  A warning is
+      displayed and the user is prompted for a different PO.
+   
+   2. HD55584     Getting error $ZE=<SUBSCRIPT>PROCESS+28^PRCPHLPO
+   
+      The data dictionary entry for file 447.1, field 5 is modified as
+      follows:
+      The DATA TYPE is changed -
+        From:  NUMERIC
+          To:  FREE TEXT
+   
+      The INPUT TRANSFORM is changed - 
+        From:   K:+X'=X!(X>999999999)!(X<0)!(X?.E1"."9N.N) X
+          To:   K:X'?1.10N1"."1.10N X
+   
+      The HELP-PROMPT is changed -
+        From:  Type a Number between 0 and 999999999, 8 Decimal Digits
+          To:  The IEN from #773 concatenated with a period concatenated
+               with the IEN from #772.
+                                 
+  ROUTINE SUMMARY 
+  ===============
+   
+  The following is a list of the routines included in this patch.  
+  The second line of each of these routines now looks like: 
+   
+             <tab>;;5.1;IFCAP;**[patch list]**;Oct 20, 2000
+   
+ OLD                        CHECK^XTSUMBLD results
+   
+      Routine        Before Patch      After Patch      Patch List
+      --------       ------------      -----------      ----------
+      PRCPPOLM            7747196         10605321        34,87    
+   
+ NEW                        CHECK1^XTSUMBLD results
+   
+      Routine        Before Patch      After Patch      Patch List
+      --------       ------------      -----------      ----------
+   
+      PRCPPOLM           11805157         16996959        34,87    
+    
+       Number of Routines = 1
+    
+                                
+         ================INSTALLATION INSTRUCTIONS =================
+   
+  This patch can be installed with users on the system, however several 
+  options will need to be disabled (see step 4).
+  Install Time - less than 2 minutes.  
+     
+     
+  1.   LOAD TRANSPORT GLOBAL 
+       ---------------------
+       Choose the PackMan message containing this patch and invoke the 
+       INSTALL/CHECK MESSAGE PackMan option.  
+     
+  2.   START UP KIDS 
+       -------------
+       Start up the Kernel Installation and Distribution System Menu 
+       [XPD MAIN]: 
+     
+              Edits and Distribution ...  
+              Utilities ...  
+              Installation ...  
+     
+       Select Kernel Installation & Distribution System Option: INStallation 
+                                                                ---
+              Load a Distribution 
+              Print Transport Global 
+              Compare Transport Global to Current System 
+              Verify Checksums in Transport Global 
+              Install Package(s) 
+              Restart Install of Package(s) 
+              Unload a Distribution 
+              Backup a Transport Global 
+   
+  3.   Select Installation Option: 
+       ---------------------------
+       NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+              NAME, enter PRC*5.1*87):
+     
+       a.  Backup a Transport Global - This option will create a backup
+           message of any routines exported with this patch. It will not
+           backup any other changes such as DD's or templates.
+       b.  Compare Transport Global to Current System - This option will
+           allow you to view all changes that will be made when this patch
+           is installed.  It compares all components of this patch
+           (routines, DD's, templates, etc.).
+       c.  Verify Checksums in Transport Global - This option will allow
+           you to ensure the integrity of the routines that are in the
+           transport global.
+     
+  4.   Select Installation Option: Install Package(s) 
+                                   ------------------
+       **This is the step to start the installation of this KIDS patch: 
+     
+       a. Choose the Install Package(s) option to start the patch install.
+   
+       b. When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+          YES//' answer NO
+   
+       c. When prompted 'Want to DISABLE Scheduled Options, Menu Options, 
+          and Protocols? YES//' answer YES
+      
+       d. When prompted 'Enter options you wish to mark as 'Out Of 
+          Order':'  Enter the following options:
+     
+   Purchase Order Receiving To Inventory Point [PRCP RECEIVE PURCHASE ORDER]
+     
+       e. When prompted 'Enter protocols you wish to mark as 'Out Of 
+          Order':' press <return>.
+     
+ Installation Example:
+ =====================
+   
+  Select Installation Option: 6  Install Package(s)
+ Select INSTALL NAME: PRC*5.1*87       Loaded from Distribution  9/21/05@11:18:42
+      => PRC*5.1*87
+   
+ This Distribution was loaded on Sep 21, 2005@11:18:42 with header of 
+    PRC*5.1*87
+    It consisted of the following Install(s):
+      PRC*5.1*87
+ Checking Install for Package PRC*5.1*87
+   
+ Install Questions for PRC*5.1*87
+   
+ Incoming Files:
+   
+   
+    447.1     AUTOMATED SUPPLY STATION PROCESSING QUEUE  (Partial Definition)
+ Note:  You already have the 'AUTOMATED SUPPLY STATION PROCESSING QUEUE' File.
+   
+   
+ Want KIDS to INHIBIT LOGONs during the install? YES// NO
+ Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// 
+   
+ Enter options you wish to mark as 'Out Of Order': PRCP RECEIVE PURCHASE ORDER
+     Purchase Order Receiving To Inventory Point
+   
+ Enter options you wish to mark as 'Out Of Order': 
+   
+ Enter protocols you wish to mark as 'Out Of Order': 
+   
+ Delay Install (Minutes):  (0-60): 0// 
+   
+ Enter the Device you want to print the Install messages.
+ You can queue the install by enter a 'Q' at the device prompt.
+ Enter a '^' to abort the install.
+   
+ DEVICE: HOME//   TCP
+   
+  
+  Install Started for PRC*5.1*87 : 
+                                  PRC*5.1*87
+ ----------------------------------------------------------------------------
+                Sep 21, 2005@11:30:40
+  
+ Build Distribution Date: Sep 20, 2005
+  
+  Installing Routines:
+                Sep 21, 2005@11:30:40
+  
+  Installing Data Dictionaries: 
+                Sep 21, 2005@11:30:40
+  
+  Updating Routine file...
+  
+  Updating KIDS files...
+  
+  PRC*5.1*87 Installed. 
+                Sep 21, 2005@11:30:40
+  
+  Install Message sent #310348
+ ----------------------------------------------------------------------------
+           +------------------------------------------------------------+
+   100%    |             25             50             75               |
+ Complete  +------------------------------------------------------------+
+   
+   
+ Install Completed
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PRCPPOLM
+    Before: B11805157  After: B16996959  
+
+=============================================================================
+User Information:
+Entered By  : HOLLOWAY,THOMAS J             Date Entered  : JUL 28, 2005
+Completed By: BOWEN,MARY JANE               Date Completed: NOV 29, 2005
+Released By : NELSON,VICKI M                Date Released : NOV 30, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

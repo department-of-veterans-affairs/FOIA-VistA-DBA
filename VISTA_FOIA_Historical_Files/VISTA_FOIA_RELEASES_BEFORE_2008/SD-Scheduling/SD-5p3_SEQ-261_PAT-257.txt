@@ -1,0 +1,265 @@
+$TXT Created by WOLF,ED at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 02/11/03 at 20:50
+=============================================================================
+Run Date: JUL 03, 2003                     Designation: SD*5.3*257
+Package : SD - SCHEDULING                      Priority: Mandatory
+Version : 5.3       SEQ #261                     Status: Released
+                  Compliance Date: AUG 03, 2003
+=============================================================================
+
+Associated patches: (v)PX*1*96         install with patch       `SD*5.3*257'
+                    (v)SD*5.3*132  <<= must be installed BEFORE `SD*5.3*257'
+
+Subject: VISIT DELETION/ACCEPT INSTITUTION
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+ The following two problems have been addressed by this patch:
+  
+ 1. The current functionality allows for removing dependent entries from a 
+ visit and then deleting the visit but only if this is not a stop/code 
+ addition visit or there is not a secondary credit/stop visit. That problem
+ was addressed by modification to the ^SDCODEL routine. 
+ 
+  NOTE: This part of the patch has to be implemented with PX*1.0*96, which 
+  ----  addresses a similar problem in the Patient Care Encounter package.
+ 
+                    -----------------------------------
+ The patches have modified the routines in such a way that users can now 
+ accomplish edits/deletions that were not possible before, even if there 
+ were no entries pointing to a visit. This provides a mechanism for cleaning 
+ up so called 'duplicate' visits/encounters and prevents from keeping 
+ 'duplicates' from deletion in the future.
+ 
+ Users should be fully aware of what can and cannot be deleted with 
+ the patch. If a site does have verified 'duplicates' with entries from 
+ outside the PCE, i.e. TIU DOCUMENT, CLAIMS TRACKING, A&SP CLINIC VISIT 
+ etc., is unable to reassign them, and needs assistance with deleting the
+ visit/encounter, then a NOIS call should be logged.
+ 
+ If while trying to delete a visit/encounter you see a message:
+ 
+ 'Could not delete the encounter.  There are still users of it.'
+  
+ it may indicate that the entries like (DX, CPT, etc) are deleted but
+ the encounter date/time is still there because of entries pointing to the 
+ visit from packages outside of PCE.
+ 
+ This is how it works. If an outpatient encounter is created, it points to 
+ the previously created visit and all entry information (DX, CPT, Progress Notes 
+ etc) point to the visit as well. If you want to delete the encounter all 
+ entries to that visit must be deleted. Some of those entries are from PCE 
+ and some from other packages as TIU etc. The patches address a 
+ problem of properly deleting entries related to PCE but no action is taken 
+ regarding other entries. 
+ 
+ Another words, you may still expect that the system does not allow you to 
+ delete encounters that have at least one entry and, it cannot be deleted 
+ from PCE. Before those patches were implemented it was not possible to 
+ delete a visit/encounter with the outpatient encounter being the only entry
+ pointing to the visit and/or its credit/stop visit. That problem has been
+ corrected and this is what the patches address.
+ 
+ If a site does have verified 'duplicates' with entries from outside the 
+ PCE, i.e. TIU DOCUMENT, CLAIMS TRACKING, A&SP CLINIC VISIT etc., is unable 
+ to reassign them, and needs assistance with deleting the visit/encounter,
+ then a NOIS call should be logged.
+ 
+                   -----------------------------------
+ 
+  This part of the patch addresses the following NOIS messages:
+  ------------------------------------------------------------
+  SDC-0801-62236  deleting encounters-still users of it
+  UNY-0802-11825   Action Required Duplicate Encounter
+  UNY-0802-10110  Need Option to Delete Duplicate Visit
+  SLC-0798-51246  DUPLICATE VISIT VIA TIU/PCE/APPT MANAGEMENT
+ 
+ 
+ 2. If the Institution is passed to PCE a new visit/encounter should be 
+    created with the corresponding entries. Currently a visit without any
+    entries is created and all entries are filed on the visit with 
+    the default Institution pointed to from the DIVISION (#3.5) field of the
+    HOSPITAL LOCATION (#44) file. This situation happens frequently when
+    procedures with the same Hospital Location, Patient Name and
+    Date/Time but different Institution are passed to PCE. The passed
+    Institutions were expected to be credited with the corresponding entries.
+  
+    This problem originally was addressed as a generation of duplicate
+    providers on one visit:
+ 
+    NOIS: LIT-0602-71276  DUPLICATE PROVIDERS
+   
+    However, it came out during the investigation that the scenario
+    described above contributed to the issue that was addressed in this NOIS.
+   
+    The determination of how to implement the described functionality 
+    was made on Nov 1st, 2002 during a teleconference with Gail Graham - 
+    Director - HIMP, Frank Stalling - Lab developer, Mary Marks - 
+    Registration developer and Ed Wolf- PCE developer.
+  
+  NOTE: This part of patch SD*5.3*257 has to be implemented with PX*1.0*96, 
+  ----  which addresses a related problem in the Patient Care Encounter package.
+ 
+            ============ INSTALLATION INSTRUCTIONS ==================
+  
+   NOTE: Installation of this patch should follow up installation of PX*1*96
+         or vice versa to address fully the visit/encounter deletion problem.
+ 
+ This patch should be loaded with a very low activity in the system,
+ outside of the regular working hours, when transferring data from other
+ packages to PCE does not take place.
+ 
+ It is recommended that the following menu options (File #19) and all of their
+ descendants be disabled to prevent possible conflicts while running the KIDS
+ Install. Please make sure that the Ambulatory Care Nightly Transmission
+ to NPCDB, [SCDX AMBCAR NIGHTLY XMIT] option, is not running during the 
+ installation.
+ 
+     SDAM APPT CHECK IN/OUT       Appointment Check-in/Check-out
+     SDAM APPT MGT                Appointment Management
+     SDAM APPT UPDATE             Appointment Status Update
+     SDAM APPT UPDATE MENU        Appointment Status Update Menu
+     SCDX AMBCAR RETRANS SEL REJ  Selective Retransmission of NPCDB Rejections
+     SCDX AMBCAR NIGHTLY XMIT     Ambulatory Care Nightly Transmission to NPCDB
+     SCDX AMBCAR REPORTING        Ambulatory Care Reporting Menu
+     SCDX AMBCAR RETRANS BY DATE  Retransmit Ambulatory Care Data by Date Range
+     SCDX AMBCAR RETRANS ERROR    Retransmit Selected Error Code
+     PXCE ENCOUNTER DATA ENTRY    PCE Encounter Data Entry
+     PXCE ENCOUNTER ENTRY & DELETE  PCE Encounter Data Entry and Delete
+     PXCE ENCOUNTER ENTRY SUPER   PCE Encounter Data Entry-Supervisor
+   
+     Install Time - less than 2 minutes.
+  
+ 1.  LOAD TRANSPORT GLOBAL
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the
+     INSTALL/CHECK MESSAGE PackMan option.
+  
+ 2.  DISABLE ROUTINE MAPPING  (DSM for Open VMS sites only)
+     -----------------------
+     Disable routine mapping on all systems for the routines listed in
+     step 3 below.
+  
+     NOTE: If the routines included in this patch are not currently in
+     your mapped routine set, please skip this step.
+  
+ 3.  COMPONENTS SENT WITH PATCH
+     --------------------------
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+ 
+           <tab>;;5.3;Scheduling;**[patch list]**;08/13/93
+ 
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  SDCODEL                3431251              3460447       20,27,44,97,105
+                                                              110,132,257
+  SDVSIT0                3656424              4117780        27,99,132,257
+ 
+               Total number of routines - 2
+  
+ 4.  START UP KIDS
+     -------------
+     Start up the Kernel Installation and Distribution System Menu
+     [XPD MAIN]:
+  
+           Edits and Distribution ...
+           Utilities ...
+           Installation ...
+  
+ Select Kernel Installation & Distribution System Option: INStallation
+                                                          ---
+           Load a Distribution
+           Verify Checksums in Transport Global
+           Print Transport Global
+           Compare Transport Global to Current System
+           Backup a Transport Global
+           Install Package(s)
+           Restart Install of Package(s)
+           Unload a Distribution
+  
+ Select Installation Option: 
+  
+ 5.  Select Installation Option:
+     ---------------------------
+     NOTE: When prompted for the INSTALL NAME, enter SD*5.3*257.
+  
+     a. Backup a Transport Global - this option will create a backup
+        message of any routines exported with the patch. It will not backup
+        any other changes such as DD's or templates.
+     b. Compare Transport Global to Current System  - This option will
+        allow you to view all changes that will be made when the patch
+        is installed. It compares all components of the patch.
+     c. Verify Checksums in Transport Global - This option will allow you
+        to ensure the integrity of the routines that are in the transport
+        global.
+  
+ 6.  Select Installation Option: Install Package(s)
+                                 ------------------
+     a. Choose the Install Package(s) option to start the patch install.
+  
+     b. When prompted "Want KIDS to INHIBIT LOGONs during the install? YES//'.
+        answer NO.
+  
+     c. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+        Protocols? YES//', answer 'YES'.
+  
+     d. When prompted 'Enter options you wish to mark as 'Out of Order':' 
+        Enter the following options:
+  
+   SDAM APPT CHECK IN/OUT         [Appointment Check-in/Check-out]
+   SDAM APPT MGT                  [Appointment Management]
+   SDAM APPT UPDATE               [Appointment Status Update]
+   SDAM APPT UPDATE MENU          [Appointment Status Update Menu]
+   SCDX AMBCAR NIGHTLY XMIT       [Ambulatory Care Nightly Transmission to NPCDB]
+   SCDX AMBCAR REPORTING          [Ambulatory Care Reporting Menu]
+   SCDX AMBCAR RETRANS BY DATE    [Retransmit Ambulatory Care Data by Date Range]
+   SCDX AMBCAR RETRANS ERROR      [Retransmit Selected Error Code]
+   SCDX AMBCAR RETRANS SEL REJ    [Selective Retransmission of NPCDB Rejections]
+   PXCE ENCOUNTER DATA ENTRY      [PCE Encounter Data Entry]
+   PXCE ENCOUNTER ENTRY & DELETE  [PCE Encounter Data Entry and Delete]
+   PXCE ENCOUNTER ENTRY SUPER     [PCE Encounter Data Entry-Supervisor]
+  
+     e. When prompted 'Enter protocols you wish to mark as "Out Of Order':'
+        enter the following:
+ 
+       SDAM DELETE CHECK OUT      [Delete Check Out]
+     
+ 7.  REBUILD MAPPED ROUTINE(S)  (DSM for Open VMS sites only)
+     ==========================
+     NOTE: This step is only necessary if you performed step 2 or if you 
+     wish to include the routines in your mapped set.
+  
+  
+
+Routine Information:
+====================
+
+Routine Name:
+  - SDCODEL
+
+
+Routine Checksum:
+
+Routine Name:
+  - SDVSIT0
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : WOLF,ED                        Date Entered : NOV 13, 2001
+Completed By: RUDINGER,NANCY L             Date Completed: JUL 03, 2003
+Released By : NELSON,VICKI M               Date Released : JUL 03, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

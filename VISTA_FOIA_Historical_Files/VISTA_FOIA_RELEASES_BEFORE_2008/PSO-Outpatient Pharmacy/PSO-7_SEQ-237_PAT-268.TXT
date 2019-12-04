@@ -1,0 +1,530 @@
+$TXT Created by WHITE,ELAINE at CTST.FO-BIRM.MED.VA.GOV  (KIDS) on Friday, 06/29/07 at 18:18
+=============================================================================
+Run Date: JUL 19, 2007                     Designation: PSO*7*268
+Package : PSO - OUTPATIENT PHARMACY           Priority: Mandatory
+Version : 7       SEQ #237                      Status: Released
+                  Compliance Date: AUG 19, 2007
+=============================================================================
+
+Associated patches: (v)PSO*7*65    <<= must be installed BEFORE `PSO*7*268'
+                    (v)PSO*7*129   <<= must be installed BEFORE `PSO*7*268'
+                    (v)PSO*7*249   <<= must be installed BEFORE `PSO*7*268'
+                    (v)PSO*7*250   <<= must be installed BEFORE `PSO*7*268'
+                    (v)PSO*7*258   <<= must be installed BEFORE `PSO*7*268'
+                    (v)PSO*7*261   <<= must be installed BEFORE `PSO*7*268'
+                    (v)PSO*7*263   <<= must be installed BEFORE `PSO*7*268'
+
+Subject: LOCK TIMEOUT & Q3 ENHANCEMENTS
+
+Category: 
+  - Routine
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ This patch is part of the third quarter enhancements release for the
+ Outpatient Pharmacy V. 7.0 package.
+  
+ 1. With the deployment of Cache version 5, it was discovered that the
+    short lock timeout values could generate a lock failure. Patch
+    DI*22*147, which has already been released, provided a solution to
+    resolve this issue and future lock issues.
+  
+    This patch instituted a new default lock timeout of three seconds based
+    on a global node setting of ^DD("DILOCKTM")=3.
+  
+    In order to avoid the lock issue in Outpatient Pharmacy, this patch
+    modifies all routines that currently use a lock timeout value of less
+    than 3 seconds to check for the node ^DD("DILOCKTM") and to use the
+    value defined there, otherwise the lock timeout value is set to a
+    default value of 3 seconds.
+  
+ 2. PSI-06-186  - Changing dispense drug and SIG
+    When entering a new order using the Patient Prescription Processing
+    [PSO LM BACKDOOR ORDERS] option, and answering "NO" to the prompt
+    "Is this correct? YES//", the software allows the option to edit
+    the dispense drug. It allows you to select any active drug from the 
+    DRUG file (#50) and accept the order even though the entered SIG is
+    incorrect. This patch will not list all the active drugs for selection
+    during dispense drug edit, but will list only those drugs that are tied
+    to that orderable item in the DRUG file (#50).
+  
+    When the dispense drug is changed the software prompts "Do You want to 
+    Edit the SIG?  NO//." To read the current SIG you may have to scroll
+    the screen up. This patch will now display the current SIG along with
+    the prompt "Do You want to Edit the SIG? YES//."
+  
+    A similar modification is also done in this patch for editing an
+    existing prescription and the dispense drug is changed, to display the
+    current SIG along with the prompt "Do You want to Edit the SIG? YES//."
+  
+    When finishing a pending order through the backdoor, the software 
+    allows the option to edit the orderable item and select a different
+    dispense drug, but does not prompt you to change the SIG. This can 
+    lead to an incorrect SIG. This patch will now prompt the question 
+    "Do You want to Edit the SIG? YES//."
+  
+ 3. This patch adds SERVICE REJECT to the current list of selection for
+    the Nature of Order prompt.
+    Example:
+  
+    Nature of Order: WRITTEN// ?
+    Choose from:
+    1            WRITTEN     W
+    2            VERBAL     V
+    3            TELEPHONED     P
+    4            SERVICE CORRECTION     S
+    5            POLICY     I
+    6            DUPLICATE     D
+    12           SERVICE REJECT     R
+  
+ 4. PSI-06-184 - Enhancements for No Allergy Assessment
+    The following changes are included to make the pharmacist aware/act on 
+    prescriptions if they're being entered/finished for a patient with no 
+    allergy assessment:
+    a. Within the profile information, display "No Allergy Assessment"
+       next to the allergy header (like "NKA" currently shows)
+    
+    b. At the same spot where checking for bad address, add a check for 
+       no allergy assessment and provide a message to the user. (When the 
+       user continues on, he could choose EA to enter allergy information,
+       stop with that patient, or continue on with ordering or finishing).
+  
+    c. On the profile header, on the right side of the line with patient 
+       name where <A> currently shows in reverse video if the patient has
+       any allergy/adverse reaction information on file, show  <NO ALLERGY
+       ASSESSMENT> in reverse video if no assessment has been done.
+  
+    d. If the pharmacist proceeds with drug entry for a patient with no 
+       allergy assessment, prompt to intervene just as if there had been an
+       allergy reaction and treat this like a critical interaction. (i.e. 
+       require them to choose to continue processing and if so, prompt for
+       an intervention.
+  
+       Note: When flagging is available in backdoor Outpatient Pharmacy for
+       pending orders, procedurally sites can choose to flag pending orders
+       for patients awaiting an allergy assessment.
+  
+ 5. The patient's eligibility will be displayed before prompting for
+    patient status when finishing prescriptions or entering new orders (to
+    ensure that the proper entry from the RX PATIENT STATUS file (#53) is
+    being selected. This is stored in the PATIENT STATUS field (#3) of the
+    PHARMACY PATIENT file (#55)):
+    a. In the Patient Prescription Processing [PSO LM BACKDOOR ORDERS] 
+       option, redisplay the eligibility just before prompting for patient 
+       status.
+  
+    b. In the Complete Orders from OERR [PSO LMOE FINISH] option, after 
+       displaying patient name, display eligibility and prompt for patient 
+       status.
+    
+    c. In both options, use RX PATIENT STATUS: for the prompt instead of
+       PATIENT STATUS:
+  
+  
+ Example 1 - Patient Prescription Processing:
+ Select Action: Next Screen// NO   New Order  
+  
+ Eligibility: SERVICE CONNECTED 50% to 100%     SC%: 60
+ RX PATIENT STATUS: AUTH ABS -96// SC
+      1   SC  
+      2   SC LESS THAN 50%  
+ CHOOSE 1-2: 1  SC
+     
+  
+ Example 2 - Complete Orders from OERR:
+ Select By:  (PA/RT/PR/CL/E): PATIENT// ROUTE
+ Route:  (W/M/C/E): WINDOW// MAIL
+  
+  
+  
+           OPPATIENT,ONE (666-00-0777)
+      No Allergy Assessment!
+  
+ Eligibility: NSC
+ RX PATIENT STATUS: OPT NSC//    
+  
+ 6. In the Patient Prescription Processing [PSO LM BACKDOOR ORDERS] 
+    option, if the Patient Update "PU" action is chosen and the PATIENT
+    STATUS is changed to a new one, when returning to the option and
+    choosing "NO" for New Order, the default PATIENT STATUS displayed is
+    the one before the PU change was done. This patch makes a correction
+    to refresh the PATIENT STATUS before displaying the default.
+  
+ 7. When selecting a patient in the Patient Prescription Processing [PSO 
+    LM BACKDOOR ORDERS] option or the Complete Orders from OERR [PSO LMOE 
+    FINISH] option, if Remote Data Interoperability (RDI) is turned on, a
+    check has been added to check for the ability to access remote data.
+    If a problem has been detected with accessing remote data, the patient
+    selection will display "Remote data not available - Only local order
+    checks processed." once per patient rather than for each individual
+    order.
+  
+ 8. If the MAIL STATUS EXPIRATION DATE field (#.05) in the PHARMACY PATIENT
+    file (#55) is less than today, the MAIL field (#.03) displays on
+    the patient profile as if it is still active. This patch adds the
+    display of the MAIL STATUS EXPIRATION DATE field next to the MAIL
+    field on the patient profile for MAIL settings of Do Not Mail, Local -
+    Regular Mail and Local - Certified Mail if the mail status is expired.
+  
+ 9. Following the installation of patch PSO*7*200, a site noticed that 6 
+    digits of the social security number were printing when using the new
+    hidden "RS" action to reprint the signature log. This patch changes it
+    to 4 digits to match the rest of the labels.
+  
+ 10. In patch PSO*7*200, functionality was provided to use the new 
+     commercial warning label to send prescriptions to the automated
+     filling equipment. One site reported a problem when using the old
+     warning labels, that the HEALTH LEVEL SEVEN (HL7) message sent to
+     Optifill was causing an error. This happens when the label text length
+     is greater than 512 characters. To prevent this error, this patch
+     ensures that the label text length sent does not exceed 245
+     characters. If the label text length exceeds 245 characters, then the
+     additional text will be parsed and sent in additional messages.
+  
+  
+  
+ Associated New Service Request (NSR):
+ =====================================
+ N/A
+  
+  
+ Associated Remedy Ticket(s):
+ ============================
+ HD68535
+ HD67512
+ HD169850
+ HD170298
+ HD172344
+ HD188707
+ HD189847 
+ HD190619
+  
+  
+ Associated E3Rs:
+ ================
+ N/A
+  
+  
+ TEST SITES:
+ ===========
+ DURHAM, NC
+ IRON MOUNTAIN, MI
+ LOUISVILLE, KY
+ MONTANA HCS
+ NEW YORK HARBOR HCS
+ OKLAHOMA CITY, OK
+ DUBLIN, GA
+ COLUMBIA, SC
+  
+  
+ Documentation Retrieval:
+ ========================
+  
+ The documentation is available on the ANONYMOUS.SOFTWARE directory at one
+ of the following Office of Information (OI) Field Offices:
+  
+    Albany
+    Hines
+    Salt Lake City
+  
+ Sites may retrieve documentation in one of the following ways:
+  
+ (1) The preferred method is to FTP the files from
+     download.vista.med.va.gov, which will transmit the files from the
+     first available FTP server.
+  
+ (2) Sites may also elect to retrieve documentation directly from a
+     specific server as follows:
+  
+     Albany              ftp.fo-albany.med.va.gov
+     Hines               ftp.fo-hines.med.va.gov
+     Salt Lake City      ftp.fo-slc.med.va.gov
+  
+ The documentation distribution includes:
+  
+    FILE NAME                     DESCRIPTION
+  
+  PSO_7_TM_R0707.PDF           Outpatient Pharmacy V. 7.0 Technical
+                                  Manual / Security Guide
+  
+  PSO_7_P268_TM_CP.PDF         Outpatient Pharmacy V. 7.0 Technical
+                                  Manual / Security Guide Change Pages
+  
+  PSO_7_UM_R0707.PDF           Outpatient Pharmacy V. 7.0 User Manual
+  
+  PSO_7_P268_UM_CP.PDF         Outpatient Pharmacy V. 7.0 User Manual
+                                  Change Pages
+  
+  PSO_7_P268_RN.PDF            Pharmacy FY07 Q3 Release Notes
+  
+ (3) Documentation can also be retrieved from VistA Documentation Library
+ (VDL) on the Internet at the following address, http://www.va.gov/vdl.
+  
+   
+ Installation Instructions:
+ ==========================
+  Before installing this patch, use List Tasks [XUTM INQ] option on the
+  Taskman Management [XUTM MGR] menu to list currently running tasks. Do
+  not install this patch while Outpatient Pharmacy users are on the system
+  or when Outpatient orders are being entered and signed through 
+  Computerized Patient Record System (CPRS). Installation will take no
+  longer than 5 minutes.
+  
+  Suggested time to install: non-peak requirement hours.
+  
+  1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+  
+  2. From the Kernel Installation & Distribution System menu, select
+     the Installation menu.
+  
+  3. From this menu, you may select to use the following options
+     (when prompted for INSTALL NAME, enter PSO*7.0*268):
+    a. Backup a Transport Global - this option will create a backup
+       message of any routines exported with the patch. It will NOT
+       backup any other changes such as DDs or templates.
+    b. Compare Transport Global to Current System - this option will
+       allow you to view all changes that will be made when the patch
+       is installed. It compares all components of the patch (routines,
+       DDs, templates, etc.).
+    c. Verify Checksums in Transport Global - this option will ensure
+       the integrity of the routines that are in the transport global.
+  
+  4. Use the Install Package(s) option and select the package PSO*7.0*268.
+  
+  5. When prompted "Want KIDS to INHIBIT LOGONs during the install? YES//"
+     respond NO.
+  
+  6. When prompted "Want to DISABLE Scheduled Options, Menu Options, and
+     Protocols? YES//" respond NO.
+  
+  
+ Routine Summary:
+ ================
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+  
+      <tab>;;7.0;OUTPATIENT PHARMACY;**[patch list]**;DEC 1997
+  
+                        CHECK^XTSUMBLD results
+  
+ Routine    Before Patch   After Patch   Patch List
+ =======    ============   ===========   ==========
+ PSOARCCO   7879291        8265582       268
+ PSOARCF4   16637301       17049597      27,130,268
+ PSOARCSV   16376249       16788545      27,130,268
+ PSOBAI     3476633        3645516       233,258,268
+ PSOBGMG1   10255321       10991641      10,22,60,268
+ PSOBGMG2   16665209       18064639      10,268
+ PSOBGMGR   26940406       27242459      12,232,268
+ PSOBING1   25562460       26210080      5,28,56,135,244,268
+ PSOBINGO   30730053       31012848      12,28,56,125,152,232,268
+ PSOBKDED   31060350       31066142      11,46,91,78,99,117,133,143,268
+ PSOBSET    8747238        9012142       10,268
+ PSOBSET1   8233165        8542985       268
+ PSOCAN4    22496678       22578497      20,24,27,63,88,117,131,259,268
+ PSOCLUTL   22293617       22958392      28,56,122,222,268
+ PSOCPBAK   16743148       17116474      137,268
+ PSOCPE     29757281       30177184      26,71,85,114,157,219,268
+ PSODEDT    8133208        8662737       2,268
+ PSODELI    1440588        1595661       10,268
+ PSODIAG    21722514       22333595      143,219,239,268
+ PSODIR1    28073176       28997145      23,46,78,102,121,131,146,166,
+                                         184,222,268
+ PSODLKP    12394095       13209864      268
+ PSODRG     11243785       12287767      20,23,36,53,54,46,112,139,
+                                         207,148,243,268
+ PSODRGN    N/A            6651236       268
+ PSODUE     4990585        5550324       268
+ PSOELPS2   15324909       15549275      119,268
+ PSOEN145   6851368        7669197       145,268
+ PSOHELP    25298823       26319759      3,23,29,48,46,117,131,222,268
+ PSOHLD     24943455       25133153      1,16,21,24,27,32,55,82,114,130,
+                                         166,148,268
+ PSOHLDI1   5610837        5738660       259,268
+ PSOHLDS2   21730677       22650821      156,198,255,200,268
+ PSOLLLHN   6009784        5989021       200,268
+ PSOLMPAT   2186259        2484825       15,117,149,233,268
+ PSOLMUTL   3627502        4201241       19,46,84,99,131,132,148,268
+ PSON52     23908009       24038314      1,16,23,27,32,46,71,111,124,117,
+                                         131,139,157,143,219,148,239,
+                                         201,268
+ PSONEW     14426305       14760179      11,27,32,46,94,130,268
+ PSONRXN    6363381        6975720       5,25,166,268
+ PSOORED1   25740226       25881539      5,23,46,78,114,117,131,146,
+                                         223,148,244,249,268
+ PSOORED6   22755947       22473655      78,104,117,133,143,219,148,247,268
+ PSOORNE5   27238510       27766101      11,27,32,46,78,99,117,131,146,
+                                         171,180,210,222,268
+ PSOORNW1   21778390       21767889      23,46,78,117,131,133,172,148,
+                                         222,268
+ PSOORUT2   18136103       27582798      11,146,132,182,233,243,261,268
+ PSOPAT     3628069        3943379       74,117,149,233,268
+ PSOPOST7   18075604       18573147      115,268
+ PSOPOST8   14341395       14493834      129,268
+ PSOPRVW    20991931       21384171      11,146,153,263,268
+ PSORN52A   10977218       11239419      157,148,268
+ PSORX1     21249936       23956929      7,22,23,57,62,46,74,71,90,95,115,
+                                         117,146,139,135,182,195,233,268
+ PSORXI     4007749        4331260       268
+ PSOSITED   4768316        5395571       24,65,268
+ PSOSUP     6132903        6717916       10,268
+ PSOTALK3   7838530        8126077       135,200,268
+ PSOTEXP1   15978212       16058271      250,268
+ PSOTPCEE   4583192        4935051       145,153,227,268
+ PSOTPRX1   22041473       22519378      146,182,227,268
+ PSOVER1    26675786       28194857      32,46,90,131,202,207,148,243,268
+  
+ Total number of new routines: 1
+ Total number of routines modified: 54
+ Total number of routines: 55
+  
+ Note: Patch PSO*7*42 was entered in error, so the 2nd line of the routine
+ PSOHELP was modified to remove that patch number.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;7.0;OUTPATIENT PHARMACY;**[Patch List]**;DEC 1997;Build 9
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PSOARCCO
+    Before: B10341300   After: B10741351  **268**
+Routine Name: PSOARCF4
+    Before: B24473080   After: B24899131  **27,130,268**
+Routine Name: PSOARCSV
+    Before: B24170983   After: B24597034  **27,130,268**
+Routine Name: PSOBAI
+    Before:  B9257882   After:  B9583572  **233,258,268**
+Routine Name: PSOBGMG1
+    Before: B16058926   After: B16960246  **10,22,60,268**
+Routine Name: PSOBGMG2
+    Before: B35327901   After: B37417581  **10,268**
+Routine Name: PSOBGMGR
+    Before: B61535737   After: B62041438  **12,232,268**
+Routine Name: PSOBING1
+    Before: B54041634   After: B55027504  **5,28,56,135,244,268**
+Routine Name: PSOBINGO
+    Before: B61437280   After: B61813575  **12,28,56,125,152,232,268**
+Routine Name: PSOBKDED
+    Before: B80276763   After: B80833683  **11,46,91,78,99,117,133,143,268**
+Routine Name: PSOBSET
+    Before: B10572334   After: B10859246  **10,268**
+Routine Name: PSOBSET1
+    Before:  B9338827   After:  B9659651  **268**
+Routine Name: PSOCAN4
+    Before: B42089158   After: B42203941  **20,24,27,63,88,117,131,259,268**
+Routine Name: PSOCLUTL
+    Before: B29603769   After: B30326336  **28,56,122,222,268**
+Routine Name: PSOCPBAK
+    Before: B43099557   After: B43547187  **137,268**
+Routine Name: PSOCPE
+    Before: B79963827   After: B80510322  **26,71,85,114,157,219,268**
+Routine Name: PSODEDT
+    Before: B14313886   After: B14865431  **2,268**
+Routine Name: PSODELI
+    Before:  B2674483   After:  B2912116  **10,268**
+Routine Name: PSODIAG
+    Before: B62418422   After: B63073470  **143,219,239,268**
+Routine Name: PSODIR1
+    Before: B69320145   After: B72033927  **23,46,78,102,121,131,146,166,
+                                           184,222,268**
+Routine Name: PSODLKP
+    Before: B25295257   After: B26284279  **268**
+Routine Name: PSODRG
+    Before: B30705564   After: B35387370  **20,23,36,53,54,46,112,139,
+                                           207,148,243,268**
+Routine Name: PSODRGN
+    Before:       n/a   After: B12292884  **268**
+Routine Name: PSODUE
+    Before:  B7233085   After:  B7809336  **268**
+Routine Name: PSOELPS2
+    Before: B39367755   After: B39664791  **119,268**
+Routine Name: PSOEN145
+    Before:  B7868890   After:  B8700479  **145,268**
+Routine Name: PSOHELP
+    Before: B49925355   After: B51249011  **3,23,29,48,46,117,131,222,268**
+Routine Name: PSOHLD
+    Before: B48797916   After: B49126582  **1,16,21,24,27,32,55,82,114,
+                                           130,166,148,268**
+Routine Name: PSOHLDI1
+    Before: B12265819   After: B12451392  **259,268**
+Routine Name: PSOHLDS2
+    Before: B62771501   After: B67611416  **156,198,255,200,268**
+Routine Name: PSOLLLHN
+    Before:  B9199678   After:  B9172755  **200,268**
+Routine Name: PSOLMPAT
+    Before:  B2889666   After:  B3240520  **15,117,149,233,268**
+Routine Name: PSOLMUTL
+    Before:  B9324541   After: B10324003  **19,46,84,99,131,132,148,268**
+Routine Name: PSON52
+    Before: B59816394   After: B60158603  **1,16,23,27,32,46,71,111,124,
+                                           117,131,139,157,143,219,148,
+                                           239,201,268**
+Routine Name: PSONEW
+    Before: B27548056   After: B28071554  **11,27,32,46,94,130,268**
+Routine Name: PSONRXN
+    Before: B14211330   After: B15266741  **5,25,166,268**
+Routine Name: PSOORED1
+    Before: B67707631   After: B67901232  **5,23,46,78,114,117,131,146,
+                                           223,148,244,249,268**
+Routine Name: PSOORED6
+    Before: B59169980   After: B61440766  **78,104,117,133,143,219,148,
+                                           247,268**
+Routine Name: PSOORNE5
+    Before: B59135982   After: B59982805  **11,27,32,46,78,99,117,131,
+                                           146,171,180,210,222,268**
+Routine Name: PSOORNW1
+    Before: B42999566   After: B42982549  **23,46,78,117,131,133,172,148,
+                                           222,268**
+Routine Name: PSOORUT2
+    Before: B33163050   After: B61773265  **11,146,132,182,233,243,261,268**
+Routine Name: PSOPAT
+    Before:  B4414039   After:  B4781637  **74,117,149,233,268**
+Routine Name: PSOPOST7
+    Before: B42217710   After: B43103725  **115,268**
+Routine Name: PSOPOST8
+    Before: B28635339   After: B28809794  **129,268**
+Routine Name: PSOPRVW
+    Before: B34650289   After: B35375521  **11,146,153,263,268**
+Routine Name: PSORN52A
+    Before: B17618155   After: B18015106  **157,148,268**
+Routine Name: PSORX1
+    Before: B48416353   After: B60587964  **7,22,23,57,62,46,74,71,90,
+                                           95,115,117,146,139,135,182,195,
+                                           233,268**
+Routine Name: PSORXI
+    Before:  B6406998   After:  B6810533  **268**
+Routine Name: PSOSITED
+    Before:  B5520744   After:  B6167263  **24,65,268**
+Routine Name: PSOSUP
+    Before:  B6881424   After:  B7482949  **10,268**
+Routine Name: PSOTALK3
+    Before: B20856163   After: B21440926  **135,200,268**
+Routine Name: PSOTEXP1
+    Before: B64487464   After: B64584695  **250,268**
+Routine Name: PSOTPCEE
+    Before:  B7950417   After:  B8343556  **145,153,227,268**
+Routine Name: PSOTPRX1
+    Before: B51610518   After: B52223271  **146,182,227,268**
+Routine Name: PSOVER1
+    Before: B53965789   After: B59047654  **32,46,90,131,202,207,148,243,268**
+ 
+Routine list of preceding patches: 2, 25, 60, 65, 119, 129, 137, 200, 201
+                           222, 227, 232, 247, 249, 250, 258, 259, 261, 263
+
+=============================================================================
+User Information:
+Entered By  : ALSAHHAR,SAMI                 Date Entered  : MAR 26, 2007
+Completed By: LEONARD,KEN                   Date Completed: JUL 17, 2007
+Released By : LESIEUR,SHIRLEY               Date Released : JUL 19, 2007
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

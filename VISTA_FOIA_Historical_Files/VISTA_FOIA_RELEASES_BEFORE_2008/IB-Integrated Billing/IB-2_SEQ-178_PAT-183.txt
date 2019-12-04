@@ -1,0 +1,559 @@
+
+=============================================================================
+Run Date: DEC 16, 2002                     Designation: IB*2*183
+Package : IB - INTEGRATED BILLING             Priority: EMERGENCY
+Version : 2       SEQ #178                       Status: Released
+                  Compliance Date: DEC 19, 2002
+=============================================================================
+
+Associated patches: (v)EAS*1*13        install with patch       `IB*2*183'
+                    (c)PRCA*4.5*181    install with patch       `IB*2*183'
+                    (c)DG*5.3*456      install with patch       `IB*2*183'
+                    (v)IVM*2*62        install with patch       `IB*2*183'
+                    (v)IB*2*179    <<= must be installed BEFORE `IB*2*183'
+                    (v)IB*2*187    <<= must be installed BEFORE `IB*2*183'
+                    (v)IB*2*188    <<= must be installed BEFORE `IB*2*183'
+
+Subject: GEOGRAPHIC MEANS TEST, IB PART II
+
+Category: 
+  - Informational
+  - Routine
+  - Data Dictionary
+  - Enhancement ()
+  - Other
+
+Description: 
+============
+
+  
+ The software for this patch, IB*2.0*183, and associated patches, EAS*1*13,
+ DG*5.3*456, IVM*2*62 and PRCA*4.5*181, are not being distributed through
+ the National  Patch Module.  These patches are being distributed as a
+ single KIDS software distribution (host file).  This patch contains the
+ informational portion of IB*2.0*183 and provides field personnel with
+ instructions on how to acquire, install, and implement the patch software.
+  
+ Overview
+ --------
+  
+ On January 23, 2002, President Bush signed into law H.R. 3477, The 
+ Department of Veterans Affairs Health Care Programs Enhancement Act of 
+ 2001.  Section 202 of this Act requires the implementation of HUD indices 
+ to determine geographic income thresholds in support of more discrete 
+ means testing.  Veterans in Priority Group 7 are eligible for treatment 
+ as a low-income family under section 3(b) of the United States Housing 
+ Act of 1973 (42 U.S.C. 1437a(b)) for the area in which such veterans 
+ reside, regardless of whether such veterans are treated as single person 
+ families under paragraph (3)(A) of such section 3(b) or as families under 
+ paragraph (3)(b).  This Act also established Priority Group 8 for any 
+ veterans described in section 1710(a)(3) of titles 38 U.S.C. who are not 
+ covered by Priority Group 7.   A new GMT Copayment status will identify 
+ veterans that qualify for a reduced inpatient GMT copayment rate. The 
+ effective date of the regulation to support the legislation is 10/01/02.
+  
+ Functional Description
+ ----------------------
+ The patch IB*2.0*183 provides all new functionality and modifications, 
+ related to the GMT requirements:
+  
+ 1) Inpatient Per Diem/Copayment Charges for patients with GMT Copayment 
+ Required Status will be calculated as 20% of Means Test charges.
+  
+ 2) Two new reports come with the patch:
+  - GMT SINGLE PATIENT REPORT
+  - GMT MONTHLY TOTALS REPORT
+  Accordingly, two new menu options provided.
+  
+ 3) The existing report - MT SINGLE PATIENT PROFILE was modified to mark 
+ GMT-related charges.
+  
+ 4) The estimator of MT Charges [IB MT ESTIMATOR] was modified to make 
+ correct estimations for patients with GMT Copayment Required Status.
+  
+ 5) The menu option [IB MT REL HELD (RATE) CHARGES] now can be used to 
+ release held (rate) charges for selected patient. That would be possible 
+ only if the Patient GMT/MT Copayment Status has been defined. This is 
+ emergency procedure and normally will not have to be executed.
+  
+ 6) The existing report IB MT LIST HELD (RATE) CHARGES may be used to 
+ identify MT Charges, placed ON HOLD by the GMT IB Part 1 software. The 
+ previous version of the report was intended for Outpatient Charges only. 
+ The report has been modified to work with both Inpatient and Outpatients 
+ charges.
+  
+ 7) All IB reports/screen forms, which need to print/output patient Means 
+ Test Status, were modified to be able to display/print/output Information 
+ about GMT Status.
+  
+ 8) The patch provides API call, which can be called by the Enrollment 
+ Package at the moment, when the patient's MT/GMT Copayment Status will be 
+ defined. The call will re-calculate all patient's MT charges, placed ON 
+ HOLD (RATE) by the GMT IB software, because of unknown GMT Copayment
+ Status. All charges, decreased because of patient's GMT Copayment Status,
+ will be marked as 'GMT RELATED'. 
+  
+  
+ Technical Description
+ ---------------------
+ There are twenty-nine routines and two new menu options contained in 
+ this patch. Also, the Data Dictionary for the file # 350 (INTEGRATED 
+ BILLING ACTION) has been modified.
+  
+ New/modified routines:
+  
+ 1) IBAGMT - The routine contains GMT-related utilities. The modified 
+ version of the routine provides the following new/modified functions:
+  
+ - $$ISGMTPT^IBAGMT(DFN,IBDT)
+ Description: The function returns value (1, 0, or -1), indicating, does 
+ the Patient have GMT Copayment Status or not? If GMT/MT Copayment is 
+ unknown because of uncompleted conversion process, the function returns 
+ '-1'. The function calls DG API (GMT^DGMTUB), if the DG patch was 
+ installed, otherwise it returns '-1' (unknown).
+     Input: DFN - IEN of PATIENT file,
+            IBDT - Date in FM format,
+     Output: 1 - 'YES', 0- 'NO', '-1' - 'UNKNOWN'
+ The procedure will send Mailman messages to MEANS TEST BILLING mail 
+ group, if an error happens. The error messages will contain detailed 
+ diagnostic information.
+  
+ - $$HOLD^IBAGMT(IBACT)
+ Description: This function defines, does the charge need to be placed on 
+ hold because of unknown rate. If the patient's GMT/MT Copayment Status 
+ will be defined, the function will always exit and return '0' (False). 
+ Otherwise the function will return '1' (True) if the charge is 
+ Potentially GMT-related and should be placed on hold (rate). If the 
+ function returns 'True', it also modifies the record of IB ACTION file 
+ (#350), setting the field STATUS to 20 (HOLD-RATE), forcing placing ON 
+ HOLD.
+ When the GMT conversion process will be completed, the function will 
+ always return '0' (false), and will perform no action.
+     Input: IBACT - IEN of INTEGRATED BILLING ACTION file (#350)
+     Output: 1 - place ON HOLD (action performed), 0 - no.
+  
+ - $$REDUCE^IBAGMT(IBCRG)        - The function will contain the rule for 
+ recalculation MT Charge to GMT amount. Currently it calculates 20% and 
+ rounds the result.
+    Input: IBCRG - the amount of MT charge
+    Output: The function returns GMT rate for the given MT rate.
+  
+ - $$RELHOLD^IBAGMT(DFN) - the API call to be called by the Enrollment 
+ software, responsible for the GMT conversion. The function will scan 
+ Inpatient MT IB charges, being 'INCOMPLETE' or 'ON HOLD-RATE' (status 
+ code 20) starting from the GMT Effective Date, and check the GMT 
+ Copayment Status for the patient. If the Patient has GMT Status, all 
+ corresponding charges will be re-calculated (reduced to 20%). All such 
+ charges ON HOLD - RATE (status code 20) will be passed to the AR package. 
+ All reduced charges will be marked as 'GMT RELATED' - field #.21 will be 
+ set to 1 - 'YES'.  The function will store the Patient's DFN in temporary 
+ global node ^XTMP("IB GMT CONVERSION") to guarantee that the procedure 
+ will not be executed within the next 90 days. The procedure will also 
+ adjust the latest MT Billing Clock for the patient, if the reduced charge 
+ is for GMT Copayment. In order to determine, which 90-days period the 
+ particular Charge belongs to, the procedure will use the temporary global 
+ node ^IB("AGMT"), supported by GMT 1 software.
+         Input: DFN - Patient's IEN
+         Output: Number on Charges released (or negative if error)
+ This procedure will also be called from [IB MT REL HELD (RATE) CHARGES] 
+ option, for a selected patient.
+  
+ - AGMTP^IBAGMT - the procedure to restore "AGMTP" index. It will look for
+ all 'Incomplete' or 'Hold - Rate' inpatient charges "billed to" after the
+ GMT effective date. If such charges present for the patient, the global 
+ node will be set: ^IB("AGMTP",DFN)="". That will indicate, that the 
+ patient will require the "Release off Hold" procedure to be executed 
+ after the GMT/MT status will be defined. That will allow to perform the 
+ "Release off Hold" procedure automatically by the IB software, if the 
+ Enrollment will fail to call it for some reason.
+  
+  
+ 2) IBAUTL2 - CHADD and CHUPD entry calls will be modified. One more input 
+ variable (IBGMTR) provided [optional]. Now if the local variable IBGMTR 
+ defined and not zero, the procedure will set 'GMT RELATED' flag of the 
+ charge to 1 - 'YES'.
+  
+ 3) IBAUTL4 - the routine will call $$ISGMTPT^IBAGMT() and 
+ $$REDUCE^IBAGMT() for both Per Diem and Deductible charges to adjust 
+ amount values, if needed, according to new business rules. If the 
+ Patients GMT/MT Copayment Status is unknown, the routine will work the 
+ same way as in GMT IB Part 1 patch.
+  
+ 4) IBAMTD1 - the routine will call $$ISGMTPT^IBAGMT() and 
+ $$REDUCE^IBAGMT()for both Per Diem and Deductible charges to adjust 
+ amount values, if needed, according to new business rules. If the 
+ Patients GMT/MT Copayment Status is unknown, the routine will work the 
+ same way as in GMT IB Part 1 patch.
+  
+ 5) IBECEA21 - the routine will call $$ISGMTPT^IBAGMT() and 
+ $$REDUCE^IBAGMT() to adjust calculated charge amount, if needed, 
+ according to new business rules. If the GMT Copayment Status is unknown 
+ (conversion not completed), the routine will write a warning message. 
+ Also it will write a message, if the Medicare Deductible was reduced due 
+ to GMT Copayment Status of the Patient.
+  
+ 6) IBECEA3 - the routine calls $$ISGMTPT^IBAGMT() and $$REDUCE^IBAGMT() 
+ to adjust calculated charge amount, if needed, according to new business 
+ rules. If the GMT Copayment Status is unknown (conversion not completed), 
+ the routine will write a warning message. Also it will write a message, 
+ if the Medicare Deductible was reduced due to GMT Copayment Status of the 
+ Patient,
+  
+ 7) IBECEA22 - the UPD entry call will be modified. One more input 
+ variable provided [optional]. Now if the local variable IBGMTR defined 
+ and not zero, the procedure will set 'GMT RELATED' flag of the charge to 
+ 1 - 'YES'
+  
+ 8) IBECEAU3 - the ADD entry call was modified. One more input variable 
+ provided [optional]. Now if the local variable IBGMTR defined and not 
+ zero, the procedure will set 'GMT RELATED' flag of the charge to 1 - 'YES'
+  
+ 9) IBECEAU4 - the CANC entry call was modified.Now, when cancellind the 
+ charge with 'GMT RELATED' flag, the corresponding cancellation charge 
+ will be created with 'GMT RELATED' flag as well.
+  
+ 10) IBOMTE - the routine calls $$ISGMTPT^IBAGMT() to define patient's GMT 
+ Copayment Status and will set IBGMT variable. Also it will write a 
+ message to user if the patient is GMT.
+ The patient lookup procedure turns off the "fuzzy" lookup by setting 
+ DPTNOFZY=1.
+  
+ 11) IBOMTE1 - the routine adjusts calculated Per Diem charges amount, for 
+ GMT Patients, using $$REDUCE^IBAGMT().
+  
+ 12) IBOMTE2 - the routine performs adjust calculated Deductible Copayment 
+ charges amount, for GMT Patients, using $$REDUCE^IBAGMT().
+  
+ 13) IBOMTP1 - The 'SINGLE PATIENT MT PROFILE REPORT' is modified to mark 
+ GMT-related charges with asterisk.
+  
+ 14) IBJTEA - The "IBJ PATIENT ELIGIBILITY SCREEN" was modified to 
+ indicate GMT Copayment Status.
+  
+ 15) IBAGMR - The entry point, user's dialogs and queuing-related code for 
+ the new  "GMT SINGLE PATIENT REPORT". User will enter Patient, Beginning 
+ and Ending dates. The default Beginning Date will be GMT Effective Date. 
+ The default Ending Date will be current date.
+  
+ 16) IBAGMR1 - Main body of the "GMT SINGLE PATIENT REPORT". The report 
+ will scan all events in the specified dates range for the patient. If the 
+ patient will have any GMT related charges (reduced due to GMT Status), 
+ the report will indicate GMT-related Savings (Difference) as Charge 
+ Amount x 4.
+  
+ 17) IBAGMM - The entry point, user's dialogs and queuing-related code for 
+ the new "GMT MONTHLY TOTALS REPORT".
+  
+ 18) IBAGMM1 - Main body of the "GMT MONTHLY TOTALS REPORT". The report 
+ will scan all GMT events in the specified dates range. It will print 
+ totals for GMT charges, and total MT/GMT Difference for each month in the 
+ specified data range.
+  
+ 19) IBRFN - The function TYP^IBRFN() will be fixed for Billing Group 8 
+ (LTC Outpatient).  It must return "O", because the Billing Group 8 is 
+ "Outpatient".
+  
+ 20) IBEMTO - The 'BILL MT CHARGES AWAITING NEW COPAY RATE' option will 
+ allow to release held charges for a selected patient, but only if the 
+ patient has GMT/MT Copayment Status defined. Also the routine will 
+ suggest printing the report "LIST CHARGES ON HOLD AWAITING NEW COPAY 
+ RATE".
+  
+ 21) IBEMTO1 - The report "LIST CHARGES ON HOLD AWAITING NEW COPAY RATE" 
+ will be modified, as it will print both Inpatient and Outpatient charges.
+  
+ 22) IBAMTV3, IBOBCR6, IBATOP, IBCNBLL, IBCOMC1, IBJTLA1, IBOSTUS1 
+ These routines were modified because the DG API $$LST^DGMTU(DFN,DT) has 
+ been changed. Now the field 3 of the API call output may have one of the 
+ following values:
+     - MT COPAY EXEMPT
+     - MT COPAY REQUIRED
+     - GMT COPAY REQUIRED
+     - NO LONGER REQUIRED
+     - PENDING ADJUDICATION
+     - REQUIRED
+  
+ The field 4 of the API call output may have one of values:
+     A - MT COPAY EXEMPT
+     C - MT COPAY REQUIRED
+     G - GMT COPAY REQUIRED
+     N - NO LONGER REQUIRED
+     P - PENDING ADJUDICATION
+     R - REQUIRED
+  
+  
+ Data Dictionary Modification
+ ----------------------------
+  
+ DD of the file #350 (INTEGRATED BILLING ACTION) was modified:
+  
+ New field # .21 added:
+  
+ 350, .21       GMT RELATED   0;21 SET
+                              '1' FOR YES;
+ LAST EDITED:     JUL 24, 2002
+ HELP-PROMPT:     Is this charge related to the GMT Copayment Status
+ DESCRIPTION:     This is a flag indicating that this charge was decreased 
+ due to the patient's GMT Copayment status
+  
+ The field .21 will be used to mark charges, reduced due to Patient's GMT 
+ Copayment Status. The flag will be used by GMT reports (GMT SINGLE 
+ PATIENT REPORT, GMT MONTHLY TOTALS REPORT), and to improve reliability of 
+ GMT Conversion process, to avoid decreasing GMT - related charges more 
+ than once.
+  
+  
+ New Menu Options
+ ----------------
+  
+ The GMT IB Part 2 patch will add two new options to print two new reports 
+ respectively:
+  
+ 'IB GMT SINGLE PATIENT REPORT' option will print 'GMT SINGLE PATIENT 
+ REPORT',
+ 'IB GMT MONTHLY TOTALS' option will print 'GMT MONTHLY TOTALS REPORT'.
+  
+ These new menu options are included to menu "IB OUTPUT PATIENT REPORT 
+ MENU" (this option was modified and included to the patch.)
+  
+ No security keys provided for these two reports.
+  
+ Routines Information
+ --------------------
+  
+ The following is a list of the routines included in this patch.
+ The second line of each of these routines now looks like:
+  
+  ;;2.0;INTEGRATED BILLING;**[patch list]**;21-MAR-94
+   
+   
+  Routine     Before Patch   After Patch    Patch List
+  -------     ------------   -----------    ----------
+  IBAGMM           n/a          3812352      183
+  IBAGMM1          n/a          8311692      183
+  IBAGMR           n/a          3414929      183
+  IBAGMR1          n/a          9278282      183
+  IBAGMT        1485964        17752001      179,183
+  IBAMTD1       3840699         5790609      45,153,179,183
+  IBAMTV3       4767675         4702076      15,153,183
+  IBATOP        9529210         9592387      115,153,183
+  IBAUTL2       4115995         4375593      52,153,167,187,183
+  IBAUTL4      12324932        12287364      45,153,171,176,179,183
+  IBCNBLL      16963289        17085018      82,149,153,183
+  IBCOMC1       6226404         6300956      103,183
+  IBECEA2      11544190        11585885      57,52,150,176,183
+  IBECEA21     10310605        14456905      7,57,167,183
+  IBECEA22      4164351         4265849      150,183
+  IBECEA3      17237734        20688658      7,57,52,132,150,153,166,
+                                             156,167,176,198,188,183
+  IBECEAU3      3504210         3599373      132,150,167,183
+  IBECEAU4      6667463         6922909      52,167,183
+  IBOMTE        5481552         6395698      153,183
+  IBOMTE1       7629098         8795623      153,183
+  IBOMTE2       3031067         3508500      153,183
+  IBEMTO        7207765        12737722      179,183
+  IBEMTO1       6889786         6570944      183
+  IBOMTP1       8516689         8960916      15,153,176,183
+  IBOBCR6       5232745         5201314      153,183
+  IBJTEA        6330334         6232731      39,153,183
+  IBJTLA1       3894356         4009027      39,80,61,51,153,137,183
+  IBOSTUS1      9923991        10006612      31,118,128,153,137,161,183
+  IBRFN         3991903         4021093      52,130,183
+  
+        Total number of routines - 29  
+  
+  
+ INSTALLATION INSTRUCTIONS
+ =========================  
+ Please refer to the 'Installation Instructions' section of the EAS*1*13 
+ patch description for instructions on how to install the patch software.
+
+Routine Information:
+====================
+
+Routine Name:
+  - IBAUTL4
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBAGMT
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBAMTD1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBECEA21
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBECEA3
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBOMTE1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBOMTE2
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBJTEA
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBAGMR
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBAGMR1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBAUTL2
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBECEA22
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBECEAU3
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBEMTO
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBEMTO1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBOMTE
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBOMTP1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBAGMM
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBAGMM1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBAMTV3
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBOBCR6
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBATOP
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNBLL
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCOMC1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBJTLA1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBOSTUS1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBRFN
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBECEA2
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBECEAU4
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : TUSEYEV,ANDREY                 Date Entered : JUN 03, 2002
+Completed By: ZEIGLER,EDWARD L             Date Completed: DEC 10, 2002
+Released By : GANUS,MAUNETTE                Date Released : DEC 16, 2002
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

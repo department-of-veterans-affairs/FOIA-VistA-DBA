@@ -1,0 +1,437 @@
+$TXT Created by IVEY,JOEL at NXT.KERNEL.FO-OAKLAND.MED.VA.GOV  (KIDS) on Wednesday, 07/26/06 at 16:21
+=============================================================================
+Run Date: JUL 31, 2006                     Designation: XU*8*420
+Package : XU - KERNEL                         Priority: Mandatory
+Version : 8       SEQ #343                      Status: Released
+                  Compliance Date: AUG 15, 2006
+=============================================================================
+
+
+Subject: NATIONAL PROVIDER IDENTIFIER (NPI) DATA CAPTURE
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ Patch XU*8*420 (National Provider Identifier Data Capture) provides data 
+ dictionary changes, and options in support of the National Provider 
+ Identifier (NPI).  
+  
+ This patch includes 5 routines and 7 options, and modifies the Data
+ Dictionary of the INSTITUTION File (#4) and the NEW PERSON File (#200). 
+  
+ The patch identifies individuals who need an NPI value based on active users 
+ who have a billable taxonomy code in the active entry in the PERSON CLASS 
+ subfile(#8932.1) of NEW PERSON file(#200). A post-init routine identifies
+ these individuals and sets the NPI ENTRY STATUS field (#41.98) to NEEDS AN
+ NPI.  
+  
+ The post-init routine also checks the "INDIVIDUAL/NON" field (#90002) in the 
+ PERSON CLASS file (#8932.1) for current entries and if null, sets the value 
+ of field 90002 to "I" or "INDIVIDUAL" to initialize the data before data for 
+ NON-INDIVIDUAL entries are added.  
+  
+ In addition, the post-init routine generates and transmits an initial CBO 
+ list of those needing an NPI value to the "VHA CO National Provider 
+ Identifier NPF Status Reports" exchange mailgroup. 
+  
+ Most of the test sites expressed the desire not to have the individual
+ providers entering their own NPI values.  So this functionality was turned
+ off.  If a site desires to turn it on, they may add the "XUS NPI PROVIDER 
+ SELF ENTRY" option to the XUCOMMAND menu, with NPI as the synonym.
+ A sign-on message to let providers know of this capability can be
+ activated by adding the "XUS NPI SIGNON CHECK" option to the "XU USER
+ SIGN-ON" option.
+  
+ The NPI MENU option enables staff to perform the following functions:
+ - enter NPI values for a provider
+ - set the NPI ENTRY STATUS to EXEMPT for those individuals who have one of 
+   the specified PERSON CLASS entries, but are administrative and do not 
+   provide billable services
+ - generate reports showing those individuals still needing an NPI value
+  
+ The following fields (and sub-file) were added to the NEW PERSON file 
+ (#200): 
+  
+ DATA          NAME                  GLOBAL        DATA ELEMENT       TITLE
+            LOCATION      TYPE 
+ --------------------------------------------------------------------------
+  
+ 200,41.98     NPI ENTRY STATUS       NPI;2 SET 
+  
+                                 'N' FOR NEEDS ENTRY; 
+                                 'E' FOR EXEMPT; 
+                                 'D' FOR DONE; 
+               LAST EDITED:      MAY 08, 2006 
+               HELP-PROMPT:      This field is filled in automatically if 
+                                 needed. 
+               DESCRIPTION:      This field is used in tracking the entry 
+                                 status of NPI data for those providers 
+                                 who require an NPI.  The providers needing 
+                                 this value are identified based on data 
+                                 entered in the PERSON CLASS subfile which 
+                                 indicates providers that may be related to 
+                                 billing activities.  
+                                  
+                                 The value is initially set to N or NEEDS 
+                                 ENTRY. It can be changed to E or EXEMPT 
+                                 for individuals who have been 
+                                 identified, but who due to administrative 
+                                 activities, etc., will not be involved 
+                                 in activities requiring billing. When 
+                                 the NPI value is entered, the 
+                                 value is changed to D or DONE.  
+  
+  
+ 200,41.99     NPI                    NPI;1 FREE TEXT (Required) 
+  
+               INPUT TRANSFORM:  
+               K:$L(X)>10!($L(X)<10)!'($$CHKDGT^XUSNPIE1(X)) X 
+               LAST EDITED:      MAY 12, 2006 
+               HELP-PROMPT:      Answer must be 10 characters in length. 
+               DESCRIPTION:      Current Unique National Provider ID. A 
+                                 unique meaningless integer assigned to 
+                                 providers.  
+  
+               NOTES:            XXXX--CAN'T BE ALTERED EXCEPT BY 
+                                 PROGRAMMER 
+  
+               CROSS-REFERENCE:  200^ANPI 
+                                 1)= S ^VA(200,"ANPI",$E(X,1,30),DA)="" 
+                                 2)= K ^VA(200,"ANPI",$E(X,1,30),DA) 
+                                 File entries by NPI.  
+  
+  
+  
+ 200,42        EFFECTIVE DATE/TIME    NPISTATUS;0 DATE Multiple #200.042 
+  
+               LAST EDITED:      APR 25, 2006 
+  
+ 200.042,.01     EFFECTIVE DATE/TIME    0;1 DATE (Required) 
+  
+                 INPUT TRANSFORM:  S %DT="ESTX" D ^%DT S X=Y K:Y<1 X 
+                 LAST EDITED:      APR 25, 2006 
+                 HELP-PROMPT:      Enter the date/time of the last change 
+                                   to this NPI.  
+                 DESCRIPTION:      This field contains the date and time 
+                                   of the last change to the NPI field.  
+  
+                 NOTES:            XXXX--CAN'T BE ALTERED EXCEPT BY 
+                                   PROGRAMMER 
+  
+                 CROSS-REFERENCE:  200.042^B 
+                                 1)= S 
+                                 ^VA(200,DA(1),"NPISTATUS","B",$E(X,1,30), 
+                                 DA)="" 
+  
+                                 2)= K 
+                                 ^VA(200,DA(1),"NPISTATUS","B",$E(X,1,30), 
+                                 DA) 
+  
+  
+ 200.042,.02     STATUS               0;2 SET (Required) 
+  
+                                 '1' FOR ACTIVE; 
+                                 '0' FOR INACTIVE; 
+                 LAST EDITED:    MAR 01, 2006 
+                 DESCRIPTION:    The Status of an NPI is either 'ACTIVE' or 
+                                 'INACTIVE'. I 'ACTIVE' then the NPI will 
+                                 be accessible by end-users to 
+                                 document a particular provider. If 
+                                 'INACTIVE', then the NPI will only 
+                                 be accessible by the application 
+                                 to display legacy data.  
+  
+                                 UNEDITABLE 
+  
+ 200.042,.03     NPI                  0;3 FREE TEXT (Required) 
+  
+                 INPUT TRANSFORM: 
+                          K:$L(X)>10!($L(X)<10)!'($$CHKDGT^XUSNPIE1(X)) X 
+                 LAST EDITED:    MAY 11, 2006 
+                 HELP-PROMPT:    Answer must be 10 characters in length. 
+                 DESCRIPTION:    Unique National Provider ID. A unique 
+                                 meaningless integer assigned to 
+                                 providers.  
+  
+                 NOTES:          XXXX--CAN'T BE ALTERED EXCEPT BY 
+                                 PROGRAMMER 
+  
+                 CROSS-REFERENCE:200.042^C 
+                                 1)= S 
+                                 ^VA(200,DA(1),"NPISTATUS","C",$E(X,1,30), 
+                                 DA)="" 
+  
+                                 2)= K 
+                                 ^VA(200,DA(1),"NPISTATUS","C",$E(X,1,30), 
+                                 DA) 
+  
+                 CROSS-REFERENCE:200.042^AC^MUMPS 
+                                 1)= D SET^XUSNPIE1(DA(1),X) 
+                                 2)= Q 
+                                 3)= Special Trigger 
+                                  This Special x-ref sets the NPI field 
+                                  (#41.99). 
+  
+  
+                                 
+ The following fields (and sub-file) were added to the INSTITUTION file (#4): 
+  
+ DATA          NAME                  GLOBAL        DATA ELEMENT       TITLE        
+            LOCATION      TYPE 
+ --------------------------------------------------------------------------
+  
+ 4,41.99       NPI                    NPI;1 FREE TEXT (Required) 
+  
+               INPUT TRANSFORM:  
+                         K:$L(X)>10!($L(X)<10)!'($$CHKDGT^XUSNPIE1(X)) X 
+               LAST EDITED:      MAR 01, 2006 
+               HELP-PROMPT:      Answer must be 10 characters in length. 
+               DESCRIPTION:      Current Unique National Provider ID. A 
+                                 unique meaningless integer assigned to 
+                                 providers.  
+  
+               DELETE TEST:      11,0)= D:'$D(XUMF) EN^DDIOL("Entries must 
+                                 be in activated via the Master File 
+                                 Server(MFS).","", "!?5,$C(7)") I $D(XUMF) 
+  
+               NOTES:            XXXX--CAN'T BE ALTERED EXCEPT BY 
+                                 PROGRAMMER 
+  
+               CROSS-REFERENCE:  4^ANPI 
+                                 1)= S ^DIC(4,"ANPI",$E(X,1,30),DA)="" 
+                                 2)= K ^DIC(4,"ANPI",$E(X,1,30),DA) 
+                                 File entries by NPI.  
+  
+  
+  
+ 4,42          EFFECTIVE DATE/TIME    NPISTATUS;0 DATE Multiple #4.042 
+  
+  
+ 4.042,.01       EFFECTIVE DATE/TIME    0;1 DATE 
+  
+                 INPUT TRANSFORM:  S %DT="ESTX" D ^%DT S X=Y K:Y<1 X 
+                 LAST EDITED:      MAR 01, 2006 
+                 HELP-PROMPT:      Enter the date/time of the last 
+                                   change to this NPI.  
+                 DESCRIPTION:      This field contains the date and time 
+                                   of the last change to the NPI field.  
+  
+                 NOTES:            XXXX--CAN'T BE ALTERED EXCEPT BY 
+                                   PROGRAMMER 
+  
+                 CROSS-REFERENCE:  4.042^B 
+                                 1)= S 
+                                ^DIC(4,DA(1),"NPISTATUS","B",$E(X,1,30), 
+                                 DA)="" 
+  
+                                 2)= K 
+                                ^DIC(4,DA(1),"NPISTATUS","B",$E(X,1,30), 
+                                 DA) 
+  
+  
+ 4.042,.02       STATUS               0;2 SET (Required) 
+  
+                                 '1' FOR ACTIVE; 
+                                 '0' FOR INACTIVE; 
+                 LAST EDITED:    MAR 01, 2006 
+                 DESCRIPTION:    The Status of an NPI is either 'ACTIVE' or 
+                                 'INACTIVE'. I 'ACTIVE' then the NPI will 
+                                 be accessible by end-users to document a 
+                                 particular provider.  If 'INACTIVE', then 
+                                 the NPI will only be accessible by the 
+                                 application to display legacy data.  
+  
+                                 UNEDITABLE 
+  
+ 4.042,.03       NPI                  0;3 FREE TEXT (Required) 
+  
+                 INPUT TRANSFORM: 
+                         K:$L(X)>10!($L(X)<10)!'($$CHKDGT^XUSNPIE1(X)) X 
+                 LAST EDITED:    APR 06, 2006 
+                 HELP-PROMPT:    Answer must be 10 characters in length. 
+                 DESCRIPTION:    Unique National Provider ID. A unique 
+                                 meaningless integer assigned to 
+                                 providers. 
+  
+                 NOTES:          XXXX--CAN'T BE ALTERED EXCEPT BY 
+                                 PROGRAMMER 
+  
+                 CROSS-REFERENCE:4.042^C 
+                                 1)= S 
+                                 ^DIC(4,DA(1),"NPISTATUS","C",$E(X,1,30),D 
+                                 A)="" 
+  
+                                 2)= K 
+                                ^DIC(4,DA(1),"NPISTATUS","C",$E(X,1,30),D 
+                                 A) 
+  
+                 CROSS-REFERENCE:4.042^AC^MUMPS 
+                                 1)= D SET1^XUSNPIE1(DA(1),X) 
+                                 2)= Q 
+                                 3)= Special Trigger 
+                                  This Special x-ref sets the NPI field 
+                                  (#41.99).  
+  
+  
+ The following Options are added to the Option file (#19):
+  
+ XUS NPI CBO LIST       List of NPI data for CBO 
+    Generates a VIstA e-mail message in Excel format that is sent to 
+    VHA CO National Provider Identifier NPF Status Reports mail group.
+    This option is queued to run on the first and fifteenth day of each 
+    month.  
+  
+ XUS NPI ENTER NPI FOR PROVIDER       Enter NPI values for Providers 
+    This option is intended for those individuals who would be entering 
+    NPI values for providers.  It is on the NPI Menu.  
+  
+ XUS NPI EXEMPT PROVIDER     Mark/Unmark Provider Exempt from requiring an 
+    NPI This option is intended for those individuals who would be 
+    entering NPI values for providers, but permits them to set a 
+    particular user to Exempt from needing an NPI.   Exempt Status is intended 
+    for those staff who may be providers, but doing fully administrative 
+    works, etc.  
+  
+ XUS NPI LOCAL REPORTS       Print Local NPI Reports 
+     This option is used by the local facility staff to generate reports 
+     indicating either all providers (determined by being an Active user 
+     with a Person Class entry which indicates an NPI value would be 
+     required) or those who have been identified as needing an NPI value, 
+     but do not yet have one entered.  This option is on the NPI Menu.  
+  
+ XUS NPI MENU                         NPI (National Provider ID) Menu 
+    This menu would be given to those local facility staff who would need 
+    to enter data for providers, or generate reports.  It should be given 
+    with a synonym such as NPIM or the staff will need to enter "NPI (" to 
+    distinguish it from the XUS NPI PROVIDER SELF ENTRY option below.  
+  
+ XUS NPI PROVIDER SELF ENTRY       PROVIDER NPI SELF ENTRY 
+    This option was originally placed on the XUCOMMAND menu.  If desired,
+    the site may add it to the XUCOMMAND menu to permit providers to add 
+    their own NPI values.  If selected, it checks whether an NPI value is 
+    needed for the user and, if so, the user may enter the NPI value.  
+    Otherwise it simply indicates that they do not need an NPI value and 
+    quits.  The synonym is NPI.  
+  
+ XUS NPI SIGNON CHECK       NPI Signon Check
+    This option may be placed on the XU USER SIGN-ON menu if desired. 
+    This is an action option that is run each time an individual signs on 
+    it checks on whether they need an NPI value, and if so simply displays 
+    a line indicating that when they have their NPI value they can enter 
+    ^NPI at any menu prompt to enter the value.  This option also checks 
+    for users signing on between 7 pm and 7:45 pm on the first day of the 
+    month that the XUS NPI CBO LIST option is scheduled to be run at 8 
+    pm.  This option should be added to the XU USER SIGN-ON option to 
+    activate it.
+  
+ An entry is made in the SCHEDULED OPTIONS file for XUS NPI CBO LIST to run 
+ at 8 pm on the first and fifteenth days of each month.  
+  
+ This patch also create a new entry 'XUSNPI QUALIFIED IDENTIFIER' for 
+ PARAMETER DEFINITION file (#8989.51), and three new entries of PARAMETER 
+ file (#8989.5): 
+ 1 KERNEL       XUSNPI QUALIFIED IDENTIFIER     Individual_ID 
+ 2 KERNEL       XUSNPI QUALIFIED IDENTIFIER     Organization_ID 
+ 3 KERNEL       XUSNPI QUALIFIED IDENTIFIER     Pharmacy_ID 
+  
+ ===========================================
+  
+  NOISs: None 
+  
+  E3Rs:  None 
+  
+  List of Test Sites 
+  ==================
+  Battle Creek, MI 
+  Heartland-West HCS 
+  Little Rock, AR (C) 
+  Sheridan, WY 
+  
+ Blood Bank Clearance: 7/15/06
+ ==============================
+  
+  Installation Instructions: 
+  
+       1.   Users ARE allowed to be on the system during the 
+       installation.  
+  
+       2.   Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu.  
+       This option will load the KIDS (Kernel Installation and Distribution 
+       System) package onto your system.  
+  
+       3.   You DO NOT need to stop TaskMan or the background filers.  
+  
+       4.   The patch has now been loaded into a transport global on your 
+       system.  On the KIDS menu, select the 'Installation' menu and use 
+       the following options: 
+             Verify Checksums in Transport Global 
+             Print Transport Global 
+             Compare Transport Global to Current System 
+             Backup a Transport Global 
+  
+            To Install the patch:
+            Select KIDS OPTION: Install Package(s) 
+                                 =======
+            Select INSTALL NAME: XU*8.0*420 
+                                 ==========
+  
+          Want KIDS to Rebuild Menu Trees Upon Completion of Install? YES// NO 
+                                                                            ==
+          Want KIDS to INHIBIT LOGONs during the install? YES// NO 
+                                                                ==
+          Want to DISABLE Scheduled Options, Menu Options, and Protocols? 
+          YES// NO 
+                ==
+ =================================================
+  Routine Summary: 
+  The following routines are included in this patch.  The second 
+  line of each of these routines now looks like: 
+  
+       <tab>;;8.0;KERNEL;**[patch list]**;Jul 10, 1995 
+  
+ Checksums: 
+ ==========
+ Checksums obtained using CHECK^XTSUMBLD 
+  
+  Rtn Nm    Chksum Before   Chksum After    Patch List 
+  ------    -------------   ------------    ----------
+ XU8P420              N/A        1983239    420 
+ XUSNPIDA             N/A        2329487    420 
+ XUSNPIE1             N/A       22031186    420 
+ XUSNPIED             N/A       19893383    420 
+ XUSNPIUT             N/A        7301624    420 
+  
+ List of preceding patches: None 
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: XU8P420
+    Before:       n/a  After:  B3428730  **420**
+Routine Name: XUSNPIDA
+    Before:       n/a  After: B45390858  **420**
+Routine Name: XUSNPIE1
+    Before:       n/a  After: B89054280  **420**
+Routine Name: XUSNPIED
+    Before:       n/a  After: B59937422  **420**
+Routine Name: XUSNPIUT
+    Before:       n/a  After: B18048162  **420**
+
+=============================================================================
+User Information:
+Entered By  : IVEY,JOEL                     Date Entered  : MAY 11, 2006
+Completed By: SINGH,GURBIR                  Date Completed: JUL 28, 2006
+Released By : TILLIS,LEWIS                  Date Released : JUL 31, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

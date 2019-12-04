@@ -1,0 +1,332 @@
+$TXT Created by DOWNING,TODD at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 10/21/03 at 08:51
+=============================================================================
+Run Date: NOV 21, 2003                     Designation: DG*5.3*544
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #483                    Status: Released
+                  Compliance Date: DEC 22, 2003
+=============================================================================
+
+Associated patches: (v)DG*5.3*204  <<= must be installed BEFORE `DG*5.3*544'
+                    (v)DG*5.3*466  <<= must be installed BEFORE `DG*5.3*544'
+                    (v)DG*5.3*498  <<= must be installed BEFORE `DG*5.3*544'
+                    (v)DG*5.3*510  <<= must be installed BEFORE `DG*5.3*544'
+
+Subject: FIXES FOR PTF CLOSEOUT, SI DATE, BED AVAIL. REPORT & INPATIENT ROSTER
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch addresses problems in the Registration package as reported in 
+ the NOISes listed in the ASSOCIATED NOISes below. 
+  
+  
+ ASSOCIATED NOISes:
+ ==================
+ TAM-0303-31335  PTF record will not close for Fee Basis patient.
+ CTX-1003-70786 (Duplicate) CENSUS -MT STATUS PROBLEM
+ SFC-1202-61040  Fee basis PTF erroring in Austin on elig.
+ ISA-1098-12507  SI date when backdating transfer
+ DAN-0700-40870  BED AVAILABILITY REPORT PROBLEM
+ NOL-0998-70264  printout format dropping characters
+  
+  
+ ASSOCIATED E3R:
+ ===============
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ ========================= 
+ White City, OR
+ El Paso,TX
+ Alexandria,VA
+ San Francisco, CA
+  
+ NOIS OVERVIEW:
+ ==============
+  
+ 1. TAM-0303-31335  PTF record will not close for Fee Basis patient.
+  
+ Problem:
+ --------
+  
+ As Reported
+ +++++++++++
+ PTF records cannot be closed for Fee Basis patients with a Means Test value 
+ of Service Connected who have had a service connected treatment. The following 
+ message is displayed:
+  
+ Performing edit checks...
+ 101 MEANS TEST          value AS inconsistent with eligibility data
+  
+ As Analyzed
+ +++++++++++
+ The PTF close-out edit checker is calculating a Means Test Indicator of 
+ "AN" for ALL patients whose Means Test Status is Category A (STATUS field 
+ (#.03) value in the ANNUAL MEANS TEST file (#408.31) = "A").  In contrast, 
+ the Means Test Indicator field (#10) in the PTF file (#45) calculates a value 
+ of "AS" for Category A patients under the following conditions:
+  
+   1. Patient is Fee Basis
+   2. VA code number of Admitting Eligibility code = 3
+   3. Patient is service connected with 0% and non-compensable.
+   4. Patient has had a service connected treatment. 
+  
+ Resolution:
+ -----------
+ The PTF close-out edit checker has been modified to calculate a Means Test 
+ Indicator value of "AS" under the conditions outlined above, which are in 
+ accordance with existing business rules for calculating Means Test Status.
+  
+ 2. SFC-1202-61040  Fee basis PTF erroring in Austin on elig.
+  
+ Problem:
+ --------
+  
+ As Reported
+ +++++++++++
+ A Service Connected veteran PTF (fee basis) record shows incorrect
+ MEANS TEST STATUS (NSC MT COPAY EXEMPT) on screen 101 of PTF record.
+ The rest of the eligibility fields on screen 101 are correctly reflecting
+ that vet is >50% Service Connected.  When changing the Means Test Status 
+ field it appears to be changed, but when the screen reappears the old,
+ incorrect status remains.
+  
+ As Analyzed
+ +++++++++++
+ Both the front-end calculation of the Means Test Indicator (field #10 in 
+ the PTF file #45) and the back-end edit checker are setting patients with a 
+ Means Test Status of MT COPAY EXEMPT (category A) and service connected 
+ with a Service Connected Percentage > 0 as "AN" (NSC MT COPAY EXEMPT).  
+  
+ Resolution:
+ -----------
+ The PTF software has been modified to set the MEANS TEST INDICATOR field (#10) 
+ in the PTF file (#45) to "AS" for patients who's:
+  
+   1. MEANS TEST STATUS (field #.03, ANNUAL MEANS TEST file #408.31) is "A", 
+      for the current Means Test, and 
+   2. PRIMARY ELGIBILITY CODE (field #.361, PATIENT file #2) is "SC LESS 
+      THAN 50% "or "SERVICE CONNECTED 50% TO 100%" for the admission record, 
+      and
+   3. SERVICE CONNECTED PERCENTAGE (field #.302, Patient file #2) is greater 
+      than zero.
+  
+ 3. ISA-1098-12507  SI date when backdating transfer
+  
+ Problem:
+ --------
+  
+ As Reported
+ +++++++++++
+ When backdating an interward transfer using the TRANSFER A PATIENT option,and 
+ putting them on a ward (seriously ill) the computer defaults the date entered 
+ on SI list to the present date and not the actual date of the transfer. Users
+ then have to go into another option, Seriously ill list entry[DG SERIOUSLY
+ ILL ENTRY] and edit the entry, which is additional work.
+  
+ As Analyzed
+ +++++++++++
+ When a patient is placed on a seriously ill ward, the CONDITION field 
+ (#401.3) in the PATIENT file (#2) is set to "S" and a trigger cross-reference 
+ on this field fires which stores the current date ('TODAY') in the
+ DATE ENTERED ON SI LIST field (#401.4). Backdating of both patient 
+ transfers and admissions to seriously ill wards will cause the patient
+ to be placed on the Seriously Ill list on the date the entry was made
+ rather than the date of the event.
+  
+ Resolution:
+ -----------
+ The patient movement software was modified to populate the DATE ENTERED ON SI 
+ LIST (#401.4) with the movement date for admissions and transfers
+ to seriously ill wards.
+  
+ 4. DAN-0700-40870  BED AVAILABILITY REPORT PROBLEM
+  
+ Problem:
+ --------
+  
+ As Reported
+ +++++++++++
+ The option DG BED AVAILABILITY produces a listing of available beds by
+ ward if the user specifies "ALL" for the ward location.  Since many sites are 
+ 'mirroring' their beds in order to accommodate observation beds, they are 
+ using the dual designation of the rooms.  Unfortunately, this common practice 
+ has made this Bed Availability report incorrect.  Consequently, sites have 
+ no report to tell them what rooms/beds are currently available.
+  
+ As Analyzed
+ +++++++++++
+ This report uses the "W" cross-reference from the WARDS WHICH CAN ASSIGN 
+ multiple (#100) in the ROOM-BED file (#405.4) to report available beds by 
+ ward, or by ward within service.  This is causing beds to show up on the 
+ report as many times as there are entries in the multiple.
+    
+ Resolution:
+ -----------
+ A third sorting option, by BED, was added to the report.  This option sorts 
+ the output by bed name and lists the wards that can assign each available 
+ bed. The total number of beds available is printed at the end of the 
+ available bed listing.  The user can select which division(s) and/or 
+ ward(s) to print the beds for, and can also choose whether or not to print a 
+ list of lodgers occupying beds at the end of the report.
+  
+ 5. NOL-0998-70264  printout format dropping characters
+  
+ Problem:
+ --------
+  
+ As Reported
+ +++++++++++
+ The Inpatient Roster option report (DG INPATEINT ROSTER) has lost one  
+ character in the Room-Bed column.
+  
+ As Analyzed
+ +++++++++++
+ DG*5.3*162 moved the Room-Bed field one space to the right and the printed 
+ field length was changed from 9 characters to 8 characters to allow for 
+ printing the admission date in mm/dd/yyyy format. 
+  
+ Resolution:
+ ===========
+ Room-Bed was increased to 9 columns.  Means Test was shifted to the right one 
+ column to accomplish this.
+  
+  
+  
+ DATA DICTIONARY CHANGES:
+ ========================
+ N/A
+  
+  
+ TEMPLATES:
+ ==========
+ N/A
+  
+  
+ ROUTINE SUMMARY:
+ ================
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+  
+     <tab>;;5.3;Registration;**[patch list]**;AUG 13, 1993
+  
+                            CHECK^XTSUMBLD results
+ Routine name      Before Patch          After Patch         Patch List
+ ============      ============          ===========         ==========
+ DGOINPT1              12177085             12177821         162,498,544
+ DGPMRBA               14216646             15838025             544
+ DGPMRBA1               8190867             10954825             544
+ DGPMV33                9707243              9341479           204,544
+ DGPTFVC1              15164283             15594876      52,58,79,114,164
+                                                         400,342,466,415,493
+                                                             512,510,544
+ DGPTUTL                9537584              9836377     26,114,234,466,544
+  
+  
+ DISTRIBUTION:
+ =============
+ This patch is exported using KIDS.
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+  
+ This patch may be run with users on the system, but it is recommended 
+ that it be queued to run after normal business hours to minimize the
+ impact on users of the Registration package.
+  
+ Installation will take less than 2 minutes.
+  
+ 1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu to unload
+     the KIDS distribution included with this message.
+  
+ 2.  Review your mapped set.  If any of the routines listed in the ROUTINE   
+  
+     SUMMARY section are mapped, they should be removed from the mapped set 
+     at this time.
+  
+ 3.  From the Kernel Installation and Distribution System Menu, select
+     the Installation menu.
+  
+ 4.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter DG*5.3*544):
+  
+     a.  Compare Transport Global to Current System  - this option will
+         allow you to view all changes that will be made when the patch
+         is installed.  It compares all components of the patch (routines,
+         DDs, templates, etc.).
+     b.  Verify Checksums in Transport Global - this option will
+         allow you to ensure the integrity of the routines that are in
+     c.  Print Transport Global - this option will allow you to view the
+         components of the KIDS build.
+   
+ 5.  Use the Install Package(s) option and select the package DG*5.3*544.
+  
+ 6.  When prompted ' Want KIDS to INHIBIT LOGONs during the install?
+     YES//', respond NO.
+  
+ 7.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+     Protocols? YES//', respond NO.
+         
+ 8.  If routines were unmapped as part of step 2, they should be returned
+     to the mapped set once the installation has run to completion.
+  
+  
+ POST INSTALLATION INSTRUCTIONS:
+ ===============================
+ N/A
+
+Routine Information:
+====================
+
+Routine Name:
+  - DGPTFVC1
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGPMRBA
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGPMRBA1
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGPMV33
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGOINPT1
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGPTUTL
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : DOWNING,TODD                  Date Entered  : JUL 22, 2003
+Completed By: BOWEN,MARY JANE               Date Completed: NOV 21, 2003
+Released By : CORAM,JAMIE                   Date Released : NOV 21, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

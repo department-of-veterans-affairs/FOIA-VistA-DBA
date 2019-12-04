@@ -1,0 +1,330 @@
+$TXT Created by SKINNER,ALAN at MNTVBB.ISC-ALBANY.VA.GOV  (KIDS) on TUESDAY, 01/26/99 at 11:08
+=============================================================================
+Run Date: JAN 29, 1999                     Designation: IBD*3*15
+Package : IBD - AUTOMATED INFO  SYSPriority: Mandatory
+Version : 3        SEQ #21                      Status: Released
+=============================================================================
+
+Associated patches: (v)PX*1*36     <<= must be installed BEFORE `IBD*3*15'
+
+Subject: CLIN REMINDERS/PEND PAGES/BCKGRD JOB QUE
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Enhancement (Mandatory)
+  - Input Template
+  - Other
+
+Description: 
+============
+
+ This patch introduces two new pieces of functionality to the AICS
+ software package:
+ 
+ 1. This patch provides to the users the ability to print Clinical Reminders
+    on encounter forms.  Two new Toolkit blocks are also being added.
+ 
+ 2. Sites are reporting that a considerable amount of time is being spent
+    dealing with Forms Tracking Entries that  are in a Pending Pages
+    status.  A Forms Tracking entry goes to this status when one or
+    more pages of a multiple page form is scanned. The entry stays in
+    this status until all pages are scanned.  To reduce the  time required
+    to deal with forms left in this state, a new process has been added
+    to the nightly background job that prints encounter forms to find
+    these entries and process them.  In addition, a new option to
+    process these entries by date range is also being made available.
+ 
+ Further description of these two new functions follow.
+ 
+    1.  A new package interface is being added to display clinical
+        reminders, along with 2 new tool kit blocks to allow for easy
+        implementation.  Lists of specific reminders are created for each
+        block using the standard AICS ability to create a list.  However,
+        the display of Clinical Reminders is being changed so that only
+        those reminders that are applicable to the patient are printed. 
+        The forms designer can choose to print only all those reminders
+        DUE NOW or all applicable reminders.  The 5 fields available
+        for output are; the reminder name, a DUE NOW column,
+        a Due Date column, a last activity column, and a column that
+        will print DUE NOW or the future due date.
+ 
+    2.  Sending data to PCE for Forms Tracking Entries in a Pending 
+        Pages status can now be done as a part of the background job.
+        A new parameter called DAYS TO RETAIN PENDING PAGES
+        (#.11) has been added to the ENCOUNTER FORM PARAMETERS
+        file (#357.09) and can be edited using the Edit Site Parameters
+        [IBDF EDIT SITE PARAM] option.  If this parameter is null or is
+        set to zero then the background job will not send the data from
+        these forms tracking entries to PCE. The DAYS TO RETAIN
+        PENDING PAGES is the number of days after the appointment
+        date/time that the background job will pass the data to PCE.
+ 
+        For Example, if the DAYS TO RETAIN PENDING PAGES is set to
+        10, then the background job on October  20, 1999 will look for 
+        the Forms Tracking Entries for October 10 appointments that are
+        in a Pending Pages Status and will pass them to PCE.
+ 
+        Sending data to PCE for Forms Tracking Entries in a Pending
+        Pages status can also be done by a date range through the
+        new option Send Forms Tracking Entries Pending Pages to PCE
+        [IBDF FREE PENDING PAGES]. This option is locked with the
+        IBD MANAGER Security Key. A mailman message will be sent
+        to the user after the process is completed successfully indicating
+        the number of forms sent to PCE and the number of forms
+        generating errors.
+ 
+  
+  This patch also fixes a variety of problems in the nightly 'Background
+  EF Print' [IBDF BACKGRD EF PRINT QUEUE] job:
+   
+     1.  Occasionally, a specific print group would start printing
+         at a time different than specified in TIME QUEUED (#.13)
+         subfield of the PRINT MGR'S QUEUING PARAM NAME
+         (#357.091) subfile of the ENCOUNTER FORM PARAMETERS
+         (#357.09) file. If the field TIME QUEUED has no value,
+         each print job will start immediately after the nightly
+         background job is scheduled to run.
+     2.  Previously the TIME QUEUED field could contain
+         a value that contained invalid data such as the letters "O"
+         instead of zero or the letter "l" instead of the number one.
+         This will be fixed in the post installation routine.
+     3.  The nightly background job will now start the background
+         printing of a specific group even if an active or pending task
+         is specified in the parameters.  This will ensure that new
+         print jobs will start even if the previous job failed to finish.
+  
+  After the installation of this patch, the nightly background job may not
+  print encounter forms the first day based upon the time the nightly
+  background job runs and the value in the TIME QUEUED field.  If this 
+  occurs you may manually print these forms.  This situation will not 
+  occur after the first day.
+  
+ E3R:  10255
+   
+ NOIS: SUX-0997-42273
+       BAY-0897-30336
+       MIN-1097-42408
+       FAV-0698-71994
+       CHY-0698-52379
+ 
+  If installed during the normal work day it is recommended that the
+  following menu options (File #19) and all of their descendants be
+  disabled to prevent possible conflicts while running the KIDS Install.
+  Other DHCP users will not be affected.
+   
+   Background EF Print     [IBDF BACKGRD EF PRINT QUEUE]
+  
+  Install Time - 2 minutes or less 
+   
+ ==================INSTALLATION INSTRUCTIONS============================= 
+  
+ **************************************************************************
+  NOTE: This patch MUST NOT be installed while the IBDF BACKGRD EF PRINT
+        QUEUE job is running.
+ ************************************************************************
+  
+ 1. LOAD TRANSPORT GLOBAL 
+    ---------------------
+    Choose the PackMan message containing this patch and invoke the 
+    INSTALL/CHECK MESSAGE PackMan option.  
+  
+ 2. DISABLE ROUTINE MAPPING  (AXP sites only) 
+    -----------------------
+    Disable routine mapping on all systems for the routines listed in 
+    step 3 below.  
+    NOTE: If the routines included in this patch are not currently in 
+    your mapped routine set, skip this step.  
+  
+ 3. ROUTINES SENT WITH PATCH
+    ------------------------ 
+    The following is a list of the routines included in this patch.
+    The second line of each of these routines now look like:
+ 
+    ;;3.0;AUTOMATED INFO COLLECTION SYS;**[Patch list]**;APR 24, 1997
+ 
+                            CHECK^XTSUMBLD results
+  
+    Routine name      Before Patch          After Patch         Patch List
+    ============      ============          ===========         ==========
+    IBDF2D                11307498             11324755             15
+    IBDF3                  7478886              8041927             15
+    IBDF9A                16913688             16998109             15
+    IBDFESP                5681865              5722486             15
+    IBDFFRFT               5605728             11419466             15
+    IBDFN15                    N/A              7466357             15
+    IBDFPE1                8310152             10719714             15
+    IBDFQB                12597674             11546598             15
+    IBDFQEA               11843748             11917102             15
+    IBDFU1                12896586             13199372             15
+    IBDFU2                11675915             11594583             15
+    IBDY315E                   N/A              2161060             15
+    IBDY315P                   N/A              4500667             15
+ 
+  Total Number of Routines: 13 (including environment check and post install)
+ 
+ 4. START UP KIDS 
+    -------------
+    Start up the Kernel Installation and Distribution System Menu 
+    [XPD MAIN]: 
+  
+      Edits and Distribution...  
+      Utilities...  
+      Installation...  
+  
+    Select Kernel Installation & Distribution System Option: INStallation 
+                                                             ---
+   
+       Load a Distribution 
+       Print Transport Global 
+       Compare Transport Global to Current System 
+       Verify Checksums in Transport Global 
+       Install Package(s) 
+       Restart Install of Packages(s) 
+       Unload a Distribution 
+       Backup a Transport Global 
+  
+    Select Installation Option: 
+  
+ 5. Select Installation Option: 
+    ---------------------------
+    NOTE: The following are OPTIONAL - (When prompted for the INSTALL 
+          NAME, enter IBD*3.0*15): 
+  
+    a. Backup a Transport Global - This option will create a backup 
+       message of any routines exported with this patch. It will not 
+       backup any other changes such as DD's or templates.  
+    b. Compare Transport Global to Current System - This option will 
+       allow you to view all changes that will be made when this patch 
+       is installed. It compares all components of this patch 
+       (routines, DD's, templates, etc.).  
+    c. Verify Checksums in Transport Global - This option will allow 
+       you to ensure the integrity of the routines that are in the 
+       transport global.  
+  
+ 6. Select Installation Option: Install Packages(s) 
+    -----------------------------------------------
+    ** This is the step to start the installation of this KIDS patch: 
+  
+    a. Choose the Install Package(s) option to start the patch install.  
+    b. When prompted 'Want to DISABLE Scheduled Options and Menu
+       Options? YES//', take the default (YES).
+    c. When prompted 'Enter options you wish to mark as 'Out Of
+       Order':'  Enter the following options:
+   
+       Background EF Print     [IBDF BACKGRD EF PRINT QUEUE]
+   
+    d. When prompted 'Enter protocols you wish to mark as 'Out
+       of Order':', press return.
+   
+ 7. DELETE POST-INIT AND ENVIRONMENT CHECK ROUTINES
+    -----------------------------------------------
+    Delete IBDY315E and IBDY315P routines from your system using your
+    system's routine deletion utility (%RDELETE, %RDEL, etc.).
+  
+ 8. REBUILD MAPPED ROUTINE(S)  (AXP sites only) 
+    -------------------------
+    Optional - Include the routines distributed with this patch in the 
+    mapped routine set.  
+    
+    NOTE: This step is only necessary if you performed step 2 or if 
+    you wish to include the routines in your mapped set.  
+
+Routine Information:
+====================
+
+Routine Name:
+  - IBDFN15
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBDFQB
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBDFESP
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBDFFRFT
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBDF3
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBDFU1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBDFU2
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBDF9A
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBDFQEA
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBDY315P
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBDY315E
+
+
+Routine Checksum:
+ 
+
+Routine Name:
+  - IBDF2D
+
+  
+
+Routine Checksum:
+ 
+
+Routine Name:
+  - IBDFPE1
+
+  
+
+Routine Checksum:
+ 
+
+=============================================================================
+User Information:                               
+Entered By  : SKINNER,ALAN                   Date Entered : OCT 14, 1997
+Completed By: SURI,ASHWANI                  Date Completed: JAN 28, 1999
+Released By : BOTTINI,STEVE                 Date Released : JAN 29, 1999
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

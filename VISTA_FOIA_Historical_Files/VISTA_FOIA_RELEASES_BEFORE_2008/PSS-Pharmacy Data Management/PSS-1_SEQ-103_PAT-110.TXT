@@ -1,0 +1,245 @@
+$TXT Created by DEHGHANIAN,JAMSHID at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 06/14/06 at 17:02
+=============================================================================
+Run Date: AUG 21, 2006                     Designation: PSS*1*110
+Package : PSS - PHARMACY DATA MANAGEMENT      Priority: Mandatory
+Version : 1       SEQ #103                      Status: Released
+                  Compliance Date: SEP 21, 2006
+=============================================================================
+
+Associated patches: (v)PSS*1*59    <<= must be installed BEFORE `PSS*1*110'
+                    (v)PSS*1*90    <<= must be installed BEFORE `PSS*1*110'
+
+Subject: MIXED CASE IN MED INSTRUCTION FILE
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ This patch will force the entries to UPPERCASE in the MEDICATION 
+ INSTRUCTION file (#51) and the ADMINISTRATION SCHEDULE file (#51.1).
+ This patch also gets the CMOP ID field (#27) from the VA PRODUCT file
+ (#50.68) if one does not already exist in the DRUG file (#50).
+  
+  
+ Associated Remedy Ticket(s):
+ ============================
+ HD0000000094488 - Problems with version 25 of CPRS
+ HD0000000140438 - Fast fill and marking drugs
+  
+  
+ Overview of Remedy Ticket(s):
+ =============================
+ HD0000000094488 - Problems with version 25 of CPRS
+  
+    Problem
+    -------
+    Allowing mixed alphabet case in the NAME field is causing problems 
+    with ADMINISTRATION SCHEDULE file (#51).
+    An all caps entry will not match a mixed case entry of the same name
+    (e.g.  TID will not match Tid).
+    The same is true for the MEDICATION INSTRUCTION file (#51.1).
+  
+    Solution
+    --------
+    Modified the input transform for the NAME field for both files (#51)
+    and (#51.1) to disallow selection of lowercase alphabet.
+    For ADMINISTRATION SCHEDULE file (#51.1) the input transform already
+    had a call to PSSJSV routine.  All that needed to be done was to
+    invoke the Kernel utility ($$UP^XLFSTR) to convert all lowercase
+    alphabet to all uppercase.
+    The MEDICATION INSTRUCTION file (#51), on the other hand, required a
+    direct call to $$UP^XLFSTR in its input transform.  Below are the
+    before and after instances of ^DD(51,.01,0):
+  
+    === Before ===
+    DATA          NAME                  GLOBAL        DATA
+    ELEMENT       TITLE                 LOCATION      TYPE
+    
+    
+    -------------------------------------------------------------------------
+    51,.01        NAME                   0;1 FREE TEXT (Required)
+  
+               INPUT TRANSFORM:  K:$L(X)>9!($L(X)<1)!'(X?.ANP) X
+               LAST EDITED:      MAR 30, 2006 
+               HELP-PROMPT:      Answer must be 1-9 characters in length. 
+               DESCRIPTION:      For inpatient pharmacy use, you may 
+                                 enter one of the following standard times 
+                                 or you may use a non-standard schedule
+                                 when appropriate.  For example,  Q36H  or
+                                 Q17H.  
+    === After ===
+    DATA          NAME                  GLOBAL        DATA
+    ELEMENT       TITLE                 LOCATION      TYPE
+    
+    
+    -------------------------------------------------------------------------
+    51,.01        NAME                   0;1 FREE TEXT (Required)
+  
+               INPUT TRANSFORM:  S X=$$UP^XLFSTR(X) 
+                                 K:$L(X)>9!($L(X)<1)!'(X?.ANP) X
+               LAST EDITED:      MAR 30, 2006 
+               HELP-PROMPT:      Answer must be 1-9 characters in length. 
+               DESCRIPTION:      For inpatient pharmacy use, you may enter 
+                                 one of the following standard times or you
+                                 may use a non-standard schedule when 
+                                 appropriate.  For example,  Q36H  or Q17H.
+  
+    The post init routine PSSP110 (EN^PSSP110) is invoked to convert all 
+    existing NAME fields in both files (#51 & #51.1) from lowercase to 
+    uppercase.  It will also send a Mailman message to the installing user
+    with a list of all records that were changed.
+  
+ HD0000000140438 - Fast fill and marking drugs
+  
+    Problem
+    -------
+    The CMOP ID field (#27) in Drug file (#50) will never be populated
+    for class II drugs.  This will in turn cause the OP EXTERNAL DISPENSE
+    field (#28) in DRUG file (#50) not to be prompted.
+  
+    Solution
+    --------
+    If CMOP ID does not exist, get PSNDF VA PRODUCT NAME ENTRY field
+    (#22) from DRUG file (#50) and follow the pointer to the VA PRODUCT
+    file (#50.68).  From there, get the VA PRODUCT IDENTIFIER field (#6)
+    in the VA PRODUCT file (#50.68) which is the equivalent of CMOP ID.
+  
+  
+ Test Sites:
+ ===========
+ Black Hills HCS
+ Oklahoma City, OK
+ Biloxi, MS
+  
+  
+ File Summary:
+ =============
+  
+                                      UP    SEND  DATA                
+                                      DATE  SEC.  COMES  SITE   RSLV  
+ FILE #  NAME                         DD    CODE  W/FILE DATA   PTS 
+ --------------------------------------------------------------------
+ 51     MEDICATION INSTRUCTION       YES   YES    NO    N/A    NO
+ Partial DD: subDD: 51         fld: .01
+   DATA SCREEN:  
+  
+  
+ Installation Instructions:
+ ==========================
+ If installed during the normal workday, it is recommended that the 
+ Pharmacy Data Management users be off the system.  Other VISTA users
+ will not be affected.
+  
+  
+ Install Time - less than 5 minutes (unless otherwise indicated)
+        
+  
+ 1.  LOAD TRANSPORT GLOBAL 
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the 
+     INSTALL/CHECK MESSAGE PackMan option.  
+              
+ 2.  START UP KIDS 
+     -------------
+     Start up the Kernel Installation and Distribution System Menu 
+     [XPD MAIN]: 
+    
+          Edits and Distribution ...  
+          Utilities ...  
+          Installation ...  
+    
+ Select Kernel Installation & Distribution System Option: INStallation 
+                                                          ---
+          Load a Distribution 
+          Print Transport Global 
+          Compare Transport Global to Current System 
+          Verify Checksums in Transport Global 
+          Install Package(s) 
+          Restart Install of Package(s) 
+          Unload a Distribution 
+          Backup a Transport Global 
+    
+ Select Installation Option: 
+    
+ 3.  Select Installation Option: 
+     ---------------------------
+     NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+            NAME, enter PSS*1.0*110):
+       
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when this patch
+         is installed.  It compares all components of this patch
+         (routines, DD's, templates, etc.).
+     c.  Verify Checksums in Transport Global - This option will allow
+         you to ensure the integrity of the routines that are in the
+         transport global.
+      
+ 4.  Select Installation Option: Install Package(s) 
+                                 ------------------
+     **This is the step to start the installation of this KIDS patch: 
+  
+     a.  Choose the Install Package(s) option to start the patch
+         install.
+  
+         When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+         YES//' answer NO (unless otherwise indicated).
+  
+         When prompted 'Want to DISABLE Scheduled Options, Menu Options, 
+         and Protocols? YES//' answer NO (unless otherwise indicated).
+         
+         If Options are included in this patch, be sure to include the
+         following.
+  
+         When prompted 'Want KIDS to Rebuild Menu Trees Upon Completion of 
+         Install? YES//'  Answer YES unless your system does this in a 
+         nightly TaskMan process.
+  
+         
+ Routines Summary:
+ =================
+  
+ The following is a list of the routines included in this patch.  
+ The second line of each of these routines now looks like: 
+   
+      ;;1.0;PHARMACY DATA MANAGEMENT;**[patch list]**;9/30/97 
+   
+                        CHECK^XTSUMBLD results
+ Routine         Before Patch     After Patch     Patch List 
+ -------         ------------     -----------     ----------
+ PSSJSV          14741916         14755242        20,38,56,59,110
+ PSSP110         (new)            2678011         110
+ PSSDEE          35880294         35822182        3,5,15,16,20,22,28,32,
+                                                  34,33,38,57,47,68,61,82,
+                                                  90,110
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PSSDEE
+    Before: B90165251  After: B91898198  **3,5,15,16,20,22,28,32,34,33,
+                                          38,57,47,68,61,82,90,110**
+Routine Name: PSSJSV
+    Before: B24455142  After: B24822667  **20,38,56,59,110**
+Routine Name: PSSP110
+    Before:       n/a  After:  B8043298  **110**
+
+=============================================================================
+User Information:
+Entered By  : DEHGHANIAN,JAMSHID            Date Entered  : MAR 30, 2006
+Completed By: CROSSMAN,PAM                  Date Completed: AUG 21, 2006
+Released By : TEAGUE,LYN                    Date Released : AUG 21, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

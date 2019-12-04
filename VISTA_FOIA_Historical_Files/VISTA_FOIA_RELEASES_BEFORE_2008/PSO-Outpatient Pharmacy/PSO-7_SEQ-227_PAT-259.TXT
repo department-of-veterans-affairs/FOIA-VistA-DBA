@@ -1,0 +1,339 @@
+$TXT Created by NAPOLIELLO,GREG at DAYT17.FO-BAYPINES.MED.VA.GOV  (KIDS) on Wednesday, 10/25/06 at 11:38
+=============================================================================
+Run Date: DEC 27, 2006                     Designation: PSO*7*259
+Package : PSO - OUTPATIENT PHARMACY           Priority: EMERGENCY
+Version : 7       SEQ #227                      Status: Released
+                  Compliance Date: DEC 29, 2006
+=============================================================================
+
+Associated patches: (v)PSO*7*131   <<= must be installed BEFORE `PSO*7*259'
+                    (v)PSO*7*201   <<= must be installed BEFORE `PSO*7*259'
+                    (v)PSO*7*218   <<= must be installed BEFORE `PSO*7*259'
+
+Subject: MODIFY HANDLING FOR DC'D & DELETED RX'S FOR OPAI
+
+Category: 
+  - Routine
+  - PATCH FOR A PATCH
+
+Description:
+============
+
+ This patch will correct 6 problems and resolve PSI-06-046.
+  
+ Problem 1: Users are able to delete released refills without returning to
+            stock.
+ Problem 2: A released refill may still allow for deletion.
+ Problem 3: Error occurs when deleting suspended refills using menu option
+            Change Suspense Date [PSO PNDCHG].
+ Problem 4: Refill nodes are being incorrectly deleted when a refill is 
+            suspended.
+ Problem 5: The Return Medication to Stock [PSO RETURNED STOCK] option
+            is not deleting the refill.
+ Problem 6: Prevent Outpatient Pharmacy Automation Interface (OPAI) from
+            updating a refill node via Auto-Release when the refill node
+            was previously deleted.
+  
+  
+ ASSOCIATED REMEDY TICKETS:
+ =========================
+ 1. HD68591:    PSORFL needs to be modified
+    Duplicate:  HD108131
+  
+ 2. HD125877:   Released Refill may still allow for deletion
+  
+ 3. HD145945:   Error when using menu option Change Suspense Date
+  
+ 4. HD128326:   Refill node deletion
+    Duplicate:  HD131674
+  
+ 5. HD124455:   Return Medication to Stock option is not deleting the 
+                refill
+  
+ 6. HD148453:   DSS Prescription Extract Error
+    Duplicates: HD148468, HD152546, HD154700, HD152263
+  
+  
+ PARTICIPATING TEST SITES:
+ ========================
+ Oklahoma City, OK
+ Salisbury, NC 
+ Puget Sound HCS
+ San Juan, PR
+  
+  
+ REMEDY OVERVIEW:
+ ===============
+ Problem (1):   HD68591/HD108131
+ -----------
+ If a prescription has multiple refills, users are able to edit refills
+ prior to the last refill and delete it even if it has been released.
+ They should be required to do a return to stock instead.
+  
+ Resolution:
+ ----------
+ Routine WARN^PSOUTL will be modified to check if refill being deleted is
+ the last refill.  If not, display a message and do not allow the deletion.
+  
+  
+ Problem(2):  HD125877
+ ----------
+ When a released refill is deleted using Patient Prescription Processing
+ [PSO LM BACKDOOR ORDERS] option and the refill does not exists on an
+ external machine, it may still be deleted.  The user is given the message
+ that the refill has been released and they need to use the Return to Stock
+ option and then prompted to delete the refill.
+  
+ Resolution:
+ ----------
+ Modify routine PSOUTL to quit and not continue with additional checks if
+ the refill is released.
+  
+  
+ Problem(3):  HD145945
+ ----------
+ An UNDEFINED error occurs if a patient has suspended refills when using 
+ menu option Change Suspense Date.
+  
+ Resolution:
+ ----------
+ Routine PSOUTL will be modified to NEW variable DFN at tag KILL.
+  
+  
+ Problem(4):  HD128326
+ ----------
+ Refill nodes are being incorrectly deleted when a refill is suspended.
+ This occurs when:
+ 1. A CPRS edit is done to a prescription which causes a new prescription
+    to be created.
+ 2. When discontinuing a prescription.
+ 3. When reinstating a prescription and discontinuing a prescription for a
+    same class drug.
+  
+ Resolution:
+ -----------
+ The refill node will not be deleted if there is a released date or if a
+ label has been printed.
+  
+  
+ Problem(5): HD124455  
+ ----------
+ The Return Medication to Stock [PSO RETURNED STOCK] option is returning a
+ refill to stock but is not deleting the refill.  This occurs only when the
+ refill has been sent to an external dispense machine and is then released
+ manually.  The Return Medication to Stock [PSO RETURNED STOCK] option
+ displays a warning that it cannot delete the prescription while pending
+ release from the external machine, but then it continues with the Return
+ to Stock process anyway.
+  
+ Resolution:
+ ----------
+ Reverse the delete restriction imposed by patch PSO*7*218.  Issue
+ the same warning message as PSO*7*218 did, but also issue a prompt
+ asking, "Do you want to continue?".  If the user answers YES, which is
+ the default, then it will complete the Return To Stock operation and
+ delete the refill.  If the user answers NO, "^", or does not answers
+ within the timeout value, then the Return To Stock operation will not be
+ performed.
+  
+  
+ Problem (6.1):  HD148453  DSS Prescription Extract Error
+ -------------
+ This error occurs when a refill or partial fill node is deleted and then
+ later an External Dispense machine sends back a release/completed HL7
+ message and the site has OPAI and Auto-Release is set to YES.
+ Auto-Release is turned on by having FILE RELEASE DATE/TIME (#105.1) field
+ in the OUTPATIENT SITE file (#59) set to YES.
+  
+ Resolution:
+ ----------
+ Modify routine PSOHLDIS, to skip the updates if the release message comes
+ in and there is no Refill node found on file.  An entry will be placed in
+ the Activity Log in the PRESCRIPTION file (#52) and an email alert will be
+ sent to the new mail group, PSO EXTERNAL DISPENSE ALERTS, that this
+ occurred.
+  
+ NOTE:  To correct any incomplete Refill or Partial nodes encountered by
+        the DSS Extract error reported, please populate the incomplete
+        nodes with the date and division.
+  
+ Problem (6.2):
+ -------------
+ An Rx is sent to the External Dispense device and later it is discontinued
+ on VistA and a new Rx entered in its place and also sent to the External
+ dispense device.  Then later, the first Rx that was DC'd is Auto Released
+ by the External dispense device.
+  
+ Resolution:
+ ----------
+ Another email will be sent to the new mail group mentioned previously, and
+ also added to the Activity log for the DC'd Rx, that the External dispense
+ machine sent through a release message.
+  
+ NOTE:  If no Members are added to the New Mailgroup, then the email alerts
+        below will be sent to anyone holding the PSXCMOPMGR key.
+  
+ Email alerts Examples:
+ ---------------------
+ ACTIVITY LOG ENTRY IN PATIENT PRECSCRIPTION PROCESSING:
+  
+ Problem 1 Log:
+  
+  Rx Activity Log             Sep 19, 2006@14:23:31          Page:  3 of  3
+  OUTPT,PATIENT
+    PID: NNN-NN-NNNN                             Ht(cm): _______ (______)
+    DOB: DEC 12,1912 (93)                        Wt(kg): _______ (______)
+  
+   7   09/19/06    X-INTERFACE    REFILL 1       NAPOLIELLO,GREG
+  Comments: Prescription sent to external interface.
+   8   09/19/06    DELETED        REFILL 1       NAPOLIELLO,GREG
+  Comments: Refill deleted during Rx edit.
+   9   09/19/06    DISP COMPLETED REFILL 1       NAPOLIELLO,GREG
+  Comments: External Interface attempted to Release, but Refill NOT on file
+            Filled By: SMITH,FIRST    Checking Pharmacist: JONES,FIRST
+  
+  
+ EMAIL ALERTS SENT TO MAIL GROUP - PSO EXTERNAL DISPENSE ALERTS:
+  
+ Problem 1 Email:
+  
+   Subj: External Dispense - Rx Release Attempted  [#450121] 10/05/06@15:11
+   5 lines
+   From: PSO EXTERNAL DISPENSE  In 'IN' basket.   Page 1  *New*
+  
+   
+ -------------------------------------------------------------------------
+  
+   Patient: OUTPT,GSN  Rx #: 2664732   Fill: 1
+  
+   External Interface attempted to Release, but Refill NOT on file.
+  
+   No update performed.
+  
+   Enter message action (in IN basket): Ignore//
+  
+  
+ Problem 2 Email:
+  
+   Subj: External Dispense - Rx Release Attempted  [#450464] 10/19/06@14:31
+   6 lines
+   From: PSO EXTERNAL DISPENSE  In 'IN' basket.   Page 1
+   -----------------------------------------------------------------------
+   Patient: OUTPT,GSN   SSN: 121212121
+      Rx #: 2664732   Fill: 2
+      Drug: IBUPROFEN 400MG TAB
+  
+   Ext. Disp. Released this Rx, which is Status of DISCONTINUED (EDIT)
+  
+  
+   Enter message action (in IN basket): Ignore//
+  
+  
+ DISTRIBUTION:
+ ============
+ This patch is exported using KIDS.
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ =========================
+ It is recommended that this patch be installed after normal business
+ hours while no Outpatient Pharmacy users are processing orders.  The
+ installation time should be less than 2 minutes.
+  
+  
+ 1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu. [Note:
+    TEXT PRINT/DISPLAY option in the PackMan menu will display the
+    patch text only].
+  
+ 2. From the Kernel Installation and Distribution System (KIDS)
+    menu, select the Installation menu.
+  
+ 3. From this menu, you may elect to use the following options:
+    (when prompted for INSTALL NAME, enter PSO*7.0*259)
+  
+    a.  Backup a Transport Global - this option will create a backup
+        message of any routines exported with the patch.  It will
+        NOT backup any other changes such as DDs or templates.
+    b.  Compare Transport Global to Current System  - this option
+        will allow you to view all changes that will be made when
+        the patch is installed.  It compares all components of the
+        patch (routines, DDs, templates, etc.).
+    c.  Verify Checksums in Transport Global - this option will
+        allow you to ensure the integrity of the routines that are
+        in the transport global.
+    d.  Print Transport Global - this option will allow you to view
+        the components of the KIDS build.
+  
+ 4. Use the Install Package(s) option and select the package
+    PSO*7.0*259
+  
+ 5. When prompted for Incoming Mail Groups:  Enter the Coordinator for 
+    Mail Group 'PSO EXTERNAL DISPENSE ALERTS':, respond with the proper
+    user.  After this patch is installed, remember to add users to the
+    MEMBER multiple of this New mail group.
+  
+ 6. When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+    YES//', respond NO.
+  
+ 7. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+    Protocols? YES//', respond NO.
+  
+  
+ ROUTINE SUMMARY:
+ ===============
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+  
+      <tab>;;7.0;OUTPATIENT PHARMACY;**[patch list]**;DEC 1997
+  
+  
+                             CHECK^XTSUMBLD results
+  
+ Routine name    Before Patch    After Patch          Patch List
+ ============    ============    ===========      ========================
+ PSOCAN2             28553748       29777824      8,18,62,46,88,164,235,
+                                                  148,259
+ PSOCAN4             21987500       22496678      20,24,27,63,88,117,
+                                                  131,259
+ PSOHLDI1                 N/A        5610837      259
+ PSOHLDIS            22983567       19386387      156,189,193,209,148,259
+ PSORESK             29865487       30426666      15,9,27,40,47,55,85,130,
+                                                  185,184,196,148,201,259
+ PSOUTL              29579800       28733317      1,21,126,174,218,259
+ PSOUTLA1            22226315       23957599      35,186,218,259
+  
+ Total number of routines - 7
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PSOCAN2
+    Before: B66349002  After: B70871318  **8,18,62,46,88,164,235,148,259**
+Routine Name: PSOCAN4
+    Before: B39864455  After: B42089158  **20,24,27,63,88,117,131,259**
+Routine Name: PSOHLDI1
+    Before:       n/a  After: B12265819  **259**
+Routine Name: PSOHLDIS
+    Before: B68225842  After: B66788990  **156,189,193,209,148,259**
+Routine Name: PSORESK
+    Before: B61223518  After: B66758202  **15,9,27,40,47,55,85,130,185,
+                                          184,196,148,201,259**
+Routine Name: PSOUTL
+    Before: B70215755  After: B70558171  **1,21,126,174,218,259**
+Routine Name: PSOUTLA1
+    Before: B47429412  After: B59108648  **35,186,218,259**
+
+=============================================================================
+User Information:
+Entered By  : NAPOLIELLO,GREG               Date Entered  : OCT 05, 2006
+Completed By: WERNER,GARY                   Date Completed: DEC 27, 2006
+Released By : LESIEUR,SHIRLEY               Date Released : DEC 27, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

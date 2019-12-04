@@ -1,0 +1,852 @@
+$TXT Created by ACKERMAN,NIEN-CHIN at SUP.DEV.FO-HINES.MED.VA.GOV  (KIDS) on Monday, 05/08/06 at 15:55
+=============================================================================
+Run Date: SEP 08, 2006                     Designation: MD*1*5
+Package : MD - CLINICAL PROCEDURES            Priority: Mandatory
+Version : 1         SEQ #4                      Status: Released
+                  Compliance Date: NOV 01, 2006
+=============================================================================
+
+Associated patches: (v)MD*1*2     <<= must be installed BEFORE `MD*1*5'
+                    (v)TIU*1*182   <<= must be installed BEFORE `MD*1*5'
+                    (v)GMRC*3*37   <<= must be installed BEFORE `MD*1*5'
+                    (v)MAG*3*47    <<= must be installed BEFORE `MD*1*5'
+                    (v)MD*1*10     <<= must be installed BEFORE `MD*1*5'
+
+Subject: MEDICINE REPORT CONVERSION
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Enhancement (Mandatory)
+  - Other
+
+Description:
+============
+
+ ASSOCIATED NOIS
+ ===============
+ MOU-1004-30312  (HD#68314)
+                                                                      
+ ASSOCIATED E3R
+ ==============
+ NONE
+ 
+ 508 COMPLIANCE
+ ==============
+ N/A - No Graphical User Interface (GUI) front end.                          
+                                                                             
+ KNOWN DEFECT
+ =========================================================================
+ There is a known defect in this patch.  The defect was found to be minimal
+ due to the low occurrence of having the data problem and it is not cause to
+ delay the release of this patch. 
+ 
+ Due to a conversion introduced by Medicine version 2.3, some Non-Endoscopic
+ records have incorrect pointer references in the Medical Patient file (#690).
+ The conversion converted the entries from the Endoscopy/Consult file (#699)
+ to the Generalized Procedures/Consult file (#699.5).  The global location
+ of the procedures was changed from MCAR(699 to MCAR(699.5.  The cross
+ reference to the entries was not updated completely.  These records will
+ not be able to be converted to Clinical Procedures Reports.
+                                                                 
+ If your site generates the "BAD MEDICINE FILE POINTER" error, please enter
+ a Remedy ticket stating this error.  A utility routine will be available to
+ correct the problems found on your system.
+ ==========================================================================
+                                                                         
+ 
+ I.  INTERFACES AND DEPENDENCIES:
+     ===========================
+ This patch requires the installation of patches, TIU*1*182, GMRC*3*37,
+ and MAG*3*47.  It will load the Transport Global but will not install.
+ Patch TIU*1*182 provides the necessary routine changes and standardized
+ TIU document titles that patch MD*1*5 will need for the Medicine report
+ conversion.  Patch MAG*3*47 provides the routine changes for the
+ conversion to map the image linked to the Medicine report to a TIU document.
+ Patch GMRC*3*37 will provide the routine changes for the conversion to map
+ any procedure associated with a Medicine report to the converted document.
+  
+ Patch MD*1*5 will load the options and routines needed to convert the 
+ Medicine Reports to Clinical Procedures reports. This patch can be
+ installed even if the site does not want to convert their reports right
+ away.  It provides the tools to convert the reports.
+                                                                       
+ If your site does not have Medicine, you can still install this patch.
+ There is a post-init routine MDPOST5 which will check whether Medicine
+ Version 2.3 exists.  If your site does not have Medicine Version 2.3,
+ the conversion options will be out of order once they are sent to the site
+ during the patch installation.  Whether your site has Medicine Version 2.3 
+ or not, the routines and database changes in the KIDS build will be loaded.
+ This post-init routine will be deleted once it is executed during the
+ installation.                                    
+  
+ If your site still uses the interfaces provided by patch MC*2.3*24,
+ you can still install this patch.  By installing this patch, reports will 
+ not be converted to TIU documents.  There is a Conversion Guide which will
+ go into details on the setup of the Medicine Report Conversion parameters,
+ the conversion, and report and summary that can assist in resolving
+ problems during the conversion.
+ 
+ If there are medical devices sending data to the Medicine files, the site
+ will not be able to convert until the medical device is implemented with
+ Clinical Procedures.
+  
+                                                                   
+ II.  PATCH DESCRIPTION:
+      =================
+ The Medicine report will be converted to text format and stored in a
+ TIU document.  A CP study will be created for each Medicine report.
+ If there are images associated with the report, they
+ will be mapped to the TIU document.  If there is a Consult procedure
+ associated with the report, the procedure request will be mapped to
+ the TIU document.  The TIU document, procedure, and images will be
+ linked together by the CP Study.  Each converted report will have
+ a visit created along with it that will have a SERVICE TYPE of
+ Event (Historical) so no workload will be reported for it. 
+                                                     
+ This patch will convert the following reports in the medicine files:
+ 1.     Catheterization
+ 2.     ECG
+ 3.     Echo
+ 4.     EP
+ 5.     Holter
+ 6.     ETT
+ 7.     Surgical Risk Analysis
+ 8.     Endoscopic
+ 9.     Non-Endoscopic
+ 10.    PFT
+ 11.    Hematology
+ 12.    Pacemaker
+ 13.    V-Lead Implant
+ 14.    A-Lead Implant
+ 15.    Rheumatology
+ 16.    Generalized Procedures
+  
+ Only records in the following statuses will be converted:
+  
+ RELEASED ON-LINE VERIFIED
+ RELEASED OFF-LINE VERIFIED
+ RELEASED NOT VERIFIED
+ RELEASED ON-LINE VERIFIED OF SUPERSEDED
+ RELEASED OFF-LINE VERIFIED OF SUPERSEDED
+  
+ Records in the DRAFT, PROBLEM DRAFT, and SUPERSEDED will
+ not be converted.
+                                                        
+ RELEASED NOT VERIFIED records will be converted to a 
+ Clinical Procedure document with a CONVERTED ARCHIVED REPORT
+ status within the text of the document.
+  
+ Medicine reports or interpretations added to the Medicine file
+ from a medicine device that uses the interfaces in patch MC*2.3*24
+ can also be converted.  These reports will not have a status.  There is a
+ parameter setup question,"CONVERT IF NO STATUS".  If it is set to "YES", 
+ reports without statuses can be converted.  This parameter is located
+ within the Conversion Setup option under each particular procedure.  These
+ reports will also be converted to a Clinical Procedure document with a
+ CONVERTED ARCHIVED REPORT status within the text of the document.
+                                                               
+                                                       
+ NOIS FIX
+ ========
+ MOU-1004-30312  (HD#68314)
+ Modified Routines: MDRPCOT, and MDRPCOT1
+                                                                         
+ Mountain Home reported getting a "No Location" printed as the Hospital  
+ Location in the TIU document that was created by Clinical Procedures.     
+ This happens when there is no Hospital Location entered for the           
+ CP Definition.  When CP creates the TIU documents, there is no location
+ to use.  Patch MD*1*5 will resolve this problem.  If the Hospital Location 
+ field in the CP Definition is omitted inadvertently, the hospital location
+ of the appointment selected during the CP study check-in will be used to
+ create the TIU note.  If no appointment exists, the note will not be        
+ created.                                                                  
+        
+                                                                               
+ III.  FUNCTIONALITY CHANGES:
+       =====================
+    
+ VIEWING CONVERTED REPORTS
+ =========================
+ Users can view the text of the converted Medicine reports in CPRS Reports
+ tab, Consults tab, and Imaging Display.
+                                                 
+ The converted report will be available according to the Medicine procedure
+ name with " - HIST" appended at the end to indicate that it is a
+ converted historical report.
+ 
+ The text of the converted report will be in a TIU document with a historical
+ procedure title and the following legal verbiage as the header:
+                         
+ ****************************************************************
+ This information was imported from the Medicine Package
+ software and does not include an electronic signature;
+ therefore, it is being administratively closed and
+ should be used as information only.  
+ ****************************************************************
+  
+ If the Medicine report was associated with a Consult procedure, NOTHING is
+ changed with the Consult procedure name.  Sites can still look up the
+ report by the Consult procedure name.  The only difference is that the 
+ Consult procedure will reference a TIU document rather than a Medicine
+ report.                                                        
+                                                                     
+ If there are images associated with the Medicine report, the images will
+ be associated with the converted document after the conversion.  The users
+ can view the converted document and the images using Imaging Display.
+ 
+ Once the Medicine report is converted over to a CP text document, the 
+ converted CP text report WILL be available to be viewed and the Medicine 
+ report WILL NOT be available to be viewed in CPRS.  The converted reports
+ will be available for viewing in the following components in the CPRS
+ Reports tab:                                                  
+ 
+ 1) Clinical Reports
+     Medicine/CP
+       Abnormal
+       Brief Report
+       Full Captioned
+       Full Report
+       Procedures (local only)
+       Procedures
+                                                                        
+ 2) Health Summary
+      Adhoc Report
+        Medicine Abnormal Brief [MEDA]
+        Medicine Brief Report [MEDB]
+        Medicine Full Captioned [MEDC]
+        Medicine Full Report [MEDF]
+        Medicine Summary [MEDS]
+ 
+ 3) The Procedures (local only) report component can also be found under the
+    list of Available Reports.  Users can also view the converted documents
+    here as well.
+ 
+ 4) Consults tab - If the Medicine report was associated with a consult
+    procedure, the converted report will also be available for viewing under
+    the Consults tab in CPRS when the procedure is selected.
+ 
+ Routines Modified: MCARPS1, MCARPS3, MCORMN, MCORMN0, MCORMN01, MDPS3
+                                                            
+ The routines were modified to check whether a Medicine report was converted
+ or not.  If it wasn't, the data will be passed to CPRS for display.  If it
+ was converted, the CP text data will be passed for display in CPRS.
+ 
+  
+ 
+ CONVERSION LOCKOUT
+ ==================
+ Once the conversion has been completed, the Medicine Enter/Edit and Report
+ options can be disabled using the Conversion Lockout option.  The following 
+ is a list of all options that can be disabled using the Conversion Lockout 
+ option:
+  
+ Enter/Edit Cath (Screen)   [MCFSCATH]
+ Cath Test Results   [MCFPCATH]
+ Line Entry/Edit of Cath Record   [MCFLCATH]
+ Brief Line Entry/Edit of Cath Record   [MCBLCATH]
+ Brief Enter/Edit Cath (Screen)   [MCBSCATH]
+ Brief Cath Report   [MCBPCATH]
+ Image Capture   [MCARCATHIMAGE]
+ Enter/Edit ECG (Screen)   [MCFSECG]
+ ECG Test Results   [MCFPECG]
+ Line ECG Entry/Edit   [MCFLECG]
+ Summary of Automated Records Transferred   [MCARECGAUTOSUM]
+ Brief Line ECG Entry/Edit   [MCBLECG]
+ Brief Enter/Edit ECG (Screen)   [MCBSECG]
+ Brief ECG Report   [MCBPECG]
+ Enter/Edit Echo (Screen)   [MCFSECHO]
+ Echo Test Results   [MCFPECHO]
+ Line Entry/Edit of ECHO test   [MCFLECHO]
+ Image Capture   [MCARECHOIMAGE]
+ Brief Line Echo Entry/Edit   [MCBLECHO]
+ Brief Enter/Edit Echo (Screen)   [MCBSECHO]
+ Brief Echo Report   [MCBPECHO]
+ Enter/Edit Ep (Screen)   [MCFSEP]
+ Results of EP Tests   [MCFPEP]
+ EP Line Entry/Edit   [MCFLEP]
+ Brief EP Line Entry/Edit   [MCBLEP]
+ Brief Enter/Edit EP (Screen)   [MCBSEP]
+ Brief EP Report   [MCBPEP]
+ Enter/Edit Holter (Screen)   [MCFSHOLTER]
+ Holter Test Results   [MCFPHOLTER]
+ Line Entry/Edit of Holter   [MCFLHOLTER]
+ Brief Line Entry/Edit of Holter   [MCBLHOLTER]
+ Brief Enter/Edit Holter (Screen)   [MCBSHOLTER]
+ Brief Holter Report   [MCBPHOLTER]
+ Enter/Edit ETT (Screen)   [MCFSETT]
+ ETT Results   [MCFPETT]
+ Line Entry/Edit of ETT Test   [MCFLETT]
+ Brief Line Entry/Edit of ETT   [MCBLETT]
+ Brief Enter/Edit ETT (Screen)   [MCBSETT]
+ Brief ETT Report   [MCBPETT]
+ Pre-Surgery Risk Analysis Enter/Edit   [MCARCATHSRAPRE]
+ Post-Surgery Risk Analysis Enter/Edit   [MCARCATHSRAPOST]
+ Pre-Surgery Risk Analysis Enter/Edit(Screen)   [MCARSRAPRE]
+ Post-Surgery Risk Analysis Enter/Edit(Screen)   [MCARSRAPOST]
+ Surgical Risk Analysis Report   [MCARCATHSRAPRINT]
+ Problem Oriented Consult Enter/Edit   [MCARGICONSULTEDIT]
+ Problem Oriented Consult Enter/Edit (Screen)   [MCCONSULTSCREEN]
+ Problem Oriented Consult Report   [MCARGICONSULTPRINT]
+ Brief Enter/Edit of a Problem Oriented Consult   [MCARGICONSULTBRIEF]
+ Brief Consult Enter/Edit (Screen)   [MCCONSULTBRSCR]
+ Brief Consult Report   [MCCONSULTBRREPORT]
+ Enter/Edit GI Procedure (Line)   [MCFLGI]
+ Procedure Enter/Edit (Screen)   [MCFSGI]
+ Endoscopic Report   [MCFPGI]
+ Diagnosis Review/Revision   [MCARGIDIAG]
+ Recall List   [MCARGIRECALLIST]
+ Image Capture   [MCARGIMAGE]
+ Brief Enter/Edit GI Procedure   [MCBLGI]
+ Brief Procedure Enter/Edit (Screen)   [MCBSGI]
+ Brief Endoscopic Report   [MCBPGI]
+ Enter/Edit Non-Endoscopic Exams (Line)   [MCFLNONENDO]
+ Enter/Edit Non-Endoscopic Exams (Screen)   [MCFSNONENDO]
+ Non-Endoscopic Report   [MCFPNONENDO]
+ Brief Enter/Edit of Non-Endo GI Procedure   [MCBLNONENDO]
+ Brief Non-Endo Enter/Edit (Screen)   [MCBSNONENDO]
+ Brief Non-Endoscopic Report   [MCBPNONENDO]
+ Endoscopy Enter/Edit   [MCFLPULM]
+ Endoscopy Enter/Edit (Screen)   [MCFSPULM]
+ Endoscopic Report   [MCFPPULM]
+ Diagnosis Review/Revision   [MCARPULMDIAG]
+ Recall List   [MCARPULMRECALLIST]
+ Image Capture   [MCARPULMIMAGE]
+ Brief Endoscopy Enter/Edit   [MCBLPULM]
+ Brief Endoscopy Enter/Edit (Screen)   [MCBSPULM]
+ Brief Endoscopy Report   [MCBPPULM]
+ Enter/Edit PFT   [MCFLPFT]
+ Interpretation Enter/Edit   [MCFLPFTI]
+ PFT Report   [MCFPPFT]
+ Enter/Edit PFT (Screen)   [MCFSPFT]
+ Brief PFT Enter/Edit   [MCBLPFT]
+ Brief PFT Enter/Edit (Screen)   [MCBSPFT]
+ Brief PFT Report   [MCBPPFT]
+ Enter/Edit Hematology Procedures   [MCFLHEM]
+ Enter/Edit Hematology Procedures (Screen)   [MCFSHEM]
+ Hematology Report   [MCFPHEM]
+ Image Capture   [MCARHEMIMAGE]
+ Brief Enter/Edit of Hematology Procedures   [MCBLHEM]
+ Brief Hematology Enter/Edit (Screen)   [MCBSHEM]
+ Brief Hematology Report   [MCBPHEM]
+ Combined Implant/Leads Enter/Edit   [MCARPACEMULTEDIT]
+ Generator Implant/Explant Enter/Edit   [MCARPACEGENIMP]
+ A-Lead Implant/Explant Enter/Edit   [MCFLALEAD]
+ V-Lead Implant/Explant Enter/Edit   [MCFLVLEAD]
+ Surveillance Enter/Edit   [MCFLSURV]
+ Demographic Data Enter/Edit   [MCARPACEDIT]
+ Brief Generator Implant/Explant Enter/Edit   [MCBLGENE]
+ Brief A-Lead Implant/Explant Entry/Edit   [MCBLALEAD]
+ Brief V-Lead Implant/Explant Enter/Edit   [MCBLVLEAD]
+ Brief Surveillance Enter/Edit   [MCBLSURV]
+ Combined Implant/Leads Enter/Edit   [MCFSMULTI]
+ A-Lead Implant/Explant Enter/Edit   [MCFSALEAD]
+ V-Lead Implant/Explant Enter/Edit   [MCFSVLEAD]
+ Surveillance Enter/Edit   [MCARPACESCREENSURV]
+ Demographic Data Enter/Edit   [MCARPACESCREENDEMO]
+ Brief Generator Enter/Edit (Screen)   [MCBSGENI]
+ Brief A-Lead Imp/Exp Enter/Edit (Screen)   [MCBSALEAD]
+ Brief V-Lead Imp/Exp Enter/Edit (Screen)   [MCBSVLEAD]
+ Brief Surveillance Enter/Edit (Screen)   [MCPACSURVBRSCR]
+ Generator Report   [MCARPACEGENPRINT]
+ A-Lead Report   [MCFPALEAD]
+ V-Lead Report   [MCFPVLEAD]
+ Surveillance Report   [MCARPACESURVPRINT]
+ Active Patient Report   [MCARPACEPATIENT]
+ Brief Generator Report   [MCBPGEN.IMPLANT]
+ Brief A-Lead Report   [MCBPALEAD]
+ Brief V-Lead Report   [MCBPVLEAD]
+ Brief Surveillance Report   [MCPACSURVBRREPORT]
+ Diagnosis Edit   [MCRHDIAGF]
+ Add NEW visit/display Patient Background Info.   [MCRHBACKF]
+ History Narrative Edit   [MCRHNARRF]
+ Display Serial Laboratory Info.   [MCRHLABF]
+ Health Assessment (HAQ) Edit   [MCRHHAQF]
+ Health/Physical History Edit   [MCRHPATHISTF]
+ Physical Examination Edit   [MCRHPHYSF]
+ Death Admin Edit   [MCRHDEATHF]
+ Diagnosis Print   [MCRHDIAGP]
+ Background Information Print   [MCRHBACKP]
+ History Narrative Print   [MCRHNARRP]
+ Serial Laboratory Info. Print   [MCRHLABP]
+ Health Assessment (HAQ) Print   [MCRHHAQP]
+ Health/Physical History Print   [MCRHPATHISTP]
+ Physical Examination Print   [MCRHPHYSP]
+ Death Admin Print    [MCRHDEATHP]
+ Print All Report   [MCRHALLP]
+ Brief Rheumatology Report   [MCBPRHEUM]
+ Image Capture   [MCRHIMAGE]
+ Diagnosis Line Edit   [MCRHDIAGL]
+ History Narrative Line Edit   [MCRHNARRL]
+ Health Assessment (HAQ) Line Edit   [MCRHHAQL]
+ Health/Physical History Line Edit   [MCRHPATHISTL]
+ Physical Examination Line Edit   [MCRHPHYSL]
+ Death Admin Line Edit   [MCRHDEATHL]
+ Brief Diagnosis Line Edit   [MCRHBRIEF]
+ Generalized Procedure Enter/Edit   [MCFLGEN]
+ Generalized Procedure Enter/Edit (Screen)   [MCFSGEN]
+ Image Capture   [MCGENERICIMAGE]
+ Brief Generalized Procedure Enter/Edit   [MCBLGEN]
+ Brief Generalized Procedure Enter/Edit (Screen)   [MCBSGEN]
+ Summary of Patient Procedures   [MCARSUMMARY]
+                                                                      
+                                                   
+ POST-LOCKOUT CHANGES
+ ====================
+ Once all the options are disabled, the user will not be able to associate a
+ Medicine report to a Consult procedure.  If the user tries to associate a
+ Medicine report with a Consult procedure in CPRS, the user will not get
+ a procedure list to select from.  There will be no report for
+ association since they are converted over to CP.
+  
+ Routine Modified: MCARPS2
+                                                                         
+                                                                         
+ IV.  TECHNICAL COMPONENTS:
+      ====================
+                                                           
+ FILE ADDED
+ ==========
+ CP CONVERSION file (#703.9)
+ This file is created strictly for the use of storing the site parameters 
+ used for the Medicine report conversion and also the conversion status for
+ each converted entry.
+     
+                                                                 
+ DATA DICTIONARY CHANGE
+ ======================
+ A new field will be added called CONVERSION ID REFERENCE field (#.3)
+ in the CP TRANSACTION file (#702).
+ 
+ 702,.3        CONVERSION ID REFERENCE 2;1 FREE TEXT
+               INPUT TRANSFORM:  K:$L(X)>30!($L(X)<1) X
+               LAST EDITED:      SEP 20, 2004 
+               HELP-PROMPT:      Answer must be 1-30 characters in length. 
+               DESCRIPTION:      This field is the Reference Conversion ID. It
+                                 is a variable pointer to the Medicine files.
+                                 It indicates which converted Medicine report
+                                 record is associated with the CP Transaction
+                                 study.  This field helps to keep track which CP
+                                 Transaction study was created for the Medicine
+                                 report conversion.  This field is a variable
+                                 pointer to the following files: 
+                                                                         
+                   
+                                 691   ECHO                                
+                                 691.1 CARDIAC CATHETERIZATION              
+                                 691.5 ELECTROCARDIOGRAM (EKG)               
+                                 691.6 HOLTER                               
+                                 691.7 EXERCISE TOLERANCE TEST               
+                                 691.8 ELECTROPHYSIOLOGY (EP)                
+                                 694   HEMATOLOGY                            
+                                 694.5 CARDIAC SURGERY RISK ASSESSMENT       
+                                 698   GENERATOR IMPLANT                    
+                                 698.1 V LEAD IMPLANT                        
+                                 698.2 A LEAD IMPLANT                       
+                                 698.3 PACEMAKER SURVEILLANCE                
+                                 699   ENDOSCOPY/CONSULT                    
+                                 699.5 GENERALIZED PROCEDURE/CONSULT         
+                                 700   PULMONARY FUNCTION TESTS              
+                                 701   RHEUMATOLOGY           
+ 
+               CROSS-REFERENCE:  702^ACONV 
+                                 1)= S ^MDD(702,"ACONV",$E(X,1,30),DA)=""
+                                 2)= K ^MDD(702,"ACONV",$E(X,1,30),DA)
+                                 3)= Do Not Delete.
+                                 This cross reference is used to keep track of
+                                 which CP transaction study was created during
+                                 the Medicine report conversion and which
+                                 Medicine record it is associated with.  
+                                                                  
+   
+ PRINT TEMPLATES
+ ===============
+ Three print templates are exported along with the KIDS build for the CP 
+ CONVERSION file (#703.9).  The templates are used for the Summary of 
+ Conversion Process, Conversion Totals By Status, and Error Log options.
+  
+ MD CONVERSION ERRORS
+ MD CONVERSION SUMMARY
+ MD CONVERSION TOTALS
+  
+ SORT TEMPLATES
+ ==============
+ Three sort templates are exported along with the KIDS build for the CP 
+ CONVERSION file (#703.9).  The templates are used for the Summary of
+ Conversion Process, Conversion Totals By Status, and Error Log options.
+  
+ MD CONVERSION ERRORS
+ MD CONVERSION SUMMARY
+ MD CONVERSION TOTALS
+                                                                           
+ SCREEN MANAGER FORMS
+ ====================
+ MD MAIN Screen Manager Form will be exported along with the KIDS build for 
+ the CP CONVERSION file (#703.9).  MD HDR, MD SETTINGS, MD FILES, and MD 
+ PROCEDURE UPDATE are screen blocks that are exported with the form, MD 
+ MAIN.  This form is used for the Conversion Parameter Setup option.
+                                                           
+ MD MAIN
+   MD HDR
+   MD SETTINGS
+   MD FILES
+   MD PROCEDURE UPDATE
+                                                                       
+ PARAMETER DEFINITION
+ ====================
+ The Kernel parameter definition, MD MEDICINE CONVERTED will be exported
+ along with the build.  This parameter is used as a flag to indicate that
+ all the Medicine modules have been converted.
+                              
+  MD MEDICINE CONVERTED
+                                                             
+  
+ OPTIONS ADDED
+ =============
+ The Medicine to CP Conversion Manager menu option will be added with the
+ installation of this patch.  The following options are exported with the
+ menu option:
+                                                                
+    1      Conversion Setup
+    2      Build Conversion List
+    3      Run the Conversion Process
+    4      Summary of Conversion Process
+    5      Disk Space Requirements
+    6      List of TIU Titles Needed
+    7      Conversion Totals By Status
+    8      Error Log
+    9      Conversion Lockout
+                                                                
+ Select Medicine to CP Conversion Manager Option: 
+                                                    
+                                                                 
+      Medicine to CP Conversion Manager  Option name: MDCVT MANAGER
+      This is the Medicine to CP Conversion Manager menu option.  
+      This menu option consists of options to assist the site in
+      converting the Medicine reports to Clinical Procedures text reports.
+                                                                    
+ 1. Conversion Setup     Option name: MDCVT SETUP
+      This option will bring up a setup screen for the site
+      to setup the Medicine Report Conversion parameter setup.
+      This parameter setup allows the site to control which Medicine
+      reports will be converted and which CP Definition and TIU title
+      to link to.
+  
+      [MD MAIN] Screen Manager Form
+      New Routine Used: MDCVT
+ 
+      PLEASE NOTE:
+      The following is a list of standardized Historical procedure titles
+      exported with TIU*1*182 and they will be mapped to the appropriate
+      Medicine Package parameter upon the launching of the Conversion Setup
+      option:
+ 
+ Medicine Package Parameter     Use TIU Note Title
+ --------------------------     -------------------
+   ECHO                         HISTORICAL ECHOCARDIOGRAM PROCEDURE
+   CARDIAC CATHETERIZATION      HISTORICAL CARDIAC CATHETERIZATION PROCEDURE
+   ELECTROCARDIOGRAM (EKG)      HISTORICAL ELECTROCARDIOGRAM PROCEDURE
+   HOLTER                       HISTORICAL HOLTER PROCEDURE
+   EXERCISE TOLERANCE TEST      HISTORICAL EXERCISE TOLERANCE TEST PROCEDURE
+   ELECTROPHYSIOLOGY (EP)       HISTORICAL ELECTROPHYSIOLOGY PROCEDURE
+ * HEMATOLOGY                   
+   CARDIAC SURGERY RISK ASSESS  HISTORICAL PRE/POST SURGERY RISK NOTE
+   GENERATOR IMPLANT            HISTORICAL PACEMAKER IMPLANTATION PROCEDURE
+   V LEAD IMPLANT               HISTORICAL PACEMAKER IMPLANTATION PROCEDURE
+   A LEAD IMPLANT               HISTORICAL PACEMAKER IMPLANTATION PROCEDURE
+   PACEMAKER SURVEILLANCE       HISTORICAL PACEMAKER IMPLANTATION PROCEDURE
+ * ENDOSCOPY/CONSULT            
+ * GENERALIZED PROCEDURE/CONSULT 
+   PULMONARY FUNCTION TESTS     HISTORICAL PULMONARY FUNCTION TEST PROCEDURE
+   RHEUMATOLOGY                 HISTORICAL RHEUMATOLOGY PROCEDURE
+ 
+ '*' denotes procedures that can be broken down further into individual 
+ procedures.  They are not mapped and the Use TIU Note Title fields are left 
+ blank.
+ 
+    The procedures that fall within the three procedure modules denoted by 
+    '*' will need to have a corresponding historical title created within
+    the HISTORICAL PROCEDURES document class under CLINICAL PROCEDURE
+    CLASS by the site.  Use the List of TIU Titles Needed option to
+    obtain a list of historical titles that need to be created.  The
+    Convert Y/N parameter has to be set to "Yes" for the three
+    procedures denoted by '*' to generate the titles needed for the 
+    procedures under the three modules.  Any titles created MUST begin
+    with the word "HISTORICAL" and end with the word "PROCEDURE".
+ 
+    In addition to the historical titles being mapped, the CP Definition
+    field parameter will also be mapped.  A CP Definition will be created
+    for each of the Medicine Package Parameter EXCEPT the three denoted
+    by '*'.  The name of the CP Definition created will be the same name
+    as the Medicine procedure name and " - HIST" appended at the end to
+    specify historical.
+                                                                      
+ Medicine Package Parameter     CP Definition                        
+ --------------------------     -------------------                   
+   ECHO                         ECHO - HIST
+   CARDIAC CATHETERIZATION      CATHETERIZATION - HIST
+   ELECTROCARDIOGRAM (EKG)      ELECTROCARDIOGRAM - HIST
+   HOLTER                       HOLTER - HIST
+   EXERCISE TOLERANCE TEST      EXERCISE TOLERANCE TEST - HIST
+   ELECTROPHYSIOLOGY (EP)       ELECTROPHYSIOLOGY - HIST
+ * HEMATOLOGY                                     
+   CARDIAC SURGERY RISK ASSESS  CARDIAC SURGERY RISK ASSESSMEN
+   GENERATOR IMPLANT            GENERATOR IMPLANT - HIST
+   V LEAD IMPLANT               VENTRICAL LEAD IMPLANT - HIST
+   A LEAD IMPLANT               ATRIAL LEAD IMPLANT - HIST
+   PACEMAKER SURVEILLANCE       PACEMAKER SURVEILLANCE - HIST
+ * ENDOSCOPY/CONSULT                              
+ * GENERALIZED PROCEDURE/CONSULT                  
+   PULMONARY FUNCTION TESTS     PULMONARY FUNCTION TEST - HIST
+   RHEUMATOLOGY                 RHEUMATOLOGY - HIST 
+                                                                       
+ 2. Build Conversion List     Option name: MDCVT BUILD CONVERSION LIST 
+      The user will need to run this option before using the [MDCVT RUN],
+      Run the Conversion Process, option.  This option will let the user
+      build the conversion list of the Medicine file records for the CP
+      CONVERSION file (#703.9).  It will populate the CONVERSION LOG
+      sub-file (#703.92) with all entries in the "AC" cross reference in
+      the MEDICAL PATIENT file (#690) and set the STATUS field as
+      "Ready to Convert" for each entry.  This option can be queued.
+      Once the conversion list is built, this option can also be used
+      to add new additional entries in the Medicine file into the conversion
+      list.  This option will not overwrite the existing entries in the
+      CONVERSION LOG but add to the list.
+                                                                             
+      New Routine Used: MDCVT
+                                                         
+ 3. Run the Conversion Process     Option name: MDCVT RUN
+      This option will start the Medicine Report conversion to Clinical
+      Procedures.  This option will only convert reports for procedures
+      that have the "CONVERT Y/N" field set to "Yes" under the MEDICINE FILE
+      PARAMETERS field in the CP CONVERSION file (#703.9).
+  
+      New Routines Used: MDCVT, MDCVT1, and MDESPRT
+      Modified Routine: MDPCE
+  
+ 4. Summary of Conversion Process     Option name: MDCVT SUMMARY
+      This option will generate a Medicine Report Conversion report.  This
+      report consists of a listing of all Medicine records that were 
+      processed in the conversion in variable pointer format and the
+      status of the conversion whether the record was converted, skipped,
+      or errored.  If the record was converted, the total number of lines
+      and bytes that the record was converted to in a TIU document will
+      be displayed.  If the record errored, the reason why it errored
+      will be displayed.  If the record was skipped, the reason why it
+      was skipped will be displayed.
+                              
+      MD CONVERSION SUMMARY print and sort templates
+                                            
+ 5. Disk Space Requirements     Option name: MDCVT DISK SPACE
+      This option will generate a summary of the Medicine report
+      conversion.  This summary consists of a list of the files
+      converted to Clinical Procedures, the count of records converted,
+      the total lines and Bytes the records were converted in each file.
+                                                            
+      New Routine Used: MDCVT
+  
+ 6.  List of TIU Titles Needed     Option name: MDCVT LIST OF TIU TITLES 
+      This option will allow the user to generate a list of Medicine procedures
+      and the TIU titles needed to be created for the procedures that will
+      be used for the Medicine report conversion.  The PRINT NAME of the
+      procedures in the PROCEDURE/SUBSPECIALTY file (#697.2) will be used
+      in the display.  This list will list the procedures and titles for
+      a Medicine Package Procedure, if the "Convert Y/N" parameter is set
+      to "Yes" and the "Use TIU Note Title" parameter is blank in the
+      Conversion Setup option.
+                                                                            
+      New Routine Used: MDSTATU
+                                                                  
+ 7. Conversion Totals By Status     Option name: MDCVT TOTALS
+      This option will verify that the Medicine reports conversion is 
+      complete and are in appropriate statuses.
+  
+      MD CONVERSION TOTALS print and sort templates
+      New Routine Used: MDCVT
+  
+ 8. Error Log     Option name: MDCVT ERROR LOG
+      This option generates a log of all the errors that occurred with each
+      Medicine report during the conversion.  The listing consists of the
+      CONVERSION ID and ERROR MESSAGE.  The CONVERSION ID consists of
+      the record # concatenated with a ";" and the global location
+      (e.g.,"345;MCAR(699,").
+  
+      MD CONVERSION ERRORS print and sort templates
+      New Routine Used: MDCVT
+                                                                   
+ 9. Conversion Lockout    Option name: MDCVT CONVERSION LOCKOUT
+      
+      This option will let the user place a specialty/procedure or ALL
+      specialty/procedures Enter/Edit and Report options 'OUT OF SERVICE'
+      in the Medicine package.  It will also set Kernel site parameter
+      MD MEDICINE CONVERTED to "YES" when all specialties/procedures enter/edit
+      and report options are disabled or when the user indicated that all
+      Medicine reports have been converted.
+   
+      New Routine Used: MDOUTOR
+                                                                         
+                                                                             
+ V.  DOCUMENTATION RETRIEVAL:
+     =======================
+ A conversion guide that documents the steps in converting a Medicine
+ report to a CP text report is provided by this patch.  Please READ and
+ UNDERSTAND the process before using the added new options for the 
+ conversion and the Medicine Lockout.
+ 
+  
+  The following file can be retrieved in 
+  BINARY format by File Transfer Protocol (FTP):
+  MD_1_P5_CVT.PDF  (Conversion Guide)
+    
+  The preferred method is to FTP files from
+  
+     download.vista.med.va.gov    
+  
+  which will transmit the files from the first available FTP server.
+  
+  The file may also be downloaded directly from a particular FTP
+  location at the following locations.
+  
+         Albany                  ftp.fo-albany.med.va.gov
+         Hines                   ftp.fo-hines.med.va.gov
+         Salt Lake City          ftp.fo-slc.med.va.gov
+  
+  
+  Files are available in the ANONYMOUS.SOFTWARE directory. 
+  
+ NOTE:  It is important that you read the instructions on setting up
+ the parameters for the conversion, running the conversion, and Locking out 
+ the Medicine options.
+                                                                         
+ VI.  TEST SITES:
+      ==========
+ Houston          (VMS/CACHE)
+ Memphis          (VMS/CACHE)
+ Mountain Home    (VMS/CACHE)
+ Palo Alto        (VMS/CACHE)
+ West Los Angeles (VMS/CACHE)
+                                                                       
+ 
+  
+ VII.  INSTALLATION INSTRUCTIONS:
+       =========================
+  Users may remain on the system but this patch should be installed at
+  non-peak hours due to the high volume use of the routines included.
+  Installation should take less than 3 minutes.
+  
+     1. Use the INSTALL/CHECK MESSAGE option on the PackMan 
+        menu.
+     2. From the Kernel Installation and Distribution System Menu, 
+        select the Installation menu.
+     3. From this menu, you may elect to use the following options 
+         (when prompted for INSTALL NAME, enter MD*1.0*5):
+              a.  Backup a Transport Global
+              b.  Compare Transport Global to Current System
+              c.  Verify Checksums in Transport Global
+     4. Use the Install Package(s) option and select the patch MD*1.0*5.
+     5. When prompted "Want KIDS to Rebuild Menu Trees Upon Completion of
+        Install? YES//", respond NO.
+     6. When prompted "Want KIDS to INHIBIT LOGONs during the 
+        install? YES//", respond NO
+     7. When prompted "Want to DISABLE Scheduled Options, Menu 
+        Options, and Protocols? YES//", respond NO.
+     8. When prompted 'DEVICE: HOME //', respond with <ENTER> or a device.
+                                                                             
+ 
+ VIII.  POST-INSTALLATION:
+        =================
+ The actual conversion process will need to be run through the MDCVT MANAGER
+ menu option.  Please review the Conversion Guide for the instructions for 
+ setting up the Conversion parameter and how to run the conversion.  If your 
+ site is not ready for the actual conversion, you can setup the parameters
+ and run the conversion when your site is ready to convert.
+ 
+ 
+ 
+ 
+ ROUTINE SUMMARY
+ ===============
+ The following is a list of the routine(s) included in this patch.  The 
+ second line of each of these routine(s) will look like:
+  
+ <tab>;;1.0;Clinical Procedures;**[patch list]**;Apr 1, 2004
+  
+  
+                          CHECK^XTSUMBLD results
+  
+ Routine name     Before Patch     After Patch     Patch List     
+ ============     ============     ===========     ==========
+ MCARPS1           5217604         5278902            **5**
+ MCARPS2           9193778         9495981            **5**
+ MCARPS3           8946668         8993180            **5**
+ MCORMN            7938069         8049372            **5**
+ MCORMN0           6741624         6707760            **5**
+ MCORMN01          1977484         1979994            **5**
+ MDCVT                N/A         14654145            **5**
+ MDCVT1               N/A         16292363            **5**
+ MDCVTU               N/A          1352375            **5**
+ MDESPRT              N/A          5690317            **5**
+ MDOUTOR              N/A          5630077            **5**
+ MDPCE              2732895        2826639            **5**
+ MDPOST5              N/A           537070            **5**
+ MDPS3              4466227        4450948           **2,5**
+ MDRPCOT           13493113       13587406            **5**
+ MDRPCOT1           8132295        8276645            **5**
+ MDSTATU              N/A         12577489            **5**
+ 
+ 
+ 
+ 
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: MCARPS1
+    Before:  B8248104  After:  B8444833  **5**
+Routine Name: MCARPS2
+    Before: B17411795  After: B18375280  **5**
+Routine Name: MCARPS3
+    Before: B16808255  After: B17072262  **5**
+Routine Name: MCORMN
+    Before: B26988124  After: B27253923  **5**
+Routine Name: MCORMN0
+    Before: B20155309  After: B20182884  **5**
+Routine Name: MCORMN01
+    Before:  B4178975  After:  B4360683  **5**
+Routine Name: MDCVT
+    Before:       n/a  After: B81652612  **5**
+Routine Name: MDCVT1
+    Before:       n/a  After: B71614831  **5**
+Routine Name: MDCVTU
+    Before:       n/a  After:  B2189080  **5**
+Routine Name: MDESPRT
+    Before:       n/a  After:  B8888916  **5**
+Routine Name: MDOUTOR
+    Before:       n/a  After: B33171008  **5**
+Routine Name: MDPCE
+    Before:  B4297640  After:  B4577099  **5**
+Routine Name: MDPOST5
+    Before:       n/a  After:  B1064423  **5**
+Routine Name: MDPS3
+    Before:  B8516931  After:  B8616457  **2,5**
+Routine Name: MDRPCOT
+    Before: B61489222  After: B62244057  **5**
+Routine Name: MDRPCOT1
+    Before: B26833377  After: B27880896  **5**
+Routine Name: MDSTATU
+    Before:       n/a  After: B39040181  **5**
+
+=============================================================================
+User Information:
+Entered By  : ACKERMAN,NIEN-CHIN            Date Entered  : JAN 12, 2004
+Completed By: REZNIK,CHARMAINE              Date Completed: AUG 21, 2006
+Released By : REGA,ANNE                     Date Released : SEP 08, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

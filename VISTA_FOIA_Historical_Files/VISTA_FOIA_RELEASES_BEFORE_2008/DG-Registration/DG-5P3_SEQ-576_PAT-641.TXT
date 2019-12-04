@@ -1,0 +1,270 @@
+$TXT Created by THEROUX,JOHN at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 05/25/05 at 16:21
+=============================================================================
+Run Date: JUL 22, 2005                     Designation: DG*5.3*641
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #576                    Status: Released
+                  Compliance Date: AUG 22, 2005
+=============================================================================
+
+Associated patches: (v)DG*5.3*571  <<= must be installed BEFORE `DG*5.3*641'
+                    (v)DG*5.3*585  <<= must be installed BEFORE `DG*5.3*641'
+                    (v)DG*5.3*592  <<= must be installed BEFORE `DG*5.3*641'
+                    (v)DG*5.3*620  <<= must be installed BEFORE `DG*5.3*641'
+
+Subject: PATIENT LOOKUP FAILS
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch addresses the patient name lookup, cleans up variables left
+ in the symbol table, allows the creation of VIC cards for patients without
+ a first name, backs out the changes to the CUM ADC totals on the BSR, and
+ creates cross-reference entries for test patients.  
+  
+  
+   ASSOCIATED Remedy Tickets:
+   =======================
+  1) HD64601 - SLC-0105-50080 Data not transforming as stored in File 2
+  2) HD64536 - ISP-1204-N0993 I5 variable not cleaned up in DGRPC2
+  3) HD64470 - WAS-1204-20253 VIC does not recognize one word name 
+  4) HD64103 - PRE-0804-60331 INCORRECT CUM ADC ON BSR vs TSR TOTAL
+     duplicate:
+     HD64261 - PTH-0904-22198 Question Re:  CUM Totals
+  5) HD64564 - MON-1204-51453 DG*5.3*600 REPORT AFTER UPDATE RUN STILL 
+                              SHOWS NAMES FOUND
+    
+  ASSOCIATED E3R(s):
+  ==================
+  N/A
+  
+  PARTICIPATING TEST SITES:
+  =========================
+ Montana HCS
+ Pittsburgh HCS
+ Upstate New York HCS
+  
+  REMEDY OVERVIEW:
+  ==============
+  
+ 1) HD64601 - SLC-0105-50080  Data not transforming as stored in File 2
+  
+ Problem:
+ ========
+ On a patient name lookup, if a user makes an honest mistake in entering
+ the name, for example hitting the spacebar after the comma, or adding
+ a period (dot) after the middle name initial, the system finds nothing
+ and either offers to add the patient or displays two question marks.
+  
+ Solution:
+ =========
+ It was noted that this occurs because only the family name is parsed,
+ in other words, the input to the right of the comma is not reformated
+ to conform to patient name standardization guidelines, but is used 
+ "as is" to do the lookup.
+ Routine DPTLK1 has been modified to make a last attempt at finding
+ the patient record by reformating the entire name before doing the lookup.
+  
+ 2) HD64536 - ISP-1204-N0993     I5 variable not cleaned up in DGRPC2
+  
+ Problem:
+ ========
+ In the course of addressing HINQ NOIS BOI-1004-50816, it was discovered
+ that the problem was caused by the "I5" variable having been left in the 
+ symbol table by routine DGRPC2. 
+  
+ Solution:
+ =========
+ Routine DGRPC has been modified to New the I5 and I6 variables.
+  
+ 3) HD64470 - WAS-1204-20253     VIC does not recognize one word name
+  
+ Problem:
+ ========
+ The Vista software will not send patient data to the VIC database
+ for patients that do not have a first name (ex: patients who have
+ changed their legal name to be only one word).
+  
+ Solution:
+ =========
+ Routine DGQEUT2 has been modified not to check for the presence 
+ of a first name. 
+  
+ 4) HD64103 - PRE-0804-60331     INCORRECT CUM ADC ON BSR vs TSR TOTAL
+  
+ Problem:
+ ========
+ Patches DG*5.3*529 and DG*5.3*592 made changes in how these totals
+ were calculated.  This was challenged by sites and the challenge supported
+ by HEC, CBO and VACO.
+  
+ Solution:
+ =========
+ After much discussion at the highest levels, a decision has been made to  
+ back out the changes to the CUM ADC totals on the BSR introduced by 
+ DG*5.3*529.  The new patch will calculate the CUM ADC totals using the 
+ formula which was used prior to the release of DG*5.3*529.  That formula 
+ will take the Cum Patient Days total for all of the wards and divide them 
+ by the Total Elapsed Fiscal Days.  
+  
+ Routines DGPMBSP2, DGPMBSP3 and DGPMBSP4 were modified accordingly.
+  
+ 5) HD64564 - MON-1204-51453 DG*5.3*600 REPORT AFTER UPDATE RUN STILL SHOWS
+                       NAMES FOUND
+  
+ Problem:
+ ========
+ Certain patient file records with the TEST PATIENT INDICATOR field (#.6)
+ set to "YES" do not have an entry in the "ATEST" crossreference.  
+  
+ Solution:
+ =========
+ Routine DG53P641 has been developed to find and correct such records.
+ Please see the Post-Install Instructions.
+  
+  ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;5.3;Registration;**[patch list]**;Aug 13,1993
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  DG53P641                   N/A              3728439              641
+  DGPMBSP2              12213427             12173193           59,592,641
+  DGPMBSP3               6952111              7185832    59,85,529,592,641
+  DGPMBSP4               4558403              4498379          592,641
+  DGQEUT2                8782845              8916444          571,641
+  DGRPC                 10232297             10247833  108,121,314,301,470
+                                                       489,505,451,568,585
+                                                                   641
+  DPTLK1                12981773             13992294    32,50,197,249,317
+                                                       391,244,532,574,620,
+                                                                   641
+ INSTALLATION INSTRUCTIONS:
+ ===========================
+ This patch may be run with users on the system, HOWEVER because
+ the patient lookup routines are impacted, we suggest it be installed 
+ after business hours.
+  
+ Installation will take less than 2 minutes.
+  
+ 1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu to unload
+     the KIDS distribution included with this message.
+  
+     NOTE:  If the required patches are not installed, the transport global
+            will be removed.  If the transport global is removed you will
+            need to repeat this step.
+  
+ 2.  Review your mapped set.  If any of the routines listed in the 
+     ROUTINE section are mapped, they should be removed from the mapped
+     set at this time.
+  
+ 3.  From the Kernel Installation and Distribution System Menu, select
+     the Installation menu.
+  
+ 4.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter DG*5.3*641):
+     a.  Compare Transport Global to Current System  - this option will
+         allow you to view all changes that will be made when the patch
+         is installed.  It compares all components of the patch (routines,
+         DDs, templates, etc.).
+     b.  Verify Checksums in Transport Global - this option will
+         allow you to ensure the integrity of the routines that are in
+         the transport global.
+     c.  Print Transport Global - this option will allow you to view the
+         components of the KIDS build.
+     d.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+  
+ 5.  Use the Install Package(s) option and select the package DG*5.3*641.
+  
+ 6.  When prompted ' Want KIDS to INHIBIT LOGONs during the install?
+     YES//', respond NO.
+  
+ 7.  When prompted,'Want to DISABLE Scheduled Options, Menu Options, and 
+     Protocols? NO//', respond Yes.
+     When prompted,'Enter options you wish to mark as 'Out Of Order':',
+     enter:
+            Register a Patient [DG REGISTER PATIENT]
+            Load/Edit Patient Data [DG LOAD PATIENT DATA]
+            Preregister a Patient [DGPRE PRE-REGISTER OPTION]
+  
+     When prompted,'Enter protocols you wish to mark as 'Out Of Order':', 
+     hit enter.
+  
+ 8.  If routines were unmapped as part of step 2, they should be returned
+     to the mapped set once the installation has run to completion.
+  
+ POST-INSTALL INSTRUCTIONS:
+ =========================
+  
+ Run REPORT^DG53P641. Suggest you queue the report as the routine 
+ must read the entire Patient file in order to produce the report. 
+ If no records are found, nothing further need be done.  Otherwise,
+ run CLEANUP^DG53P641 and queue the task to run after hours.  When
+ the task has completed, you may run REPORT^DG53P641 again which
+ should display "No records to report."  
+
+Routine Information:
+====================
+
+Routine Name:
+  - DGRPC
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGQEUT2
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGPMBSP2
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGPMBSP3
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGPMBSP4
+
+
+Routine Checksum:
+
+Routine Name:
+  - DG53P641
+
+
+Routine Checksum:
+
+Routine Name:
+  - DPTLK1
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : THEROUX,JOHN                  Date Entered  : DEC 22, 2004
+Completed By: BOWEN,MARY JANE               Date Completed: JUL 22, 2005
+Released By : ALEXANDER,DIANNE              Date Released : JUL 22, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

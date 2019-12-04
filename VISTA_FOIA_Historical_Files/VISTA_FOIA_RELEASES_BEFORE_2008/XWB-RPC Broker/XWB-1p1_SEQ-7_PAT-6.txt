@@ -1,0 +1,279 @@
+$TXT Created by CREAVEN,DONALD P at NXT.KERNEL.ISC-SF.VA.GOV  (KIDS) on MONDAY, 08/30/99 at 13:44
+=============================================================================
+Run Date: SEP 09, 1999                     Designation: XWB*1.1*6
+Package : XWB - RPC BROKER                    Priority: Mandatory
+Version : 1.1         SEQ #7                   Status: Released
+=============================================================================
+
+Associated patches: (v)XWB*1.1*4   <<= must be installed BEFORE `XWB*1.1*6'
+                    (v)XU*8*115    <<= must be installed BEFORE `XWB*1.1*6'
+
+Subject: ELIMINATE ORPHANED SERVER JOBS
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+ This patch eliminates server Broker jobs for which there is no client
+ application.  These 'ghost' jobs have occurred when client processes are
+ ended in a non-standard way - for example, by pressing the PC's reset
+ button.  
+  
+ Note:  The server side of this patch is effective only for client
+ applications (like CPRS-GUI) that have been recompiled with the Broker
+ Development Kit portion of the patch.  So, installing the server patch
+ alone will not eliminate the ghost jobs for client applications that have
+ not been upgraded.
+  
+ Prior to this patch, these jobs would wait for 10 hours to receive data
+ from the client application that no longer exists.  Two significant
+ negative effects of the ghost jobs are 1) consumption of a licensed
+ process, reducing the available number of user jobs and 2) retention of
+ application resources (particularly LOCKs) that interferes with subsequent
+ user actions.  Other than waiting 10 hours for these jobs to finally
+ timeout, the only way to get rid of the ghost jobs was for IRM to manually
+ kill them.
+  
+ This patch changes the time that the server waits for the client to
+ contact it.  The length of the timeout is controlled by a new field in the
+ Kernel System Parameters file: BROKER ACTIVITY TIMEOUT.  That field is
+ distributed by Kernel patch XU*8.0*115 with a default value of
+ approximately 3 minutes.  By setting the timeout to a duration much
+ shorter than 10 hours, the ghost jobs are eliminated quickly if the client
+ application is no longer running.  See the help for the BROKER ACTIVITY
+ TIMEOUT field for advice regarding changing the value for this field.
+  
+ In order to let the server know that the client application is still
+ active, the client portion of this patch initiates a periodic, background
+ contact with the server.  This 'polling' of the server by the client
+ resets the timeout so that the server job is not stopped when the client
+ still exists.  Any client application compiled with the RPCBroker
+ component distributed with this patch automatically polls.  No developer
+ or user intervention is necessary, and this polling activity affects
+ neither the application nor the user.
+  
+ This patch specifically resolves problems raised in the following NOISs:
+  
+ BIR-0399-32032     GUI LOCKES UP ON USERS
+ OKL-1298-70542     LOCKOUT FROM GUI
+ HUN-0898-21008     Providers are locked out of record
+ SAG-0898-40564     TIMEOUT MANAGMENT ON GUI
+ DAY-0798-40953     No DTIME in XWBTCPC
+ TUA-0598-30739     GUI JOBS HANGING AROUND
+ WAS-0198-20958     SYSTEM NOT RELEASING USER AFTER CLOSING CHART
+ BIR-0699-31167     BROKER TIMEOUT
+ SDC-0499-62471     PATIENT RECORDS LOCKED UP
+ ALB-0499-52063     Patient Record Locked
+ HIN-0599-42485     CPRS CONNECTIONS REMAIN ACTIVE AFTER LOGOUT
+  
+  
+ It also fulfills a request made in the following E3R:
+  
+ 9646               CHANGE OF MAIN TIMED READ FOR BROKER
+  
+  
+ IMPORTANT NOTES: 
+ ========= =====
+  
+ This patch consists of 2 parts: 
+  
+  - Packman message containing the XWB*1.1*6 KIDS build.  
+  - An updated Broker Development Kit (programmer workstation software).  
+  
+ 1. The packman message containing the XWB*1.1*6 KIDS build installs 3
+ modified XWB* routines and a new RPC (entry in the Remote Procedure file)
+ used by the Broker server. This part of the patch is mandatory.  
+  
+ Routine Summary: 
+ ======= ========
+  
+ The following is a list of the routines included in this patch.  The
+ second line of each of these routines now looks like: 
+  
+ <tab>;;1.1;RPC BROKER;[patch list];date 
+  
+ CHECK^XTSUMBLD results: 
+  
+ Routine Name      Before Patch     After Patch     Patch List 
+ XWBTCPC             7518635         7635440          2,5,4,6  
+ XWBLIB              674092          720789           6        
+ XWBSEC              1317713         2113752          3,6      
+  
+ 2. Updated BDK (programmer client workstation software). All sites doing
+ Broker development are encouraged to retrieve the patched BDK. Note that
+ this version of the BDK only supports Delphi 4 and Delphi 3.  
+  
+ DO NOT INSTALL THIS PROGRAMMER CLIENT WORKSTATION SOFTWARE ON END-USER
+ CLIENT WORKSTATIONS.  If you are not using the BDK in any local or
+ national development, you do not need to retrieve the Broker's programmer
+ client workstation software.  The patch does not update the Broker
+ software that is running at end-user client workstations.  
+  
+ The software distribution includes: 
+  
+ FILE NAMES      DESCRIPTION                              BYTES
+ XWB1_1P6PG.EXE  BDK Self-Installing Executable           1,500,607
+ XWB1_1P4IG.PDF  Installation Guide                       195,583
+ XWB1_1RM.TXT    Readme text file                         13,428*
+ *The size of this file will change in the future as additions are made.
+  
+ Note:  Use Binary mode to retrieve .PDF, and .EXE files 
+        Use ASCII mode to retrieve .TXT file.  
+  
+ To obtain the updated BDK, use FTP to retrieve the software from one of
+ the following CIO Field Offices' ANONYMOUS.SOFTWARE directories: 
+  
+        CIO FIELD OFFICE              FTP Address 
+        Hines                         152.129.1.110 (isc-chicago.va.gov)
+        Albany                        152.127.1.5   (isc-albany.va.gov)
+        Salt Lake City                152.131.2.1   (isc-slc.va.gov)
+  
+  
+ COMPATIBILITY WITH PRIOR VERSIONS
+ ============= ==== ===== ========
+  
+ The server portion of this patch is backwards compatible with client
+ applications compiled with previous versions of the Broker.  So, client
+ applications do not have to be recompiled when this patch is installed on
+ the server. The server retains a 10 hour timeout for those client
+ applications compiled with previous Broker versions; that is, they
+ continue to work as they did before the patch is installed.
+  
+ If an application is compiled with the BDK for XWB*1.1*6, the server
+ XWB*1.1*6 patch MUST be installed for that application to run.  That is,
+ client portion of this patch requires that the server portion be
+ installed.
+  
+  
+ BROKER-DEPENDENT COMPONENTS
+ ================ ==========
+  
+ The following comments apply only to those developing applications with
+ the BDK (programmer workstation software).  They are not relevant to
+ server operation.
+  
+ Some components, such as the FileMan Delphi Components, reference the
+ TRPCBroker component.  If you use such components for development, be
+ aware that installing a new version of the TRPCBroker component (i.e., a
+ new BDK) may cause incompatibilities in Delphi, resulting in a compile
+ failure of the unit containing the Broker-dependent component and the
+ following compilation error:
+   
+         Unit <unit1> was compiled with a different version of <unit2>.
+   
+ Check with the creators of the Broker-dependent component to make sure
+ that, with regards to the version of the BDK you are about to install:
+   
+ a) Your current component is compatible, or
+   
+ b) You can obtain a new version of the component that is compatible, or
+  
+ c) You have the source (.pas, .dfm, .dpk, etc.) files available so that
+ the component can be recompiled successfully.
+   
+ For the FileMan Delphi Components (FMDC), patch FMDC*1.0*1 brings in a new
+ version of the FMDC that includes the source files.  Please refer to the
+ Patch Module for more information on this FMDC patch.  Additional
+ instructions regarding installing and recompiling FMDC when the Broker is
+ upgraded are in XWB1_1RM.TXT found in the ANONYMOUS.SOFTWARE directories
+ mentioned above and on the FMDC web page.
+  
+ INSTALLATION: 
+ ============
+  
+ Server Side: 
+ ====== ====
+  
+ The following are the installation instructions for the KIDS distribution
+ for XWB*1.1*6: 
+  
+  1.  Do not run any RPC-Broker-based Client/Server software (e.g., CPRS,
+ PCMM) during the installation.  No Broker-based client/server software
+ should be running while installing this patch on the server.  To identify
+ these jobs, check the system status and see if any XWBTCPC routine is
+ running (i.e., Broker Handler).  Once identified, notify users to logoff
+ or forcex the jobs.  Active users may get NOSOURCE or CLOBBER errors.  
+  
+  2.  Stop the Broker Listener on the server.  Check the system status and
+ see if the XWBTCPL routine is running (i.e., Broker Listener).  If it is
+ running stop it.  To stop the Listener, do the following: 
+        a.  Log into your M server.  
+        b.  Enter the following at the M prompt: 
+  
+        >D STOP^XWBTCP(Listener port) 
+        (Typically, the Listener port is 9200
+  
+  3.  These routines are not usually mapped on systems that support
+ mapping; so, you will probably not have to disable mapping.  
+  
+  4.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This
+ option will load the KIDS (Kernel Installation and Distribution System)
+ package onto your system.  
+     
+  5.  The patch has now been loaded into a Transport global on your system.
+  On the KIDS menu, select the 'Installation' menu, use the following
+ options: 
+          Verify Checksum's in Transport Global 
+          Print Transport Global 
+          Compare Transport Global to Current System 
+          Backup a Transport Global 
+     
+  6.  On the KIDS menu, under the 'Installation' menu, use the following
+ option: 
+         Install Package(s)  'XWB*1.1*6' 
+                              =========
+  
+  7.  MSM Sites - Answer YES to the question 'Want to MOVE routines to
+ other CPUs?'. Enter the names of your Compute and Print server(s).  
+      AXP Sites - Answer NO to this question.  
+     
+  8.  If the routines were unmapped as part of step 3, the mapped set
+ should be rebuilt once the installation has run to completion.  
+  
+  9.  Restart the Broker Listener on the Server: 
+        a.  Log into your M server 
+        b.  Enter the following at the M prompt: 
+  
+        >D STRT^XWBTCP(Listener port) 
+  
+  
+ Client Side: 
+  
+ Please follow the instructions in the most recent Broker 1.1 Installation
+ Guide.
+
+Routine Information:
+====================
+
+Routine Name:
+  - XWBLIB
+
+
+Routine Checksum:
+
+Routine Name:
+  - XWBSEC
+
+
+Routine Checksum:
+
+Routine Name:
+  - XWBTCPC
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : CREAVEN,DONALD P              Date Entered : MAR 22, 1999
+Completed By: MANAPSAL,DANILA               Date Completed: AUG 31, 1999
+Released By : PALMER,MICHAEL                Date Released : SEP 09, 1999
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

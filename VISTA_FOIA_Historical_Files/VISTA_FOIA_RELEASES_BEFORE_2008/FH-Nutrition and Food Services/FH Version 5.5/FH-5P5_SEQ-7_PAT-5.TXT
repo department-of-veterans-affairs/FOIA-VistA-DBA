@@ -1,0 +1,1169 @@
+
+=============================================================================
+Run Date: MAY 23, 2007                     Designation: FH*5.5*5
+Package : FH - DIETETICS                      Priority: Mandatory
+Version : 5.5         SEQ #7                    Status: Released
+                  Compliance Date: JUN 23, 2007
+=============================================================================
+
+Associated patches: (v)FH*5.5*1    <<= must be installed BEFORE `FH*5.5*5'
+                    (v)FH*5.5*2    <<= must be installed BEFORE `FH*5.5*5'
+                    (v)FH*5.5*3    <<= must be installed BEFORE `FH*5.5*5'
+
+Subject: Outpatient SOs/SFs and Remedy fixes
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Enhancement (Mandatory)
+  - Other
+
+Description:
+============
+
+ This patch addresses the following Remedy tickets:
+   
+      067503   number of monitors on Patient Profile
+      117109   variables left in partition
+      117212   Cancel Recurring Meals
+      137127   No DFN found when trying to order diet
+      067709   UNY-0803-12139  ORDERABLE ITEM DOES NOT UPDATE WHEN
+                       DIETS EDITED/INACTIVATED
+      067781   BRX-1103-10900  DIETS ARE NOT UPDATING THE CPRS
+                      OI FILE 101.43
+      067800   SAM-1203-20082  CANNOT UPDATE THE CPRS ORDERABLE
+                      ITEMS FILE
+      101734   Program not updating with CPRS
+      121495   Inactivated diets still show in CPRS
+      136203   Forecasted Meal Production Reports
+      139295   Forecasting in the Meal Production Reports not working
+      143316   FHOMDPA Patient Lookup & Space Bar <return>
+      145542   The AMT/UNIT Field from Tubefeeding option FHORTF1 will not allow
+      146202   The AMT/UNIT Field from Tubefeeding option FHORTF1 will not allow
+      149881   UNDEFINED ERROR AT SN+9^ORMFH
+      150285   User's Getting $ZERROR When Ordering Outpatient Meals in VISTA
+      
+ This patch contains the following items:
+   
+ 1) The functionality of outpatient Standing Orders and Supplemental 
+ Feedings has been added to the N&FS package. All existing Standing Orders
+ and Supplemental Feedings options and reports for inpatients have been
+ modified to contain outpatient Standing Orders and Supplemental Feedings,
+ where applicable. The following options have been modified to include
+ outpatient Standing Orders and Supplemental Feedings:
+   a) Change Patient Supplemental Feedings [FHNO1E]
+   b) Consolidate Standing Orders [FHSP7]
+   c) DIET ACTIVITY REPORT/LABELS [FHORD13] 
+   d) Enter/Edit Diet Patterns [FHMTKS]
+   e) Enter/Edit Standing Orders [FHSP3]
+   f) History of Supplemental Feedings [FHNO12]
+   g) List Patient Events [FHORX2]
+   h) NUTRITION LOCATION DIET ORDER [FHORD10]
+   i) Order/Edit Outpatient Meals [FHOMRO]
+   j) Patient Data Log [FHDMP]
+   k) Patient Profile [FHORD9]
+   l) Print Bulk Feedings/Cost Report [FHNO10]
+   m) Print Diet Cards [FHDCRP]
+   n) Print Standing Order Labels [FHSP8]
+   o) Print Tray Tickets [FHMTKP]
+   p) Review Outpatient Meal [FHOMRR]
+   q) Run SF Labels/Consolid Ingred List [FHNO2]
+   r) Standing Order Inquiry [FHSP4]
+   s) Supplemental Feeding Cost Report [FHNO11]
+   t) Supplemental Feeding Inquiry [FHNO1I] 
+   u) Tabulate Standing Orders [FHSP5]
+   v) Ward Supplemental Feeding Lists [FHNO3]
+  
+ 2) The issue reported in Remedy #117212 is addressed.  If an outpatient
+ with outpatient meals ordered was admitted as an inpatient the result
+ would be duplicate meal orders.  This was because the outpatient meals
+ would still be active even though the patient was now an inpatient.  This
+ problem is fixed by canceling all outpatient meals (recurring, special
+ or guest meals) when a patient is admitted.
+   
+ 3) An option to cancel Guest Meals is added.  Previously there was no
+ mechanism for canceling Guest Meals.  The new option is called "Cancel a
+ Guest Meal" and it is found under the Guest Meals menu within the Outpatient
+ Meals main menu.
+   
+ 4) Canceled recurring meals are no longer displayed on Recurring Meals
+ reports and options.  Previously, canceled meals were displayed with a
+ "C" in the status column.  This was unclear and potentially confusing.
+ The status column has been removed from displays.  Canceled meals
+ are not deleted from file #115, they are just no longer displayed.
+   
+ 5) The issue reported in Remedy #67503 is addressed.  The Patient Profile
+ [FHORD9] report now has the ability to restrict the number of monitors
+ displayed.  The Print Nutrition Profile [FHASP1] and Print Screening
+ Report [FHASXR] options were previously modified with this change.  In
+ addition, the prompts have been streamlined into a single prompt:
+   
+   How many monitors would you like to display?: ALL// ?
+   
+   Select ALL to view all monitors, or select a specific number.  For 
+   example, enter 20 to display the 20 most recent monitors.  
+     
+ 6) The issue reported in Remedy #117109 is addressed.  The Request a
+ Meal [FHOMSR] option under the Special Meals menu was not killing DIR
+ variables upon exit of the option.  These variables are now killed.
+   
+ 7) The issue reported in Remedy ticket #'s 067709,067781,067800,101734,121495
+ has been corrected by the VMP team.  The ORDERABLE ITEMS (#101.43) file
+ was not being updated properly when DIETS and TUBEFEEDINGS were edited.
+ There were two issues discovered.  The first issue was the DIETS
+ (#111) entry synonyms were not updating correctly all the time in the
+ ORDERABLE ITEMS (#101.43) file.  This was caused when the DIETS name
+ starts with a number.  The second issue is related to the inactive status.
+ If an inactive DIETS (#111) entry or an inactive TUBEFEEDING (#118.2) entry
+ was edited, the inactive date was removed from the ORDERABLE ITEMS (#101.43)
+ file.  This caused the inactive status of the entry to be wrong in the
+ ORDERABLE ITEMS (#101.43) file.  After consultation with the OERR
+ developers, it was determined the user should be prevented from editing
+ inactive entries in the DIETS (#111) and TUBEFEEDING (#118.2) files
+ except for the ability to re-activate them.
+    
+ There is also a post-init routine, FH55P5, which will synchronize the
+ entries in the DIETS (#111) and TUBEFEEDING (#118.2) files with their
+ corresponding entries in the ORDERABLE ITEMS (#101.43) file.  An example
+ of what is displayed when the post-init runs is included in the example
+ installation section below.
+    
+ 8) The display of allergies has been added to the special meal voucher.
+ When using the Request a Meal [FHOMSR] or Print Meal Voucher [FHOMSP] options
+ under the Special Meals Menu, the outpatient's allergies (if any) will be
+ displayed beneath the start and stop dates on the voucher.
+   
+ 9) An edit check was added to the special meal Request a Meal [FHOMSR] option
+ to check if the patient already has a recurring meal for the date/meal being
+ ordered.  If a recurring meal order already exists a warning is displayed and
+ the special meal order is not allowed.  Conversely, a similar check was added
+ to the recurring meals Order/Edit Outpatient Meal [FHOMRO] option; if a special
+ meal order already exists for the date/meal selected a warning is displayed
+ and the recurring meal is not allowed.
+    
+ 10) Three outpatient meals reports have been modified to be sortable by
+ Nutrition Location, Communication Office, Production Facility or All.
+ The three options are:
+    
+   a) Recurring Meals List by Location [FHOMRL]
+   b) Meal Status Report [FHOMSS]
+   c) Print Guest Meal List [FHOMGP]
+  
+ 11) A check has been added to screen out Guest meals that have been
+ canceled.  The following options have been modified:
+   
+   a) Actual Diet Census [FHORD11]
+   b) Forecasted Diet Census [FHPRF2]
+   c) Reprint Diet Labels [FHORD14]
+  
+ 12) This patch fixes an issue in which tray tickets for individuals in file
+ #200 were not displaying when printing tray tickets for a specific person.
+ The tray ticket will now correctly print when selecting an outpatient person
+ from #200.
+    
+ 13) Patch FH*5.5*3 removed the default number of patients from the MEAL
+ PRODUCTION REPORTS [FHPRO5] option when running the Forecast Census.
+ This patch will reinstate the default number of patients.
+    
+ 14) Ten more Authorizor fields have been added to the FH SITE PARAMETERS
+ (#119.9) file, for a total of 15. 
+    
+ 15) This patch fixes an issue in which an outpatient Nutrition Location
+ without an Associated Hospital Location could be selected when ordering
+ outpatient meals through the Order/Edit Outpatient Meals [FHOMRO] or Request
+ a Meal [FHOMSR] options.  This selection could result in an undefined error
+ in the backdoor messaging code to update the Orders (#100) file.  The issue
+ is addressed by not allowing selection of such outpatient Nutrition Locations
+ and displaying a message to the user.  Remedy #'s 149881 and 150285.
+    
+ 16) This patch addresses an issue in which Recurring Meals orders through
+ CPRS were not updating the Dietetic Events file and therefore not displaying
+ in the List Patient Events [FHORX2] option.  The Dietetic Events are now
+ correctly updated for these meals.
+    
+ 17) This patch provides functionality to automatically update Diet Pattern
+ names when a Diet is modified.  Diet Pattern names are built by using the
+ Abbreviated Label field of each Diet in the pattern.  If the Abbreviated Label
+ is changed it will now automatically update all Diet Pattern names that
+ contain the modified Diet.  Example:
+   
+ Select OPTION NAME: ENTER/EDIT DIETS  FHORD6
+   
+ Select DIETS NAME:    LOW CALORIE  
+ NAME: LOW CALORIE// 
+ SYNONYM: LC// 
+ ASK EXPIRATION DATE?: NO// 
+ DIET PRECEDENCE: 2// 
+ PRODUCTION DIET: CALORIE CONTROLLED// 
+ BULLETIN CLINICIAN?: NO// 
+ ABBREVIATED LABEL: CAL CON// LOW CAL  <--- Abbreviated Label is changed
+ Select ALTERNATE NAME: LOW SUGAR// 
+ INACTIVE?: 
+   
+ The Abbreviated Label for this Diet has been changed to LOW CAL.
+ Diet Patterns containing this Diet will now be updated to reflect this change:
+   
+ CAL CON, FULL LIQ will change to LOW CAL, FULL LIQ
+ CAL CON will change to LOW CAL
+ FULL LIQ, CAL CON, KOSHER, ATK will change to FULL LIQ, LOW CAL, KOSHER, ATK
+   
+ ...Diet Patterns have been updated!
+   
+ Also the post-init routine (FH55P5) will standardize the Diet Pattern names
+ by renaming any patterns that have gotten out of synch with the corresponding
+ Diets.  An example of what is displayed when the post-init runs is included
+ in the example installation section below.
+  
+ 18) This patch allows the Room-Bed field to be entered and edited
+ for outpatient meals.  The Enter/Edit Nutrition Locations [FHPRO2] option
+ must be used to set up Room-Beds for Outpatient Locations.  Once Room-Beds
+ are set up for outpatient locations, then the Recurring, Special and Guest
+ meal order options can be used to select a Room-Bed when ordering outpatient
+ meals.  The outpatient Room-Bed will then be displayed on Tray Tickets and Diet
+ Cards as well as other reports and display options.
+     
+ 19) This patch introduces a new outpatient meals report option called
+ Combined Outpatient Meals Report [FHOMCBRP] which will be located on the
+ Dietetic Lists/Reports [FHCDLST] menu.  This report option will list all
+ outpatient meals (whether Recurring, Special or Guest meals) within a
+ specified date range, and is sortable by Location, Communication Office
+ or Production Facility.
+         
+ 20) This patch fixes a problem inadvertantly introduced in patch FH*5.5*1
+ in the Enter/Edit Tubefeeding Products [FHORTF1] option.  The problem was
+ due to a change to the AMT/UNIT field of the TUBEFEEDING (#118.2) file,
+ which would not allow values less than 10 to be entered.  Reported in
+ Remedy #'s 145542 and 146202.
+      
+ Data Dictionary:
+ ================
+     
+ File:  Nutrition Person (#115)
+   
+   Fields: 115.016,2.5   ROOM-BED               0;18 POINTER TO ROOM-BED FILE
+               DESCRIPTION:      This field will store the ROOM and BED # for
+                                 the outpatient recurring meal being ordered. 
+    
+           115.017,2.5   ROOM-BED               0;13 POINTER TO ROOM-BED FILE
+               DESCRIPTION:      This field will store the ROOM and BED # for
+                                 the outpatient special meal being ordered. 
+    
+           115.018,4.5   ROOM-BED               0;11 POINTER TO ROOM-BED FILE
+               DESCRIPTION:      This field will store the ROOM and BED # for
+                                 the outpatient recurring meal being ordered.
+    
+           115.016,26      STANDING ORDERS      SP;0 Multiple #115.1626
+   
+           115.1626,.01    STANDING ORDERS      0;1 NUMBER
+               DESCRIPTION: This field contains the sequence number 
+               of the outpatient standing order and has no meaning beyond
+               that.
+   
+           115.1626,1    ORDER     0;2 POINTER TO STANDING ORDERS FILE 
+                                   (#118. 3) (Required)
+               DESCRIPTION: This field contains the outpatient standing
+               order from Standing Orders file (#118.3).
+   
+           115.1626,2     MEALS    0;3 FREE TEXT (Required)
+               DESCRIPTION: This field contains the meals to which 
+               this outpatient standing order is applicable.
+   
+           115.1626,3    DATE/TIME ORDERED  0;4 DATE (Required)
+               DESCRIPTION: This field contains the date/time at which the
+               outpatient standing order was entered.
+   
+           115.1626,4    ENTERING CLERK    0;5 POINTER TO NEW PERSON FILE
+                                          (#200) (Required)
+               DESCRIPTION: This field contains the user who entered the
+               outpatient standing order and is automatically captured at
+               the time of entry.
+   
+           115.1626,5        DATE/TIME CANCELLED 0;6 DATE
+               DESCRIPTION: This field contains the date/time the outpatient
+               standing order was cancelled and is automatically captured
+               at time of cancellation.
+   
+          115.1626,6 CANCELLING CLERK   0;7 POINTER TO NEW PERSON FILE
+                                        (#200)
+              DESCRIPTION: This field contains the user who entered the
+              cancellation and is automatically captured at time of
+              cancellation.  
+   
+          115.1626,7        QUANTITY           0;8 NUMBER
+              DESCRIPTION: This is the quantity of the outpatient Standing
+              Order.
+   
+          115.1626,8        DIET ASSOCIATED?   0;9 SET 'Y' FOR YES;
+              DESCRIPTION: This field, if answered Yes, means this
+              Standing Order is associated with a diet order else if
+              answered No, means it is not.  
+  
+  
+   Fields: 115.016,27    SUPPLEMENTAL FEEDING SF;0 Multiple #115.1627
+  
+  
+          115.1627,.01  SUPPLEMENTAL FEEDING 0;1 NUMBER (Multiply asked)
+              INPUT TRANSFORM:K:+X'=X!(X>9999)!(X<0)!(X?.E1"."1N.N) X
+              LAST EDITED: NOV 08, 2005 
+              HELP-PROMPT:Type a Number between 0 and 9999, 0 Decimal
+                          Digits 
+              DESCRIPTION:This field is merely the sequence in which the 
+                          various orders for outpatient SFs were entered
+                          and has no meaning beyond that.
+    
+  
+         115.1627,1    DATE/TIME ORDERED    0;2 DATE
+              INPUT TRANSFORM:S %DT="EST" D ^%DT S X=Y K:Y<1 X
+              LAST EDITED: MAR 06, 2006 
+              DESCRIPTION:This is the date/time at which the order was
+                          entered and is captured automatically.  
+  
+  
+         115.1627,2   ENTERING CLERK   0;3 POINTER TO NEW PERSON FILE 
+                                           (#200)
+              LAST EDITED: MAR 06, 2006 
+              DESCRIPTION:This is the person actually entering the order
+                          and is captured automatically at time of entry.
+  
+  
+         115.1627,3    SF MENU   0;4 POINTER TO SUPPLEMENTAL FEEDING MENU
+                                     FILE (#118.1)
+              LAST EDITED: MAR 06, 2006 
+              DESCRIPTION:This is the supplemental feeding menu of the
+                          Supplemental Feeding Menu file (118.1) that
+                          was selected.  If other than "Individualized',
+                          the items from the selected menu were moved into
+                          this order.  
+  
+  
+         115.1627,4  10AM FEEDING #1   0;5 POINTER TO SUPPLEMENTAL FEEDINGS
+                                          FILE (#118)
+               LAST EDITED: MAR 06, 2006 
+               DESCRIPTION:This is the first supplemental feeding
+                           ordered for the 10am feeding time.  
+  
+  
+         115.1627,5   10AM #1 QTY    0;6 NUMBER
+               INPUT TRANSFORM:K:+X'=X!(X>20)!(X<1)!(X?.E1"."1N.N) X
+               LAST EDITED: NOV 09, 2005 
+               HELP-PROMPT:Type a Number between 1 and 20, 0 Decimal
+                           Digits 
+               DESCRIPTION:This is the ordered quantity of the first 10am
+                           feeding.  
+  
+  
+         115.1627,6   10AM FEEDING #2  0;7 POINTER TO SUPPLEMENTAL FEEDINGS
+                                           FILE (#118)
+               LAST EDITED: NOV 09, 2005 
+               DESCRIPTION:This is the second supplemental feeding
+                           ordered for the 10am feeding.  
+  
+  
+         115.1627,7   10AM #2 QTY    0;8 NUMBER
+               INPUT TRANSFORM:K:+X'=X!(X>20)!(X<1)!(X?.E1"."1N.N) X
+               LAST EDITED: MAR 06, 2006 
+               HELP-PROMPT:Type a Number between 1 and 20, 0 Decimal
+                           Digits 
+               DESCRIPTION:This is the outpatient Supplemental Feeding
+                           ordered quantity for the second 10am feeding.
+  
+  
+         115.1627,8   10AM FEEDING #3   0;9 POINTER TO SUPPLEMENTAL 
+                                            FEEDINGS FILE (#118)
+               LAST EDITED: MAR 06, 2006 
+               DESCRIPTION:This is the third supplemental feeding
+                           ordered for the 10am feeding. 
+  
+  
+         115.1627,9  10AM #3 QTY   0;10 NUMBER
+               INPUT TRANSFORM:K:+X'=X!(X>20)!(X<1)!(X?.E1"."1N.N) X
+               LAST EDITED: MAR 06, 2006 
+               HELP-PROMPT:Type a Number between 1 and 20, 0 Decimal
+                           Digits 
+               DESCRIPTION:This is the ordered quantity for the third
+                           10am feeding. 
+  
+  
+         115.1627,10   10AM FEEDING #4  0;11 POINTER TO SUPPLEMENTAL 
+                                             FEEDINGS FILE (#118)
+               LAST EDITED: MAR 06, 2006 
+               DESCRIPTION:This is the fourth supplemental feeding
+                           ordered for the 10am feeding. 
+  
+  
+         115.1627,11   10AM #4 QTY    0;12 NUMBER
+               INPUT TRANSFORM:K:+X'=X!(X>20)!(X<1)!(X?.E1"."1N.N) X
+               LAST EDITED: MAR 06, 2006 
+               HELP-PROMPT:Type a Number between 1 and 20, 0 Decimal
+                           Digits 
+               DESCRIPTION:This is the ordered quantity of the fourth
+                           10am feeding. 
+  
+  
+         115.1627,12   2PM FEEDING #1  0;13 POINTER TO SUPPLEMENTAL 
+                                            FEEDINGS FILE (#118)
+               LAST EDITED: NOV 09, 2005 
+               DESCRIPTION:This is the first supplemental feeding ordered
+                           for the 2pm feeding.  
+  
+  
+         115.1627,13   2PM #1 QTY  0;14 NUMBER
+               INPUT TRANSFORM:K:+X'=X!(X>20)!(X<1)!(X?.E1"."1N.N) X
+               LAST EDITED: NOV 09, 2005 
+               HELP-PROMPT:Type a Number between 1 and 20, 0 Decimal
+                           Digits 
+               DESCRIPTION:This is the ordered quantity of the first 2pm
+                           feeding.  
+  
+  
+         115.1627,14   2PM FEEDING #2   0;15 POINTER TO SUPPLEMENTAL 
+                                             FEEDINGS FILE (#118)
+               LAST EDITED: NOV 09, 2005 
+               DESCRIPTION:This is the second supplemental feeding
+                           ordered for the 2pm feeding.  
+  
+  
+         115.1627,15   2PM #2 QTY   0;16 NUMBER
+               INPUT TRANSFORM:K:+X'=X!(X>20)!(X<1)!(X?.E1"."1N.N) X
+               LAST EDITED: NOV 09, 2005 
+               HELP-PROMPT:Type a Number between 1 and 20, 0 Decimal
+                                   Digits 
+               DESCRIPTION:This is the ordered quantity of the second
+                                   2pm feeding.  
+  
+  
+         115.1627,16   2PM FEEDING #3  0;17 POINTER TO SUPPLEMENTAL 
+                                            FEEDINGS FILE (#118)
+               LAST EDITED: NOV 09, 2005 
+               DESCRIPTION:This is the third supplemental feeding
+                           ordered for the 2pm feeding.  
+  
+  
+         115.1627,17   2PM #3 QTY     0;18 NUMBER
+               INPUT TRANSFORM:K:+X'=X!(X>20)!(X<1)!(X?.E1"."1N.N) X
+               LAST EDITED: NOV 09, 2005 
+               HELP-PROMPT:Type a Number between 1 and 20, 0 Decimal
+                           Digits 
+               DESCRIPTION:This is the ordered quantity of the third 2pm
+                           feeding.  
+  
+  
+         115.1627,18   2PM FEEDING #4  0;19 POINTER TO SUPPLEMENTAL 
+                                            FEEDINGS FILE (#118)
+               LAST EDITED: NOV 09, 2005 
+               DESCRIPTION:This is the fourth supplemental feeding
+                           ordered for the 2pm feeding.  
+  
+  
+         115.1627,19   2PM #4 QTY    0;20 NUMBER
+               INPUT TRANSFORM:K:+X'=X!(X>20)!(X<1)!(X?.E1"."1N.N) X
+               LAST EDITED: NOV 09, 2005 
+               HELP-PROMPT:Type a Number between 1 and 20, 0 Decimal
+                                   Digits 
+               DESCRIPTION:This is the ordered quantity of the fourth
+                           2pm feeding.  
+  
+  
+         115.1627,20   8PM FEEDING #1    0;21 POINTER TO SUPPLEMENTAL 
+                                              FEEDINGS FILE (#118)
+               LAST EDITED: NOV 09, 2005 
+               DESCRIPTION:This is the first supplemental feeding
+                           ordered for the 8pm feeding.  
+  
+  
+         115.1627,21   8PM #1 QTY   0;22 NUMBER
+               INPUT TRANSFORM:K:+X'=X!(X>20)!(X<1)!(X?.E1"."1N.N) X
+               LAST EDITED: NOV 09, 2005 
+               HELP-PROMPT:Type a Number between 1 and 20, 0 Decimal Digits
+                       DESCRIPTION:This is the ordered quantity of the 
+                                   first 8pm feeding.
+  
+  
+         115.1627,22  8PM FEEDING #2  0;23 POINTER TO SUPPLEMENTAL 
+                                        FEEDINGS FILE (#118)
+               LAST EDITED: NOV 09, 2005 
+               DESCRIPTION:This is the second supplemental feeding
+                           ordered for the 8pm feeding.  
+  
+  
+         115.1627,23    8PM #2 QTY   0;24 NUMBER
+               INPUT TRANSFORM:K:+X'=X!(X>20)!(X<1)!(X?.E1"."1N.N) X
+               LAST EDITED: NOV 09, 2005 
+               HELP-PROMPT:Type a Number between 1 and 20, 0 Decimal Digits
+               DESCRIPTION:This is the ordered quantity of the 
+                           second 8pm feeding.
+  
+  
+         115.1627,24   8PM FEEDING #3  0;25 POINTER TO SUPPLEMENTAL 
+                                            FEEDINGS FILE (#118)
+               LAST EDITED: NOV 09, 2005 
+               DESCRIPTION:This is the third supplemental feeding
+                           ordered for the 8pm feeding.  
+  
+  
+         115.1627,25  8PM #3 QTY    0;26 NUMBER
+               INPUT TRANSFORM:K:+X'=X!(X>20)!(X<1)!(X?.E1"."1N.N) X
+               LAST EDITED: NOV 09, 2005 
+               HELP-PROMPT:Type a Number between 1 and 20, 0 Decimal Digits
+               DESCRIPTION:This is the ordered quantity of the 
+                           third 8pm feeding.
+  
+  
+         115.1627,26 8PM FEEDING #4  0;27 POINTER TO SUPPLEMENTAL FEEDINGS
+                                         FILE (#118)
+               LAST EDITED: NOV 09, 2005 
+               DESCRIPTION:This is the fourth supplemental feeding
+                           ordered for the 8pm feeding.  
+  
+  
+         115.1627,27  8PM #4 QTY   0;28 NUMBER
+               INPUT TRANSFORM:K:+X'=X!(X>20)!(X<1)!(X?.E1"."1N.N) X
+               LAST EDITED: NOV 09, 2005 
+               HELP-PROMPT:Type a Number between 1 and 20, 0 Decimal Digits
+               DESCRIPTION:This is the ordered quantity of the 
+                           fourth 8pm feeding.
+  
+  
+         115.1627,28  DIETARY OR THERAPEUTIC 0;29 SET
+                                   'D' FOR DIETARY; 
+                                   'T' FOR THERAPEUTIC; 
+               LAST EDITED: NOV 09, 2005 
+               DESCRIPTION:This field indicates whether the supplemental
+                           feeding was ordered for dietary or therapeutic
+                           reasons.
+  
+  
+         115.1627,29  DATE/TIME LAST REVIEW 0;30 DATE
+                INPUT TRANSFORM:S %DT="E" D ^%DT S X=Y K:Y<1 X
+                LAST EDITED: NOV 09, 2005 
+                DESCRIPTION:This is the date/time this supplemental
+                            feeding order was last reviewed for
+                            appropriateness.  
+  
+  
+         115.1627,30  REVIEW CLERK    0;31 POINTER TO NEW PERSON FILE 
+                                           (#200)
+               LAST EDITED: NOV 09, 2005 
+               DESCRIPTION:This is the person conducting the last 
+                           review and is captured automatically at
+                           time of review.
+  
+  
+         115.1627,31  DATE/TIME CANCELLED  0;32 DATE
+               INPUT TRANSFORM:S %DT="E" D ^%DT S X=Y K:Y<1 X
+               LAST EDITED: NOV 09, 2005 
+               DESCRIPTION:This is the date/time this order was cancelled.
+  
+  
+         115.1627,32 CANCELLING CLERK     0;33 POINTER TO NEW PERSON FILE
+                                                (#200)
+               LAST EDITED: NOV 09, 2005 
+               DESCRIPTION:This is the person cancelling the order 
+                           and is captured automatically at time of
+                           cancellation.
+  
+  
+         115.1627,33  DIET ASSOCIATED?     0;34 SET
+                                   'Y' FOR YES; 
+                                   'N' FOR NO; 
+               LAST EDITED: NOV 09, 2005 
+               DESCRIPTION:This field, if answered Yes, means this
+                           Supplemental Feeding Menu is associated 
+                           with a diet order else if answered No,
+                           means it is not.
+  
+  
+ File:  Nutrition Person (#115)
+   
+          115.018,8     STATUS                 0;9 SET
+                                 'C' FOR CANCELLED; 
+                                 'O' FOR ORDERED; 
+               DESCRIPTION: This field stores the status of the guest meal,
+               which is either "ordered" or "cancelled".  
+    
+          115.018,9     GUEST MEAL CLERK       0;10 POINTER TO NEW PERSON
+                                                        FILE (#200)
+               DESCRIPTION: This field stores the person who has entered
+               the guest meal.  
+  
+ File:  Tubefeeding (#118.2) 
+    
+ 118.2,2       AMT/UNIT               0;3 FREE TEXT (Required)
+    
+               INPUT TRANSFORM:  S:X[" " X=+X_$P(X," ",2) S:"MG"[$E(X,$L(+X)+1) 
+                                 X=+X_$E(X,$L(+X)+1) S:X["M" X=+X_"ML" K:($L(+X)
+                                 >10)!($L(X)<1)!(+X>9999)!(+X<0)!("MLG"'[$E(X,$L
+                                 (X))) X
+               DESCRIPTION:      This is the number of ml's or grams of product
+                                 contained in the dispensing unit. For products
+                                 which require reconstitution with water, it is
+                                 the number of ml's after reconstitution. 
+    
+ File:  FH Site Parameters (#119.9)
+   
+ 119.9,50      AUTHORIZOR 6           1;11 POINTER TO NEW PERSON FILE (#200)
+               DESCRIPTION:      This field will be used to store the name of
+                                 the sixth authorizor for special meals.  When a
+                                 special meal is requested, if the requestor 
+                                 does not have the authorization to print a
+                                 special meal ticket, an alert will be sent to
+                                 the authorizors for action.  These 15 
+                                 authorizors will also need to be given the
+                                 FHAUTH security key.  
+  
+  
+ 119.9,51      AUTHORIZOR 7           1;12 POINTER TO NEW PERSON FILE (#200)
+  
+               DESCRIPTION:      This field will be used to store the name of
+                                 the seventh authorizor for special meals.  When
+                                 a special meal is requested, if the requestor  
+                                 does not have the authorization to print a
+                                 special meal ticket, an alert will be sent to
+                                 the authorizors for action.  These 15 
+                                 authorizors will also need to be given the
+                                 FHAUTH security key.  
+  
+  
+ 119.9,52      AUTHORIZOR 8           1;13 POINTER TO NEW PERSON FILE (#200)
+  
+               DESCRIPTION:      This field will be used to store the name of
+                                 the eighth authorizor for special meals.  When
+                                 a special meal is requested, if the requestor  
+                                 does not have the authorization to print a
+                                 special meal ticket, an alert will be sent to
+                                 the authorizors for action.  These 15 
+                                 authorizors will also need to be given the
+                                 FHAUTH security key.  
+  
+  
+ 119.9,53      AUTHORIZOR 9           1;14 POINTER TO NEW PERSON FILE (#200)
+  
+               DESCRIPTION:      This field will be used to store the name of
+                                 the ninth authorizor for special meals.  When a
+                                 special meal is requested, if the requestor   
+                                 does not have the authorization to print a
+                                 special meal ticket, an alert will be sent to
+                                 the authorizors for action.  These 15 
+                                 authorizors will also need to be given the
+                                 FHAUTH security key.  
+  
+  
+ 119.9,54      AUTHORIZOR 10          1;15 POINTER TO NEW PERSON FILE (#200)
+  
+               DESCRIPTION:      This field will be used to store the name of
+                                 the tenth authorizor for special meals.  When a
+                                 special meal is requested, if the requestor   
+                                 does not have the authorization to print a
+                                 special meal ticket, an alert will be sent to
+                                 the authorizors for action.  These 15 
+                                 authorizors will also need to be given the
+                                 FHAUTH security key.  
+  
+  
+ 119.9,55      AUTHORIZOR 11          1;16 POINTER TO NEW PERSON FILE (#200)
+  
+               DESCRIPTION:      This field will be used to store the name of
+                                 the eleventh authorizor for special meals. 
+                                 When a special meal is requested, if the
+                                 requestor   does not have the authorization to
+                                 print a special meal ticket, an alert will be
+                                 sent to the authorizors for action.  These 15 
+                                 authorizors will also need to be given the
+                                 FHAUTH security key.  
+  
+  
+ 119.9,56      AUTHORIZOR 12          1;17 POINTER TO NEW PERSON FILE (#200)
+  
+               DESCRIPTION:      This field will be used to store the name of
+                                 the twelfth authorizor for special meals.  When
+                                 a special meal is requested, if the requestor  
+                                 does not have the authorization to print a
+                                 special meal ticket, an alert will be sent to
+                                 the authorizors for action.  These 15 
+                                 authorizors will also need to be given the
+                                 FHAUTH security key.  
+  
+  
+ 119.9,57      AUTHORIZOR 13          1;18 POINTER TO NEW PERSON FILE (#200)
+  
+               DESCRIPTION:      This field will be used to store the name of
+                                 the thirteenth authorizor for special meals. 
+                                 When a special meal is requested, if the
+                                 requestor   does not have the authorization to
+                                 print a special meal ticket, an alert will be
+                                 sent to the authorizors for action.  These 15 
+                                 authorizors will also need to be given the
+                                 FHAUTH security key.  
+  
+  
+ 119.9,58      AUTHORIZOR 14          1;19 POINTER TO NEW PERSON FILE (#200)
+  
+               DESCRIPTION:      This field will be used to store the name of
+                                 the fourteenth authorizor for special meals. 
+                                 When a special meal is requested, if the
+                                 requestor   does not have the authorization to
+                                 print a special meal ticket, an alert will be
+                                 sent to the authorizors for action.  These 15 
+                                 authorizors will also need to be given the
+                                 FHAUTH security key.  
+  
+  
+ 119.9,59      AUTHORIZOR 15          1;20 POINTER TO NEW PERSON FILE (#200)
+  
+               DESCRIPTION:      This field will be used to store the name of
+                                 the fifteenth authorizor for special meals. 
+                                 When a special meal is requested, if the
+                                 requestor   does not have the authorization to
+                                 print a special meal ticket, an alert will be
+                                 sent to the authorizors for action.  These 15 
+                                 authorizors will also need to be given the
+                                 FHAUTH security key.
+  
+    
+ Software Retrieval
+ ==================
+     
+ This patch is available via FTP in a KIDS distribution file.  The Host
+ File is named FH5_5_P5.KID and is located in the [ANONYMOUS.SOFTWARE]
+ directory of the following OI Field Offices.
+     
+  OIFO     FTP ADDRESS
+  ----     -----------
+  Albany   ftp.fo-albany.med.va.gov
+  Hines    ftp.fo-hines.med.va.gov
+  SLC      ftp.fo-slc.med.va.gov
+  
+  
+ Routine Summary: 
+ ================
+      
+ The following routines are included in this patch.  The second line of 
+ these routines should look like: 
+      
+   <tab>;;5.5;DIETETICS;**[patch list]**;Jan 28, 2005
+      
+  CHECK^XTSUMBLD results:  (OLD CHECKSUM VALUES)
+     
+ Routine       Pre Patch 5         Post Patch 5        Patch List
+ ==========    ===============     ===============     ===============
+ FH55P5        N/A                 9986150             5
+ FHASP         8395017             7995777             5
+ FHASXR        7601463             7202223             5
+ FHBIR         8127227             8654199             5
+ FHDCR11       8366643             9669089             5
+ FHDCR1A       13263138            13732189            1,5
+ FHDCR1B       9407007             10231112            5
+ FHDCR1D       13839124            15298107            3,5
+ FHMTK1        9099540             9070807             5
+ FHMTK1A       5920546             5885326             5
+ FHMTK1B       10574665            11750251            5
+ FHMTK7        5201484             19301650            5
+ FHNO2         12273770            15131667            5
+ FHNO21        6959419             6923610             5
+ FHNO31        8155360             12916080            5
+ FHNO41        9787088             11152340            5
+ FHNO5         5504124             22645556            5
+ FHNO6         9951272             28583143            5
+ FHNO7         2420941             16969832            5
+ FHNO8         2809367             11528290            5
+ FHOMCBRP      N/A                 10956889            5
+ FHOMDPA       2651021             2662161             5
+ FHOMELT       2016540             2217478             5
+ FHOMGC1       N/A                 4630997             5
+ FHOMGP1       2813402             6045325             5
+ FHOMGR1       3118003             4076667             5
+ FHOMRBL1      7136445             7421974             5
+ FHOMRC2       3048098             3067096             2,5
+ FHOMRL1       4926012             6597705             1,5
+ FHOMRMD       6535525             10780146            1,5
+ FHOMRO1       17665707            20865940            1,2,5
+ FHOMRO2       7575095             15556509            5
+ FHOMRR1       7077823             11898321            1,5
+ FHOMSP1       4662382             4905433             2,5
+ FHOMSR1       7850965             8951390             2,5
+ FHOMSS1       3045610             4581714             5
+ FHOMSS2       N/A                 7009783             5
+ FHOMTK1       2915375             5925336             5
+ FHOMTK2       11158197            12811708            5
+ FHOMUTL       9671254             13733998            1,2,5
+ FHOMWOR       9742169             9832241             2,5
+ FHORD         3323649             7725396             5
+ FHORD13       14590625            15076005            1,5
+ FHORD6        11771602            11835151            1,5
+ FHORD61       9209461             8877673             5
+ FHORD81       10579131            15449640            1,5
+ FHORD9        12903264            12921683            5
+ FHORE21       12395288            12487937            5
+ FHORT3        3727556             4118746             5
+ FHORT5A       10559361            10968064            1,3,5
+ FHORX1A       12301315            5968895             1,5
+ FHPRF1        14232699            14251615            5
+ FHPRO         7158045             7158045             4,5
+ FHPRO1        21300081            21309186            3,5
+ FHPRO3        11014472            11030213            3,5
+ FHSEL2        11181038            11199416            5
+ FHSP          962380              28038363            5
+ FHSP1         13812346            18567127            5
+ FHSP11        4199493             4139049             5
+ FHSPED        12339211            26566596            5
+ FHSPTAB       6582374             6705987             5
+ FHSYSP        1682416             1748422             2,5
+ FHWADM        6861969             10795224            5
+ FHWOR         12876269            12823292            2,5
+ FHWOR6        6435773             6440867             5
+   
+ Test Sites:
+ ===========
+    
+     Central-Texas 
+     Phoenix
+     Puget Sound
+     Tomah
+   
+   
+ Documentation Retrieval:
+ ========================
+   
+   The N&FS User Manual and Manager/ADPAC Guide documents have been updated
+   and are available on the ANONYMOUS.SOFTWARE directory at one of the following
+   Office of Information (OI) Field Offices.
+   
+   This documentation can be retrieved in one of the following ways:
+    
+   (1) The preferred method is to FTP the files from
+   download.vista.med.va.gov, which will transmit the files from the first
+   available FTP server.
+    
+   (2) Sites may also elect to retrieve documentation directly from a
+   specific server as follows:
+    
+    Albany          ftp.fo-albany.med.va.gov
+    Hines           ftp.fo-hines.med.va.gov
+    Salt Lake City  ftp.fo-slc.med.va.gov
+    
+    The documentation distribution includes:
+    
+    FILE NAME        DESCRIPTION                       Retrieval
+    FH5_5P5UM.PDF    User Manual - Outpatient          binary
+                      Meals Update V.5.5       
+    FH5_5P5AG.PDF    Manager/ADPAC Guide (Revised      binary
+                      December 2006 for patch FH*5.5*5)
+    
+   (3) Documentation can also be retrieved from VISTA Documentation Library
+   (VDL) on the Internet at the following address, http://www.va.gov/vdl 
+                        
+   
+ Installation instructions
+ =========================
+      
+ This Patch is created with Kernel V8 KIDS.  Follow these instructions:   
+    
+ 1) From the Kernel Installation and Distribution System menu, select
+    the 'Installation' menu.
+     
+ 2) Use the 'Load a Distribution' option.  When prompted for a Host File, 
+    enter the host file named FH5_5_P5.KID.  You may need to indicate
+    the full path to the directory containing this file.
+         
+ 3) On the KIDS menu, under the 'Installation' menu, use the
+    option 'Verify Checksums in Transport Global' and enter 'FH*5.5*5' when
+    prompted for INSTALL NAME.  Verify that all routines have the correct
+    checksum values. 
+        
+ 4) Under the 'Installation' menu, use the option 'Install Package(s)'.
+    Select the package 'FH*5.5*5' when prompted for the INSTALL NAME and
+    proceed with the install.
+    
+ 5) Users may remain on the system.  Since new options are introduced with
+    this patch and therefore, menu rebuilding is suggested, this patch should
+    be installed after hours or during non-peak times to lessen impact to
+    users.  Install should take less than two minutes.  The routines included
+    in this patch should be installed in the production UCI.
+    
+ 6) The DIETETICS options do not need to be disabled during the
+    installation of this patch.  Your EVS representative will answer any
+    questions regarding this patch.
+    
+ 7) Recommended responses to the following installation questions:
+     
+    Want KIDS to Rebuild Menu Trees Upon Completion of Install? YES// YES
+    
+    Want KIDS to INHIBIT LOGONs during the install? YES// NO
+    Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// NO
+    
+ 8) Example installation:
+    
+ Select Installation Option: 6  Install Package(s)
+ Select INSTALL NAME:    FH*5.5*5     Loaded from Distribution  6/27/06@10:43:42
+      => PATCH 5 TEST v6 - 6/27/06  ;Created on Jun 27, 2006@10:36:05
+  
+ This Distribution was loaded on Jun 27, 2006@10:43:42 with header of 
+    PATCH 5 TEST v6 - 6/27/06  ;Created on Jun 27, 2006@10:36:05
+    It consisted of the following Install(s):
+        FH*5.5*5
+ Checking Install for Package FH*5.5*5
+  
+ Install Questions for FH*5.5*5
+  
+ Incoming Files:
+  
+  
+    115       NUTRITION PERSON  (Partial Definition)
+ Note:  You already have the 'NUTRITION PERSON' File.
+  
+  
+    119.9     FH SITE PARAMETERS  (Partial Definition)
+ Note:  You already have the 'FH SITE PARAMETERS' File.
+  
+ Want KIDS to Rebuild Menu Trees Upon Completion of Install? YES// 
+  
+  
+ Want KIDS to INHIBIT LOGONs during the install? YES// NO
+ Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// NO
+  
+  
+ Delay Install (Minutes):  (0-60): 0// 
+  
+ Enter the Device you want to print the Install messages.
+ You can queue the install by enter a 'Q' at the device prompt.
+ Enter a '^' to abort the install.
+  
+ DEVICE: HOME//   TELNET
+  
+  
+  Install Started for FH*5.5*5 : 
+                Jun 27, 2006@10:44:04
+  
+ Build Distribution Date: Jun 27, 2006
+  
+  Installing Routines:
+                Jun 27, 2006@10:44:04
+  
+  Installing Data Dictionaries: 
+                Jun 27, 2006@10:44:04
+  
+  Installing PACKAGE COMPONENTS: 
+  
+  Installing OPTION
+                Jun 27, 2006@10:44:04
+  
+  Running Post-Install Routine: POST^FH55P5
+  
+ Searching for DIETS (#111) file entries which are out of sync with the
+    corresponding entry in the ORDERABLE ITEM (#101.43) file...
+    
+    Updated ORDERABLE ITEM (#101.43) file entry #2337 with data
+       for LOW SODIUM from the DIETS (#111) file
+     
+    Updated ORDERABLE ITEM (#101.43) file entry #236 with data
+       for LOW POTASSIUM from the DIETS (#111) file
+     
+ Searching for TUBEFEEDING (#118.2) file entries which are out of sync with
+    the corresponding entry in the ORDERABLE ITEM (#101.43) file...
+    
+    Updated ORDERABLE ITEM (#101.43) file entry #243 with data
+       for SUSTACAL PLUS from the TUBEFEEDING (#118.2) file
+    
+ Searching for DIET PATTERN (#111.1) names which are out of sync with
+    corresponding DIET ABBREVIATED LABELS...
+  
+    Updated CAL CON, FUL to  LOW CAL, FUL
+  
+    Updated CAL CON, KOSHER, MECH to  LOW CAL, KOSHER, MECH
+  
+ Post-init complete.
+  
+  Updating Routine file...
+  
+  Updating KIDS files...
+  
+  FH*5.5*5 Installed. 
+                Jun 27, 2006@10:44:04
+  
+  Install Message sent #48205
+  
+  Call MENU rebuild
+  
+ Starting Menu Rebuild:  Jun 27, 2006@10:44:06
+  
+ Collecting primary menus in the New Person file...
+  
+ <CUT MENU REBUILD LIST>
+  
+ Building secondary menu trees....
+  
+ Merging.... done.
+  
+ Menu Rebuild Complete:  Jun 27, 2006@10:44:17
+  
+ Install Completed
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: FH55P5
+    Before:       n/a  After: B32445798  **5**
+Routine Name: FHASP
+    Before: B16874575  After: B14729349  **5**
+Routine Name: FHASXR
+    Before: B10017874  After:  B8943956  **5**
+Routine Name: FHBIR
+    Before: B15349700  After: B17802791  **5**
+Routine Name: FHDCR11
+    Before: B24899410  After: B29757298  **5**
+Routine Name: FHDCR1A
+    Before: B42512138  After: B45241377  **1,5**
+Routine Name: FHDCR1B
+    Before: B18417680  After: B21288577  **5**
+Routine Name: FHDCR1D
+    Before: B35612204  After: B41347253  **3,5**
+Routine Name: FHMTK1
+    Before: B16276192  After: B16147899  **5**
+Routine Name: FHMTK1A
+    Before:  B8635876  After:  B8475642  **5**
+Routine Name: FHMTK1B
+    Before: B20145458  After: B25025382  **5**
+Routine Name: FHMTK7
+    Before:  B9607976  After: B81656381  **5**
+Routine Name: FHNO2
+    Before: B22999730  After: B34765600  **5**
+Routine Name: FHNO21
+    Before: B14924290  After: B15038178  **5**
+Routine Name: FHNO31
+    Before: B12996063  After: B28958638  **5**
+Routine Name: FHNO41
+    Before: B15794344  After: B18764255  **5**
+Routine Name: FHNO5
+    Before:  B9563413  After: B75252666  **5**
+Routine Name: FHNO6
+    Before: B15764090  After: B67398732  **5**
+Routine Name: FHNO7
+    Before:  B2949434  After: B43514527  **5**
+Routine Name: FHNO8
+    Before:  B3646920  After: B24504229  **5**
+Routine Name: FHOMCBRP
+    Before:       n/a  After: B30743180  **5**
+Routine Name: FHOMDPA
+    Before:  B5284156  After:  B5382769  **5**
+Routine Name: FHOMELT
+    Before:  B2893206  After:  B3319255  **5**
+Routine Name: FHOMGC1
+    Before:       n/a  After: B10471500  **5**
+Routine Name: FHOMGP1
+    Before:  B5582686  After: B14808548  **5**
+Routine Name: FHOMGR1
+    Before:  B6486886  After:  B8112125  **5**
+Routine Name: FHOMRBL1
+    Before: B26804148  After: B28450165  **5**
+Routine Name: FHOMRC2
+    Before:  B5867833  After:  B5901029  **2,5**
+Routine Name: FHOMRL1
+    Before: B11581637  After: B15819957  **1,5**
+Routine Name: FHOMRMD
+    Before: B14582168  After: B30220610  **1,5**
+Routine Name: FHOMRO1
+    Before: B64076466  After: B80090398  **1,2,5**
+Routine Name: FHOMRO2
+    Before: B17528698  After: B53974540  **5**
+Routine Name: FHOMRR1
+    Before: B18595487  After: B37981700  **1,5**
+Routine Name: FHOMSP1
+    Before:  B8724512  After:  B9628591  **2,5**
+Routine Name: FHOMSR1
+    Before: B23595025  After: B28707183  **2,5**
+Routine Name: FHOMSS1
+    Before:  B6804782  After:  B9007486  **5**
+Routine Name: FHOMSS2
+    Before:       n/a  After: B17440516  **5**
+Routine Name: FHOMTK1
+    Before:  B5990172  After: B13719057  **5**
+Routine Name: FHOMTK2
+    Before: B22837815  After: B27468276  **5**
+Routine Name: FHOMUTL
+    Before: B32969388  After: B46250378  **1,2,5**
+Routine Name: FHOMWOR
+    Before: B25289896  After: B25425575  **2,5**
+Routine Name: FHORD
+    Before:  B3881051  After:  B9723467  **5**
+Routine Name: FHORD13
+    Before: B49207960  After: B54149113  **1,5**
+Routine Name: FHORD6
+    Before: B21232580  After: B21050058  **1,5**
+Routine Name: FHORD61
+    Before: B13130333  After: B13439670  **5**
+Routine Name: FHORD81
+    Before: B37486127  After: B69864656  **1,5**
+Routine Name: FHORD9
+    Before: B39801171  After: B40033221  **5**
+Routine Name: FHORE21
+    Before: B29199963  After: B29651478  **5**
+Routine Name: FHORT3
+    Before:  B4733379  After:  B5199954  **5**
+Routine Name: FHORT5A
+    Before: B25594568  After: B26922360  **1,3,5**
+Routine Name: FHORX1A
+    Before: B53383181  After: B15045653  **1,5**
+Routine Name: FHPRF1
+    Before: B44967707  After: B45228454  **5**
+Routine Name: FHPRO
+    Before: B10948850  After: B10948850  **4,5**
+Routine Name: FHPRO1
+    Before: B38686652  After: B38822254  **3,5**
+Routine Name: FHPRO3
+    Before: B35067097  After: B35628181  **3,5**
+Routine Name: FHSEL2
+    Before: B26687747  After: B27221100  **5**
+Routine Name: FHSP
+    Before:  B1095426  After: B75662627  **5**
+Routine Name: FHSP1
+    Before: B25286206  After: B44709788  **5**
+Routine Name: FHSP11
+    Before:  B6211120  After:  B6300547  **5**
+Routine Name: FHSPED
+    Before: B20565975  After: B70827243  **5**
+Routine Name: FHSPTAB
+    Before:  B9025859  After:  B9597999  **5**
+Routine Name: FHSYSP
+    Before:  B2751439  After:  B2820675  **2,5**
+Routine Name: FHWADM
+    Before: B10963798  After: B23908953  **5**
+Routine Name: FHWOR
+    Before: B30084812  After: B30023684  **2,5**
+Routine Name: FHWOR6
+    Before: B17590294  After: B17605966  **5**
+
+=============================================================================
+User Information:
+Entered By  : KNOEPFLE,RICH                 Date Entered  : DEC 05, 2005
+Completed By: PATRICK,PAT                   Date Completed: MAY 22, 2007
+Released By : KREUZ,SHERI B                 Date Released : MAY 23, 2007
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+

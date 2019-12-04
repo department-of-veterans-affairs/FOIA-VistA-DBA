@@ -1,0 +1,247 @@
+$TXT Created by CHAN,ALAN at NXT.KERNEL.FO-OAKLAND.MED.VA.GOV  (KIDS) on Monday, 05/05/03 at 15:27
+=============================================================================
+Run Date: MAY 12, 2003                     Designation: HL*1.6*101
+Package : HL - HEALTH LEVEL SEVEN     Priority: Mandatory
+Version : 1.6        SEQ #87                    Status: Released
+                  Compliance Date: JUN 12, 2003
+=============================================================================
+
+Associated patches: (v)HL*1.6*59   <<= must be installed BEFORE `HL*1.6*101'
+
+Subject: New RSPINIT API in routine HLFNC2
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+ This Patch Addresses the Following NOIS Call(s) and ESS HD/CR Ticket(s):
+ ========================================================================
+  
+   1. CHA-0602-30920   LEDI Messaging Thru HL7
+      ESS HD ticket 6129
+      ESS CR ticket 1420
+  
+ The test sites for Patch HL*1.6*101 are:
+ =======================================
+  
+   1. Honolulu VAMC
+   2. Boston HCS
+   3. Albuquerque VAMC
+   4. Madison VAMC
+   5. Manchester VAMC
+   6. New York HCS
+  
+ This patch addresses the following issue(s):
+ ============================================
+  
+   1. Response message(s) not constructed properly when the HL7 field
+      separator and encoding characters are different between sending
+      system and receiving system.
+  
+   This issue is a result of the Processing Routine utilizing
+   the environmental variables HL("FS") and HL("ECH") for both parsing the
+   inbound HL7 message and constructing the outbound response message.
+   After the Processing Routine has constructed the body of the response
+   message, it calls GENACK^HLMA1 to queue up the response message.  In turn,
+   VistA HL7 constructs the message header based on the application
+   associated with the subscriber protocol.  Thus, the message header would
+   have a different set of delimiters than the body of the HL7 message.
+  
+   This patch does not immediately correct this problem.  However, it does
+   provide a new API that can be used to create environmental variables to
+   assist the Processing Routine in constructing the response message
+   with the proper delimiters.  This problem will only disappear when
+   all VistA HL7 applications have migrated to using this new API to assist
+   each in constructing the response message.
+  
+   New API:  RSPINIT^HLFNC2
+  
+   The next 14 lines are copied from the RSPINIT API of routine HLFNC2:
+  
+ RSPINIT(EIDS,HL);Initialize Variables in HL array for Building a Response Message
+         ;
+         ;This is a subroutine call with parameter passing that returns an
+         ;array of values in the variable specified by the parameter HL.  If no
+         ;error occurs, the array of values is returned.  Otherwise, the single
+         ;value HL is returned equal to the following: error code^error message
+         ;
+         ;Required Input Parameters
+         ;    EIDS = Name or IEN of the subscriber protocol in
+         ;            Protocol file for which the initialization variables are
+         ;            to be returned
+         ;     HL = The variable in which the array of values will be returned
+         ;            This parameter must be passed by reference
+         ;
+  
+   Usage: D RSPINIT^HLFNC2(HL("EIDS"),.MYHLARRY)
+  
+          The Processing Routine should call this RSPINIT^HLFNC2 API
+          to create the environmental variables needed to assist
+          in constructing the response message.  This API should be used
+          especially when there is a possibility of the field separator
+          and Encoding Characters being different between the
+          sending application and the receiving application.  The second
+          parameter to this API should be an application namespaced variable
+          passed by reference.  This second parameter should NOT have
+          HL namespace.  However, the first parameter should be the name or
+          IEN of the subscriber protocol.  VistA HL7 provides this information
+          to the Processing Routine through the variable HL("EIDS").
+          Therefore, HL("EIDS") should be used as the first parameter
+          passed by value.
+  
+          As before, the Processing Routine should use the environmental
+          variables HL("FS") and HL("ECH") in parsing the inbound HL7 message.
+          However, the Processing Routine should use its own namespaced array
+          as the second parameter of the call to RSPINIT^HLFNC2.
+          For instance, if the second parameter was MYHLARRY, then the
+          Processing Routine should use MYHLARRY("RFS") and MYHLARRY("RECH")
+          as the variables containing the delimiters to assist in constructing
+          the response message.
+  
+          This RSPINIT^HLFNC2 API may be called by the Processing Routine any
+          time after the VistA HL7 has called the Processing Routine to
+          process the inbound message and just before constructing
+          the response message and calling GENACK^HLMA1.
+  
+   Below is an example of what may be returned in the second parameter:
+  
+                                         Description:
+                                         ============================
+   MYHLARRY("RAN")=XWB RECEIVER          receiving application name
+   MYHLARRY("RECH")=~|\&                 response encoding characters
+   MYHLARRY("RETN")=R08                  response event type name
+   MYHLARRY("RFS")=^                     response field separator
+   MYHLARRY("RMTN")=TBR                  response message type
+  
+   Before referencing the return array with the individual
+   subscripts (as shown above) for the purpose of building
+   the response message, the processing routine should first check
+   the top level root (i.e.: MYHLARRY) for a possible error.
+   If an error should occur, RSPINIT^HLFNC2 will return the error
+   code and text description in the top level root.  The format of this
+   of this top level root when an error occurs will look like the following:
+  
+        MYHLARRY=Error_Code#^Error_Text
+  
+   The following is a list of potential errors returned:
+  
+       o  Missing EIDS Input Parameter
+       o  Invalid Subscriber Protocol
+       o  Subscriber Application Missing in Protocol File
+  
+   The above list is provided only as an example and the actual error code and
+   error text description are subject to change.
+   Therefore, the processing routine should merely check to see
+   if an error was returned.  For example,
+  
+   I $G(MYHLARRY) D ALERT ... Q
+   D BLDRSPNs
+   D GENACK^HLMA1(...
+  
+   Note, the processing routine should check for an error to determine whether
+   it should proceed with building the response message and subsequently call
+   GENACK^HLMA1.  If an error was returned by RSPINIT^HLFNC2, the processing
+   routine should not proceed.  In this case, the processing routine
+   should simply set the variable HLERR to an appropriate error message
+   and exit gracefully.
+  
+ Routine Information:
+ ====================
+  
+  The following routines are included in this patch.  The second line of each
+  of these routines now looks like:
+   ;;1.6;HEALTH LEVEL SEVEN;**[Patch List]**;Oct 13, 1995
+  
+                   Checksum
+  Routine         Old       New      Patch List
+  HLFNC2        5365297   7074924     **2,26,57,59,101**
+  
+  List of preceding patches: 59
+  Sites should use CHECK^XTSUMBLD to verify checksums.
+  
+ Installation Instructions: 
+ ==========================
+  
+   1.  Users are allowed to be on the system during this installation.
+       However, to minimize 'clobber' errors it is best to install when
+       the system is quiescent.  
+    
+   2.  DSM SITES: Review your mapped set. If any of the routines listed in 
+       the Routine Summary section are mapped, they should be removed from 
+       the mapped set at this time.  
+  
+   3.  Use the VISTA HL7 Filer and Link Management options, listed below, to 
+       shutdown (1) all Logical Links, (2) the incoming and outgoing filers,
+       and (3) the Link Manager. Use the options:
+  
+         Filer and Link Management Options -> 
+             SA     Stop All Messaging Background Processes 
+             LM     TCP/IP Link Manager Start/Stop 
+  
+       DSM SITES ONLY: Disable all HL7 UCX Services for this installation.
+  
+   4.  Use the option INSTALL/CHECK MESSAGE located on the PackMan menu to
+       load the KIDS package onto your system.
+  
+   5.  Patch HL*1.6*101 has now been loaded into a Transport global on your 
+       system. The next step is to use KIDS to install the Transport global.
+       To do this, follow the KIDS menu path to the Installation menu:
+  
+          KIDS  Kernel Installation & Distribution System
+             Installation
+  
+       On the Installation menu, use the following options: 
+  
+          2 Verify Checksums in Transport Global 
+          3 Print Transport Global 
+          4 Compare Transport Global to Current System 
+          5 Backup a Transport Global 
+          6 Install Package(s) 
+              INSTALL NAME: HL*1.6*101 
+                            =========
+  
+          Answer 'NO' to 'Want KIDS to INHIBIT LOGONS during the install?'.  
+  
+          Answer 'NO' to 'Want to DISABLE Scheduled Options, Menu Options, 
+          and Protocols?'.  
+  
+   6.  Follow the HL7 menu path to the option Restart/Start All Links and
+       Filers to startup all Logical Links and incoming and outgoing
+       filers:
+  
+          Filer and Link Management Options -> 
+             RA  Restart/Start All Links and Filers 
+         
+          NOTE: Links that do not have "Autostart" enabled will need to 
+                be restarted manually) 
+  
+       DSM SITES ONLY: If you previously disabled an HL7 UCX Service 
+       for this installation, you may enable it now enable it.  
+  
+   7.  DSM SITES: Rebuild your mapped set if necessary.  
+  
+   8.  Start Link Manager using the option: TCP/IP Link Manager Start/Stop. 
+
+Routine Information:
+====================
+
+Routine Name:
+  - HLFNC2
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : CHAN,ALAN                      Date Entered : SEP 17, 2002
+Completed By: SINGH,GURBIR                  Date Completed: MAY 09, 2003
+Released By : GAYFIELD,LISA                 Date Released : MAY 12, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

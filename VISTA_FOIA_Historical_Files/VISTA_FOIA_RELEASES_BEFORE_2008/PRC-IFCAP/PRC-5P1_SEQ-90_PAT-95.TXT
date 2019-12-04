@@ -1,0 +1,477 @@
+$TXT Created by SCHMITZ,STEVEN at MNTVBB.FO-WASH.MED.VA.GOV  (KIDS) on Friday, 09/29/06 at 15:28
+=============================================================================
+Run Date: DEC 13, 2006                     Designation: PRC*5.1*95
+Package : PRC - IFCAP                         Priority: Mandatory
+Version : 5.1        SEQ #90                    Status: Released
+                  Compliance Date: JAN 13, 2007
+=============================================================================
+
+
+Subject: CLEANUP IFCAP ARCHIVE/PURGE PROCESS
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch will make updates to the IFCAP Archive/Purge process to address
+ the problem of broken pointers left in files after the process finishes.
+  
+ The patch will also add additional check for existing data to resolve an
+ UNDEFINED error during the Archive Selected IFCAP Records process.
+  
+   
+ ASSOCIATED REMEDY TICKETS:
+ =========================
+ 1.  HD59750   Problem with Due In Report
+     Duplicates:  HD85136, HD96833, HD116145
+  
+ 2.  HD55435 CLL-1103-40835  Old entries in 1358 Authorization Detail file
+     Duplicates:  HD55433, HD55437, HD55438, HD55440, HD55441, HD55442,
+                  HD55448, HD55450, HD55458, HD55472, HD55480, HD55640,
+                  HD55482, HD55493, HD55500, HD55509, HD55522, HD55528,
+                  HD55543, HD55545, HD55549, HD55588, HD55615, HD55619,
+                  HD55620, HD55638, HD55653, HD93965, HD104390, HD104576,
+                  HD55478
+   
+ 3.  HD129476  Did not receive full transmission day 26
+     Duplicates: HD133413, HD137494, HD138158, HD144290, HD144708,
+                 HD145201, HD145938, HD145964, HD146251, HD148471,
+                 HD150322, HD152529, HD55532, HD168836
+  
+ 4.  HD55560   STX-0704-70135  ERROR MESSAGE WHILE ARCHIVE/PURGE RECORDS
+   
+  
+ PARTICIPATING TEST SITES:
+ ========================
+ Ann Arbor VAMC
+ North Texas HCS
+ White City VAMC
+   
+   
+ REMEDY OVERVIEW:
+ ===============
+ 1.  HD59750 - Problem with Due In Report
+   
+   Problem:
+   --------
+   Sites were reporting undefined errors/null subscript errors in globals
+   that were being accessed during the creation of the Due In Report.  This
+   was due to erroneous pointer records left over in the GENERIC INVENTORY
+   (#445) file which pointed to records in the CONTROL POINT ACTIVITY 
+   (#410) file which had been purged.
+   
+   Resolution:
+   -----------
+   Created a utility routine to search file #445 for invalid pointer
+   records pointing to non-existent data in file #410 and purge these
+   records.  Also, a change was made to how the IFCAP Archive/Purge process
+   works so that in the future it will not leave the left over pointers in
+   file #445.
+   
+   Routines:  PRCGPM, PRCG238P, PRCGPM1, PRCIN45
+  
+   
+ 2. HD55435 - Old entries in 1358 Authorization Detail file
+   
+   Problem:
+   --------
+   Sites are reporting a problem with entries in the 1358 Authorization
+   Detail file (#424.1) after the Archive/Purge process has been run.  The
+   sites felt these records should have been deleted.  The 1358 DAILY
+   RECORD (#424) records and one pointer record in #424.1 were purged
+   during the purge process.  The problem occurs when there are multiple
+   pointer records in the #424.1 file which point to the same #424 record,
+   but only one record gets deleted, leaving multiple invalid #424.1 
+   pointer records still in the file.
+  
+   Resolution:
+   -----------
+   A utility routine was created to search the #424.1 file for invalid 
+   pointer records which point to non-existent #424 records and purge these
+   records.  The code used in the purge process was modified to loop 
+   through the #424.1 file to look for every instance of a pointer to the
+   record being purged from the #424 file.
+   
+   Routines:  PRCGPPC1, PRCINAR
+  
+  
+ 3.  HD129476 - Did not receive full transmission day 26
+  
+   Problem:
+   --------
+   Sites are reporting a problem with file 440.6 and 417.  File 417 does
+   not have a means to archive/purge data and file 440.6 has pointers to
+   non-existent file 442 records.  
+  
+   Resolution:
+   -----------
+   Code was added to the existing file 442 archive/purge process to cleanup
+   related records in file 440.6.  
+  
+   Also,  created a new purge option, Load IFCAP File 417 Documents into
+   PurgeMaster, which allows the user to cleanup old file 417 data.
+  
+   Routines:  PRCG237P, PRCG239P, PRCG239Q,PRCINAR, PRCG237Q, PRCCL406
+  
+  
+ 4.  HD55560 - ERROR MESSAGE WHILE ARCHIVE/PURGE RECORDS
+   
+   Problem:
+   --------
+   During the ARCHIVE SELECTED IFCAP RECORDS process, the user experiences
+   an undefined variable error that causes the procedure to cease due to
+   missing data.
+   
+   Resolution:
+   -----------
+   Routine  PRCSP122 was modified to check for existing data.
+  
+  
+ TECHNICAL DESCRIPTION:
+ ======================
+   
+   1.  HD59750 - Problem with Due In Report
+     
+   During the purge process, the 443.1 global is created to hold code calls
+   to be used by the Purgemaster process that is tasked to be run.  In 
+   order to ensure that all file 445 invalid records are purged, routine  
+   PRCGPM was modified.  PRCGPM calls new code at CLN445^PRCGPM1 which will
+   create an entry in file ^PRC(443.1 to call FIND445^PRCG238P.  This means
+   that when the purge task is finally running, when it $Orders through 
+   ^PRC(443.1, it  will find the record for FIND445^PRCG238P and run this
+   code which loops through file 445 to make sure all invalid records are
+   purged.
+  
+   A pre-installation routine was created (PRCIN45) which goes through file
+   445 to determine if any invalid records exist and purges them.  This 
+   routine will be automatically deleted at the end of the installation 
+   process.  
+  
+  
+   2.  HD55435 - Old entries in 1358 Authorization Detail file
+  
+   In order to ensure that all records in file 424.1 are killed when a 424
+   record is killed, the following code at DL424D1^PRCGPPC1 has been 
+   changed:
+  
+   From this code:
+    
+     S PRC424D1=$O(^PRC(424.1,"C",PRC424,PRC424D1)) Q:PRC424D1'?1.N  D
+    
+   to this code:
+    
+     F  S PRC424D1=$O(^PRC(424.1,"C",PRC424,PRC424D1)) Q:PRC424D1'?1.N  D
+    
+   This code should now loop through and find all instances of the 424 file
+   in file 424.1 and kill those records.
+  
+   A pre-installation routine was created (PRCINAR) that goes through file 
+   424.1 to determine if any invalid records exist and purges them.  This 
+   routine will be automatically deleted at the end of the installation.
+    
+    
+   3.  HD129476 - Did not receive full transmission day 26
+  
+   In order to ensure that all related file 442 records in file 440.6 were 
+   cleaned up, code was added to the PRCINAR utility routine that will
+   search file 440.6 for invalid records during the installation of this
+   patch.  Routine PRC237P was also updated so that during future purging
+   of file 442 data, it will handle the related records in file 440.6.
+  
+   A new option, PRCG LOAD 417 PURGEMASTER, will be added to the PRCG
+   ARCHIVE/PURGE MASTER MENU option to allow sites to purge old data in
+   file 417.  Routine PRCG239Q will execute when the user runs the new 
+   option, PRCG LOAD 417 PURGMASTER.  This routine will prompt the user to
+   enter the year they would like to purge data from file 417.  It will
+   then load the data in file 443.1 to prepare for purging.  Once the
+   tasked job, PRCGPMK PurgeMaster, is run, PRCG239P will be called to 
+   search file 417 for the records that match the date range entered by 
+   the user.
+  
+  
+ 4.  HD55560 - ERROR MESSAGE WHILE ARCHIVE/PURGE RECORDS
+  
+   Certain records in ^PRCS(410 have data that passes the $DATA check for 
+   a value in the Justification field, even though there is no data to be  
+   processed in the multiple.  This is a text field.  This patch does not  
+   clean up the data because it is unclear whether the status of the data
+   is correct.  Example data:
+  
+   normal:                 ^PRCS(410,DA,8,0)=^^1^100
+                           ^PRCS(410,DA,8,1,0)="some data"
+  
+   unusual but works:      ^PRCS(410,DA,8,0)=0
+                           ^PRCS(410,DA,8,1,0)="some data"
+  
+   unusual & errors out:   ^PRCS(410,DA,8,0)=0
+  
+   A $DATA was currently being used on the 8,0 node to determine if there  
+   was data and since the value 0 is data it would look for any 8,DA(1)
+   entry.  This would cause an error in the last example.  A check has been
+   put into PRCSP122 to determine if 8,0 = 0, does a 8,DA(1) exist.
+  
+  
+ Documentation Retrieval:
+ ========================
+ The IFCAP Version 5.1 Technical Manual has been updated to reflect the 
+ addition of the new option Load IFCAP File 417 Documents into PurgeMaster.
+  
+ The revised IFCAP Version 5.1 Technical Manual is available on the
+ ANONYMOUS.SOFTWARE directory at one of the following Office of Information
+ (OI) Field Offices. This file needs to be retrieved in binary format.
+   
+ Sites may retrieve documentation in one of the following ways:
+   
+  (1) The preferred method is to FTP the files from
+      download.vista.med.va.gov, which will transmit the files from the
+      first available FTP server.
+    
+  (2) Sites may also elect to retrieve documentation directly from a
+      specific server as follows:
+    
+      Albany          ftp.fo-albany.med.va.gov
+      Hines           ftp.fo-hines.med.va.gov
+      Salt Lake City  ftp.fo-slc.med.va.gov
+    
+      The documentation distribution includes:
+     
+      FILE NAMES                DESCRIPTION                      FORMAT
+      ==========                ===========                      ======
+      ifcp5_1tech_manual.pdf    IFCAP V. 5.1 Technical Manual    Binary
+  
+  
+ ====================INSTALLATION INSTRUCTIONS======================
+ This patch can be installed with users on the system, however one
+ option will need to be disabled (see step 4).
+   
+ Install Time - less than 5 minutes.
+   
+ 1. LOAD TRANSPORT GLOBAL
+    ---------------------
+    Choose the PackMan message containing this patch and invoke the 
+    INSTALL/CHECK MESSAGE PackMan option.  
+   
+   
+ 2.  START UP KIDS 
+     -------------
+     Start up the Kernel Installation and Distribution System Menu 
+     [XPD MAIN]:
+       
+         Edits and Distribution ...  
+         Utilities ...  
+         Installation ...  
+       
+     Select Kernel Installation & Distribution System Option:  INStallation
+                                                               ---
+         1      Load a Distribution
+         2      Verify Checksums in Transport Global
+         3      Print Transport Global
+         4      Compare Transport Global to Current System
+         5      Backup a Transport Global
+         6      Install Package(s)
+                Restart Install of Package(s)
+                Unload a Distribution
+     
+ 3.  Select Installation Option: 
+     ---------------------------
+     NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+            NAME, enter PRC*5.1*95):
+       
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when this patch
+         is installed.  It compares all components of this patch
+         (routines, DD's, templates, etc.).
+     c.  Verify Checksums in Transport Global - This option will allow
+         you to ensure the integrity of the routines that are in the
+         transport global.
+   
+ 4.  Select Installation Option: Install Package(s) 
+                                 ------------------
+     **This is the step to start the installation of this KIDS patch: 
+       
+     a. Choose the Install Package(s) option to start the patch install.
+  
+     b. Want KIDS to Rebuild Menu Trees Upon Completion of Install? 
+        YES// answer YES
+     
+     c. When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+            YES//' answer NO
+     
+     d. When prompted 'Want to DISABLE Scheduled Options, Menu Options,
+        and Protocols? YES//' answer YES
+        
+     e. When prompted 'Enter options you wish to mark as 'Out Of Order':'  
+        Enter the following options:
+       
+        IFCAP Archive/Purge Master Menu [PRCG ARCHIVE/PURGE MASTER MENU]
+     
+     f. When prompted 'Enter protocols you wish to mark as 'Out Of Order':'
+        press <return>.
+  
+  
+ SAMPLE INSTALLATION:
+ ===================
+  
+ Select Installation Option: 6  Install Package(s)
+ Select INSTALL NAME: PRC*5.1*95   Loaded from Distribution 6/6/06@11:45:22
+      => PRC*5.1*95 TEST v13
+  
+ This Distribution was loaded on Jun 06, 2006@11:45:22 with header of 
+    PRC*5.1*95 TEST v9
+    It consisted of the following Install(s): PRC*5.1*95
+  
+ Checking Install for Package PRC*5.1*95
+  
+ Install Questions for PRC*5.1*95
+  
+ Want KIDS to Rebuild Menu Trees Upon Completion of Install? YES// YES
+  
+ Want KIDS to INHIBIT LOGONs during the install? YES// NO
+  
+ Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// YES
+  
+ Enter options you wish to mark as 'Out Of Order': PRCG ARCHIVE/PURGE 
+  
+ MASTER MENU            IFCAP Archive/Purge Master Menu
+  
+ Enter options you wish to mark as 'Out Of Order': 
+  
+ Enter protocols you wish to mark as 'Out Of Order': 
+  
+ Delay Install (Minutes):  (0-60): 0// 2
+  
+ Enter the Device you want to print the Install messages.
+ You can queue the install by enter a 'Q' at the device prompt.
+ Enter a '^' to abort the install.
+  
+ DEVICE: HOME//   IP network
+  
+ Install Started for PRC*5.1*95 : 
+                Jun 06, 2006@12:08:36
+  
+ Build Distribution Date: Jun 05, 2006
+  
+ Installing Routines:
+                Jun 06, 2006@12:08:37
+  
+ Running Pre-Install Routine: ^PRCIN45
+  
+ 19 RECORDS DELETED FROM FILE 445
+  
+ BACKUP RECORDS STORED IN THE FOLLOWING LOCATIONS FOR 7 DAYS:
+  
+ ^XTMP("IFCAP-PURGE-445")
+  
+ ^XTMP("IFCAP-PURGE-445-REF")
+  
+  
+ Running Post-Install Routine: ^PRCINAR
+  
+ 20894 RECORDS DELETED FROM FILE 424.1
+  
+ BACKUP RECORDS STORED IN THE FOLLOWING LOCATIONS FOR 7 DAYS:
+  
+ ^XTMP("IFCAP-PURGE-424-1")
+  
+ ^XTMP("IFCAP-PURGE-424-1-REF")
+  
+  
+ 8 RECORDS DELETED FROM FILE 440.6
+  
+ BACKUP RECORDS STORED IN THE FOLLOWING LOCATIONS FOR 7 DAYS:
+  
+ ^XTMP("IFCAP-PURGE-440-6")
+  
+ ^XTMP("IFCAP-PURGE-440-6-REF")
+  
+  
+ Updating Routine file...
+  
+ Updating KIDS files...
+  
+ PRC*5.1*95 Installed. 
+                Jun 06, 2006@12:08:44
+  
+ Install Message sent #7810
+ --------------------------------------------------------------------------
+           --------------------------------------------------------------
+   100%    |             25             50             75               |
+ Complete  --------------------------------------------------------------
+  
+ Install Completed
+  
+  
+ ROUTINE SUMMARY:
+ ===============
+ The following is a list of the routines included in this patch.
+ The second line of each of these routines now looks like:
+  
+      <tab>;;5.1;IFCAP;**[patch list]**;Oct 20, 2000
+  
+  
+                        CHECK^XTSUMBLD
+  
+ Routine        Before Patch     After Patch     Patch List
+ -------        ------------     -----------     ----------
+ PRCCL406       N/A              575800          95
+ PRCG237P       673981           846738          95
+ PRCG237Q       5967369          6594914         95
+ PRCG238P       6124131          7047187         95
+ PRCG239P       N/A              479399          95
+ PRCG239Q       N/A              5490889         95
+ PRCGPM         2478543          2489114         95
+ PRCGPM1        2327717          2954147         95
+ PRCGPPC1       1188219          1199842         95
+ PRCIN45        N/A              2610528         95 (deleted after install)
+ PRCINAR        N/A              4567104         95 (deleted after install)
+ PRCSP122       8181070          8343677         95
+  
+ Number of Routines = 12
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PRCCL406
+    Before:       n/a  After:   B953739  **95**
+Routine Name: PRCG237P
+    Before:  B1594280  After:  B2295253  **95**
+Routine Name: PRCG237Q
+    Before: B15041434  After: B17692851  **95**
+Routine Name: PRCG238P
+    Before: B15439562  After: B21136365  **95**
+Routine Name: PRCG239P
+    Before:       n/a  After:   B952278  **95**
+Routine Name: PRCG239Q
+    Before:       n/a  After: B13467421  **95**
+Routine Name: PRCGPM
+    Before:  B4482674  After:  B4567484  **95**
+Routine Name: PRCGPM1
+    Before:  B5446508  After:  B7468104  **95**
+Routine Name: PRCGPPC1
+    Before:  B2334557  After:  B2351004  **95**
+Routine Name: PRCIN45
+    Before:       n/a  After:  B4217688  **95**
+Routine Name: PRCINAR
+    Before:       n/a  After: B10282916  **95**
+Routine Name: PRCSP122
+    Before: B10132798  After: B10606515  **95**
+
+=============================================================================
+User Information:
+Entered By  : SCHMITZ,STEVEN                Date Entered  : DEC 05, 2005
+Completed By: WERNER,GARY                   Date Completed: DEC 13, 2006
+Released By : COPELAND,ROLANDA              Date Released : DEC 13, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

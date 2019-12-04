@@ -1,0 +1,194 @@
+$TXT Created by PHELPS,TY at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Friday, 05/07/04 at 21:14
+=============================================================================
+Run Date: JUL 06, 2004                     Designation: VAQ*1.5*43
+Package : VAQ - PATIENT DATA EXCHANGE         Priority: Mandatory
+Version : 1.5        SEQ #38                    Status: Released
+                  Compliance Date: AUG 06, 2004
+=============================================================================
+
+Associated patches: (v)VAQ*1.5*23  <<= must be installed BEFORE `VAQ*1.5*43'
+
+Subject: EXISTING PATIENT CHECK DURING ADD NEW PATIENT PROCESS AND DR VARIABLE LEAKAGE
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch will prevent a new patient from being added to the Patient (#2)
+ file if an existing patient with the same SSN exists.  It also corrects a
+ DR variable leak.
+  
+ ASSOCIATED NOIS:
+ ================
+ 1. RIC-0202-20894     PDX failure to delete PATIENT entry
+ 2. ISP-0504-N0567     DR ARRAY VARIABLE LEAKAGE
+  
+ ASSOCIATED E3R(s):
+ ==================
+ N/A
+  
+ TEST SITES:
+ ===========
+    Richmond, VA
+    El Paso, TX
+    Tomah, WI
+    Anchorage, AK
+  
+ NOIS OVERVIEW:
+ ==============
+ 1. RIC-0202-20894     PDX failure to delete PATIENT entry
+  
+    Problem:
+    --------
+    The problem reported is that data is not being cleaned up properly when
+    Patient Data Exchange (PDX) fails to add a new patient to the PATIENT
+    (#2) file.  PDX uses the FileMan call FILE^DICN to add new patients to
+    the PATIENT (#2) file.  If, during this process it is determined that
+    the entry is not new (based on the SSN), the add is aborted.
+    Unfortunately, some triggers are already fired in the PATIENT (#2) file
+    and these are not cleaned up, leaving invalid entries.
+  
+    Resolution:
+    -----------
+    This problem will be resolved by checking for an existing SSN, in the
+    SSN cross-reference ^DPT("SSN", prior to making the FileMan call to add
+    a new patient.  If an existing SSN (not including pseudo SSNs) is found,
+    the add a new patient process will be aborted and the message
+    "** Patient not added, SSN in use by existing patient" will be
+    displayed.
+    
+ 2. ISP-0504-N0567     DR ARRAY VARIABLE LEAKAGE
+  
+    Problem:
+    --------
+    The DR variable array is not newed/killed in the PDX API before the
+    first Fileman call of ^DIE.  This was discovered while working on a
+    NOIS involving the Prescription Practices Daily Batch Routine [PPP
+    BATCH] option.  The leakage occurred with a patient with 2 transactions
+    to send.  During the second transaction, the DR array variable is setup
+    in routine PPPPDX1 which calls the PDX^VAQUIN01 API.  These DR array
+    settings are still around when the first ^DIE call is made in the
+    Patient Data Exchange software.  
+  
+    Resolution:
+    -----------
+    The DR variable will be "Newed" in routine VAQUIN01 to fix this
+    problem.  By "Newing" the DR variable in this routine, we prevent any
+    further leakage of DR from other packages which may use the
+    PDX^VAQUIN01 supported reference.
+  
+ ROUTINE SUMMARY 
+ ===============
+ The following is a list of the routines included in this patch.  
+ The second line of each of these routines now looks like: 
+  
+   <tab>;;1.5;PATIENT DATA EXCHANGE;**[PATCH LIST]**;NOV 17, 1993
+  
+                        CHECK^XTSUMBLD results
+ Routine name      Before Patch        After Patch       Patch List
+ ============      ============        ===========       ===========
+   VAQLED07           5623461            6153608         13,22,23,43
+   VAQUIN01           5272447            5283106         43
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+ This patch can be loaded with users in the system.  This patch should not
+ be installed while the Prescription Practices Daily Batch Routine [PPP
+ BATCH] option is running.  Installation time will be less than 2 minutes.
+  
+  1.  Choose the PackMan message containing this patch and invoke the 
+      INSTALL/CHECK MESSAGE PackMan option.  
+  
+  2.  (DSM for Open VMS sites only) Disable routine mapping on all systems
+      for the routines listed in the Routine Summary.
+  
+      NOTE:  If the routines included in this patch are not currently
+      in your mapped routine set, please skip this step.
+  
+  3.  Start up the Kernel Installation and Distribution System Menu
+      [XPD MAIN]: 
+  
+           Edits and Distribution ...  
+           Utilities ...  
+           Installation ...  
+  
+      Select Kernel Installation & Distribution System Option: Installation
+                                                               ---
+           1      Load a Distribution
+           2      Verify Checksums in Transport Global
+           3      Print Transport Global
+           4      Compare Transport Global to Current System
+           5      Backup a Transport Global
+           6      Install Package(s)
+                  Restart Install of Package(s)
+                  Unload a Distribution
+  
+  4.  From this menu, you may elect to use the following options
+      (When prompted for the INSTALL NAME, enter VAQ*1.5*43):
+  
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will
+          not backup any other changes such as DD's or templates.
+      b.  Compare Transport Global to Current System - This option
+          will allow you to view all changes that will be made when
+          this patch is installed.  It compares all components of this
+          patch (routines, DD's, templates, etc.).
+      c.  Verify Checksums in Transport Global - This option will
+          allow you to ensure the integrity of the routines that are
+          in the transport global.
+  
+  5.  Use the Install Package(s) option and select the package
+      VAQ*1.5*43.
+  
+      a.  When prompted "Want KIDS to INHIBIT LOGONs during the
+          install? YES//", answer NO.
+      b.  When prompted "Want to DISABLE Scheduled Options and Menu 
+          Options and Protocols? YES//", answer YES.
+      c.  When prompted "Enter options you wish to mark as 'Out Of Order':",
+          enter the following option:
+  
+             Prescription Practices Daily Batch Routine [PPP BATCH]
+  
+      d.  When prompted "Enter protocols you wish to mark as 'Out Of
+          Order':", enter the following protocol:
+  
+             Add Patient [VAQ ADD PATIENT]
+  
+      e.  When prompted "Delay Install (Minutes):  (0-60): 0//", press
+          <return>.
+  
+  6.  (DSM for Open VMS sites only) Optional - Include the routines
+      distributed with this patch in the mapped routine set.
+  
+      NOTE: This step is only necessary if you performed step 2 or if
+      you wish to include the routines in your mapped set.
+
+Routine Information:
+====================
+
+Routine Name:
+  - VAQLED07
+
+
+Routine Checksum:
+
+Routine Name:
+  - VAQUIN01
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : PHELPS,TY                     Date Entered  : FEB 10, 2004
+Completed By: BAUMAN,HELENE                 Date Completed: JUN 30, 2004
+Released By : WASHINGTON,JANET P            Date Released : JUL 06, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

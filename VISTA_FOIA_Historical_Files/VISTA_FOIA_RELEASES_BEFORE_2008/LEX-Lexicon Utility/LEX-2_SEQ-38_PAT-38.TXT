@@ -1,0 +1,496 @@
+$TXT Created by ROWE,KIMBALL at DEVCUR.FO-SLC.MED.VA.GOV  (KIDS) on Wednesday, 03/15/06 at 12:49
+Run Date: APR 04, 2006                     Designation: LEX*2*38
+Package : LEX - LEXICON UTILITY               Priority: Mandatory
+Version : 2        SEQ #38                      Status: Released
+                  Compliance Date: APR 11, 2006
+=============================================================================
+
+Associated patches: (v)LEX*2*15    <<= must be installed BEFORE `LEX*2*38'
+                    (v)LEX*2*29    <<= must be installed BEFORE `LEX*2*38'
+                    (v)LEX*2*36    <<= must be installed BEFORE `LEX*2*38'
+                    (v)LEX*2*39    <<= must be installed BEFORE `LEX*2*38'
+
+Subject: Miscellaneous fixes for ICD/CPT Code Sets
+
+Category: 
+  - Routine
+  - Enhancement (Mandatory)
+  - Other
+  - Data Dictionary
+
+Description:
+============
+
+ 
+  This patch contains fixes for 24 Remedy Tickets (and 6 duplicates), 
+  updates the FY06 2nd Quarter Code Set distribution with 105 late code 
+  releases, fixes problems in 6 routines involving the Lexicon Lookup, 
+  and fixes problems found in the data dictionaries by SQA process for
+  patch LEX*2.0*39, and listed in the Report of Findings.
+  
+  This patch writes to the following files:
+  
+     ICD Diagnosis          #80          ^ICD9(         DBIA  4485
+     CPT/HCPCS Procedure    #81          ^ICPT(         DBIA  4489
+     CPT Modifiers          #81.3        ^DIC(81.3,     DBIA  4492
+     Data Dictionary        ###          ^DD            DBIA  4475
+     Lexicon Files          #757-757.41  ^LEX(          DBIA   N/A
+  
+  ENHANCEMENTS
+  ============
+  
+     I.  REMEDY TICKETS
+  
+         CPT/HCPCS
+  
+             CPT Code C1368 Inactive Jan 1, 2001             HD0000000 090529
+   
+         CPT Modifier
+   
+             Add LT/RT Modifiers for CPT code 73500          HD0000000 064223
+             Add GY Modifier for CPT codes 69200, 69210,     HD0000000 064379
+                92507, 92508, 92510, and 97112
+             Add P5 Modifier with Anesthesia codes           HD0000000 064495
+             Add 50 Modifier for CPT code 92250              HD0000000 084545
+   
+         ICD
+ 
+             Supress DSM code 298.9 with ICD 298.9           HD0000000 128092  
+             Make ICD Code 453.42 Recognized as CC           HD0000000 085063
+             Make ICD Code 453.41 & 401.9 Recognized as CC   HD0000000 094694
+             Add Synonym CHF for Congestive Heart Failure    HD0000000 100042
+             Make ICD Code V45.77 not specifically Male      HD0000000 103173
+             Make ICD Codes 426.2, 426.3 and 426.4           HD0000000 103729
+               Acceptable as Principal Dx       
+             Make ICD Code V58.3 Acceptable Principal Dx     HD0000000 105214
+             Make ICD Code 070.70 Recognized as CC           HD0000000 105216
+                                                             HD0000000 117080
+                                                             HD0000000 066609
+             ICD Code V70.5 Acceptable as Principal Dx       HD0000000 125867
+   
+         Lexicon
+     
+             Cervix Carcinoma re-coded to 180.8              HD0000000 068764
+             Link ICD Code 289.0 to term Erythrocytosis      HD0000000 099835
+             Re-Code Volvulus of Intestine to ICD Code 560.2 HD0000000 101081
+             Re-Code Arthropathy as ICD Code 716.90          HD0000000 108402
+                                                             HD0000000 121505
+             ICD Code 238.7 for Myelodysplastic Syndrome     HD0000000 111864
+                                                             HD0000000 125933
+             ICD Code 515. Flagged as Primary Code           HD0000000 120112
+             ICD Code 362.83 Flagged as Primary Code         HD0000000 121195
+             Replace 'Auricular' with 'Atrial'               HD0000000 122717
+             Inapproptrate case for 'Stage i'                HD0000000 123143
+             Pyuria re-coded as 791.9                        HD0000000 124008
+ 
+         One outstanding issue remains from the testing of   HD0000000 135804
+         this patch.  VistA is calculating the wrong DRG
+         result 479 vs 544 due to the ICD code 401.9 being
+         flagged as "CC." (See 135804) To expedite the
+         release of LEX*2.0*38 and not hold up the creation
+         of LEX*2.0*40 (3rd quarter CSV update), this issue
+         is being deferred/fixed in patch LEX*2.0*40.
+ 
+   
+     II. Lexicon Lookup Fix
+   
+         Two major problems were recently discovered with the Lexicon
+         Lookup mechanism while investigating Remedy Tickets and Test 
+         Site reports from previous patches.
+   
+         1.  The first problem involves the lookup not passing the 
+             versioning date to Fileman's special lookup utility.  
+             The calling application correctly sets up the environment 
+             variables and user preferences using the supported Lexicon
+             call CONFIG^LEXSET(<namespace>,<subset>,<versioning date>).
+             Then the Fileman Lookup is called using ^DIC.  Since the 
+             Lexicon has a Special Lookup (see ^DD(757.01,0,"DIC")),
+             the control for the lookup is passed to the routine LEXA1.  
+             However, what is not passed is the versioning date used to 
+             set the environment.  The screen is set to look for dated 
+             information, and the lookup is searching for TODAY.  This 
+             mismatch is responsible for not finding inactivated codes
+             for an old encounter.
+     
+             It is responsible for the errors reported in the following
+             Remedy Tickets:
+  
+                 HD0000000125146
+                 HD0000000124688
+                 HD0000000124196
+                 HD0000000123800
+  
+             It may also be responsible for the <SUBSCRIPT>LI1+29^PXBPPOV 
+             error in Remedy Tickets HD0000000121688 and HD0000000121775,
+             but the error trap and testing have been inconclusive.  It 
+             can be said that it will fix a condition that existed that 
+             resulted in a term being found with an ICD code of -1 (as 
+             suggested by the error trap).
+     
+             This fix is contained in the routines LEXA, LEXA1, LEXA2, 
+             LEXAR5, and LEXSRC.
+  
+         2.  The second problem was discovered in the testing of a previous
+             Lexicon patch.  When searching for a code that is not active 
+             for the versioning date being passed, the "Lookup-by-Code"
+             program will stop without finding an entry in the Lexicon.
+             At this point, the user's input (in this case, G0032) is 
+             treated as a string of text and the Lexicon begins looking
+             for the string "G0032".  When it cannot find the string 
+             "G0032", it sends the string to a spell-check routine.
+  
+                 S X=$$SPL^LEXAS("G0032") W !,X
+                 G032
+  
+             The spell checker returns the string "G032."  This time the 
+             string search returns a completely unrelated term based on
+             "G032":
+  
+                  Electromagnetic Therapy, to one or more areas, for
+                  Wound Care other than described in G0329 or for 
+                  other uses
+  
+             This fix is contained in the routines LEXA and LEXABC.
+  
+    III.  LEX*2.0*38 Report of Findings Fixes for Data Dictionaries
+  
+          The following DD fixes were deferred from the Report of
+          Findings from patch LEX*2.0*39.
+  
+              Data found beyond the 7th piece of ^LEX(757.02,D0,0),
+                data removed and VERSION Field #10 deleted.
+              RELATED CODES Field 9, Subfile 757.29, Field 2 (RELATIONSHIP)
+                points to missing file, Field 9, Subfile 757.29 deleted.
+              Data exists but no DD for ^LEX(757.02,D0,6), data removed.
+              Input Transform for CPT CATEGORY file 81.1, Field BEGIN CPT
+                RANGE Field #4 modified for 4 numeric 1 alpha input.
+              Input Transform for CPT CATEGORY file 81.1, Field END CPT
+                RANGE Field #5 modified for 4 numeric 1 alpha input.
+              File #757.28, Index "ACT" has duplicate Fields, .01 and 1.
+              File #757.02, Index "APCODE" has duplicate Fields, 1 and 4.
+              File #757.02, field 2 Points to missing file.
+              File #81.02, Index "ACT" has duplicate Fields, .01 and .02.
+              File #81.33, Index "ACT" has duplicate Fields, .01 and .02.
+              File #80.066, Index "ACT" has duplicate Fields, .01 and .02.
+        
+     IV.  FY06 2nd Quarter CSV Late Releases
+  
+          New Code Sets
+  
+             HCPCS Codes                                         82 codes
+  
+                 G8054   G9050   G9051   G9052   G9053   G9054
+                 G9055   G9056   G9057   G9058   G9059   G9060
+                 G9061   G9062   G9063   G9064   G9065   G9066
+                 G9067   G9068   G9069   G9070   G9071   G9072
+                 G9073   G9074   G9075   G9076   G9077   G9078
+                 G9079   G9080   G9081   G9082   G9083   G9084
+                 G9085   G9086   G9087   G9088   G9089   G9090
+                 G9091   G9092   G9093   G9094   G9095   G9096
+                 G9097   G9098   G9099   G9100   G9101   G9102
+                 G9103   G9104   G9105   G9106   G9107   G9108
+                 G9109   G9110   G9111   G9112   G9113   G9114
+                 G9115   G9116   G9117   G9118   G9119   G9120
+                 G9121   G9122   G9123   G9124   G9125   G9126
+                 G9127   G9128   G9129   G9130
+        
+         Re-Activated Code Sets 
+       
+             HCPCS Codes                                         4 codes
+       
+                 E1239   G0252   J7317   J7320
+         
+          Inactivated Code Sets 
+       
+             HCPCS Codes                                         14 codes
+       
+                 E0590   G9021   G9022   G9023   G9024   G9025
+                 G9026   G9027   G9028   G9029   G9030   G9031
+                 G9032   J7318
+        
+         Revised Code Sets     
+       
+             HCPCS Codes                                         6 codes
+       
+                 J7640   G9041   G9042   G9043   G9044   Q0510
+  
+  
+  ROUTINE SUMMARY
+  =============== 
+  
+    The second line of each of these routines will look like:
+  
+        <tab>;;2.0;LEXICON UTILITY;**[PATCH LIST]**;Sep 23, 1996
+  
+                Checksums      Checksums  
+    Routine    Before Patch   After Patch   Patch List (2nd Line)
+    --------  -------------  -------------  ---------------------
+    LEX2038      <Env Chk>     69633934     38
+    LEX2038P    <Post-Ins>     26870118     38
+    LEX2038A    <Post-Ins>     59696397     38
+    LEX2038B    <Post-Ins>     45158816     38
+    LEX2038C    <Post-Ins>     54091222     38
+    LEX2038D    <Post-Ins>     47235973     38
+    LEXA        29821376       30812811     3,4,6,19,25,36,38
+    LEXA1       27536211       30130787     3,4,6,11,15,38
+    LEXA2         508535         535269     38
+    LEXABC      35959964       40502743     4,25,26,29,38
+    LEXAR5      26526937       25100906     14,25,26,38
+    LEXSRC       6297697        5546229     7,25,26,38
+   
+   
+  FTP SOFTWARE RETRIEVAL
+  ======================
+   
+    The KIDs build is being distributed in a Packman Message from the
+    National Patch Module (NPM).
+             
+    Data for this patch is being distributed in a global host file:
+  
+         Filename         FTP Protocol
+         ------------     ------------
+         LEX_2_38.GBL     ASCII
+    
+    The preferred method is to FTP this file from download.vista.med.va.gov
+    which will transmit the file from the first available FTP server.
+   
+    This file may also be downloaded directly from a particular FTP
+    location at the following locations.
+    
+          Hines           ftp.fo-hines.med.va.gov
+          Albany          ftp.fo-albany.med.va.gov
+          Salt Lake       ftp.fo-slc.med.va.gov
+   
+          The file is available in the ANONYMOUS.SOFTWARE directory. 
+  
+  INSTALLATION INSTRUCTIONS
+  =========================
+    
+     1)  Users may be on the system during the install of LEX*2.0*38.
+         It is recommended that this patch be installed during non-peak
+         hours.  This patch should take less than 10 minutes to install.
+         
+     2)  Create a backup of the following globals files before continuing:
+         
+               ICD Diagnosis                 #80            ^ICD9(
+               CPT/HCPCS Procedure           #81            ^ICPT(
+               CPT Modifiers                 #81.3          ^DIC(81.3,
+               Lexicon Files                 #757-757.41    ^LEX(
+         
+     3)  Make sure that the remnants of a previous import global do
+         not exist on your system.  If the global ^LEXM does exist, you 
+         will need to kill this global before proceeding.
+         
+         On a Cache system, the prevention of unsubscripted global kills
+         is a system wide setting, but can be allowed for a particular 
+         process using the $ZU command.  The command for enabling 
+         unsubscripted global kills is:
+     
+                 VAH>S X=$ZU(68,28,0)
+                 VAH>K ^LEXM
+     
+         The command for disabling unsubscripted kills for a process
+         is S X=$ZU(68,28,1); however, halting out of the process and
+         creating a new process will achieve the same effect.
+     
+     4)  Install the data from the global host file LEX_2_38.GBL.  This 
+         file contains the Lexicon Utility's import global ^LEXM.
+  
+            Thin Client Global Restore
+  
+              Using the Cache Thin Client, right-click on the Cache 
+              cube, then select "Explorer."  Open the "Namespaces" 
+              folder, then open the "VAH" folder, and right click on 
+              the "Globals" folder. Select the "Import from disk" 
+              option. Click on the "Options..." button.  Select the 
+              "Globals" tab, make sure the format is VAX DSM, then 
+              click "OK." Find the file in the directory, double click
+              on LEX_2_38.GBL.  Next, select "Import All"  At the prompt
+              "Do you wish to restore '^LEXM'," select "Yes."
+  
+            Programmer Mode Global Restore.  From the Programmer prompt, 
+            execute the following routine:
+ 
+              >D ^%GI
+ 
+              Global input
+ 
+              Device: VA5$:[ANONYMOUS.SOFTWARE]LEX_2_38.GBL Parameters:"RS"=>
+              Globals were saved on 07 Feb 2006   4:07 PM   Cache
+              with description: LEX*2*38/ICPT*6*27 Data
+ 
+              Input option: A
+              ^LEXM
+  
+            The loading of the global should take from 1 to 2 minutes.
+  
+            NOTE:  Unlike the quarterly updates, this data global needs to
+                   be loaded and installed in each account and for each 
+                   subsequent install, even if you install multiple times
+                   in the same account.
+ 
+     5)  (OPTIONAL) Turn journaling off for globals ^ICPT, ^ICD9,
+         ^DIC(81.3) and ^LEX
+      
+          Journaling OFF
+  
+             Journaling on a Cache system cannot be disabled by 
+             individual global.  Journaling CAN BE disabled for a 
+             user's current process.  In this case, the process will 
+             be the installation of this patch.  It is important to 
+             know that for this to work, the KIDS installation CANNOT
+             be tasked off.  The installation MUST be run on your 
+             screen for the disabled journaling to be in effect. 
+   
+             To determine if your process has journaling enabled you 
+             can call:
+   
+               >W $$CURRENT^%NOJRN()
+   
+                   0 means journaling is disabled, 
+                   1 means it's on
+     
+             To disable journaling for the current process:
+   
+               >D DISABLE^%NOJRN
+   
+             Double check your process to be sure journaling is 
+             disabled:
+   
+              >W $$CURRENT^%NOJRN()
+   
+                       0 means journaling is disabled, 
+                       1 means it's on
+    
+             Proceed with the installation remembering NOT to task off
+             the install.
+   
+     6)  Set up user and IO variables (D ^XUP) for programmer access.
+     
+     7)  Distribution Load:
+     
+         Load the KIDS Distribution from the Packman Message using the
+         Packman function "Install/Check Message."
+   
+     8)  KIDS Installation:
+     
+         Install the patch using the KIDS Installation Menu action 
+         "Install Package(s)" and the install name LEX*2.0*38.  The KIDS
+         installation should take less than five minutes (with 
+         journaling off) depending on the number of users/jobs on the
+         system.
+ 
+         Respond "NO" at the "Want KIDS to INHIBIT LOGONs during
+         the install? YES//" prompt.
+       
+         Respond "NO" at the "Want to DISABLE Schedule Options,
+         Menu Options, and Protocols?" prompt.
+     
+     9)  Cleanup
+ 
+         a)  Check that the export global ^LEXM has been killed 
+             automatically. 
+     
+             If it has not been automatically killed you will need to 
+             kill the "unsubscripted" import global ^LEXM to prevent 
+             import global checksum errors on future installations.
+     
+             On a Cache system, the prevention of unsubscripted global 
+             kills is a system wide setting, but can be allowed for a 
+             particular process using the $ZU command.  The command for
+             enabling unsubscripted global kills is:
+     
+                 VAH>S X=$ZU(68,28,0)
+                 VAH>K ^LEXM
+     
+             The command for disabling unsubscripted kills for a process
+             is S X=$ZU(68,28,1); however, halting out of the process
+             and creating a new process will achieve the same effect.
+     
+         b)  If you opted to turn journaling off prior to installation, 
+             then the journaling must be turned back on when the 
+             installation is complete.
+      
+               Journaling ON
+   
+                   Journaling on a Cache system can only be turned
+                   back on for the user's current process.
+    
+                   When the installation of this patch has completed
+                   (interactively - not tasked), you may enable journaling
+                   for the current process.
+   
+                   To determine if your process has journaling disabled, 
+                   you can call:
+   
+                       >W $$CURRENT^%NOJRN()
+   
+                       0 means journaling is disabled, 
+                       1 means it's on
+   
+                   To enable journaling for the current process:
+   
+                       >D ENABLE^%NOJRN
+        
+                   Double check your process to be sure journaling is 
+                   enabled:
+   
+                       >W $$CURRENT^%NOJRN()
+   
+                       0 means journaling is disabled, 
+                       1 means it's on
+  
+         c)  If routines LEX2038, LEX2038P,LEX2038A, LEX2038B, LEX2038C,
+             and LEX2038D are found on your system, they may be deleted 
+             upon completion of the installation.  These routines are
+             the environment check and post-install routines for this 
+             installation.
+ 
+ 
+ 
+ 
+ 
+ 
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: LEX2038
+    Before:       n/a  After: B69633934  **38**
+Routine Name: LEX2038A
+    Before:       n/a  After: B59696397  **38**
+Routine Name: LEX2038B
+    Before:       n/a  After: B45158816  **38**
+Routine Name: LEX2038C
+    Before:       n/a  After: B54091222  **38**
+Routine Name: LEX2038D
+    Before:       n/a  After: B47235973  **38**
+Routine Name: LEX2038P
+    Before:       n/a  After: B26870118  **38**
+Routine Name: LEXA
+    Before: B29821376  After: B30812811  **3,4,6,19,25,36,38**
+Routine Name: LEXA1
+    Before: B27536211  After: B30130787  **3,4,6,11,15,38**
+Routine Name: LEXA2
+    Before:   B508535  After:   B535269  **38**
+Routine Name: LEXABC
+    Before: B35959964  After: B40502743  **4,25,26,29,38**
+Routine Name: LEXAR5
+    Before: B26526937  After: B25100906  **14,25,26,38**
+Routine Name: LEXSRC
+    Before:  B6297697  After:  B5546229  **7,25,26,38**
+
+=============================================================================
+User Information:
+Entered By  : ROWE,KIMBALL                  Date Entered  : SEP 14, 2005
+Completed By: BASKETT,BARBARA J             Date Completed: MAR 29, 2006
+Released By : MONTGOMERY,ALAN               Date Released : APR 04, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

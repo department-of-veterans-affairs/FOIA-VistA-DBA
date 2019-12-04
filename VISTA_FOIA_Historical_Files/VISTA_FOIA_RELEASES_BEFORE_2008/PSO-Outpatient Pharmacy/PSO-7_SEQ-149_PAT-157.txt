@@ -1,0 +1,426 @@
+$TXT Created by ANWER,MOHAMED at MAIVAA.FO-BIRM.MED.VA.GOV  (KIDS) on Tuesday, 02/10/04 at 14:28
+=============================================================================
+Run Date: MAY 13, 2004                     Designation: PSO*7*157
+Package : PSO - OUTPATIENT PHARMACY           Priority: Mandatory
+Version : 7       SEQ #149                      Status: Released
+                  Compliance Date: JUN 14, 2004
+=============================================================================
+
+Associated patches: (v)PSO*7*120   <<= must be installed BEFORE `PSO*7*157'
+                    (v)PSO*7*137   <<= must be installed BEFORE `PSO*7*157'
+                    (v)PSO*7*139   <<= must be installed BEFORE `PSO*7*157'
+
+Subject: COMBAT VETERANS PHASE II PROJECT
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ ***********************************NOTE***********************************
+ This patch does NOT conflict with CoreFLS and can be installed at CoreFLS
+ sites.                                                                    
+ **************************************************************************
+                                                                                 
+ PATCH OVERVIEW
+ The Chief Business Office (CBO) is requesting modifications to several 
+ Veterans Health Information Systems and Technology Architecture (VistA) 
+ packages to support implementation of VHA Directive 2002-049 - "Combat 
+ Veterans Are Eligible For Medical Services For 2-Years After Separation 
+ From Military Service Notwithstanding Lack Of Evidence For Service 
+ Connection", which iterates VA's policy to provide medical care and other 
+ medical services to combat veterans despite the absence of proof of 
+ service connection.
+  
+ Software to support the Combat Veteran (CV) initiative is being developed 
+ and introduced in a phased implementation strategy. The reason for this 
+ type of deployment is due to the complexity of the functionality and the 
+ number of product line dependencies. Phase I: Combat Veteran Interim 
+ Solution (CVIS) was a VistA only solution that involved development in 
+ the Integrated Billing (IB) and Registration/Enrollment product lines.  
+ It provided the logic to identify those veterans who met the criteria for 
+ the combat veteran eligibility and provided billing reports 
+ cross-referenced against this identifier to aid in the copayment billing 
+ process. Phase II of this initiative will involve multiple product lines 
+ and additional VistA only development. The main goals of Phase II will be
+ to fully automate the copayment billing processing of combat vets based on
+ episode of care by providing the appropriate questions at check-out as
+ supplied by CPRS.
+  
+ Product lines that have a stake in Phase II development include 
+ Enrollment/Registration (VistA), IB, Outpatient Pharmacy, Consolidated 
+ Mail Outpatient Pharmacy (CMOP), CPRS/TIU, Patient Care Encounter (PCE), 
+ Ambulatory Care, Event Capture, Scheduling and PTF. The National Patient 
+ Care Database (NPCD) will also require modifications to capture workload 
+ reporting. The patches are listed below in the order that they must be 
+ installed: 
+ Outpatient Pharmacy
+     PSO*7*157
+     PSX*2*50
+ PCE/PTF/Event Capture/Scheduling  - PIMS Host file
+     PX*1.0*130
+     SD*5.3*325
+     DG*5.3*565
+     EC*2.0*54
+ Integrated Billing
+     IB*2.0*247
+ CPRS
+     OR*3.0*190
+ Product Features
+ There are three main areas addressed by this enhancement:
+ a. Identification/Notification of a CV Status veteran seeking medical care
+    - The clinical applications shall obtain the CV Status for those 
+      veterans who qualify as such per the directive.
+    - The CV Status identification shall be displayed to the appropriate
+      audience (pharmacist, clinician providing care, intake personnel,
+      schedulers, etc.).
+    - Provider shall be able to identify whether care provided CV veteran
+      was for a condition potentially related to combat service in the same
+      manner as identification of exposure related care; care for SC 
+      conditions, etc.
+ b. Assistance in the communication of a treatment being determined as
+    Combat Related
+    - Provide a means for the billing and pharmacy software package to 
+      identify these patients and services provided care for a combat
+      related condition.
+ c. Automatically precludes inpatient and outpatient medical care, 
+    prescription and Long-term care copayments for CV Status veterans whose
+    treatment/service has been deemed combat related by provider or unless
+    changed by pharmacist.
+  
+  
+ This is the Outpatient Pharmacy patch PSO*7*157 that provides the
+ functionality changes to accommodate the new copay classification called
+ "Combat Veteran".
+  
+ 1. For the following options, when creating a new order, renewing an
+ existing order, copying an existing order to a new order, or editing an
+ existing order that results in a new order, the copay status of the
+ prescription needs to be determined for billing purposes.
+  
+ a. Patient Prescription Processing [PSO LM BACKDOOR ORDERS]
+ b. TPB Rx (Prescription) Entry [PSO TPB RX ENTRY]
+ c. Barcode Batch Prescription Entry [PSO BATCH BARCODE]
+ d. Complete Orders from OERR [PSO LMOE FINISH]
+  
+ Depending on the patient eligibility, the software currently provides
+ the following copay exemption questions to the pharmacist during 
+ prescription finishing process:
+  
+ "Is this Rx for treatment of Vietnam-Era Herbicide (Agent Orange) 
+ exposure?" 
+  
+ "Is this Rx for treatment of ionizing radiation exposure?" 
+  
+ "Is this Rx for treatment of environmental contaminant exposure during the
+ Persian Gulf War?" 
+  
+ "Is this Rx for treatment of Military Sexual Trauma?"
+  
+ "Is this Rx related to treatment of Head and/or Neck Cancer?"
+ and/or Neck Cancer veterans;
+  
+ To fulfill the Directive 2002-049, this patch will add the following 
+ Combat Veteran (CV) copay exemption question to the current copay list:
+  
+ "Is this Rx potentially for treatment related to Combat?"
+  
+ In the event that a patient is eligible for more than one copay 
+ exemption, the CV prompt will be presented to the pharmacist first.
+  
+ A 'YES' or 'NO' response will be stored in the COMBAT VETERAN field 
+ (#122) of the PRESCRIPTION file (#52). This is a new field introduced in
+ this patch.
+  
+ 2. The Integration Agreement (IA) 2534 provides CPRS the copay related 
+ questions that need to be asked during the outpatient medication order
+ entry process. This IA is modified to include the CV copay classification,
+ if applicable.
+  
+ 3. The PENDING OUTPATIENT ORDERS file (#52.41) that stores the pharmacy 
+ orders (new/renew) entered via CPRS is modified to include the provider's
+ response to the CV question. The provider's response will be stored in the
+ COMBAT VETERAN field (#110.1) of the PENDING OUTPATIENT ORDERS file
+ (#52.41). The COMBAT VETERAN field (#110.1) is a new field introduced in
+ this patch.
+  
+ 4. During the release of a prescription, medication copay exemptions are
+ re-evaluated to see if there is a change in the billing status. This logic
+ is modified to include the CV copay classification. If a copay exemption
+ question applies and is unanswered, a MailMan message is generated. This 
+ message is sent to the pharmacist, ordering provider, and holders of the
+ PSO COPAY key, to get answers to the exemption questions and reset the
+ prescription copay status if needed, using the Reset Copay Status/Cancel
+ Charges [PSOCP RESET COPAY STATUS] option .
+  
+ 5. The Reset Copay Status/Cancel Charges [PSOCP RESET COPAY STATUS] option
+ is modified to include the CV copay classification wherever applicable.
+  
+ 6. During label printing of a prescription, if a prescription is deemed
+ billable then the software does a check on the following copay exemption
+ fields of the PRESCRIPTION file (#52):
+ 117          MILITARY SEXUAL TRAUMA
+ 118          AGENT ORANGE EXPOSURE
+ 119          IONIZING RADIATION EXPOSURE
+ 120          ENVIRONMENTAL CONTAMINANT
+ 121          HEAD AND/OR NECK CANCER
+ 122          COMBAT VETERAN 
+ If the prescription is identified as copay exempt, the software will
+ print "NO COPAY".
+  
+  
+ Associated NOISs:
+ =================
+ N/A 
+     
+    
+     
+ Test Sites:
+ ===========
+ ALTOONA, PA
+ HEARTLAND-WEST, KS
+ MADISON, WI
+ NEW YORK HARBOR HCS, NY
+ NORTH TEXAS HCS, TX
+ GREATER LOS ANGELES HCS, CA
+ EL PASO, TX
+                     
+  
+ Routine Summary: 
+ ================
+ The second line now reads as follows: 
+  
+    <TAB>;;7.0;OUTPATIENT PHARMACY;**[patch list]**;DEC 1997 
+   
+ CHECK^XTSUMBLD results: 
+    
+ Routine    Before Patch   After Patch   Patch List 
+ ========================================================================
+ PSOCP      19725930       20178669      20,46,71,85,137,157
+ PSOCPC     24142718       25365048      10,9,71,85,114,157
+ PSOCPE     24639841       24658364      26,71,85,114,157
+ PSOHLNE1   24228465       24391034      1,9,46,71,98,111,117,131,157
+ PSOHLSN1   30766487       31152888      1,10,24,27,55,46,71,101,99,121,139,157
+ PSOHLSNC   16696539       17086440      111,157
+ PSOLBL     33806965       34084741      8,19,30,36,47,71,92,120,157
+ PSOLLLI    24917671       25195447      120,157
+ PSOMLLDT   30092800       33319253      71,157
+ PSON52     23156382       23311220      1,16,23,27,32,46,71,111,124,117,131,
+                                         139,157
+ PSONEW2    12656594       13009435      32,37,46,71,94,124,139,157
+ PSONEWF    10996562       12417539      71,157
+ PSONEWG     9971091       10932930      71,157
+ PSOPTPST   14299906       14412045      7,71,88,146,157
+ PSORENW1   22585409       23659551      20,37,51,46,71,117,157
+ PSORN52    27815524       27909127      1,11,27,37,46,79,71,100,117,157
+ PSORN52A   N/A             1743097      157
+  
+  
+ Documentation Retrieval:
+ ========================
+  
+ The VISTA documentation is available on the ANONYMOUS.SOFTWARE directory
+ at one of the following Office of Information (OI) Field Offices.
+  
+ Sites may retrieve documentation in one of the following ways:
+  
+ (1) The preferred method is to FTP the files from
+     download.vista.med.va.gov, which will transmit the files from the
+     first available FTP server.
+  
+ (2) Sites may also elect to retrieve documentation directly from a
+     specific server as follows:
+  
+     Albany          ftp.fo-albany.med.va.gov
+     Hines           ftp.fo-hines.med.va.gov
+     Salt Lake City  ftp.fo-slc.med.va.gov 
+  
+ The documentation distribution includes:
+  
+    FILE NAME                        DESCRIPTION
+  
+    PSO_7_UM_R0504.PDF               User Manual
+    PSO_7_P157_UM_CP.PDF             User Manual Change Pages Document
+    PSO_7_TM_R0504.PDF               Technical Manual
+    PSO_7_P157_TM_CP.PDF             Technical Manual Change Pages Document
+    PSO_7_P157_and_PSX_2_P50_RN.PDF  CV Release Notes Phase II
+    
+ (3) Documentation can also be retrieved from VISTA Documentation Library
+ (VDL) on the Internet at the following address,
+ http://www.va.gov/vdl.
+  
+  
+ Installation Instructions:
+ ==========================
+ Before installing this patch, use the List Tasks [XUTM INQ] option on the
+ Taskman Management [XUTM MGR] menu to list currently running tasks.  
+ This patch should be installed when there are no Outpatient Pharmacy
+ users on the system, and also when Outpatient Pharmacy orders are not
+ being acted upon through Computerized Patient Record System (CPRS). 
+ Installation of this patch should take no longer than 5 minutes.
+  
+  
+  
+ 1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu.  
+  
+ 2. Review your mapped set. If the routines are mapped, they should be
+    removed from the mapped set at this time.  
+  
+ 3. From the Kernel Installation & Distribution System menu, select the
+    Installation menu.  
+  
+ 4. From this menu, you may select to use the following options: 
+    (when prompted for INSTALL NAME, enter PSO*7.0*157) 
+  
+     a. Backup a Transport Global - this option will create a backup 
+        message of any routines exported with the patch. It will NOT 
+        backup any other changes such as DDs or templates.  
+  
+     b. Compare Transport Global to Current System - this option will 
+        allow you to view all changes that will be made when the patch 
+        is installed. It compares all components of the patch (routines, 
+        DDs, templates, etc.).  
+  
+     c. Verify Checksums in Transport Global - this option will ensure 
+        the integrity of the routines that are in the transport global.  
+  
+ 5. Use the Install Package(s) option and select the package PSO*7.0*157.
+  
+ 6. When prompted, "Queue the Post-Install to run at what Date@Time:" 
+    respond with the appropriate date and time.
+  
+ 7. When prompted, "Want KIDS to Rebuild Menu Trees Upon Completion of 
+    Install? YES//" respond NO.  
+  
+ 8. When prompted, "Want KIDS to INHIBIT LOGONs during the install? YES//" 
+    respond NO.
+  
+ 9. When prompted, "Want to DISABLE Scheduled Options, Menu Options, and 
+    Protocols? YES//" respond NO.
+  
+ 10. When prompted,"Device:Home//" respond with the correct device and DO 
+     NOT queue this to P-Message.
+  
+ 11. If routines were unmapped as part of step 2, they should be returned
+     to the mapped set once the installation has run to completion.
+
+Routine Information:
+====================
+
+Routine Name:
+  - PSOCP
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOCPC
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOCPE
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOHLNE1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOHLSN1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOHLSNC
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOLBL
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOMLLDT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSON52
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSONEW2
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSONEWF
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSONEWG
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOPTPST
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSORENW1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSORN52
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOLLLI
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSORN52A
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : ANWER,MOHAMED                 Date Entered  : NOV 05, 2003
+Completed By: COSTELLO,KELLY ANNE           Date Completed: MAY 12, 2004
+Released By : KIMBLE,BRUCE                  Date Released : MAY 13, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,232 @@
+$TXT Created by WILLIAMSON,ROBERT at SILVER.FORUM.VA.GOV on FRIDAY, 12/09/94 at 16:42
+=============================================================================
+Run Date: FEB 09, 1995                     Designation: XM*7.1*7
+Package : XM - MAILMAN                         Priority: Mandatory
+Version : 7.1         SEQ #9                   Status: Verified
+=============================================================================
+
+Associated patches: (v)XM*7.1*3    <<= must be installed BEFORE `XM*7.1*7'
+
+Subject: MOSTLY MANAGEMENT FIXES
+
+Category: 
+  - Routine
+  - Informational
+
+Description: 
+============
+
+The following routine errors are fixed with this patch:
+ 
+  o  XMB:  When XMDT is set before a call to XMB, the bulletin is
+     delivered immediately even when XMDT is for a time in the future.
+ 
+  o  XMR1:  The "AI" cross reference is not set properly with a timestamp,
+     such that the purge for the "AI" cross reference won't work properly.
+ 
+  o  XMUTPUR0:  Because of the above error, the x-ref for such messages
+     would be deleted on any PURGE AI run (potentially, leading to
+     multiple copies of the message).
+ 
+  o  XMAPHOST:  Occasionally a message that is designated to be printed to
+     P-Message will print to a spurious printer.
+ 
+  o  XMANON:  Editing a message using the XMSUGGESTION option causes the
+     line editor to fail.
+ 
+  o  XMA0A:  When "Outputting" all NEW messages to a printer, an IO error
+     occurs with some slave printers or nothing is printed.
+ 
+ 
+The following documentation should be changed:
+ 
+XMB, p. 24, MailMan Programmer Manual, should have XMZ deleted from the
+list of variables returned, [because it does NOT return XMZ!]
+ 
+(One could note that EN^XMB, however, since not running in the
+background, does return XMZ.)
+ 
+In fact, there is essentially no way to detect many errors directly!
+Non-delivery of the bulletin may be the only sign of something amiss,
+e.g., no recipients.
+ 
+The following line should be added:
+If XMB is not the name of a bulletin, it is set to -1.
+ 
+ 
+Appendix 2 of the MailMan Programmer Manual, page 46, that describes
+"Efficient Use of the MailMan API", has a misprint.  Step 3 should state
+that the entry point is "D ENT1^XMD"; note the tag is "ENT1", not "ENT".
+ 
+ 
+ Installation Instructions
+ =========================
+ 
+         Save a copy of the above routines either before you begin this
+         installation or when requested to do so during the unloading
+         of the specified PackMan message.
+ 
+ 1.  If your system uses mapped routine sets, unmap routines from any
+mapped routine sets.
+ 
+ 2.  This patch cannot be loaded when any users or background processes
+may be within the affected areas of MailMan.  In particular, a background
+process that generates bulletins could bomb.  Therefore it is recommended
+that this patch be installed only when all users, Task Manager, and all
+MailMan-using background tasks are not running.
+ 
+ 3.  Load the PackMan message into your production account.
+ 
+ 4.  Execute CHECK^XTSUMBLD to compute checksums for the following routines.
+ 
+ XMA0A     value = 6236649
+ XMANON    value = 836515
+ XMAPHOST  value = 6372694
+ XMB       value = 7009360
+ XMR1      value = 7053085
+ XMUTPUR0  value = 1145390
+ 
+ 
+ 
+     * Stop installation, reload the original routines and call your
+       supporting ISC if these values do not match.
+ 
+ 
+ 5.  Move the newly installed routines to all DHCP systems (as appropriate).
+ 
+ 6.  Check the mapped routine set and map the appropriate routines into
+the routine set.  Rebuild the mapped routine set.
+ 
+ 7.  Start Task Manager and enable users.
+ 
+ 
+ NOTES:
+ 
+   o  There is no TARGET or NOIS report associated with this patch.
+   o  The installation is the same regardless of the platform.
+   o  Users may NOT be on the system during the installation of this patch.
+   o  Any mapped routines must be unmapped, changed and remapped.
+
+Routine Information:
+====================
+
+Routine Name:
+  - XMAPHOST
+
+ 
+After line XMAPHOST+10, insert the following line
+ 
+    K ^TMP("XMY",$J),^TMP("XMY0",$J),XMY,XMY0
+
+Routine Checksum:
+Before patch:  6314745
+After patch:   6372694
+
+Routine Name:
+  - XMANON
+
+Line SEND+15:
+ 
+Was:      S DUZ=.6,XMDUZ="<anonymous>",XMDUN=XMDUZ
+Make:     S DUZ=.6,DUZ(0)="",XMDUZ="<anonymous>",XMDUN=XMDUZ
+ 
+E.g., by replacing  6  with 6,DUZ(0)=""
+
+Routine Checksum:
+Before the patch:  802776
+After the patch:   836515
+
+Routine Name:
+  - XMB
+
+Line New +1 used to be:
+N %,A,B,C,D,DA,DIC,DIE,DR,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,V,W,XMA0,XMB0,
+XMC0,XMCHAN,XMDT,XMINST,XMM,XMMG,XMIO,XMJ,XMRDOM,XMSCR,XMSCRN,XMSDOM,XMSITE,Y,Z
+ 
+And must become:
+N %,A,B,C,D,DA,DIC,DIE,DR,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,V,W,XMA0,XMB0,
+XMC0,XMCHAN,XMINST,XMM,XMMG,XMIO,XMJ,XMRDOM,XMSCR,XMSCRN,XMSDOM,XMSITE,Y,Z
+ 
+   E.g. by replacing  ,XMDT, with ,
+
+Routine Checksum:
+Before the patch:  7063777
+After the patch:   7009360
+ 
+
+Routine Name:
+  - XMR1
+
+Before the patch line O+2 looked like this:
+I $G(XMREMID("FILE")) D NOW^%DTC S Y=$E(XMREMID,1,64),^XMBX(3.9,"AI",Y,XMZ)="",^
+XMB(3.9,XMZ,5)=XMREMID
+ 
+After the change line O+2 should look like this:
+I $G(XMREMID("FILE")) D NOW^%DTC S Y=$E(XMREMID,1,64),^XMBX(3.9,"AI",Y,XMZ)=%,^X
+MB(3.9,XMZ,5)=XMREMID
+ 
+                               E.g. by replacing =""  with  =%
+
+Routine Checksum:
+ Before the patch:   7057132
+After the patch:   7053085
+ 
+ 
+
+Routine Name:
+  - XMUTPUR0
+
+Before the patch, line A+1 looked like this:
+ 
+     S I=I+1 I C<XMDT K ^XMBX(3.9,"AI",N,B) S K=K+1
+ 
+ 
+After the change lines A+1 through A+2 should look like this:
+ 
+     S I=I+1 I 'C S ^XMBX(3.9,"AI",N,B)=DT
+     E  I C<XMDT K ^XMBX(3.9,"AI",N,B) S K=K+1
+ 
+ 
+ 
+ 
+     E.g. by Breaking this line after S I=I+1
+ 
+         Then change line A+1 as follows:
+              replace S I=I+1  with  S I=I+1 I 'C S ^XMBX(3.9,"AI",N,B)=DT
+ 
+         Then change line A+2 as follows:
+              replace I with E  I
+
+Routine Checksum:
+Before the patch:  1115401
+After the patch:   1145390
+
+Routine Name:
+  - XMA0A
+
+Before this patch line ZTSK+1 looked like this:
+    S:'$D(IO) IO=$I S XMK=0,DY=1,DX=1 U IO X ^%ZOSF("XY")
+ 
+and needs to be:
+    S:'$D(IO) IO=$I S XMK=0,DY=1,DX=1 U IO I $E(IOST ,1,2)="C-" X ^%ZOSF("XY")
+ 
+ 
+        E.g. by replacing U IO X with U IO I $E(IOST,1,2)="C-" X
+
+Routine Checksum:
+Before the patch:  6165312
+After the patch:   6236649
+
+=============================================================================
+User Information:                               
+Entered By  : HIRZ,LEE J                    Date Entered : NOV 13, 1994
+Completed By: WILLIAMSON,ROBERT             Date Completed : FEB 08, 1995
+Verified By : SATTERWHITE,MICHAEL           Date Verified : FEB 09, 1995
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+ 
+$END TXT

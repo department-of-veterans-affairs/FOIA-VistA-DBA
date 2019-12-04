@@ -1,0 +1,276 @@
+$TXT Created by PAJERSKI,JANET at DEVFEX.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 05/25/04 at 11:38
+=============================================================================
+Run Date: JUL 16, 2004                     Designation: EAS*1*53
+Package : EAS - ENROLLMENT APPLICATION SYSTEM Priority: Mandatory
+Version : 1        SEQ #42                      Status: Released
+                  Compliance Date: AUG 16, 2004
+=============================================================================
+
+
+Subject: FIX FILE #712 RELATED NOIS ISSUES
+
+Category: 
+  - Data Dictionary
+  - Routine
+
+Description:
+============
+
+   The following NOIS issues are addressed in this patch.
+   
+   LOU-0503-41778
+   --------------
+   To get around some of the strict rules for 1010EZ processing order,
+   site user have attempted to delete critical date field in the 1010EZ
+   HOLDING file (#712) via FileMan.  But these fields are associated
+   with special cross-references on file #712 that were meant to be 
+   updated procedurally.  Because the cross-references were not properly
+   re-set, the 1010EZ application will appear to be "stuck  in a 
+   particular status.
+    
+   (1) The Regular cross-reference on the following fields:
+    
+   #3     ENTRY DATE
+   #4     DATE SIGNED BY APPLICANT
+   #5.1   REVIEW DATE
+   #6.1   PRINT DATE
+   #7.1   FILING DATE
+   #9.1   CLOSE DATE
+    
+   is being changed to a Mumps x-ref.  This allowed the KILL portion
+   of the x-ref to be changed from this
+    
+   K ^EAS(712,"xxx",$E(X,1,30),DA) 
+    
+   to this 
+    
+   K ^EAS(712,"xxx",$E(X,1,30),DA) D APPINDEX^EASEZU2(DA)
+    
+   The new cross-references should prevent future occurrences of this
+   problem.
+    
+   (2) The patch also includes a post-installation routine that will 
+   order through file #712 and execute D APPINDEX^EASEZU2(IEN)for each 
+   IEN.  This will take care of any 1010EZs that currently have bad 
+   cross-references.  
+   
+   The post-installation routine will be queued to run at 3:00 am on
+   the day following the patch installation date.  When it has completed,
+   a MailMan message will be sent to the installer and all members of 
+   G.VA1010EZ at the facility, to inform them of successful completion.
+     
+   The following is an example of the MailMan message:
+     
+     Subj: EAS*1*53 POST-INSTALL COMPLETE  [#187397] 05/18/04@08:40  
+     From: POSTMASTER  In 'IN' basket.   Page 1  *New*
+     ----------------------------------------------------------------
+     Post-installation cross-reference clean-up of file #712
+     for EAS*1*53 completed successfully at MAY 18, 2004@08:41:22
+     by Task #256487.
+   
+     Total entries in file #712 re-indexed: 573
+    
+     Enter message action (in IN basket): Ignore// 
+   
+   
+   DUB-0304-31449
+   --------------
+   
+   The site reported that an unknown, inactive user's DUZ was appearing
+   in the REVIEWED BY field (#5.2).  The DUZ of the actual Reviewer and
+   the VA# of the inactive user were the same.  The mis-filing is caused
+   by poor setup of the DR variable in preparation for a call to ^DIE 
+   which places the user's DUZ in file #712.
+   
+   The DR variable has been revised in routines EASEZU2 and EASEZU6.
+   This should prevent all future occurrences of this problem.
+   
+   
+     
+  TECHNICAL DESCRIPTION:
+  ======================
+               
+  There are two NOIS reports associated with this patch:
+   
+      DUB-0304-31449
+      LOU-0503-41778
+    
+   
+  There is one data dictionary exported with this patch in order to 
+  update several critical cross-references: 
+    
+     1010EZ HOLDING File (#712)
+    
+   
+  The following is a list of the routines included in this patch.  
+  The second line of each of these routines now looks like: 
+                                 
+  <tab>;;1.0;ENROLLMENT APPLICATION SYSTEM;**[patch list]**;Mar 15, 2001
+            
+                       CHECK^XTSUMBLD results
+  Routine name   Before Patch       After Patch         Patch List
+  ============   ============       ===========         ==========
+  EAS1P53            N/A              1882008           53
+  EASEZU2          10315730          10342679           53
+  EASEZU6          13044417          13061927           53
+     
+  Number of Routines = 3
+   
+      
+  INSTALLATION:
+  =============
+  This patch can be installed with users on the system, however it should 
+  be installed during off hours to minimize disruption to users. 
+  
+  Install Time - less than 2 minutes                        
+                           
+  ======================= INSTALLATION INSTRUCTIONS =======================                      
+    
+  1.   LOAD TRANSPORT GLOBAL 
+       ---------------------
+       Choose the PackMan message containing this patch and invoke the 
+       INSTALL/CHECK MESSAGE PackMan option to load the patch contents
+       to the KIDS transport global.  
+                          
+  2.   ROUTINES SENT WITH PATCH 
+       ------------------------
+       Review your mapped set.  If any of the routines listed here are
+       mapped, then they should be removed from the mapped set at this time.
+      
+       EASEZU2
+       EASEZU6
+     
+  3.   START UP KIDS 
+       -------------
+       Start up the Kernel Installation and Distribution System Menu 
+       [XPD MAIN]: 
+                          
+            Edits and Distribution ...  
+            Utilities ...  
+            Installation ...  
+                                    
+       Select Kernel Installation & Distribution System Option: INStallation 
+                                                                ---
+            Load a Distribution 
+            Print Transport Global 
+            Compare Transport Global to Current System 
+            Verify Checksums in Transport Global 
+            Install Package(s) 
+            Restart Install of Package(s) 
+            Unload a Distribution 
+            Backup a Transport Global 
+                      
+       Select Installation Option: 
+    
+       NOTE:  The following are OPTIONAL - 
+                     
+      a.   Print Transport Global - This option will allow you to view all 
+           components of this patch (routines, DD's, templates, etc.).
+      b.   Backup a Transport Global - This option will create a backup
+           message of any routines exported with this patch. It will not
+           backup any other changes such as DD's or templates.
+      c.   Compare Transport Global to Current System - This option will
+           allow you to view all changes that will be made when this patch
+           is installed.  It compares all components of this patch
+           (routines, DD's, templates, etc.).
+      d.   Verify Checksums in Transport Global - This option will allow
+           you to ensure the integrity of the routines that are in the
+           transport global.        
+           
+  4.   SELECT INSTALLATION OPTION: 
+       --------------------------
+                    
+       **This is the step to start the installation of this KIDS patch. 
+     
+       Select Installation Option: Install Package(s) 
+                                   ----------------
+       Select INSTALL NAME: EAS*1.0*53
+                            ----------
+    
+       a.  Choose the Install Package(s) option to start the patch install.
+       b.  When prompted for the INSTALL NAME, enter EAS*1.0*53.      
+       c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+           Options, and Protocols? YES//' answer NO.
+            
+  5.  POST INSTALLATION:
+      -----------------
+      If any routines were unmapped as part of step 2, they should be
+      returned to the mapped set once the installation has run to
+      completion.
+   
+      The post-installation cleanup job will be queued to run via
+      TaskManager at 3:00 am the day following the installation
+      date.  The installer will see a message similar to the following
+      appear on the screen near the end of the Kernel installation 
+      process:
+   
+         Post-installation clean-up of file #712 x-refs queued for
+         MAY 19, 2004@03:00 as Task #256487.
+
+Routine Information:
+====================
+
+Routine Name:
+  - EAS1P53
+
+
+Routine Checksum:
+
+Routine Name:
+  - EASEZU2
+
+ On each line shown below "////^S X=DUZ" replaces "///^S X=DUZ" --
+   
+ >>>>>EASEZU2+36
+  I INDEX="REV" S DR="5.1///^S X=DT;5.2////^S X=DUZ" D ^DIE,...
+   
+ >>>>>EASEZU2+37
+  I INDEX="PRT" S DR="6.1///^S X=DT;6.2////^S X=DUZ" D ^DIE,...
+   
+ >>>>>EASEZU2+38
+  I INDEX="SIG" S DR="4///^S X=DT;4.1///^S X=DT;4.2////^S X=DUZ" D ^DIE,...
+   
+ >>>>>EASEZU2+39
+  I INDEX="FIL" S DR="7.1///^S X=DT;7.2////^S X=DUZ" D ^DIE,...
+   
+ >>>>>EASEZU2+40
+  I INDEX="CLS" S DR="9.1///^S X=DT;9.2////^S X=DUZ" D ^DIE,...
+  
+
+Routine Checksum:
+
+Routine Name:
+  - EASEZU6
+
+ On each line shown below "////^S X=DUZ" replaces "///^S X=DUZ" --
+   
+ >>>>>EASEZU6+39
+  .S DR="1///^S X=UNAME(XPART);1.1///^S X=1;1.2///^S X=DT;1.3////^S X=DUZ"
+   
+ >>>>>EASEZU6+91
+  .S DR="1///^S X=UPHONE(XPART);1.1///^S X=1;1.2///^S X=DT;1.3////^S X=DUZ"
+   
+ >>>>>EASEZU6+131
+  S DR="1///^S X=ABBR;1.1///^S X=1;1.2///^S X=DT;1.3////^S X=DUZ"
+   
+ >>>>>EASEZU6+182
+  S DR="1///^S X=COUNTY;1.1///^S X=1;1.2///^S X=DT;1.3////^S X=DUZ"
+   
+ >>>>>EASEZU6+220
+  S DR="1.5///^S X=UPDATE;1.1///^S X=ACCEPT;1.2///^S X=DT;1.3////^S X=DUZ"
+   
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : PAJERSKI,JAN                  Date Entered  : MAY 17, 2004
+Completed By: MULLER,RICHARD                Date Completed: JUL 16, 2004
+Released By : GROOMS,ANTHONY E              Date Released : JUL 16, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,336 @@
+$TXT Created by DOWNING,TODD at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 05/12/04 at 09:34
+=============================================================================
+Run Date: AUG 26, 2004                     Designation: ECX*3*68
+Package : ECX - DSS EXTRACTS                  Priority: Mandatory
+Version : 3        SEQ #65                      Status: Released
+                  Compliance Date: SEP 26, 2004
+=============================================================================
+
+Associated patches: (v)ECX*3*24    <<= must be installed BEFORE `ECX*3*68'
+                    (v)ECX*3*40    <<= must be installed BEFORE `ECX*3*68'
+
+Subject: MODS TO ECX PHA FKEY,YEAR MONTH FLD IN 727.827,SUR AUDIT RPT,GLOBAL JOURNALING
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Informational
+
+Description:
+============
+
+ This patch does the following:
+  
+ 1. Adds NDC codes with an 'S' prefix (supply item numbers or UPC's) to the 
+ Pharmacy Extracts Incomplete Feeder Key Report (ECX PHA FKEY).
+  
+ 2. Changes the Data Type of the YEAR MONTH field (#1) in the CLINIC EXTRACT 
+ file (#727.827) from Numeric to Free Text.
+  
+ 3. Modifies the Surgery (SUR) Extract Audit option to identify inactive 
+ Surgery divisions in the division selection list.
+  
+ 4. Updates DSS documentation to recommend journaling of the ^ECX global.   
+  
+  
+ ASSOCIATED NOIS:
+ ================
+ FAV-0803-71894  MATCH SUPPLY &
+ SDC-0903-61903  <duplicate> NDC FORMAT DRUG FILE & DSS EXTRACT PROBLEM
+ OKL-0903-72037  <duplicate> PSA UPLOAD Storing NDC Prefix
+ BHH-0602-42537  change the year month data type in file  727.827 to free 
+                 text
+ ANC-1203-52423  Extract Audit Reports
+ ISL-0602-52882  Journaling of ECX
+  
+  
+ ASSOCIATED E3R:
+ ===============
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Ft. Harrison, MT   
+ Anchorage, AK  
+ Fayetteville, AR  
+ Little Rock, AR   
+ Oklahoma City, OK
+   
+ NOIS OVERVIEW:
+ ==============
+  
+ 1. FAV-0803-71894  MATCH SUPPLY &
+  
+ Problem
+ -------
+ Several sites are reporting a problem with DSS Pharmacy Extracts(PRE,IVP,and 
+ UDP) Feeder Keys containing an 'S' as the first character of the NDC code 
+ portion of the key.  NDC's containing the 'S' are not true NDC codes and 
+ cannot be resolved in the Eclipsys database.
+  
+ Resolution
+ ----------
+ In the DA package, drugs that have no matching NDC get the UPC code stuffed 
+ into the NDC field prefixed with an 'S'.  Also, items sent as supply items 
+ from the primary vendor are prefixed with an 'S'.
+  
+ The DSS Pharmacy Extracts Incomplete Feeder Key Report (ECX PHA FKEY) has 
+ been modified to include Feeder Keys that contain an NDC that starts with an 
+ 'S'.  This report used by DSS staff to identify NDC codes and/or VA Product 
+ Name Entry that need to be resolved before Pharmacy Extracts are run in VistA.
+  
+ 2. BHH-0602-42537  change the year month data type in file  727.827 to free 
+                    text
+  
+ Problem
+ -------
+ The Data Type(Numeric) of the YEAR MONTH field(#1) in the Clinic Extract file 
+ (#727.827) is inconsistent with Data Type (Free Text) for this field in all 
+ other DSS Extract files.  This causes problems when sorting on this field 
+ using Fileman.
+  
+ Resolution
+ ----------
+ The Data Type has been changed to Free Text.  Input and output transforms 
+ were also added to this field to make it consistent with other Extract files.  
+ Seethe DATA DICTIONARY section of this patch description for details.
+  
+ 3. ANC-1203-52423  Extract Audit Reports 
+  
+ Problem
+ -------
+ The Surgery (SUR) Extract Audit option (ECX SUR SOURCE AUDIT) allows for 
+ the selection of all Surgery divisions, including those that are inactive.  
+  
+ Resolution
+ ----------
+ The Surgery division selection list has been modified to display
+ "**INACTIVE**" next to divisions that are inactive in the SURGERY SITE
+ PARAMETERS file(#133). These divisions will not be screened out when
+ selecting all divisions at the prompt since a division that is inactive at
+ the time the audit is run may have been active during the period for which
+ Surgery Extract data is being audited.  This affects both the Surgery
+ Extract Audit option (ECX SUR SOURCE AUDIT) and the SAS Surgery Audit
+ Report (ECX SAS SURGERY).
+  
+ 4. ISL-0602-52882  Journaling of ECX
+  
+ Problem
+ -------
+ The DSS documentation does not contain instructions for journaling the ^ECX 
+ global.  There are two files, the IV EXTRACT DATA file (#728.113) and the 
+ UNIT DOSE EXTRACT DATA file (#728.904), that could not be restored in the 
+ event of system crash.  
+  
+ Resolution
+ ----------
+ The DSS Extracts Installation Guide has been updated with a recommendation to 
+ journal the ^ECX global to provide a means of reconstructing these two files
+ in the event of a system crash or other event that would necessitate the 
+ reconstruction of the ^ECX global.
+  
+  
+ DATA DICTIONARY CHANGES:
+ ========================
+  
+ Modifications were made to the YEAR MONTH field (#1) of the Clinic Extract 
+ file (#727.827) as follows:
+  
+ Before:
+ +++++++
+  
+ 727.827,1     YEAR MONTH             0;2 NUMBER (Required)
+  
+               INPUT TRANSFORM:  K:+X'=X!(X>999999)!(X<0)!(X?.E1"."1N.N) X
+               LAST EDITED:      MAY 09, 2000 
+               HELP-PROMPT:      Answer must be 6 characters in length:
+                                 YYYYMM
+  
+ After:
+ ++++++
+  
+ 727.827,1     YEAR MONTH             0;2 FREE TEXT (Required)
+  
+               INPUT TRANSFORM:  K:$L(X)>6!($L(X)<6)!'(X?6N) X
+               OUTPUT TRANSFORM: S Y=$$ECXYMX^ECXUTL(Y)
+               LAST EDITED:      FEB 11, 2004 
+               HELP-PROMPT:      Answer must be 6 characters in length. 
+  
+  
+ ROUTINE SUMMARY:
+ ================
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+  
+     <tab>;;3.0;DSS EXTRACTS;**[patch list]**;Dec 22, 1997
+  
+                            CHECK^XTSUMBLD results
+ Routine name      Before Patch          After Patch         Patch List
+ ============      ============          ===========         ==========
+ ECXDRUG1              13696670             15176606            40,68
+ ECXDRUG2               7195710              7361955            40,68
+ ECXDVSN2               8111034              8299668          14,24,68
+  
+  
+ DISTRIBUTION:
+ =============
+ The KIDS Build is attached to this message.
+  
+ The changed versions of the manual are posted on the Vista 
+ Documentation Library (VDL), and both  dss_3_ig.pdf and 
+ dss_3_ig.doc may also be downloaded from the following
+ IO Field Offices:  
+   
+  Albany              ftp.fo-albany.med.va.gov     anonymous.software
+  Hines               ftp.fo-hines.med.va.gov      anonymous.software
+  Salt Lake City      ftp.fo-slc.med.va.gov        anonymous.software
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+  
+ This patch may be run with users on the system, but it is recommended 
+ that it be queued to run after normal business hours to minimize the
+ impact on users of the Registration package.
+  
+ Installation will take less than 1 minute.
+  
+ 1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu to unload
+     the KIDS distribution included with this message.
+  
+ 2.  Review your mapped set.  If any of the routines listed in the ROUTINE   
+  
+     SUMMARY section are mapped, they should be removed from the mapped set 
+     at this time.
+  
+ 3.  From the Kernel Installation and Distribution System Menu, select
+     the Installation menu.
+  
+ 4.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter ECX*3.0*68
+  
+     a.  Compare Transport Global to Current System  - this option will
+         allow you to view all changes that will be made when the patch
+         is installed.  It compares all components of the patch (routines,
+         DDs, templates, etc.).
+     b.  Verify Checksums in Transport Global - this option will
+         allow you to ensure the integrity of the routines that are in
+     c.  Print Transport Global - this option will allow you to view the
+         components of the KIDS build.
+   
+ 5.  Use the Install Package(s) option and select the package ECX*3.0*68
+  
+ 6.  When prompted ' Want KIDS to INHIBIT LOGONs during the install?
+     YES//', respond NO.
+  
+ 7.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+     Protocols? YES//', respond NO.
+  
+ 8.  If routines were unmapped as part of step 2, they should be returned
+     to the mapped set once the installation has run to completion.
+  
+  
+ INSTALLATION EXAMPLE:
+ =====================
+  
+ Select Installation Option: 6  Install Package(s)
+ Select INSTALL NAME: ECX*3.0*68       Loaded from Distribution  
+ 2/20/04@15:42:55
+      => ECX*3.0*68
+  
+ This Distribution was loaded on Feb 20, 2004@15:42:55 with header of 
+    ECX*3.0*68
+    It consisted of the following Install(s):
+      ECX*3.0*68
+ Checking Install for Package ECX*3.0*68
+  
+ Install Questions for ECX*3.0*68
+  
+ Incoming Files:
+  
+  
+    727.827   CLINIC EXTRACT  (Partial Definition)
+ Note:  You already have the 'CLINIC EXTRACT' File.
+  
+  
+ Want KIDS to INHIBIT LOGONs during the install? YES// NO
+ Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// NO
+  
+ Enter the Device you want to print the Install messages.
+ You can queue the install by enter a 'Q' at the device prompt.
+ Enter a '^' to abort the install.
+  
+ DEVICE: HOME//   IP network
+  
+  
+  
+  
+  Install Started for ECX*3.0*68 : 
+                Feb 20, 2004@15:43:19
+  
+ Build Distribution Date: Feb 20, 2004
+  
+  Installing Routines:
+                                    ECX*3.0*68                               
+     
+ --------------------------------------------------------------------------------
+                Feb 20, 2004@15:43:19
+  
+  Installing Data Dictionaries: 
+                Feb 20, 2004@15:43:19
+  
+  Updating Routine file...
+  
+  The following Routines were created during this install:
+      ECX827
+      ECX8271
+      ECX8272
+  
+  Updating KIDS files...
+  
+  ECX*3.0*68 Installed. 
+                Feb 20, 2004@15:43:20
+  
+  Install Message sent #7947
+ --------------------------------------------------------------------------------
+           +------------------------------------------------------------+
+   100%    |             25             50             75               |
+ Complete  +------------------------------------------------------------+
+  
+  
+  
+  
+ Install Completed
+
+Routine Information:
+====================
+
+Routine Name:
+  - ECXDRUG1
+
+
+Routine Checksum:
+
+Routine Name:
+  - ECXDRUG2
+
+
+Routine Checksum:
+
+Routine Name:
+  - ECXDVSN2
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : DOWNING,TODD                  Date Entered  : FEB 04, 2004
+Completed By: DAWSON,TIM                    Date Completed: AUG 24, 2004
+Released By : COOPER,SAMANTHA               Date Released : AUG 26, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

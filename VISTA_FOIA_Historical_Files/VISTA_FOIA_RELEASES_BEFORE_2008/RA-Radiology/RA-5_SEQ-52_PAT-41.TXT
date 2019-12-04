@@ -1,0 +1,500 @@
+
+=============================================================================
+Run Date: AUG 31, 2005                     Designation: RA*5*41
+Package : RA - RADIOLOGY/NUCLEAR MEDICINE     Priority: Mandatory
+Version : 5        SEQ #52                      Status: Released
+                  Compliance Date: OCT 01, 2005
+=============================================================================
+
+Associated patches: (v)RA*5*2     <<= must be installed BEFORE `RA*5*41'
+                    (v)RA*5*26     <<= must be installed BEFORE `RA*5*41'
+                    (v)RA*5*27     <<= must be installed BEFORE `RA*5*41'
+                    (v)RA*5*34     <<= must be installed BEFORE `RA*5*41'
+                    (v)PX*1*124    <<= must be installed BEFORE `RA*5*41'
+                    (v)RA*5*45     <<= must be installed BEFORE `RA*5*41'
+
+Subject: Clinical Indicator Data Capture - Radiology
+
+Category: 
+  - Informational
+  - Data Dictionary
+  - Routine
+  - Input Template
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ This patch is the Radiology/Nuclear Medicine part of the Clinical 
+ Indicator Data Capture (CIDC) project.  There are no E3Rs associated with
+ this patch; however, there is a NOIS associated with this patch, due to 
+ identical concern in validating the provider who requested the order.
+  
+ The NOIS is HAM-1104-20122, which is Remedy ticket HD0000000068382. The
+ problem occurred in the 'Request an Exam' [RA ORDEREXAM] option, when a
+ person, having a termination date in the NEW PERSON file (#200), was
+ selectable at the "Person Requesting Order:" prompt.  This patch corrects
+ the data screening at this prompt, so that only non-terminated users with
+ the PROVIDER key would be selectable.
+  
+ The software for this patch is being distributed in host file 
+ PX_CLINICAL_INDICATOR_DATA_CAPTURE.KID.  The host file will contain six 
+ KIDS builds.
+  
+ The builds contained in the CIDC multi-package distribution are:
+  
+       Package                         Patch
+       -------                          ---------
+       PCE PATIENT CARE ENCOUNTER      PX*1.0*124
+       INTEGRATED BILLING              IB*2.0*260
+       RADIOLOGY/NUCLEAR MEDICINE      RA*5.0*41
+       SURGERY                         SR*3.0*119
+       PROSTHETICS                     RMPR*3.0*78
+       OUTPATIENT PHARMACY             PSO*7.0*143
+   
+ Please refer to the 'Software and Documentation Retrieval' section of the 
+ PX*1.0*124 patch description for instructions on how to acquire the patch
+ software and install instructions.
+  
+  
+ Overview
+ ========
+ This enhancement will allow the Radiology package to capture Clinical 
+ Indicator information related to care provided to a patient.
+  
+ This patch includes changes and additions to the Radiology package as 
+ required by the Clinical Indicator Data Capture Project.
+  
+ Functional Description
+ ======================
+ Modifications to the 'Request an Exam' [RA ORDEREXAM] and 'ADD Exams to 
+ Last Visit' [RA ADDEXAM] options were made to provide for the capture of
+ CIDC related data.
+  
+ These data will be included in transmission of Orders between Radiology 
+ and CPRS GUI, where orders can be entered from either application.
+  
+ Technical Description
+ ======================
+ There is a pre-installation routine, RA41PRE, which will run prior to 
+ the patch installation to temporarily delete the description for the 
+ CREDIT METHOD sub-field (#26) within the EXAMINATIONS multiple (#50) 
+ within the REGISTERED EXAMS multiple (#2) in the RAD/NUC MED PATIENT file 
+ (#70) and for the CREDIT METHOD field (#21) in the IMAGING LOCATIONS file 
+ (#79.1).  
+  
+ Also, a post-installation routine RA41PST will recompile the
+ following three input templates:
+        RA REGISTER from the RAD/NUC MED PATIENT file (#70)
+        RA ORDER EXAM from the RAD/NUC MED ORDERS file (#75.1)
+        RA QUICK EXAM ORDER from the RAD/NUC MED ORDERS file (#75.1)
+  
+ 1.  The 'Purge Data Function' [RA PURGE] option will no longer allow
+     purging of orders from the Radiology Package.  Routine RAPURGE was 
+     modified. 
+  
+ 2.  The 'Request An Exam' [RA ORDEREXAM] option will display new prompts 
+     for ICD diagnosis codes and any associated SC/EI (Service Connected /
+     Environmental Indicators) if the user is a provider and the CIDC 
+     switch and the patient's insurance permit these prompts.  The 'ADD 
+     Exams to Last Visit' [RA ADDEXAM] option may also display these new 
+     prompts, if the above conditions are met and if the added exam comes
+     from a new order that was made within this option.
+  
+     The new prompts are:
+  
+              Copy a previous order's ICD codes and SC/EI values
+  
+              Primary Ordering ICD Diagnosis
+              and Clinical Indicators related to this ICD Diagnosis
+  
+              Secondary Ordering ICD Diagnosis
+              and Clinical Indicators related to this ICD Diagnosis
+  
+     If the conditions for user PROVIDER key, CIDC switch, and patient's
+     insurance are satisfied, then this option will prompt the users to
+     indicate if they want to copy the ICD Diagnosis and SC/EI values from 
+     an order previously submitted for the current patient.  If the user
+     answers "Yes", then the option will display a list of the patient's
+     previously submitted orders and asks the user to select one of them.
+  
+     The selected order's ICD Diagnoses and ICD/SC/EI values, if any, will 
+     be used as default values to the new order's ICD Diagnoses and SC/EI
+     prompts, which will be displayed later in the ordering process.  The 
+     user may change, delete, and/or add to these default values.
+  
+     Data from the new prompts will be transmitted between Radiology and 
+     CPRS GUI, so both applications would be storing ordering ICD diagnoses
+     and associated SC/EI values.  Radiology initiated orders (backdoor
+     orders) normally do not require electronic signatures from CPRS GUI,
+     unless their NATURE OF ORDER is VERBAL or TELEPHONED.  In these two
+     instances, the ordering physician would receive an alert in CPRS GUI
+     to sign off those orders.  Because the CPRS sign-off process includes
+     the updating of ICD diagnoses and SC/EI values, and there's no time
+     limit to when a sign-off can be done, the ordering physician may
+     update these values after the exam has already been completed.  If
+     this should happen, the transmission of this completed exam to PCE
+     will be repeated to include the updated ICD diagnoses and SC/EI
+     values.
+  
+     To accomplish the above, routines RAO7NEW, RAO7RON, RAORD1, and 
+     RAORDU1 were modified, and routines RABWORD, RABWORD1, RABWORD2 were
+     added.
+  
+ 3.  The following options will display the new Ordering ICD Diagnosis 
+     fields and their related data: 
+  
+             Detailed Request Display [RA ORDERDISPLAY]
+             Print Rad/Nuc Med Requests by Date [RA ORDERPRINTS]
+             Print Selected Requests by Patient [RA ORDERPRINTPAT]
+  
+     The modified routines are:  RABWUTL, RAORD3, and RAORD6
+  
+  
+ 4.  The screen, DIC("S"), for the REQUESTING PHYSICIAN field (#14) in
+     the RAD NUC/MED ORDERS file (#75.1) and the REQUESTING PHYSICIAN 
+     sub-field (#14) within the EXAMINATIONS multiple (#50) within the
+     REGISTERED EXAMS multiple (#2) in the RAD/NUC MED PATIENT file (#70)
+     has been changed to "I $$PROV^RABWORD" which calls a Kernel API to
+     make sure the user is an active user and checks that the user has the
+     PROVIDER key.
+  
+  
+ 5.  The CREDIT METHOD sub-field (#26) within the EXAMINATIONS multiple 
+     (#50) within the REGISTERED EXAMS multiple (#2) in the RAD/NUC MED 
+     PATIENT file (#70) and the CREDIT METHOD field (#21) in the IMAGING 
+     LOCATIONS file (#79.1) will also accept partial crediting.
+       
+     The screen, DIC("S"), for both fields has been removed
+     from both files.
+  
+  
+ 6.  The following options will display a new prompt, INTERPRETING IMAGING 
+     LOCATION :
+  
+           Report Entry/Edit [RA RPTENTRY]
+           Resident On-Line Pre-Verification [RA RESIDENT PRE-VERIFY]
+  
+     Routines RARTE4 and RARTRPV1 were modified and routine RABWRTE was
+     added.
+  
+ 7.  At the time of exam completion, the Ordering ICD Diagnoses and 
+     associated SC/EI data would be included in the data transmitted to 
+     PCE.
+  
+     Routine RAPCE has been modified and routine RABWPCE was added.
+  
+  
+ 8.  When an exam is completed, both inpatient and outpatient data would 
+     be sent to PCE.  (Previously, only outpatient completed data would be
+     sent to PCE.)  The new ICD Diagnoses and SC/EI data are included in
+     the data sent to PCE.
+  
+     Routine RAORDU was modified to include inpatients.
+  
+  
+ DATA DICTIONARY SUMMARY
+ ========================
+  
+ This patch adds the following new fields:
+  
+ ---------------------------------
+ RAD/NUC MED ORDERS file (#75.1)
+ ---------------------------------
+  
+ Field Name and Number                  Field Type
+ ------------------------------------   -----------------------------------
+ PRIMARY ORDERING ICD DIAGNOSIS (#91)   Pointer to ICD DIAGNOSIS file (#80)
+ PRIMARY DX RELATED TO SC (#92)         Set of Codes
+ PRIMARY DX RELATED TO AO (#93)         Set of Codes
+ PRIMARY DX RELATED TO IR (#94)         Set of Codes
+ PRIMARY DX RELATED TO EC (#95)         Set of Codes
+ PRIMARY DX RELATED TO MST (#96)        Set of Codes
+ PRIMARY DX RELATED TO HNC (#97)        Set of Codes
+ PRIMARY DX RELATED TO CV (#99)         Set of Codes
+  
+ Subfields within the SECONDARY ORDERING ICD DIAG. multiple (#98) in the 
+ RAD/NUC MED ORDERS file (#75.1):
+  
+ Sub field Name and Number              Field Type
+ -----------------------------------    -----------------------------------
+ SECONDARY ORDERING ICD DIAG. (#.01)    Pointer to ICD DIAGNOSIS file (#80)
+ SECONDARY DX RELATED TO SC (#2)        Set of Codes
+ SECONDARY DX RELATED TO AO (#3)        Set of Codes
+ SECONDARY DX RELATED TO IR (#4)        Set of Codes
+ SECONDARY DX RELATED TO EC (#5)        Set of Codes
+ SECONDARY DX RELATED TO MST (#6)       Set of Codes
+ SECONDARY DX RELATED TO HNC (#7)       Set of Codes
+ SECONDARY DX RELATED TO CV (#8)        Set of Codes
+  
+ -------------------------------
+ RAD/NUC MED REPORTS  file (#74)
+ -------------------------------
+  
+ Field Name                             Field Type
+ -----------------------------------    -------------------------------
+ INTERPRETING IMAGING LOCATION (#86)    Pointer to the IMAGING LOCATION
+                                        file (#79.1)
+  
+  
+ This patch modifies the following fields:
+  
+ ---------------------------------
+ RAD/NUC MED ORDERS file (#75.1)
+ ---------------------------------
+  
+ Field Name                              Field Type
+ --------------------------              --------------------------------
+ REQUESTING PHYSICIAN (#14)              Pointer to NEW PERSON file (#200)
+  
+    Modification:  
+  
+       REQUESTING PHYSICIAN (#14) -- the DIC("S") will use an API from
+       Kernel and also check if the user has the PROVIDER key.
+  
+  
+ -------------------------------------------------
+ Sub-fields within the EXAMINATIONS multiple (#50)
+ within the REGISTERED EXAMS multiple (#2) 
+ in the RAD/NUC MED PATIENT file (#70) :
+ -------------------------------------------------
+  
+ Sub-field Name and Number             Field Type
+ --------------------------            ---------------------------------
+ REQUESTING PHYSICIAN (#14)            Pointer to New Person file (#200)
+ CREDIT METHOD        (#26)            Set of Codes
+ IMAGING ORDER        (#11)            Pointer to RAD/NUC MED ORDERS 
+                                                            file (#75.1)
+  
+    Modifications:  
+  
+       REQUESTING PHYSICIAN (#14) -- the DIC("S") will use an API from
+          Kernel and also check if the user has the PROVIDER key.
+  
+       CREDIT METHOD (#26) -- the DIC("S") will be removed so that partial 
+          crediting can also be selected:
+             1:Interpretation Only
+             3:Technical Component Only.  
+  
+       IMAGING ORDER (#11) -- the Technical Description will state that
+          Patch RA*5*41 will disallow purging of orders from the
+          Radiology/Nuclear Medicine application.
+  
+ ----------------------------------
+ RAD/NUC MED REPORTS file (#79.1)
+ ----------------------------------
+  
+ Field Name and Number                   Field Type
+ ---------------------                   ----------
+ CREDIT METHOD (#21)                     Set of codes
+  
+    Modification:  
+  
+       CREDIT METHOD (#21) -- the DIC("S") will be removed so that partial 
+          crediting can also be selected:
+             1:Interpretation Only
+             3:Technical Component Only.  
+  
+  
+ DOCUMENTATION SUMMARY
+ =====================
+  
+      The documentation for this Radiology patch can be found in the 
+      following [ANONYMOUS.SOFTWARE] directories:
+    
+                                    Preferred Address
+                                    -------------------------
+       First available FTP server   download.vista.med.va.gov
+    
+       Specific Field Office        FTP Address
+       ---------------------        ------------------------
+       Albany                       ftp.fo-albany.med.va.gov
+       Hines                        ftp.fo-hines.med.va.gov
+       Salt Lake City               ftp.fo-slc.med.va.gov
+    
+    
+       File Name              Description                        Format
+       --------------         -------------                      --------
+       Updated manuals:
+       RA5_0UM.PDF           Radiology V. 5.0 User Manual        BINARY
+       RA5_0TM.PDF           Radiology V. 5.0 Technical Manual   BINARY
+       RA5_0AG.PDF           Radiology V. 5.0 ADPAC Guide        BINARY
+       RA5_0RN.PDF           Radiology V. 5.0 Release Notes      BINARY
+  
+  
+ TEST STIES
+ ==============
+ Loma Linda, CA
+ Cleveland, OH
+ Dayton, OH
+ Boston, MA
+ Memphis, TN
+ Charleston, SC
+  
+  
+ ROUTINE SUMMARY
+ ===============
+  
+ The second line of each of these routines now looks like:
+  ;;5.0;Radiology/Nuclear Medicine;**41**;Mar 16, 1998
+  
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  RA41PRE                    N/A              1763526             41
+  RA41PST                    N/A              2431832             41
+  RABWORD                    N/A              8574365             41
+  RABWORD1                   N/A              6076103             41
+  RABWORD2                   N/A              8169752             41
+  RABWPCE                    N/A              1512846             41
+  RABWRTE                    N/A              5309305             41
+  RABWUTL                    N/A               858015             41
+  RAO7NEW               16705781             16988951         5,10,18,41
+  RAO7RON                4506084              5154108             41
+  RAORD1                19206033             17530701          10,45,41
+  RAORD3                14044719             14271828     5,15,21,27,45,41
+  RAORD6                16690655             16834702   5,10,15,18,27,45,41
+  RAORDU                13962818             14094086            18,41
+  RAORDU1               24059996             23931023            10,41
+  RAPCE                 14330808             15492591        10,17,21,26,41
+  RAPURGE               13590622             12532693            34,41
+  RARTE4                13683329             13799009          15,27,41
+  RARTRPV1               3373903              2927916            5,41
+ Total number of routines : 19
+  
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+  
+ Please refer to the 'Software and Documentation Retrieval' section of the 
+ PX*1.0*124 patch description for instructions on how to acquire the patch 
+ software and install instructions.
+
+Routine Information:
+====================
+
+Routine Name:
+  - RABWORD
+
+
+Routine Checksum:
+
+Routine Name:
+  - RABWORD1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RABWPCE
+
+
+Routine Checksum:
+
+Routine Name:
+  - RABWRTE
+
+
+Routine Checksum:
+
+Routine Name:
+  - RABWUTL
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAO7NEW
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAO7RON
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAORD1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAORD3
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAORD6
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAORDU
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAORDU1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAPCE
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAPURGE
+
+
+Routine Checksum:
+
+Routine Name:
+  - RARTE4
+
+
+Routine Checksum:
+
+Routine Name:
+  - RARTRPV1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RABWORD2
+
+
+Routine Checksum:
+
+Routine Name:
+  - RA41PRE
+
+
+Routine Checksum:
+
+Routine Name:
+  - RA41PST
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : RECTOR,KEN                    Date Entered  : MAY 13, 2003
+Completed By: LYNCH,MARY F.                 Date Completed: AUG 18, 2005
+Released By : THORNTON,NANCY                Date Released : AUG 31, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

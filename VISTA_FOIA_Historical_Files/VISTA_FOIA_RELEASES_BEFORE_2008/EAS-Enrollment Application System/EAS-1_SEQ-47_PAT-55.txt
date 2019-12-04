@@ -1,0 +1,717 @@
+$TXT Created by KOPECKY,STEVE at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 10/20/04 at 13:05
+=============================================================================
+Run Date: OCT 20, 2004                     Designation: EAS*1*55
+Package : EAS - ENROLLMENT APPLICATION SYSTEM Priority: EMERGENCY
+Version : 1        SEQ #47                      Status: Released
+                  Compliance Date: OCT 27, 2004
+=============================================================================
+
+Associated patches: (v)EAS*1*22    <<= must be installed BEFORE `EAS*1*55'
+                    (v)EAS*1*50    <<= must be installed BEFORE `EAS*1*55'
+
+Subject: Fix Parent Facility API
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch provides a specific fix which was identified during 
+ development and release of patch EAS*1.0*50.  In instances where a 
+ patient had a VISN entry as a patient's User Enrollee Site, the User 
+ Enrollee Status functionality would incorrectly identify the patient as 
+ "Not User Enrollee at Site" and turned off the current means test letter 
+ for the patient.  The User Enrollee Status functionality was incorrectly 
+ retrieving the VISN as the administrative parent instead of the VAMC.  
+ Patch EAS*1.0*50 addressed the handling of these VISN entries in the User 
+ Enrollee Status code.  However, during release, it was discovered that 
+ several sites had parent facility entries in their institution file which 
+ were "Health Care System" entities which were not being handled
+ correctly either. Rather than hold up the patch for the majority of the
+ facilities, patch EAS*1.0*50 was released and this patch was entered as
+ the follow-up for those sites with a HCS entry as their parent facility.
+  
+ In addition to modifying the User Enrollee Status functionality to handle 
+ both VISN and HCS parent facilities, this patch replaces the MT Letter 
+ cleanup function released with patch 50 with new functionality which has 
+ more stringent criteria.  Also, a clean up for bad pointers to the 
+ PATIENT File (#2) in the MT Letters file is included.  These bad pointers 
+ became apparent at several sites during the patch EAS*1.0*50 install.  
+ The MT letter search functionality has also been updated to check for bad 
+ pointers when the search is run as well.
+  
+  
+ This patch addresses the following E3R(s):
+ ------------------------------------------
+ There are no E3R's associated with this patch.
+  
+  
+  
+ This patch addresses the following NOIS message(s):
+ ---------------------------------------------------
+ STX-0704-71443   PROCLTR+33^EAS150PT (subscript)
+ CON-0704-11424   PROCLTR+33^EAS150PT (subscript)
+ MIW-0704-41422   PROCLTR+33^EAS150PT (subscript)
+ MWV-0704-21420   PROCLTR+33^EAS150PT (subscript)
+ UNY-0704-11419   PROCLTR+33^EAS150PT (subscript)
+ PAL-0704-61264   PROCLTR+33^EAS150PT (subscript)
+ LEB-0704-21224   PROCLTR+33^EAS150PT (subscript)
+ SBY-0704-31178   PROCLTR+33^EAS150PT (subscript)
+ OKL-0704-71128   PROCLTR+33^EAS150PT (subscript)
+ HWH-0704-40998   PROCLTR+33^EAS150PT (subscript)
+  
+  
+  
+ Overview of NOIS Message(s):
+ ---------------------------
+ Problem: Patch EAS*1.0*50 released a routine which was run during 
+ post-installation which attempted to cleanup the print flags for the 
+ Means Test letters which were turned off in error due to incorrect User 
+ Enrollee Status codes which patch 50 modified.  As sites were running 
+ this cleanup, it became apparent a number of sites had means test letters 
+ which were linked to non-existent PATIENT File (#2) entries.  The cleanup 
+ assumed that valid entries existed in the patient file.  
+  
+ Resolution: Routine EAS15OPT which ran this cleanup will be deleted at 
+ the site by this patch and a replacement routine, which includes modified 
+ logic for determining MT letter status will be installed.  In addition, a 
+ cleanup routine will run which will scan the MT letters and turn off any 
+ letters which contain a bad pointer the PATIENT File (#2).  This routine 
+ will also generate a report of these entries for local action. 
+  
+  
+ Test Sites:
+ -----------
+ PITTSBURGH HCS
+ NEW ORLEANS-VAMC
+ LEBANON-VAMC
+ PALO ALTO HCS 
+  
+  
+  
+        ================INSTALLATION INSTRUCTIONS =================
+  
+ If installed during the normal workday, it is recommended that the 
+ following menu options (File #19) and all of their descendants be 
+ disabled to prevent possible conflicts while running the KIDS Install. 
+ Other VISTA users will not be affected.
+  
+          Background search for MT Anniversary dates
+          Background print job for EAS MT Letters
+          Search For MT Anniversary Dates
+          Zero Day Letters Print
+          Thirty Day Letters Print
+          Sixty Day Letters Print
+          User Enrollee Status for MT Letters
+          
+  
+ Install Time - 5 minutes
+  
+  
+   1.   LOAD TRANSPORT GLOBAL 
+        ---------------------
+        Choose the PackMan message containing this patch and invoke the 
+        INSTALL/CHECK MESSAGE PackMan option.  
+  
+        >>>>>>> NOTE:  If the required patches are not installed, the
+        transport global will be removed.  If the transport global is
+        removed you will need to install the required patch(s) and repeat
+        this step.
+  
+   2.   DISABLE ROUTINE MAPPING   (DSM for Open VMS sites only) 
+        -----------------------
+        Disable routine mapping on all systems for the routines listed in 
+        step 3 below.  
+       
+        NOTE:  If the routines included in this patch are not currently in 
+               your mapped routine set, please skip this step.
+   
+   3.   COMPONENTS SENT WITH PATCH 
+        ------------------------
+        The following is a list of the routines included in this patch.  
+        The second line of each of these routines now looks like: 
+   
+     <tab>;;1.0;ENROLLMENT APPLICATION SYSTEM;**[patch list]**;Mar 15, 2004
+  
+                             CHECK^XTSUMBLD results
+   Routine name      Before Patch          After Patch         Patch List
+   ============      ============          ===========         ==========
+   EAS150P1               6844516              7060146            50,55
+   EAS155P1                   N/A              7824280             55
+   EAS155PT                   N/A              9882053             55
+   EASMTL2                6746043              8318753        3,12,14,20,22
+                                                                   55
+   EASUER                 3463813              4133132         25,37,50,55
+   EAS150PT               4797481              (Delete at Site)    50
+  
+       Total number of routines modified: 3
+       Total number of new routines:      2
+       Total number of deleted routines:  1
+   
+  
+   4.   START UP KIDS 
+        -------------
+        Start up the Kernel Installation and Distribution System Menu 
+        [XPD MAIN]: 
+    
+             Edits and Distribution ...  
+             Utilities ...  
+             Installation ...  
+    
+   Select Kernel Installation & Distribution System Option: INStallation 
+                                                            ---
+             Load a Distribution 
+             Print Transport Global 
+             Compare Transport Global to Current System 
+             Verify Checksums in Transport Global 
+             Install Package(s) 
+             Restart Install of Package(s) 
+             Unload a Distribution 
+             Backup a Transport Global 
+    
+   Select Installation Option: 
+    
+   5.   Select Installation Option: 
+        --------------------------
+        NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+               NAME, enter EAS*1.0*55):
+       
+        a.  Backup a Transport Global - This option will create a backup
+            message of any routines exported with this patch. It will not
+            backup any other changes such as DD's or templates.
+        b.  Compare Transport Global to Current System - This option will
+            allow you to view all changes that will be made when this patch
+            is installed.  It compares all components of this patch
+            (routines, DD's, templates, etc.).
+        c.  Verify Checksums in Transport Global - This option will allow
+            you to ensure the integrity of the routines that are in the
+            transport global.
+      
+   6.   Select Installation Option: Install Package(s) 
+                                    ----------------
+        **This is the step to start the installation of this KIDS patch: 
+    
+       a.  Choose the Install Package(s) option to start the patch 
+           install.
+       b.  When prompted 'Want KIDS to INHIBIT LOGONs during the  
+           install? YES//' answer NO 
+       c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+           Options, and Protocols? YES//' answer YES 
+       d.  When prompted 'Enter options you wish to mark as 'Out Of
+           Order':'  Enter the following options:
+   
+           Background print job for EAS MT Letters [EAS MT LETTERS BG PRINT]       
+           Background search for MT Anniversary dates [EAS MT LETTERS BG SEARCH]       
+           Zero Day Letters Print [EAS MT 0 DAY LETTER PRINT]       
+           Thirty Day Letters Print [EAS MT 30 DAY LETTER PRINT]       
+           Sixty Day Letters Print [EAS MT 60 DAY LETTER PRINT]       
+           Search For MT Anniversary Dates [EAS MT LETTERS SEARCH]       
+           User Enrollee Status for MT Letters [EAS MT UE STATUS]       
+  
+        e.  When prompted 'Enter protocols you wish to mark as 'Out Of 
+            Order':' press <return>.
+        f.  At the Post-Install 'Requested Start Time: NOW//' Press 
+            <return> or enter the date and time you want to queue the
+             post-install to run.
+  
+  
+   7.    REBUILD MAPPED ROUTINE(S)  (DSM for Open VMS sites only)
+        -------------------------
+        If any routine mappings were disabled during step 2, the should be
+        re-enabled now.
+  
+  
+ POST-INSTALL INSTRUCTIONS
+ =========================
+  
+ 1.  During the patch setup pre-install check, one of two messages similar 
+ to those shown below was displayed:
+  
+  Pre-Install Message 1 Example:
+  ============================== 
+    Current Site: 500
+    Current Station: ALBANY (500)
+    Parent Facility: UPSTATE NEW YORK HCS (528)
+    Parent Type: HCS
+  
+    Because your parent facility type is "HCS", it's recommended that you 
+    run the MT Letter cleanup at this time.  Please refer to the patch for
+    directions
+  
+  OR
+  
+  Pre-Install Message 2 Example:
+  ==============================
+    Current Site: 500
+    Current Station: ALBANY (500)
+    Parent Facility: VISN 2
+    Parent Type: VISN
+  
+    Your parent facility type does not appear to be of type "HCS". 
+    It is not recommended that you run the MT letter cleanup at this time
+    If you are experiencing problems with the MT Letters, please contact 
+    EVS.   
+  
+ The first message indicates that you should run the MT Letter cleanup as 
+ described in step 3 below.  If you received the second message, you 
+ should skip step 3, UNLESS you are experiencing problems with MT Letters 
+ not printing as expected.  You should then proceed with the Cleanup 
+ instructions in step 3. This information will be stored in the patch
+ install file entry for future reference as well.
+  
+ 2. The patch post-install will start POST^EAS155P1.  This routine will 
+ scan the EAS MT PATIENT STATUS File (#713.1) and the EAS MT LETTER STATUS 
+ File (#713.2) for any bad pointers to the PATIENT File (#2).  This 
+ routine WILL NOT clean-up these pointers, but will instead flag the 
+ appropriate MT Letter entry as 'MT RETURNED' and enter a comment of 'Bad 
+ Pointer'.  Data from this scan will be retained in the ^XTMP("EASBADPTRS")
+ global for 30 days.  You may run REPORT^EAS155P1 at a programmer prompt at
+ any time to print a formatted report.  When the scan is complete, the user
+ starting the patch will receive the following alert:
+  
+ 1.   EAS MT LTRs Bad Pointers Scan Complete, Print Report
+           Select from 1 to 1
+           or enter ?, A, F, S, P, M, R, or ^ to exit: 1
+      DEVICE: HOME// "Enter a device to print the report to"
+  
+ The following report will be printed:  
+  
+ Results of Possible Bad Pointers Report for EAS MT Letters
+ Date Scan Run: Aug 11, 2004@15:23:43            Run by: KOPECKY,STEVE
+ Print Date: Aug 17, 2004@09:44:10                                     
+ Page: 1
+  
+     File IEN's     713.2               713.1               DFN  
+      =====================================================================
+                    410                 347                 9919991        
+                    411                 348                 9199991    
+  
+  
+ The cleanup will "mark" these entries as returned to prevent the system 
+ from trying to generate further letters and flag them by adding the 
+ following to the MT Returned Comments field "LETTER DISABLED, BAD 
+ POINTERS?".  Running the Automated MT Letters Summary Report will show 
+ this information.
+  
+  
+ 410        ()                                     8/13/03      60-Day  
+                MT Returned: 8/23/04                            30-Day  
+                LETTER DISABLED, BAD POINTERS?                  0-Day   
+  
+                                           -----------------------------
+ 411        ()                                     8/13/03      60-Day  
+                MT Returned: 8/23/04                            30-Day  
+                LETTER DISABLED, BAD POINTERS?                  0-Day   
+  
+                                           -----------------------------
+  
+ NOTE: If for some reason the Taskman fails to queue the post-install 
+ during the KIDS installation, you may manually queue the post-install 
+ from the programmer prompt by entering: D EN^EAS155P1
+  
+  
+ Cleanup Instructions
+ ====================
+  
+ 3.  If you need to run the EAS MT LETTER CLEAN-UP (See step 1 of the 
+ Post-Installation instructions to make that determiniation), from the
+ command prompt enter D EN^EAS155PT and specify the output device for the
+ printed report.  After the cleanup completes, you will get a summary
+ mailman message.  The printed report will print the 60/30/0 day letter
+ changes in separate sections with the summary included as the report
+ footer.
+  
+ > D EN^EAS155PT
+ Preparing to run the EAS*1*55 MT Letters Cleanup
+ After the cleanup, you will be sent a MailMan summary of the cleanup
+ statistics.  You will also be asked to select a printer to send the
+ detailed results to.  This report could be quite lengthy.  Please 
+ DO NOT run the report to your screen!
+  
+ DEVICE: HOME// "Enter print device"
+  
+  
+ Mailman Message:
+  
+ Subj: EAS*1*55 CLEANUP  [#1881761] 08/23/04@11:02  10 lines
+ From: EAS*1*55 CLEANUP  In 'IN' basket.   Page 1  *New*
+ --------------------------------------------------------------------------
+ -----
+ Begin: Aug 23, 2004@11:02:05
+ End:   Aug 23, 2004@11:02:07
+ Processing Time:  0:00:02
+  
+    Turned Off:    0
+ 60-Day Letters:   1
+ 30-Day Letters:   1
+  0-Day Letters:   1
+  
+ No action required: 339
+  
+ Enter message action (in IN basket): Ignore//
+  
+  
+ Example of the Printed Report:
+  
+ Patch EAS*1*55 MT Letter Cleanup Results
+ Run Date: Aug 23, 2004                                                  
+ Page: 1
+  
+ 60-Day Letters for the following Veterans have been reset
+      Name                          File 713.2 IEN      Processing Date
+ ==========================================================================
+  
+ DERDERIAN,TEST C                   406                 JUL 22, 2004
+  
+  
+  
+  
+ Patch EAS*1*55 MT Letter Cleanup Results
+ Run Date: Aug 23, 2004                                                  
+ Page: 2
+  
+ 30-Day Letters for the following Veterans have been reset
+      Name                          File 713.2 IEN      Processing Date
+ ==========================================================================
+  
+ DATA,NVSMG                         376                 JUN 10, 2004
+  
+  
+  
+  
+ Patch EAS*1*55 MT Letter Cleanup Results
+ Run Date: Aug 23, 2004                                                  
+ Page: 3
+  
+ 0-Day Letters for the following Veterans have been reset
+      Name                          File 713.2 IEN      Processing Date
+ ==========================================================================
+  
+ ELWAY,JOHNNY                       400                 JUN 10, 2004
+  
+  
+  
+      60-Day Letters:   1
+      30-Day Letters:   1
+       0-Day Letters:   1
+  
+  
+ 4.  This completes the post installation steps
+
+Routine Information:
+====================
+
+Routine Name:
+  - EASMTL2
+
+ Before
+ ======
+   4 EN60   ; Entry point for inital 60-day letter search for candidates 
+   5        N EASIEN,DFN,VADM,CNT,ANNVDT,EASLAST
+   6        ;
+   7        K ^TMP("EASERR",$J)
+   8        S CNT=0 ; Initialize counter
+  
+  
+  16        . ; Quit further processing if means test is not MEANS TEST type
+  17        . Q:'$$GET1^DIQ(408.31,EASIEN,.019,"I")=1
+  18        . S DFN=$$GET1^DIQ(408.31,EASIEN,.02,"I") ; get patient's DFN
+  19        . ; Check conditions; if all passed, add new entry to worklist file,
+              #713.2
+  20        . Q:'DFN                         ; Safety check for DFN
+  21        . Q:$$TEST(DFN)                  ; Quit if test patient
+  22        . S EASLAST=$$LST^DGMTU(DFN)     ; Get last MT on file
+  23        . Q:'(+EASLAST=EASIEN)  ; Not the latest MT record for patient
+  
+  34        S EAS6CNT(EASPRCDT)=CNT,EAS6CNT=EAS6CNT+CNT
+  35        D ERRMSG
+  36        K ^TMP("EASERR",$J)
+  37        Q
+  
+  
+  
+ 164 ERRMSG ; Send mail message if any errors were generated during processing
+ 165        Q:'$D(^TMP("EASERR",$J))
+ 166        ;
+ 167        N EASDFN,EASERR,MSG,XMSUB,XMY,XMTEXT,XMDUZ,DFN,VA
+ 168        ;
+ 169        S MSG(.1)="The following issues were reported by the Means Test Lett
+             er Search Process:"
+ 170        S MSG(.9)=""
+ 171        ;
+  
+  
+  
+ After
+ =====
+  
+   4 EN60   ; Entry point for inital 60-day letter search for candidates 
+   5        N EASIEN,DFN,VADM,CNT,ANNVDT,EASLAST
+   6        ;
+   7        K ^TMP("EASERR",$J),^TMP("EASBDPTR",$J)
+   8        S CNT=0 ; Initialize counter
+  
+  
+  16        . ; Quit further processing if means test is not MEANS TEST type
+  17        . Q:'$$GET1^DIQ(408.31,EASIEN,.019,"I")=1
+  18        . S DFN=$$GET1^DIQ(408.31,EASIEN,.02,"I") ; get patient's DFN
+  19        . ; Check conditions; if all passed, add new entry to worklist file,
+              #713.2
+  20        . Q:'DFN                         ; Safety check for DFN
+ >21        . Q:'$$CHKDFN(DFN,EASIEN)          ; Check for valid PATIENT File entry, **55**
+  22        . Q:$$TEST(DFN)                  ; Quit if test patient
+  23        . S EASLAST=$$LST^DGMTU(DFN)     ; Get last MT on file
+  24        . Q:'(+EASLAST=EASIEN)  ; Not the latest MT record for patient
+  
+  35        S EAS6CNT(EASPRCDT)=CNT,EAS6CNT=EAS6CNT+CNT
+  36        D ERRMSG
+  37        K ^TMP("EASERR",$J),^TMP("EASBDPTR",$J)
+  38        Q
+  
+  
+ 165 CHKDFN(DFN,MTIEN) --
+             ; Checks for a valid zero node in the patient file entry.  
+ 166        ; If no valid zero node, sets bad ptr entry
+ 167        ;
+ 168        N RSLT
+ 169        ;
+ 170        S DFN=$G(DFN),MTIEN=$G(MTIEN)
+ 171        S RSLT=$D(^DPT(DFN,0))
+ 172        I 'RSLT D
+ 173        . S ^TMP("EASBDPTR",$J,DFN)=MTIEN
+ 174        ;
+ 175        Q $G(RSLT)
+  
+ 177 ERRMSG ; Send mail message if any errors were generated during processing
+ 178        I $D(^TMP("EASERR",$J)) D ERRORS
+ 179        I $D(^TMP("EASBDPTR",$J)) D BADPTR
+ 180        Q
+ 181        ;
+ 182 ERRORS ;
+ 183        N EASDFN,EASERR,MSG,DFN,VA
+ 184        ;
+ 185        S MSG(.1)="The following issues were reported by the Means Test Lett
+             er Search Process:"
+ 186        S MSG(.9)=""
+ 187        ;
+  
+ 197 BADPTR ;
+ 198        N EASDFN,EASERR,MSG,X
+ 199        ;
+ 200        S MSG(.1)="During the MT Letter Search, the following Annual Means T
+             est "
+ 201        S MSG(.2)="File entries (#408.31) were found which may point to a no
+             n-existent"
+ 202        S MSG(.3)="Patient entry in the PATIENT File (#2):"
+ 203        S MSG(.4)=""
+ 204        S X=$$SETSTR^VALM1("PATIENT FILE (#2)","",5,20)
+ 205        S X=$$SETSTR^VALM1("MT FILE (#408.31)",X,35,20)
+ 206        S MSG(.5)=X
+ 207        S X=$$SETSTR^VALM1("=================","",5,20)
+ 208        S X=$$SETSTR^VALM1("=================",X,35,20)
+ 209        S MSG(.6)=X
+ 210        ;
+ 211        S EASDFN=0
+ 212        F  S EASDFN=$O(^TMP("EASBDPTR",$J,EASDFN)) Q:'EASDFN  D
+ 213        . S X=$$SETSTR^VALM1(EASDFN,"",5,20)
+ 214        . S X=$$SETSTR^VALM1($G(^TMP("EASBDPTR",$J,EASDFN)),X,35,20)
+ 215        . S MSG(EASDFN)=X
+ 216        ;
+ 217        D SEND(.MSG)
+ 218        Q
+ 219        ;
+
+Routine Checksum:
+
+Routine Name:
+  - EAS155P1
+
+ This is a new routine.
+
+Routine Checksum:
+
+Routine Name:
+  - EASUER
+
+ Before
+ ======
+  
+  76 UESTAT(DFN) --
+             ;This api will be called at the time of Annual MT renewal
+  77        ;process to check if veteran has UE status for current FY.
+  78        N UESTAT,UESITE,UESTN,CURSTN,PRNT
+  79        I '$G(DFN) Q 0  ;No DFN
+  80        S UESTAT=$P($G(^DPT(DFN,.361)),"^",7)
+  81        I UESTAT="" Q 0  ;Not User Enrollee
+  82        I UESTAT<$$FY(DT) Q 0  ;Not User Enrollee for current FY
+  83        S UESITE=$P($G(^DPT(DFN,.361)),"^",8) Q:+UESITE=0 0
+  84        S UESTN=$P($G(^DIC(4,UESITE,99)),"^")
+  85        S CURSTN=$P($$SITE^VASITE,"^",3)
+  86        S PRNT=$$PSITE(CURSTN),CURSTN=$P($G(^DIC(4,PRNT,99)),"^")
+  87        I UESTN'=CURSTN Q 2  ;Not same site
+  88        Q 1
+  
+  
+ 102 PSITE(STA) --
+             ;Get parent site IEN
+ 103        N PRNT,STNTYP,VISNTYP,ATPRNT
+ 104        ;
+ 105        S ATPRNT=0
+ 106        S PRNT=+$$PRNT^XUAF4(STA)
+ 107        ;
+ 108        I PRNT>0,$$CHKPRNT(PRNT) S PRNT=STA Q PRNT
+ 109        I 'PRNT S PRNT=+$$PRNT^XUAF4($E($G(STA),1,3))
+ 110        I $$CHKPRNT(PRNT) S PRNT=$E($G(STA),1,3) Q PRNT
+ 111        I 'PRNT S PRNT=$O(^DIC(4,"D",$E($G(STA),1,3),""))
+ 112        Q PRNT
+ 113        ;
+  
+ 114 CHKPRNT(PRNT) --
+             ; Check if parent is a VISN entity
+ 115        N RSLT,STNTYP,VISNTYP
+ 116        ;
+ 117        ; Get the IEN for the facility type of "VISN" and then get the Facility type
+ 118        ; for the station passed in.  If the station is a "VISN", return 1 else  return
+ 119        ; a 0
+ 120        ;
+ 121        S VISNTYP=$O(^DIC(4.1,"B","VISN",0))
+ 122        S STNTYP=$$GET1^DIQ(4,PRNT,13,"I")
+ 123        I $G(VISNTYP)=$G(STNTYP) S RSLT=1
+ 124        Q $G(RSLT)
+ 125        ;
+  
+  
+ After
+ =====
+  
+  76 UESTAT(DFN) --
+             ;This api will be called at the time of Annual MT renewal
+  77        ;process to check if veteran has UE status for current FY.
+  78        N UESTAT,UESITE,UESTN,CURSTN,PRNT,CHILD,CIEN
+  79        I '$G(DFN) Q 0  ;No DFN
+  80        S UESTAT=$P($G(^DPT(DFN,.361)),"^",7)
+  81        I UESTAT="" Q 0  ;Not User Enrollee
+  82        I UESTAT<$$FY(DT) Q 0  ;Not User Enrollee for current FY
+  83        S UESITE=$P($G(^DPT(DFN,.361)),"^",8) Q:+UESITE=0 0
+  84        ; *** Modifications for patch 55 to handle VISN or HCS UE Sites
+  85        S UESTN=$$STA^XUAF4(UESITE)
+  86        S CURSTN=$P($$SITE^VASITE,"^",3)
+  87        ;
+  88        I UESTN']"" D
+  89        . D CHILDREN^XUAF4("CHILD","`"_UESITE,"PARENT FACILITY")
+  90        . S CIEN=0 F  S CIEN=$O(CHILD("C",CIEN)) Q:'CIEN  I CIEN=CURSTN S UE
+             STN=$$STA^XUAF4(CIEN) Q
+  91        . I UESTN']"" D
+  92        . . D CHILDREN^XUAF4("CHILD","`"_UESITE,"VISN")
+  93        . . S CIEN=0 F  S CIEN=$O(CHILD("C",CIEN)) Q:'CIEN  I CIEN=CURSTN S 
+             UESTN=$$STA^XUAF4(CIEN) Q
+  94        ;
+  95        S PRNT=$$PSITE(CURSTN),CURSTN=$$STA^XUAF4(PRNT)
+  96        I UESTN'=CURSTN Q 2  ;Not same site
+  97        Q 1
+  
+  
+ 111 PSITE(STA) --
+             ;Get parent site IEN
+ 112        N PRNT,PRNTYP
+ 113        ;
+ 114        S PRNT=0
+ 115        ; First pass, get the parent facility, then get the facility type fo
+             r the parent
+ 116        ; If the parent is a VAMC, then quit returning parent
+ 117        ; If the parent is either a VISN or HCS type, then return the curren
+             t station, not the parent
+ 118        ;
+ 119        S PRNT=+$$PRNT^XUAF4(STA)
+ 120        I PRNT>0 D
+ 121        . S PRNTYP=$$GET1^DIQ(4,PRNT,13)
+ 122        . I PRNTYP="VAMC" Q
+ 123        . I "HCS,VISN"[PRNTYP S PRNT=STA Q
+ 124        E  D
+ 125        . I $$GET1^DIQ(4,STA,13)="VAMC" S PRNT=STA Q
+ 126        . E  S REVSTA=$E(STA,1,3),PRNT=+$$PRNT^XUAF4(REVSTA) D
+ 127        . . I $$GET1^DIQ(4,PRNT,13)="VAMC" Q
+ 128        . . S PRNT=+$O(^DIC(4,"D",REVSTA,""))
+ 129        Q PRNT
+ 130        ;
+ 131 CHKPRNT(PRNT) --
+             ; Check if parent is a VISN entity, removed with Patch 50
+ 132        Q 0
+ 133        ;
+  
+  
+ The CHKPRNT procedure added with patch EAS*1*50 has been removed.
+
+Routine Checksum:
+
+Routine Name:
+  - EAS155PT
+
+ This is a new routine.
+
+Routine Checksum:
+
+Routine Name:
+  - EAS150P1
+
+ Before
+ ======
+  
+  42        . S EADFN1=$$GET1^DIQ(713.2,EALIEN,2,"I")
+  43        . S EADFN=$$GET1^DIQ(713.1,EADFN1,.01,"I")
+  44        . S EANAME=$$GET1^DIQ(2,EADFN,.01)
+  45        . S ^TMP("EASUES",$J,EANAME,EADFN)=EALIEN_U_EAS60
+  46        D REPORT
+  
+  
+ 107        S PAGE=PAGE+1
+ 108        W !,"User Enrollee Status for Pending Means Test Letters"
+ 109        W !,"Calendar Year for MT Letters to Print: ",EACY
+ 110        W !,"Print Date: ",$$FMTE^XLFDT(DT)
+ 111        W !,"Page: ",PAGE
+ 112        W !!,"Current Station: ",$P(EASITE,U,3),":",$P(EASITE,U,2)
+ 113        W !,"Current Administrative Parent: ",EASITE,":",$$GET1^DIQ(4,EAPRNT,.01)
+ 114        W !!,"Name",?28,"LAST4",?35,"UE-FY",?42,"UE Status",?54,"UE Site",?74,"LT-CY"
+  
+  
+ After
+ =====
+  
+  42        . S EADFN1=$$GET1^DIQ(713.2,EALIEN,2,"I")
+  43        . S EADFN=$$GET1^DIQ(713.1,EADFN1,.01,"I")
+  44        . S EANAME=$$GET1^DIQ(2,EADFN,.01)
+  45        . S ^TMP("EASUES",$J,$S(EANAME]"":EANAME,1:"UNKNOWN"),EADFN)=EALIEN_U_EAS60
+  46        D REPORT
+  
+  
+ 107        S PAGE=PAGE+1
+ 108        W !,"User Enrollee Status for Pending Means Test Letters"
+ 109        W !,"Calendar Year for MT Letters to Print: ",EACY
+ 110        W !,"Print Date: ",$$FMTE^XLFDT(DT)
+ 111        W !,"Page: ",PAGE
+ 112        W !!,"Current Site: ",$P(EASITE,U,2),"  Current Station#: ",$P(EASITE,U,3)
+ 113        W !,"Administrative Parent for ",$P(EASITE,U,2)," is",$$GET1^DIQ(4,EAPRNT,.01)
+ 114        W !!,"Name",?28,"LAST4",?35,"UE-FY",?42,"UE Status",?54,"UE Site",?74,"LT-CY"
+
+Routine Checksum:
+
+Routine Name:
+  - EAS150PT
+
+ This patch will delete this routine at the site.
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : MULLER,RICHARD                Date Entered  : JUL 14, 2004
+Completed By: KOPECKY,STEPHEN C.            Date Completed: OCT 20, 2004
+Released By : GROOMS,ANTHONY E              Date Released : OCT 20, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,317 @@
+
+=============================================================================
+Run Date: MAR 04, 2004                     Designation: DG*5.3*545
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #498                    Status: Released
+                  Compliance Date: APR 04, 2004
+=============================================================================
+
+Associated patches: (v)DG*5.3*244  <<= must be installed BEFORE `DG*5.3*545'
+                    (v)DG*5.3*247  <<= must be installed BEFORE `DG*5.3*545'
+                    (v)DG*5.3*392  <<= must be installed BEFORE `DG*5.3*545'
+                    (v)DG*5.3*415  <<= must be installed BEFORE `DG*5.3*545'
+                    (v)DG*5.3*489  <<= must be installed BEFORE `DG*5.3*545'
+                    (v)DG*5.3*546  <<= must be installed BEFORE `DG*5.3*545'
+                    (v)DG*5.3*550  <<= must be installed BEFORE `DG*5.3*545'
+
+Subject: Date of Death Modifications to ZPD segment
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+  
+   NOTE:  Patches DG*5.3*545 and IVM*2*85 are being released in a single
+          distribution.  Because of this, patch descriptions for DG*5.3*545
+          and IVM*2*85 are identical and contain routine summaries for both
+          sets of routines.
+  
+  The objective of the Date of Death enhancement is to collect additional 
+  information when a date of death is entered, to provide this additional
+  information via HL7 in the ZPD segment being sent in the Z07 message, and
+  to display the additional information to users viewing the patient.  The
+  Source of Notification (Field #.353), date/time last updated (Field
+  #.354), and last modified by (local user id) (Field #.355) fields will be
+  added to the Patient file (#2).
+  
+  1.  HL7 messaging functionality:
+      ---------------------------
+  
+  Registration software will be modified to include the Source of
+  Notification for date of death and the Date/Time of last update for the
+  Date of Death in the ZPD segment of the Z07 message sent to the HEC.
+  It has been found that the length of the REMARKS field (seq 2) may exceed
+  the documented maximum length of 60 characters.  Because external systems
+  require the documented maximum length to be accurate, the REMARKS field
+  will always be truncated to 60 characters upon it's extraction from the
+  PATIENT file.
+  
+  It has also been found that the maximum length of the ZPD segment is 254
+  characters.  To prevent STRING LENGTH errors, the REMARKS field (seq 2)
+  will be truncated to ensure that the segment length does not exceed 245
+  characters.
+  
+  This was reported in NOIS ID BAY-0399-30891.
+  
+  In anticipation of additional fields being added to the ZPD segment, a new
+  function call has been added.  This call, $$EN1^VAFHLZPD(), will allow the
+  ZPD segment to grow by returning fields beyond the 245 character limit in
+  the local array "VAFZPD".  For additional information regarding this
+  supported API, please reference DBIA #4292.
+  
+     $$EN1^VAFHLZPD(DFN,VAFSTR)
+        Input: DFN - Pointer to the PATIENT file (#2)
+               VAFSTR - List of fields to return, separated by commas
+               (Defaults to all fields)
+               Existence of HL7 variables assumed (HLFS, HLECH, HLQ)
+       Output: String containing ZPD segment
+               VAFZPD(x) will contain fields beyond 245 characters
+  
+       Sample calls:
+        (1) S VAFZPD=$$EN1^VAFHLZPD(12345,"1,2,3")
+        (2) S VAFZPD=$$EN1^VAFHLZPD(12345)
+   
+       Sample outputs:
+        (1) VAFZPD = ZPD^1^COMMENT^HOLYOKE
+        (2) VAFZPD = ZPD^1^COMMENT^...fields within 245 characters...
+            VAFZPD(1) = ^...fields after 245 characters...
+  
+              NOTE: The REMARKS field returned by this call will only be 
+                    truncated to 60 characters.  This is because the call
+                    accounts for segment lengths greater than 245
+                    characters.
+  
+  Additional fields for ZPD segment:
+  
+         Sequence        Element                        Field Number
+           31            Source of Notification           .353
+           32            Date/Time last modified          .354
+  
+  Only gather the sequences 31 and 32 if the date of death is also
+  requested.  Code to place the HL null indicator if no data is available
+  for sequences 31 and 32.
+  
+  2.  Routine Modifications:
+      ---------------------
+  
+  Modifications to DGDEATH:
+  
+  Change to include a prompt for the Source of notification. 
+  
+  Gather the information needed for the new data elements if the patient is
+  being discharged through the DG DISCHARGE PATIENT option.
+  
+  Add information as 'read only' near the 'Remarks' field. The information
+  will include Source of Notification, Date/Time last modified and Last
+  Modified by (local user id).
+  
+  Modifications to DGRPD:
+  
+  Add Source of Notification, Date/Time last edited/updated, and Last 
+  Modified by fields near the REMARKS field.
+  
+  Modifications to IVMPTRN8:
+  
+  Change call from $$EN^VAFHLZPD to $$EN1^VAFHLZPD to account for segment 
+  lengths greater than 245. Modify string being passed to VAFHLZPD to
+  include sequences 31 and 32.
+  
+  String before: "1,8,9,11,12,13,17,19"
+  String after: "1,8,9,11,12,13,17,19,31,32"
+  
+  Test Sites
+  ===========
+  Asheville
+  Fayetteville
+  Grand Junction
+  Martinsburg
+  Puget Sound
+  
+  DG ROUTINE SUMMARY:
+  ===================
+  The following is a list of routine(s) included in this patch.
+  The second line of each of these routine(s) will look like:
+  
+      <tab>;;5.3;Registration;**[patch list]**;Aug 13, 1993
+  
+                             CHECK^XTSUMBLD results
+  Routine name     Before Patch      After Patch           Patch List
+  ============     ============      ===========           ==========
+  DGBUL                 4065107          4088534           31,244,545
+  DGDEATH              10394806         11923230      45,84,101,149,392,545
+  DGRP2                 6896051          7763122             415,545
+  DGRPD                22088402         22994679       109,124,121,57,161
+                                                       149,286,358,436,445
+                                                       489,498,506,513,518
+                                                             550,545
+  DGRPH                21104508         21341979     114,343,397,415,489,545
+  DGRPV                 8776614          8786592     109,114,247,190,327,365
+                                                     343,397,415,489,546,545
+  VAFHLZPD              8561171          8631075      94,122,160,220,247,545
+  
+  IVM ROUTINE SUMMARY:
+  ====================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;2.0;INCOME VERIFICATION MATCH;**[patch list]**; 21-OCT-94
+  
+                             CHECK^XTSUMBLD results
+  Routine name     Before Patch       After Patch          Patch List
+  ============     ============       ===========          ==========
+  IVMPTRN8             11578004          11618968       9,11,19,12,21,17,
+                                                       24,36,37,47,48,42,
+                                                       34,77,76,75,79,85
+  
+  SOFTWARE AND DOCUMENTATION RETRIEVAL:
+  ====================================
+  
+  This patch is not being distributed through the National Patch Module.
+  The distribution file, DG_53_P545.KID (which contains DG*5.3*545 and
+  IVM*2.0*85), and documentation may be obtained using FTP from the
+  ANONYMOUS.SOFTWARE directory at DOWNLOAD.VISTA.MED.VA.GOV or from specific
+  servers at:
+  
+             Albany:  ftp.fo-albany.med.va.gov
+              Hines:  ftp.fo-hines.med.va.gov
+     Salt Lake City:  ftp.fo-slc.med.va.gov
+  
+     Host file name: DG_53_P545.KID
+  
+             Builds: DG*5.3*545
+                     IVM*2.0*85
+  
+  The following documentation updates will be available:
+  
+          File Name                   Description
+          ---------                   -----------
+          DG_5_3_P545_REG_UM.pdf      PIMS V 5.3 ADT Module Registration
+                                         User Manual
+          DG_5_3_P545_BC_UM.pdf       PIMS V 5.3 ADT Bed Control User Manual
+          IVM_2_P85_TM.pdf            Income Verification Match V 2.0
+                                         Technical Manual
+  
+  ** Note:  Use ASCII mode when transferring the .KID file.
+            Use Binary mode when transferring the .PDF files.  The .PDF
+            Files can be read on a PC using Adobe Acrobat Reader.
+  
+            The VistA Documentation Library (VDL) contains all
+            end-user/technical documentation.
+  
+  INSTALLATION INSTRUCTIONS: 
+  ==========================
+  
+  This patch may be loaded with users on the system.  However, because it
+  affects Patient Inquiry, Patient Load/Edit, and HL7 message generation, it
+  is recommended that installation be done during non-peak hours.  The
+  install will take about five minutes.
+  
+  ** Note:  By installing the file DG_53_P545.KID for patch DG*5.3*545, you
+            will also install IVM*2.0*85.
+  
+  1. Use the LOAD A DISTRIBUTION option on the KIDS INSTALLATION Menu, and
+     enter DG_53_P545.KID
+  
+  2. Review your mapped set.  If the routines listed in the ROUTINE SUMMARY
+     section are mapped, they should be removed from the mapped set at this
+     time.
+  
+  3. From the Kernel Installation and Distribution System Menu, select the
+     Installation menu.
+  
+  4. From this menu, you may elect to use the following options (when
+     prompted for the INSTALL NAME, enter DG*5.3*545).
+  
+     a. Backup a Transport Global - this option will create a backup message
+        of any routines exported with the patch.  It will NOT backup any of
+        the other changes.
+     b. Compare Transport Global to Current System - this option will allow
+        you to view all changes that will be made when the patch is
+        installed. It compares all components of the patch (routines and
+        options).
+     c. Verify Checksums in Transport Global - this option will allow you to
+        ensure the integrity of the routines that are in the transport
+        global.
+     d. Print Transport Global - this option will allow you to view the
+        components of the KIDS build.
+  
+  5. Use the Install Package(s) option and select the package DG*5.3*545.
+  
+  6. When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+     YES//', respond NO.
+  
+  7. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+     Protocols? YES//', respond YES.
+  
+     Disable the following options/protocols.
+  
+     Protocols:
+        N/A
+     Options:
+        IVM BACKGROUND JOB
+        DG DEATH ENTRY
+        DG DISCHARGE PATIENT
+  
+  8. If routines were unmapped as part of step 2, they should be returned to
+     the mapped set once the installation has run to completion.
+
+Routine Information:
+====================
+
+Routine Name:
+  - DGDEATH
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGRPD
+
+
+Routine Checksum:
+
+Routine Name:
+  - VAFHLZPD
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGRP2
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGRPV
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGRPH
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGBUL
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : FISHER,BRAD                   Date Entered  : JUL 22, 2003
+Completed By: ARNETTE,ANDY                  Date Completed: MAR 02, 2004
+Released By : GROOMS,ANTHONY E              Date Released : MAR 04, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

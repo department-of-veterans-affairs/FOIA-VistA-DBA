@@ -1,0 +1,304 @@
+$TXT Created by BATIE,RANDY at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 01/21/04 at 11:00
+=============================================================================
+Run Date: JAN 30, 2004                     Designation: IB*2*215
+Package : IB - INTEGRATED BILLING             Priority: EMERGENCY
+Version : 2       SEQ #225                      Status: Released
+                  Compliance Date: FEB 04, 2103
+=============================================================================
+
+Associated patches: (v)IB*2*70     <<= must be installed BEFORE `IB*2*215'
+                    (v)IB*2*95     <<= must be installed BEFORE `IB*2*215'
+                    (v)IB*2*132    <<= must be installed BEFORE `IB*2*215'
+                    (v)IB*2*137    <<= must be installed BEFORE `IB*2*215'
+                    (v)IB*2*150    <<= must be installed BEFORE `IB*2*215'
+                    (v)IB*2*153    <<= must be installed BEFORE `IB*2*215'
+                    (v)IB*2*176    <<= must be installed BEFORE `IB*2*215'
+                    (v)IB*2*183    <<= must be installed BEFORE `IB*2*215'
+                    (v)EAS*1*47    <<= must be installed BEFORE `IB*2*215'
+                    (v)IVM*2*96    <<= must be installed BEFORE `IB*2*215'
+
+Subject: OIG/IVM 60-DAY BILL DROP
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Enhancement ()
+
+Description:
+============
+
+ ----------------------------------------------------------------------------
+ **NOTE: PATCHES EAS*1*47 AND IVM*2*96 MUST BE INSTALLED PRIOR TO THIS PATCH!
+ ----------------------------------------------------------------------------
+ Patches EAS*1*47 and IVM*2*96 change the way IVM Billing/Collection Data
+ Transmission (ORU~Z09) HL7 messages are sent to the HEC, and to the EDB
+ (New Enrollment Database). Previously, the system grouped all transactions
+ closed into one HL7 Z09 message which can only contain one Means Test Income
+ Year. This has the effect of reporting all billing into one Income Year.
+ These patches will break up the transactions into multiple Z09 messages by
+ Income Year, which will properly report them with the correct Income Year.
+  
+ This patch is being released as EMERGENCY at the recommendation of the
+ Office of Inspector General (OIG), in order to enforce compliance with VHA
+ DIRECTIVE 1909 dated February 25, 2003, which states "The health care 
+ facility staff where the veteran received care is responsible for billing
+ converted cases within 60 days of notification from HEC."
+  
+ Currently, the billing on Income Verification Match (IVM) referrals does
+ not occur until there is a manual intervention. There is concern that
+ referrals from the HEC are not reviewed in a timely manner by the VAMCs,
+ and potential reimbursement is lost.
+   
+ The purpose of this patch is to automatically search, on a nightly basis,
+ through entries in file INTEGRATED BILLING ACTION (#350) for charges
+ that have been in a Pending Review status for at least 60 days. These
+ charges will then be released to the Accounts Receivable (AR), and Income
+ Verification Match (IVM) packages without user intervention.
+  
+ The routines in this patch involved with the enhancement are:
+  
+ IBAMTC - This nightly background job, Queue Means Test Compilation of 
+          Charges [IB MT NIGHT COMP], has been modified by adding the entry
+          point (RELPR^IBAMTV3), performing the auto-release of charges
+          pending review to AR.
+  
+ IBAMTV3 - This routine has been modified by adding the sub-routine RELPR,
+           which will loop through entries in the (#350) file, and select
+           those with a status of 'HOLD-REVIEW' status for at least 60 days
+           for release to AR (via routine IBOHRL).
+  
+ IBOHRAR - The option On Hold Charges Released to AR [IB OUTPUT RELEASED 
+           CHARGES RPT] runs via this routine. It currently prints charges
+           that are in 'ON HOLD' status. This report has been modified to
+           allow the user to choose whether to print charges that were in
+           'ON HOLD' status, 'HOLD-REVIEW' status, or both. Also, the option
+           title will be changed to 'On Hold/Hold-Review Charges Released to
+           AR' and the option description changed accordingly.
+  
+ IBOHRL - This routine has been modified to pass billing data for each of
+          the above charges to the IVM package (via IVM^IBAMTV32), and to
+          send a bulletin once all the charges are completed.
+  
+ Also, the new field HOLD-REVIEW DATE (#17) will be added to the (#350)
+ file so when a charge is put in 'HOLD-REVIEW' status in the file, this
+ field will be automatically "stuffed" with the current date. This will be
+ similar to the file field ON HOLD DATE (#16), where if a charge is put in
+ 'ON HOLD' status, it's stuffed with the current date. Field (#17) will be
+ used in conjunction with the modified On Hold/Hold-Review Charges Released
+ to AR [IB OUTPUT RELEASED CHARGES RPT] option.
+  
+ A post-init routine (IB20P215), is included in this patch, and will go
+ through all charges in 'HOLD-REVIEW' status in file (#350), and copy the
+ date from file field DATE LAST UPDATED (#14) into new field (#17). This
+ routine will be deleted after it finishes its run.
+  
+  
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+ There is no NSR associated with this patch.
+  
+  
+ This patch addresses the following NOIS message(s):
+ ---------------------------------------------------
+ There are no NOIS associated with this patch.
+  
+  
+ Test Sites:
+ -----------
+ Greater Los Angeles HCS
+ Upstate New York
+ Salisbury
+ Clarksburg
+  
+  
+  
+ ======================== INSTALLATION INSTRUCTIONS ========================
+  
+ If installed during the normal workday, it is recommended that the 
+ following selection(s) in the OPTION (#19) file, and all of their 
+ descendants be disabled to prevent possible conflicts while running the 
+ KIDS Install. Other VISTA users will not be affected.
+  
+  
+    On Hold Charges Released to AR [IB OUTPUT RELEASED CHARGES RPT]
+    Release Charges 'Pending Review' [IB MT REV PEND CHARGES]
+    Queue Means Test Compilation of Charges  [IB MT NIGHT COMP]
+  
+    Install Time - 2 minutes or less
+  
+ 1. LOAD TRANSPORT GLOBAL
+    ---------------------
+    Choose the PackMan message containing this patch and invoke
+    The INSTALL/CHECK MESSAGE PackMan option.
+  
+ 2. DISABLE ROUTINE MAPPING (DSM for Open VMS sites only)
+    -----------------------
+    Disable routine mapping on all systems for the routines listed in Step 3
+    below.
+  
+    NOTE: If the routines included in this patch are not currently in your
+          mapped routine set, please skip this step.
+  
+ 3. COMPONENTS SENT WITH PATCH
+    --------------------------
+    The following is a list of the routines included in this patch.
+    The second line of the routines look like this:
+  
+    <tab>;;2.0;INTEGRATED BILLING;**[patch list]**;21-MAR-94
+  
+                 CHECK^XTSUMBLD results
+  
+    Routine     Before Patch     After Patch     Patch List
+    -------     ------------     -----------     ----------
+    IB20P215    N/A              Deleted         *
+    IBAMTC      7083106          7387206         34,52,70,93,100,118,115,132,
+                                                 150,153,137,176,215
+    IBAMTV3     4702076          5713841         15,153,183,215
+    IBOHRAR     9056999          8664886         70,95,215
+    IBOHRL      5382787          5672001         70,215
+  
+    *IB20P215 will be automatically deleted
+  
+    Total number of routines: 5
+    Total number of routines modified: 4
+    Total number of new routines: 1
+    Total number of deleted routines: 1
+  
+  
+    The following is a list of fields included in this patch:
+    NOTE: This is a new field.
+  
+    Field Name (Number)      File Name (Number)
+    -------------------      ------------------
+    HOLD-REVIEW DATE (#17)   INTEGRATED BILLING ACTION (#350)
+  
+  
+    The following is a list of options included in this patch:
+  
+    Option Name              File          New/Modified
+    -----------              ----          ------------
+    IB OUTPUT RELEASED       19            Modified
+    CHARGES RPT
+  
+  
+    The following is a list of files included in this patch:
+  
+                                         UP    SEND  DATA                
+                                         DATE  SEC.  COMES  SITE   RSLV  
+    FILE #  NAME                         DD    CODE  W/FILE DATA   PTS 
+    ------------------------------------------------------------------------
+    350     INTEGRATED BILLING ACTION    YES   YES   NO            NO
+  
+ 4. START UP KIDS
+    -------------
+    Start up the Kernel Installation and Distribution System Menu
+    [XPD MAIN]:
+  
+         Edits and Distribution ...
+         Utilities ...
+         Installation ...
+  
+    Select Kernel Installation & Distribution System Option: INStallation
+                                                             ---
+  
+    1      Load a Distribution
+    2      Verify Checksums in Transport Global
+    3      Print Transport Global
+    4      Compare Transport Global to Current System
+    5      Backup a Transport Global
+    6      Install Package(s)
+           Restart Install of Package(s)
+           Unload a Distribution
+  
+  
+    Select Installation Option: 6  Install Package(s)
+  
+ 5. SELECT INSTALLATION OPTION
+    --------------------------
+    NOTE: The following are OPTIONAL (When prompted for the INSTALL NAME,
+          enter IB*2.0*215):
+  
+    a. Backup a Transport Global - This option will create a backup
+       message of any routines exported with this patch. It will not
+       backup any other changes such as DD's or templates.
+    b. Compare Transport Global to Current System - This option will allow
+       you to view all changes that will be made when the patch is installed.
+       It compares all components of this patch (routines, DD's, templates,
+       etc.).
+    c. Verify Checksums in Transport Global - This option will allow you to
+       ensure the integrity of the routines that are in the transport global.
+  
+ 6. INSTALL KIDS BUILD
+    ------------------
+    a. Choose the Install Package(s) option of the Installation menu to start
+       the patch install.
+    b. When prompted 'Want KIDS to Rebuild Menu Trees Upon Completion of
+       Install? YES//', answer YES, unless your site runs this in a 
+       nightly TaskMan job.
+    c. When prompted 'Want KIDS to INHIBIT LOGONs during the install? YES//',
+       answer NO.
+    d. When prompted 'Want to DISABLE Scheduled Options and Menu Options?
+       YES//', answer YES.
+    e. When prompted "Enter options you wish to mark as 'Out of Order':",
+       enter the following options:
+  
+          On Hold Charges Released to AR [IB OUTPUT RELEASED CHARGES RPT]
+          Release Charges 'Pending Review' [IB MT REV PEND CHARGES]
+          Queue Means Test Compilation of Charges  [IB MT NIGHT COMP]
+  
+    f. When prompted 'Enter protocols you wish to mark as 'Out Of Order':',
+       press <return>.
+  
+ 7. REBUILD MAPPED ROUTINE(S) (DSM for Open VMS sites only)
+    -------------------------
+    Optional - Include the routines distributed with this patch in the mapped
+               routine set.
+  
+    NOTE: This step is only necessary if you performed step 2 or if you wish
+          to include the routines in your mapped set.
+
+Routine Information:
+====================
+
+Routine Name:
+  - IBAMTC
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBAMTV3
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBOHRAR
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBOHRL
+
+
+Routine Checksum:
+
+Routine Name:
+  - IB20P215
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : BATIE,RANDY                   Date Entered  : APR 15, 2003
+Completed By: ROBBINS,BRADLEY               Date Completed: JAN 30, 2004
+Released By : BOTTINI,STEVE                 Date Released : JAN 30, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

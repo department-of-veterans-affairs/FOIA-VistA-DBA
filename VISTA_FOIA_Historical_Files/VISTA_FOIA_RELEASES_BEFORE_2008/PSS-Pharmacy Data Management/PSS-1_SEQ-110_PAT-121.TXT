@@ -1,0 +1,267 @@
+$TXT Created by DEHGHANIAN,JAMSHID at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 01/10/07 at 12:56
+=============================================================================
+Run Date: MAR 05, 2007                     Designation: PSS*1*121
+Package : PSS - PHARMACY DATA MANAGEMENT      Priority: Mandatory
+Version : 1       SEQ #110                      Status: Released
+                  Compliance Date: APR 05, 2007
+=============================================================================
+
+Associated patches: (v)PSS*1*110   <<= must be installed BEFORE `PSS*1*121'
+
+Subject: ONE TIME PRN ORDERS
+
+Category: 
+  - Routine
+  - Input Template
+  - Data Dictionary
+
+Description:
+============
+
+ *** This patch addresses Patient Safety Issue (PSI) - PSI-06-101 ***
+  
+ An order was entered in CPRS with a schedule of ONE TIME, and the PRN box 
+ was checked.  When the medication was administered in BCMA, it was marked 
+ as GIVEN but was not auto-expired.  This allowed the medication to be 
+ given multiple times.  Because the PRN box was checked, the schedule type 
+ of the order was PRN instead of ONE TIME.
+ During evaluation of this change, another possible point of confusion was 
+ discovered;  Schedules of PRN type in the ADMINISTRATION SCHEDULE file 
+ are not required to have PRN in the schedule name.
+  
+ Proposed Solution (accepted by the Inpatient Meds workgroup on 11/17/06):
+ The user will be presented an error message during a schedule edit [PSS 
+ SCHEDULE EDIT] under the following conditions: 
+ The schedule name contains PRN, but the schedule type selected is not PRN.
+ The schedule name does not contain PRN, but the schedule type selected is 
+ PRN.
+ We would specifically check for a schedule in the format xxx PRN.
+  
+ If presented with the error message, the conflict must be corrected at 
+ the time of the edit.
+  
+  
+ *** Note:  This patch only deals with the Pharmacy Data Management
+ portion of this issue.
+  
+  
+ Associated Remedy Ticket:
+ ========================
+ HD0000000167958 - One Time PRN orders
+  
+  
+ Overview of Remedy Ticket:
+ =========================
+ HD0000000167958 - Vault Setup
+  
+    Problem
+    -------
+    In the Standard Schedule Edit (PSS SCHEDULE EDIT), a PRN schedule type
+    does not require the word PRN in the schedule name.
+  
+    Solution
+    --------
+    Require the schedule type to be PRN if the schedule name contains the
+    word PRN.
+  
+    Technical
+    ---------
+    1) Modified the input transform for 'Type of Schedule' field
+       (^DD(51.1,5)) so that it recognizes the following conflicts and
+       gives appropriate error messages:
+       a) The schedule name contains the word PRN but the schedule type is
+          not PRN.
+          Conflict: Schedule Name contains PRN but selected Schedule Type
+                    is not PRN.
+       b) The schedule name does not contain the word PRN but the schedule
+          type is PRN.
+          Conflict: Schedule Name does not contain PRN but selected
+                    Schedule Type is PRN.
+    2) Modified the help-prompt for 'Type of Schedule' field by removing 
+       the 'CONTINUOUS' IS THE DEFAULT sentence.
+    3) Added two triggers to the name field to automatically change the 
+       value of the 'Type of Schedule' field when the value of the name 
+       field changes, as follows:
+          a) If the name field changes from something not containing 'PRN'
+             to something that contains the word 'PRN' the type field will
+             automatically change to 'PRN' (and hence becomes the default).
+             Example: Name changes from 'Test' (or null in the case of a 
+                      new schedule) to 'Test PRN' then Type will change to
+                      'PRN'.
+          b) If the name field changes from something containing 'PRN' 
+             to something that does not contain the word 'PRN' the type
+             field will change to Null (and hence becomes the default).  
+             *** Please note that this is a change from making CONTINUOUS
+             the default type.  This change requires a change to the 
+             documentation indicating that CONTINUOUS is no longer the
+             default schedule type ***
+             Example: Name changes from 'Test PRN' to 'Test2' then Type 
+                      will change to Null.
+          c) If the name field changes from non-'PRN' to another non-'PRN' 
+             value, the type field remains unchanged.
+             Example: Name changes from 'Test1' to 'Test2' then Type will 
+                      not change.
+  
+  
+ Test Sites:
+ ==========
+ Puget Sound HCS
+ Maryland HCS
+ Tennessee Valley HCS
+  
+  
+ Data Dictionary Changes:
+ =======================
+ 1) Two triggers have been added to the Name (#.01) field of Administration
+ Schedule file (#51.1).
+  
+ TRADITIONAL CROSS-REFERENCE LIST -- FILE #51.1, FIELD #.01  01/08/07    
+ PAGE 1
+ --------------------------------------------------------------------------
+    TRIGGER
+          Field:  NAME  (51.1,.01)
+                  Triggered Field:  TYPE OF SCHEDULE  (51.1,5) 
+                  1)= K DIV S DIV=X,D0=DA,DIV(0)=D0 S Y(0)=X S
+                      X=Y(0)["PRN" I X S X=DIV S
+                      Y(1)=$S($D(^PS(51.1,D0,0)):^(0),1:"") S X=$P(Y
+                      (1),U,5),X=X S DIU=X K Y S X=DIV S X="P" X 
+                      ^DD(51.1,.01,1,6 ,1.4)
+                  1.4)= S DIH=$G(^PS(51.1,DIV(0),0)),DIV=X S 
+                        $P(^(0),U,5)=DIV,DIH=51.1,DIG=5 D ^DICR
+                  2)= Q
+                  CREATE CONDITION)= NAME["PRN"
+                  CREATE VALUE)= "P"
+                  DELETE VALUE)= NO EFFECT
+                  FIELD)= TYPE
+  
+    TRIGGER
+          Field:  NAME  (51.1,.01)
+                  Triggered Field:  TYPE OF SCHEDULE  (51.1,5)
+                  1)= K DIV S DIV=X,D0=DA,DIV(0)=D0 S Y(0)=X X 
+                      ^DD(51.1,.01,1,7,69.2) S X=X["P",Y=X,X=Y(1),X=X&Y I X
+                      S X=DIV S Y(1)=$S($D(^PS(51.1,D0,0)):^(0),1:"") S
+                      X=$P(Y(1),U,5),X=X S DIU=X K Y S X="" X
+                      ^DD(51.1,.01,1,7,1.4)
+                  1.4)= S DIH=$G(^PS(51.1,DIV(0),0)),DIV=X S 
+                        $P(^(0),U,5)=DIV,DIH=51.1,DIG=5 D ^DICR
+                  2)= Q
+                  69.2)= S Y(3)=$C(59)_$P($G(^DD(51.1,5,0)),U,3),
+                         Y(2)=$S($D(^PS(51.1,D0,0)):^(0),1:"") S
+                         X=Y(0)'["PRN",Y(1)=$G(X) S X=$P
+                         ($P(Y(3),$C(59)_$P(Y(2),U,5)_":",2),$C(59))
+                  CREATE CONDITION)= NAME'["PRN"&(TYPE["P")
+                  CREATE VALUE)= ""
+                  DELETE VALUE)= NO EFFECT
+                  FIELD)= TYPE
+  
+ 2) Both the Input Transform and the Help-Prompt were changed for Type of
+ Schedule field (#5) of the Administration Schedule file (#51.1)
+  
+ Before
+ ------
+ 51.1,5   TYPE OF SCHEDULE       0;5 SET
+            INPUT TRANSFORM:  Q
+            HELP-PROMPT:      ENTER TYPE OF SCHEDULE. 'CONTINUOUS' IS THE 
+                              DEFAULT.
+  
+ After
+ -----
+ 51.1,5   TYPE OF SCHEDULE       0;5 SET
+            INPUT TRANSFORM:  D ENPSJT^PSSJSV Q:'$D(X)
+            HELP-PROMPT:      ENTER TYPE OF SCHEDULE.
+  
+  
+ Installation Instructions:
+ =========================
+ If installed during the normal workday, it is recommended that the 
+ Pharmacy Data Management users be off the system.  Other VISTA users
+ will not be affected.
+  
+ Install Time - less than 5 minutes (unless otherwise indicated)
+  
+ 1.  LOAD TRANSPORT GLOBAL 
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the 
+     INSTALL/CHECK MESSAGE PackMan option.  
+              
+ 2.  START UP KIDS 
+     -------------
+     Start up the Kernel Installation and Distribution System Menu 
+     [XPD MAIN]: 
+    
+          Edits and Distribution ...  
+          Utilities ...  
+          Installation ...  
+    
+ Select Kernel Installation & Distribution System Option: INStallation 
+                                                          ---
+          Load a Distribution 
+          Print Transport Global 
+          Compare Transport Global to Current System 
+          Verify Checksums in Transport Global 
+          Install Package(s) 
+          Restart Install of Package(s) 
+          Unload a Distribution 
+          Backup a Transport Global 
+ Select Installation Option: 
+    
+ 3.  Select Installation Option: 
+     ---------------------------
+     NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+            NAME, enter PSS*1.0*121):
+       
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when this patch
+         is installed.  It compares all components of this patch
+         (routines, DD's, templates, etc.).
+     c.  Verify Checksums in Transport Global - This option will allow
+         you to ensure the integrity of the routines that are in the
+         transport global.
+      
+ 4.  Select Installation Option: Install Package(s) 
+                                 ------------------
+     a.  Choose the Install Package(s) option to start the patch
+         install and when prompted for Install Name, enter PSS*1.0*121.
+  
+     b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+         YES//' answer NO
+  
+     c.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, 
+         and Protocols? Yes//' respond NO
+  
+  
+ Routines Summary:
+ ================
+ The following is a list of the routines included in this patch.  
+ The second line of each of these routines now looks like: 
+   
+      ;;1.0;PHARMACY DATA MANAGEMENT;**[patch list]**;9/30/97 
+   
+                        CHECK^XTSUMBLD results
+ Routine         Before Patch     After Patch     Patch List 
+ -------         ------------     -----------     ----------
+ PSSJSV          14755242         15298994        20,38,56,59,110,121   
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PSSJSV
+    Before: B24822667  After: B27404194  **20,38,56,59,110,121**
+
+=============================================================================
+User Information:
+Entered By  : DEHGHANIAN,JAMSHID            Date Entered  : DEC 04, 2006
+Completed By: WERNER,GARY                   Date Completed: FEB 27, 2007
+Released By : LESIEUR,SHIRLEY               Date Released : MAR 05, 2007
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

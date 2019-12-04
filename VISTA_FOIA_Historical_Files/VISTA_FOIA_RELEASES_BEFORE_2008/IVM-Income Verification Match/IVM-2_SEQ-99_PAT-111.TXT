@@ -1,0 +1,259 @@
+$TXT Created by KOPP,TERRY at MNTVLL.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 02/15/06 at 16:50
+=============================================================================
+Run Date: OCT 24, 2006                     Designation: IVM*2*111
+Package : IVM - INCOME VERIFICATION MATCH     Priority: Mandatory
+Version : 2        SEQ #99                      Status: Released
+                  Compliance Date: NOV 24, 2006
+=============================================================================
+
+Associated patches: (v)IVM*2*34    <<= must be installed BEFORE `IVM*2*111'
+                    (v)IVM*2*94    <<= must be installed BEFORE `IVM*2*111'
+
+Subject: LOAD ORU~Z04 DIRECTLY INTO INSURANCE BUFFER
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Other
+
+Description:
+============
+
+ I. OVERVIEW
+  
+ This patch changes the way the Z04 Insurance Data Transmission HL7
+ insurance information upload messages are processed when they are received
+ by a VistA site from the Health Eligibility Center (HEC).
+  
+ Currently, standard Z04 HL7 messages are automatically loaded into VistA's
+ IVM PATIENT (#301.5) file and the user has to use the Insurance Upload
+ [IVM UPLOAD INS] option to manually select those insurance records whose
+ data should be transferred into the INSURANCE BUFFER (#355.33) file.
+  
+ This patch will change this functionality so the Insurance Upload [IVM
+ UPLOAD INS] option will no longer be needed on a regular basis. The new
+ process will be:
+          >  If the process to store the contents of the Z04 HL7 message in
+          the IVM PATIENT (#301.5) file encounters an error, then the
+          current process of sending a negative acknowledgement with the
+          error reason back to the HEC still occurs and the data is not
+          stored in VistA.
+          >  On receipt of Z04 messages from the HEC, the system will
+          continue to load the data into the IVM PATIENT (#301.5) file
+          but will then attempt to automatically transfer the insurance
+          information into the INSURANCE BUFFER (#355.33) file, without
+          user intervention.
+          >  If the automatic transfer is successful, the information is
+          then deleted from the IVM PATIENT (#301.5) file.
+          >  If the automatic transfer is not successful, the insurance 
+          data stays in the IVM PATIENT (#301.5) file and can be examined
+          by means of using the Insurance Upload Option. Note that no
+          bulletin is sent to alert you to this situation. A periodic
+          review of this option by the sites would be advisable.
+  
+ The post-install included with this patch performs two functions:
+     1.  It reads through the site's pending insurance information records
+         (from previously loaded Z04 HL7 messages) in the IVM PATIENT
+         (#301.5) file and attempts to automatically transfer the
+         information to the INSURANCE BUFFER (#355.33) file. If 
+         successful, the message is deleted from the IVM PATIENT (#301.5)
+         file.
+     2.  It removes the SUPPRESS INSURANCE MESSAGE (#.04) field in the IVM
+         SITE PARAMETER (#301.9) file. This field was used to suppress
+         the bulletin that informed the users of the presence of new
+         insurance data so it could be manually transferred. This bulletin
+         will no longer be sent at all, so the parameter has no more
+         purpose.
+  
+  
+ II. ASSOCIATED REMEDY TICKETS & NEW SERVICE REQUESTS
+  
+  1. Associated Remedy Tickets:
+     -----------------------------------------
+      HD0000000129883  IVM Upload Insurance message error
+                       The problem was resolved by correctly loading 
+                       the data directly into the INSURANCE BUFFER
+                       (#355.33) file.
+  
+  2. Associated New Service Request(s):
+     -----------------------------------------
+     NONE 
+  
+  
+ III. FUNCTIONAL OVERVIEW
+  
+ The principal functionality provided by this patch is to change the 
+ process by which data is moved from the Z04 HL7 insurance upload message 
+ to the IVM PATIENT (#301.5) file to the Integrated Billing (IB) INSURANCE
+ BUFFER (#355.33) file.
+  
+ The change will remove the necessity to manually review the Z04 HL7
+ message and then file it into the INSURANCE BUFFER (#355.33) file as the
+ automatic filing of the message into the INSURANCE BUFFER (#355.33) file
+ will be included as part of the upload of this HL7 message type into
+ VistA.
+  
+ The bulletin normally sent to advise enrollment users that new insurance 
+ is available for upload will be eliminated. The field in the IVM SITE
+ PARAMETER (#301.9) file (SUPPRESS INSURANCE MESSAGE, #.04) that controls
+ whether or not this bulletin should be sent will be deleted as it is no
+ longer used. This field will also be removed from the parameter edit
+ option IVM Parameter Enter/Edit [IVM SYS PAR ENTER/EDIT].
+  
+  
+ IV. TECHNICAL COMPONENTS
+  
+ The following section describes the technical components being exported
+ with this patch. 
+   
+  1. The following ROUTINE(s) will be modified.
+  
+  ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+     <tab>;;2.0;INCOME VERIFICATION MATCH;**[patch list]**; 21-OCT-94
+  
+                CHECK^XTSUMBLD (version prior to Sept 2005) results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  IVM2111                    N/A              2171905             111
+  IVMLINS1              10129135             10154940          14,94,111
+  IVMLINS2               8197231              8201828          14,34,111
+  IVMLINS3               3864431              4636061           14,111
+  IVMPREC3               8434727              6009358         3,17,34,111
+  IVMUPAR                 879565               977328             111
+  
+        Total # new routines              : 1
+        Total # changed routines          : 5 
+        Total # routines included in patch: 6
+  
+  
+  2.  The following FILES will be modified.
+  
+     a. IVM SITE PARAMETER (#301.9) file
+        Modified Field:
+        ==============
+           FIELD #: .04
+        FIELD NAME: SUPPRESS INSURANCE MESSAGE   
+      MODIFICATION: Deleted by the post-install after its value is 
+                    deleted.
+  
+  
+ V. DOCUMENTATION RETRIEVAL
+  
+ Sites may retrieve the user documentation directly using FTP from the
+ ANONYMOUS.SOFTWARE directory at the following OI Field Offices:
+    
+                 Albany   : ftp.fo-albany.med.va.gov
+                 Hines    : ftp.fo-hines.med.va.gov
+           Salt Lake City : ftp.fo-slc.med.va.gov
+   First Available Server : download.vista.med.va.gov (preferred method)
+   
+                                                                          
+  The following files will be available:
+    
+       File Name                     Description
+       ---------                     -----------      
+ IVM_2_P111_UM.PDF              Revised IVM V. 2.0 User Manual 
+ IVM_2_P111_TM.PDF              Revised IVM V. 2.0 Technical Manual
+  
+  Note:  Use Binary mode when transferring the .PDF files.
+   
+  The VistA Documentation Library [VDL] web site contains all end-user 
+  manuals.  The address is http://www.va.gov/vdl/.
+  
+   
+ VI. TEST SITES 
+   Miami, FL 
+   Phoenix, AZ
+   Augusta, GA
+  
+  
+ VII. INSTALLATION INSTRUCTIONS
+     This patch may be installed with users on the system, but should be
+     loaded during non-peak hours to minimize disruption to users and to
+     reduce the possibility of errors when the routines are updated.
+  
+  * Software Installation Time:
+     The estimated installation time is less than 5 minutes during off peak
+     hours. The background job that is spawned as a result of this 
+     installation will read through the 'ASEG' cross reference of the 
+     IVM PATIENT (#301.5) file to automatically upload any existing Z04
+     insurance information messages into the INSURANCE BUFFER (#355.33)
+     file.
+  
+  Installation Steps:
+  ===================
+  
+   1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu to unload
+      the KIDS distribution included with this message.
+  
+   2. From the 'Kernel Installation & Distribution System' menu, select the
+      Installation menu.
+  
+   3. From this menu, you may now elect to use the following options (when
+      prompted for INSTALL NAME, enter IVM*2.0*111).
+  
+      a. Backup a Transport Global - This option will create a backup
+         message of any routines exported with the patch.  It will NOT
+         backup any changes such as DDs or templates.
+  
+      b. Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when the patch is
+         installed.  It compares all components of the patch (routines,
+         DDs, templates, etc.).
+  
+      c. Verify Checksums in Transport Global - This option will allow you
+         to ensure the integrity of the routines that are in the transport
+         global.
+  
+      d. Print Transport Global - this option will allow you to view the
+         components of the KIDS build.
+  
+   4. Use the Install Package(s) option and select package IVM*2.0*111.
+  
+   5. When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+      YES//', it is recommended you answer NO.
+  
+   6. When prompted to 'Want to DISABLE Scheduled Options, Menu Options,
+      and Protocols? YES//', respond YES. When prompted to select the
+      options you would like to place out of order, enter the following:
+  
+        IVM SYS PAR ENTER/EDIT     IVM Parameter Enter/Edit
+        IVM UPLOAD INS             Insurance Upload
+  
+   7. You may delete the post-install routine IVM2111 when the patch has 
+      been successfully installed.
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: IVM2111
+    Before:       n/a  After:  B2820002  **111**
+Routine Name: IVMLINS1
+    Before: B27648745  After: B28699759  **14,94,111**
+Routine Name: IVMLINS2
+    Before: B25183217  After: B25189104  **14,34,111**
+Routine Name: IVMLINS3
+    Before:  B8038647  After: B11827505  **14,111**
+Routine Name: IVMPREC3
+    Before: B24098186  After: B14818913  **3,17,34,111**
+Routine Name: IVMUPAR
+    Before:  B1191768  After:  B1326072  **111**
+
+=============================================================================
+User Information:
+Entered By  : MULLER,RICHARD                Date Entered  : AUG 31, 2005
+Completed By: RUDINGER,NANCY L.             Date Completed: OCT 17, 2006
+Released By : GANUS,MAUNETTE                Date Released : OCT 24, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,371 @@
+$TXT Created by HOLLOWAY,THOMAS J at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 08/17/06 at 15:38
+=============================================================================
+Run Date: SEP 05, 2006                     Designation: IB*2*341
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #317                      Status: Released
+                  Compliance Date: OCT 06, 2006
+=============================================================================
+
+Associated patches: (v)IB*2*183    <<= must be installed BEFORE `IB*2*341'
+                    (v)IB*2*240    <<= must be installed BEFORE `IB*2*341'
+                    (v)IB*2*312    <<= must be installed BEFORE `IB*2*341'
+
+Subject: CORRECTION FOR DUZ UNDER MULTI-THREADED LISTENER CONDITION
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This  patch fixes two instances in which the user identification variable 
+ (DUZ) is not set to a valid value.  For (1) jobs started by the HL7
+ Multi-listener, and also (2) when TaskMan jobs which were originally
+ tasked by a user who has since been made inactive in the NEW PERSON 
+ (#200) file, the above variable is now set to a valid IEN for the NEW
+ PERSON (#200) file.  
+  
+ The primary manifestation of the problem is that sites which are using
+ voice recognition software (ex. TalkTech) for their Radiology reports 
+ are sometimes receiving an error in the nightly billing run.  These 
+ voice recognition products communicate with VistA through HL7
+ and are subject to the problem mentioned above.
+  
+ ASSOCIATED REMEDY TICKETS: 
+ =========================
+ 1. HD64428    HIN-1104-41341  Bills hanging in queue.  
+    HD109333   Copay charges not being passed to AR automatically 
+    HD120127   Bill Status Displaying Incomplete 
+    HD122166   IB MT Night Comp job errors at Q3+2^PRCASVC 
+    HD122378   Error <UNDEFINED>Q3+2^PRCASVC 
+    HD124581   UNDEFINED ERROR Q3+2^PRCASVC 
+    HD133596   Getting <UNDEFINED>Q3+2^PRCASVC Error 
+    HD135750   <UNDEFINED>Q3+2~PRCASVC 
+    HD137995   Queued Job Intermittently Erroring Out In Error Trap 
+    HD139676   $ZE= <UNDEFINED>Q3+2^PRCASVC 
+    HD144261   EDI Transmission
+  
+ 2. HD64624    OKL-0105-70430  Means Test charge error message 
+  
+ ASSOCIATED NSR(s): 
+ ==================
+ N/A 
+  
+ PARTICIPATING TEST SITES: 
+ =========================
+ CENTRAL PLAINS HCS
+ HEARTLAND-EAST HCS
+ HINES, IL
+ OKLAHOMA CITY, OK 
+  
+  
+ REMEDY OVERVIEW: 
+ ==============
+ 1. HD64428    HIN-1104-41341  Bills hanging in queue.  
+  
+    Problem: 
+    -------- 
+    This problem is seen in the failure of the IB MT NIGHT COMP job due to 
+    an error at Q3^PRCASVC when trying to adjust a transaction, which in 
+    turn, causes the FORMOUT^IBCEFG7, OUTPUT FORMATTER - FORM: IB 837 
+    TRANSMISSION task not to be scheduled, resulting in EDI Claims backing 
+    up. This problem is a result of the invalid DUZ variable value.  The
+    underlying cause is that the multi-threaded listener does not provide
+    an appropriate value for the DUZ variable when it tasks a new job.
+  
+    Resolution: 
+    -----------
+    This patch modifies the code used to store the USER ADDING ENTRY (#11) 
+    field in the INTEGRATED BILLING ACTION (#350) file so that the error 
+    condition is avoided.  If an invalid value is detected, the programs 
+    will now store the Postmaster DUZ.  
+  
+ 2. HD64624    OKL-0105-70430  Means Test charge error message 
+  
+    Problem: 
+    --------
+    This problem manifests itself in several ways, such as copay charges 
+    not getting passed and receiving a MailMan message indicating that the 
+    "Approving official is undefined".  
+  
+    Resolution: 
+    -----------
+    Again, this is an issue with DUZ being null or otherwise invalid due to 
+    the application having been jobbed as a background job.  If an invalid 
+    value is detected, the program will now store the Postmaster DUZ.  
+  
+  
+ Technical Description 
+ =====================
+ 1. HD64428    HIN-1104-41341  Bills hanging in queue.  
+  
+    Two routines, IBECEAU3 and IBECEAU4, are modified at the point where 
+    they are automatically setting DUZ into the ^IB global.  If the 
+    current value of DUZ is null or zero, the code will instead store the 
+    value .5, which is the IEN of the Postmaster in the NEW PERSON (#200) 
+    file.  The precise identity of the USER ADDING ENTRY (#11) field or 
+    USER LAST UPDATING (#13) field in the INTEGRATED BILLING ACTION (#350) 
+    file is not critical to the billing process but it must be a valid NEW 
+    PERSON entry.  
+  
+ 2. HD64624    OKL-0105-70430  Means Test charge error message 
+  
+    One routine, IBACUS2, is modified similarly to issue 1.  If the 
+    current value of DUZ is null or zero, the code will instead use the 
+    value .5, which is the IEN of the Postmaster in the NEW PERSON (#200) 
+    file. Line CANC+19^IBACUS2 is modified.  
+  
+  
+                                
+        ================INSTALLATION INSTRUCTIONS ================= 
+   
+ This patch can be installed with users on the system, however several 
+ options will need to be disabled (see step 4).
+  
+ NOTE:  THIS PATCH SHOULD NOT BE INSTALLED WHILE THE: IB MT NIGHT COMP
+        JOB IS RUNNING!!!  
+  
+ Install Time - less than 2 minutes.
+     
+     
+ 1.   LOAD TRANSPORT GLOBAL 
+      ---------------------
+      Choose the PackMan message containing this patch and invoke the 
+      INSTALL/CHECK MESSAGE PackMan option.  
+     
+ 2.   START UP KIDS 
+      -------------
+      Start up the Kernel Installation and Distribution System Menu 
+      [XPD MAIN]: 
+     
+             Edits and Distribution ...  
+             Utilities ...  
+             Installation ...  
+     
+      Select Kernel Installation & Distribution System Option: INStallation 
+                                                                ---
+             Load a Distribution 
+             Print Transport Global 
+             Compare Transport Global to Current System 
+             Verify Checksums in Transport Global 
+             Install Package(s) 
+             Restart Install of Package(s) 
+             Unload a Distribution 
+             Backup a Transport Global 
+   
+ 3.   Select Installation Option: 
+      ---------------------------
+      NOTE:  The following are OPTIONAL - (When prompted for the INSTALL 
+             NAME, enter IB*2.0*341): 
+  
+      a.  Backup a Transport Global - This option will create a backup 
+          message of any routines exported with this patch. It will not 
+          backup any other changes such as DD's or templates.  
+      b.  Compare Transport Global to Current System - This option will 
+          allow you to view all changes that will be made when this patch 
+          is installed.  It compares all components of this patch 
+          (routines, DD's, templates, etc.).  
+      c.  Verify Checksums in Transport Global - This option will allow 
+          you to ensure the integrity of the routines that are in the 
+          transport global.  
+     
+ 4.   Select Installation Option: Install Package(s) 
+                                  ------------------
+      **This is the step to start the installation of this KIDS patch: 
+     
+      a. Choose the Install Package(s) option to start the patch install.  
+   
+      b. When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+         YES//' answer NO 
+   
+      c. When prompted 'Want to DISABLE Scheduled Options, Menu Options, 
+         and Protocols? YES//' answer YES 
+      
+      d. When prompted 'Enter options you wish to mark as 'Out Of 
+         Order':'  Enter the following options: 
+   
+      Employer Report                   [IB OUTPUT EMPLOYER REPORT] 
+      Insurance Review Edit             [IBT EDIT COMMUNICATIONS] 
+      Outpatient Workload Report        [IBJD INTAKE OPT WORKLOAD] 
+      Assign Reason Not Billable        [IBT EDIT REASON NOT BILLABLE] 
+      Inquire to Claims Tracking        [IBT OUTPUT CLAIM INQUIRY] 
+      Reasons Not Billable Report       [IBJD REASONS NOT BILLABLE] 
+      Print CT Summary for Billing      [IBT OUTPUT BILLING SHEET] 
+      Release Charges 'Pending Review'  [IB MT REV PEND CHARGES] 
+      Auto-Build Average Bill Amounts   [IBT MONTHLY AUTO GEN AVE BILL] 
+      Re-Generate Average Bill Amounts  [IBT RE-GEN AVE BILL AMOUNT] 
+      Auto-build Unbilled Amounts Report     [IBT MONTHLY AUTO GEN UNBILLED] 
+      LTC Single Patient Billing Profile     [IBAEC LTC BILLING PROFILE] 
+      Re-Generate Unbilled Amounts Report    [IBT RE-GEN UNBILLED REPORT] 
+      Send Test Unbilled Amounts Bulletin    [IBT SEND TEST UNBILLED MESS] 
+      Outpatient/Registration Events Report  [IB OUTPUT EVENTS REPORT] 
+      Percentage of Completed Registrations  [IBJD INTAKE COMP REG] 
+      Queue Means Test Compilation of Charges  [IB MT NIGHT COMP] 
+      Release Charges Awaiting New Copay Rate  [IB MT REL HELD (RATE) CHARGES] 
+      Manually Add Opt. Encounters to Claims T [IBT SUP MANUALLY QUE ENCTRS] 
+   
+     
+      e. When prompted 'Enter protocols you wish to mark as 'Out Of 
+         Order':' press <return>.  
+     
+ Installation Example: 
+ =====================
+   
+ Select Installation Option: 6  Install Package(s) Select INSTALL NAME: 
+ IB*2.0*341       Loaded from Distribution  3/2/06@11:08:48 
+      => IB*2*341 
+   
+ This Distribution was loaded on Mar 02, 2006@11:08:48 with header of 
+    IB*2*341 
+    It consisted of the following Install(s): 
+      IB*2.0*341 Checking Install for Package IB*2.0*341 
+   
+ Install Questions for IB*2.0*341 
+   
+   
+   
+ Want KIDS to INHIBIT LOGONs during the install? YES// NO Want to DISABLE 
+ Scheduled Options, Menu Options, and Protocols? YES// 
+   
+ Enter options you wish to mark as 'Out Of Order': IB OUTPUT EMPLOYER REPORT 
+   Employer Report 
+   
+ Enter options you wish to mark as 'Out Of Order': IBT EDIT COMMUNICATIONS 
+ Insurance Review Edit 
+   
+ Enter options you wish to mark as 'Out Of Order': IBJD INTAKE OPT WORKLOAD 
+  Outpatient Workload Report 
+   
+ Enter options you wish to mark as 'Out Of Order': IBT EDIT REASON NOT BILLABLE 
+      Assign Reason Not Billable 
+   
+ Enter options you wish to mark as 'Out Of Order': IBT OUTPUT CLAIM INQUIRY 
+  Inquire to Claims Tracking 
+   
+ Enter options you wish to mark as 'Out Of Order': IBJD REASONS NOT BILLABLE 
+   Reasons Not Billable Report 
+   
+ Enter options you wish to mark as 'Out Of Order': IBT OUTPUT BILLING SHEET 
+  Print CT Summary for Billing 
+   
+ Enter options you wish to mark as 'Out Of Order': IB MT REV PEND CHARGES 
+ Release Charges 'Pending Review' 
+   
+ Enter options you wish to mark as 'Out Of Order': IBT MONTHLY AUTO GEN AVE BILL 
+       Auto-Build Average Bill Amounts 
+   
+ Enter options you wish to mark as 'Out Of Order': IBT RE-GEN AVE BILL AMOUNT 
+   
+ Enter options you wish to mark as 'Out Of Order': IBT MONTHLY AUTO GEN UNBILLED 
+       Auto-build Unbilled Amounts Report 
+   
+ Enter options you wish to mark as 'Out Of Order': IBAEC LTC BILLING PROFILE 
+   LTC Single Patient Billing Profile 
+   
+ Enter options you wish to mark as 'Out Of Order': IBT RE-GEN UNBILLED REPORT 
+   
+ Enter options you wish to mark as 'Out Of Order': IBT SEND TEST UNBILLED MESS 
+     Send Test Unbilled Amounts Bulletin 
+   
+ Enter options you wish to mark as 'Out Of Order': IB OUTPUT EVENTS REPORT 
+ Outpatient/Registration Events Report 
+   
+ Enter options you wish to mark as 'Out Of Order': IBJD INTAKE COMP REG 
+ Percentage of Completed Registrations 
+   
+ Enter options you wish to mark as 'Out Of Order': IB MT NIGHT COMP Queue Means 
+ Test Compilation of Charges 
+   
+ Enter options you wish to mark as 'Out Of Order': IB MT REL HELD (RATE) CHARGES 
+       Release Charges Awaiting New Copay Rate 
+   
+ Enter options you wish to mark as 'Out Of Order': IBT SUP MANUALLY QUE ENCTRS 
+     Manually Add Opt. Encounters to Claims Tracking 
+   
+ Enter options you wish to mark as 'Out Of Order': 
+   
+ Enter protocols you wish to mark as 'Out Of Order': 
+   
+ Delay Install (Minutes):  (0-60): 0// 
+   
+ Enter the Device you want to print the Install messages.  You can queue the 
+ install by enter a 'Q' at the device prompt.  Enter a '^' to abort the install. 
+  
+  
+   
+ DEVICE: HOME//   TELNET TERMINAL 
+   
+   
+                                    IB*2.0*341                                  
+ -----------------------------------------------------------------------------
+  
+  Install Started for IB*2.0*341 : 
+                Mar 02, 2006@11:18:45 
+  
+ Build Distribution Date: Mar 01, 2006 
+  
+  Installing Routines: 
+                Mar 02, 2006@11:18:45 
+  
+  Updating Routine file...  
+  
+  Updating KIDS files...  
+  
+  IB*2.0*341 Installed. 
+                Mar 02, 2006@11:18:45 
+  
+  Install Message sent #11231 
+   
+ --------------------------------------------------------------------------------
+           +------------------------------------------------------------+
+   100%    |             25             50             75               | 
+ Complete  +------------------------------------------------------------+ 
+   
+   
+ Install Completed 
+  
+ ROUTINE SUMMARY 
+ ===============
+  
+ The following is a list of the routines included in this patch.  The second
+ line of each of these routines now looks like: 
+  
+             <tab>;;2.0;INTEGRATED BILLING;**[patch list]**;21-MAR-94 
+  
+                            CHECK^XTSUMBLD results 
+  
+      Routine        Before Patch      After Patch      Patch List 
+      --------       ------------      -----------      ----------
+      IBACUS2             8341875          8414696      52,91,51,240,341
+      IBAMTS              7924602          8263775      52,115,132,153,164,156,
+                                                        171,247,312,341
+      IBECEAU3            3599373          3759938      132,150,167,183,341
+      IBECEAU4            6922909          6950626      52,167,183,341
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: IBACUS2
+    Before: B33239765  After: B33456496  **52,91,51,240,341**
+Routine Name: IBAMTS
+    Before: B17712149  After: B18301561  **52,115,132,153,164,156,171,
+                                          247,312,341**
+Routine Name: IBECEAU3
+    Before:  B6414442  After:  B6694889  **132,150,167,183,341**
+Routine Name: IBECEAU4
+    Before: B16030662  After: B16312791  **52,167,183,341**
+
+=============================================================================
+User Information:
+Entered By  : HOLLOWAY,THOMAS J             Date Entered  : FEB 24, 2006
+Completed By: DAWSON,TIM                    Date Completed: SEP 05, 2006
+Released By : BOTTINI,STEVE                 Date Released : SEP 05, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,285 @@
+$TXT Created by KOPP,TERRY at PASVFF.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 11/21/06 at 10:58
+=============================================================================
+Run Date: DEC 12, 2006                     Designation: DG*5.3*735
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #648                    Status: Released
+                  Compliance Date: DEC 19, 2006
+=============================================================================
+
+Associated patches: (v)DG*5.3*731      install with patch       `DG*5.3*735'
+
+Subject: UPDATE HEC WITH OEF/OIF DATA
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ I. OVERVIEW
+  
+ This patch includes updates to the functionality for the Registration V.
+ 5.3 package in support of the Operation Enduring & Iraqi Freedom (OEF/OIF)
+ initiative. It starts a background job to retransmit a Health Level Seven 
+ (HL7) Z07 message for each veteran whose OEF/OIF data was not transmitted
+ back to the Health Eligibility Center (HEC) or whose combat veteran end
+ date (CV end date) was not properly calculated during the data seeding
+ that occurred with patch DG*5.3*673.  DG*5.3*731 must be installed before
+ this patch to correct the software that calculates CV end date.
+  
+ This patch also includes a fix to the process of deleting the service
+ branch from a veteran's record using screen 6 of registration. Currently,
+ if you delete the branch of service, it correctly deletes all the other
+ fields related to that military service episode, but erroneously allows
+ you to continue to edit those deleted military service episode fields.
+  
+ II. ASSOCIATED REMEDY TICKETS & NEW SERVICE REQUESTS
+  
+ The following section lists the Remedy tickets and/or New Service Requests
+ associated with this patch.
+  
+ 1. Associated Remedy Tickets:
+    -----------------------------------------
+    HD0000000163579 DG*5.3*689, Combat Veteran Data
+    HD0000000163542 Unsupported CV End Date Report Problem
+                    Problem: During the seeding of the OEF/OIF data, some
+                              records were not transmitted back to the HEC
+                              after being stored in VistA.  As a result,
+                              the data was never filed in the IVM CLIENT
+                              INCOME file (#300.13) at HEC and was not used
+                              in the CV End Date calculation.
+                   Solution: Set the flag to generate a new HL7 Z07 message
+                              to be sent to the HEC for the veterans for
+                              whom this problem exists.  Change the COMBAT
+                              VETERAN END DATE (#.5295) in the PATIENT file
+                              (#2) to be the CV End Date calculated value
+                              if all of the following conditions are true:
+                                1. The COMBAT VETERAN END DATE (#.5295) 
+                                   value exists and doesn't match the CV
+                                   End Date calculated value.
+                                2. The COMBAT VETERAN END DATE (#.5295)
+                                   value is less than the CV End date
+                                   calculated value.
+                                3. The CV End Date calculated value is the
+                                   SERVICE SEPARATION DATE [LAST] plus 24
+                                   months.
+  
+  
+ 2. Associated New Service Request(s):
+    -----------------------------------------
+    NONE 
+  
+ III. FUNCTIONAL OVERVIEW
+  
+ The following is an overview of the changes that will be delivered in this
+ patch:
+  
+ When OEF/OIF data was added to veterans' records during the implementation
+ of patch DG*5.3*673, the data was not always sent back to the HEC to
+ update the IVM CLIENT INCOME file (#300.13).
+  
+ The patch includes a post installation routine that queues a job to read
+ through the veteran records in the PATIENT file (#2) that have OEF/OIF
+ entries (using the 'ALOEIF' cross reference).  The task number of the 
+ job is displayed during the installation process and is also stored in 
+ the INSTALL file.  The job should take less than one hour to run.  It can 
+ be stopped using Taskman and can be restarted by using D RUN^DG53735P 
+ from programmers mode.
+  
+ The following logic will be used to find which of these veterans' records
+ need to transmit Z07 messages to HEC to update the IVM CLIENT INCOME file:
+  
+  - Find all veterans with OEF/OIF data using the 'ALOEIF' cross 
+    reference by latest OEF/OIF TO DATE
+  - Check the PATIENT file (#2) record for a valid COMBAT VETERAN END 
+     DATE (#.5295) value.
+  - If the CV End Date is not valid, OR
+     If the CV End Date is valid, but the last Z07 message transmission for
+      the veteran was dated before the OEF/OIF data was added,
+     Flag the record so it will be sent to HEC via an HL7 Z07 message.
+  - In addition, if the COMBAT VETERAN END DATE (#.5295) exists in
+    the PATIENT file (#2), AND
+     If the COMBAT VETERAN END DATE (#.5295) doesn't match the CV End Date
+      calculated value AND
+     If the COMBAT VETERAN END DATE (#.5295) value is less than the CV End
+      Date calculated value AND
+     If the CV End Date calculated value is the SERVICE SEPARATION DATE
+      [LAST] plus 24 months,
+     Change the COMBAT VETERAN END DATE (#.5295) value on VistA to be the
+     CV End Date calculated value.
+  
+ A bulletin is sent to the DGEN ELIGIBILITY ALERT mail group upon
+ completion of the post-installation with the totals accumulated from the
+ run.  The subject of the bulletin is:
+       
+     SUMMARY STATS - TRANSMIT UNSENT OEF/OIF DATA TO HEC
+  
+ During an edit session, when any of the SERVICE BRANCH [LAST] (#.325), the
+ SERVICE BRANCH [NTL] (#.3291) or the SERVICE BRANCH [NNTL] (#.3296) fields
+ in the PATIENT (#2) file is deleted using Registration screen 6, the
+ software will no longer allow the user to continue editing the related
+ military service data.
+  
+ IV. TECHNICAL COMPONENTS
+  
+ The following section describes the technical components being 
+ exported with this patch.
+  
+ 1. The following ROUTINE(s) will be added/modified.
+  
+  ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;5.3;Registration;**[patch list]**; Aug 13,1993;Build 11
+  
+                              CHECK^XTSUMBLD results
+  Routine       Before Patch   After Patch              Patch List
+  =======       ============   ===========              ==========
+  DG53735P               N/A      12130750                  735
+  DGRPE             28447896      28659687          32,114,139,169,175
+                                                    247,190,343,397,342
+                                                    454,415,489,506,244
+                                                    547,522,528,555,508
+                                                    451,626,638,624,677
+                                                      672,702,689,735
+  
+ Number of routines in patch:           2
+      Number of new routines:           1
+  Number of routines changed:           1
+  
+  
+ V. INSTALLATION INSTRUCTIONS
+  
+  Installation Steps:
+  ===================
+  * Users On the System:
+     This patch may be installed with users on the system, but should be
+     loaded during non-peak hours to minimize disruption to users and to
+     reduce the possibility of errors when the routines are updated.
+  
+  * Software Installation Time:
+     The estimated installation time is less than 5 minutes during off peak
+     hours.
+  
+   1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu to unload
+      the KIDS distribution included with this message.
+  
+   2. From the 'Kernel Installation & Distribution System' menu, select the
+      Installation menu.
+  
+   3. From this menu, you may now elect to use the following options (when
+      prompted for INSTALL NAME, enter DG*5.3*735).
+  
+      a. Backup a Transport Global - This option will create a backup
+         message of any routines exported with the patch.  It will NOT
+         backup any changes such as DDs or templates.
+  
+      b. Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when the patch is
+         installed.  It compares all components of the patch (routines,
+         DDs, templates, etc.).
+  
+      c. Verify Checksums in Transport Global - This option will allow you
+         to ensure the integrity of the routines that are in the transport
+         global.
+  
+      d. Print Transport Global - this option will allow you to view the
+         components of the KIDS build.
+  
+   4. Use the Install Package(s) option and select package DG*5.3*735.
+  
+   5. When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+      YES//', it is recommended you answer NO.
+  
+   6. When prompted to 'Want to DISABLE Scheduled Options, Menu Options,
+      and Protocols? YES//', respond Yes.  When prompted to select the
+      options you would like to place out of order, enter the following:
+  
+        DG REGISTER PATIENT        Register a Patient
+        DG LOAD PATIENT DATA       Load/Edit Patient Data
+  
+ VI. IMPLEMENTATION STEPS
+  
+ There are no special implementation steps to take after the successful
+ installation of this software.  If, for any reason the post install's 
+ queued job (description of taskman task will be "Re-transmit of OEF-OIF 
+ Data") has to be stopped or needs to be restarted, this can be
+ accomplished by executing the following from programmer mode:
+  
+                D QUE^DG53735P to queue the job to run
+                D RUN^DG53735P to run the job without queuing
+  
+  
+ VII. TEST SITES
+  
+ The following sites participated in the testing of the DG*5.3*735 
+ software.
+  
+  Test Sites                       
+  ------------------------       
+  Altoona (Small)
+  Madison (Medium)
+  Portland (Integrated) 
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: DG53735P
+    Before:       n/a  After: B77535320  **735**
+Routine Name: DGRPE
+    Before: B60930744  After: B61249824  **32,114,139,169,175,247,190,
+                                          343,397,342,454,415,489,506,244,
+                                          547,522,528,555,508,451,626,638,
+                                          624,677,672,702,689,735**
+ Description of Changes:
+  DGRPE.INT.1
+   +89  601   ;;@60101;D SET32^DGRPE(DA,.DIPA,1);.325;S DIPA("X1")=X S:X="" 
+  Y="@60199" I X'="" S:$$FV^DGRPMS(X)'=1 Y="@60111";.3214;I X="" D
+  PRF^DGRPE S Y ="@60101";S Y="@6011";
+  ...................
+  |"PATVEE"|DGRPE.INT.1
+   +89  601   ;;@60101;D SET32^DGRPE(DA,.DIPA,1);.325;S DIPA("X1")=X S:X="" 
+  Y="@60199" S:$$FV^DGRPMS(X)'=1 Y="@60111";.3214;I X="" D PRF^DGRPE S
+  Y="@60101";S Y="@6011";
+   
+            
+  ---------------------------------------
+  DGRPE.INT.1
+   +91  601001 ;;@60102;D SET32^DGRPE(DA,.DIPA,2);.3291;S DIPA("X2")=X 
+  S:X="" Y="@60199" I X'="" S:$$FV^DGRPMS(X)'=1 Y="@60112";.3214;I X="" D
+  PRF^DGRPE S Y="@60102";S Y="@6012";
+  ...................
+  |"PATVEE"|DGRPE.INT.1
+   +91  601001 ;;@60102;D SET32^DGRPE(DA,.DIPA,2);.3291;S DIPA("X2")=X 
+  S:X="" Y="@60199" S:$$FV^DGRPMS(X)'=1 Y="@60112";.3214;I X="" D PRF^DGRPE
+  S Y="@60102";S Y="@6012";
+  ---------------------------------------
+   
+   
+  DGRPE.INT.1
+   +93  601003 ;;@60103;D SET32^DGRPE(DA,.DIPA,3);.3296;S DIPA("X3")=X 
+  S:X="" Y="@60199" I X'="" S:$$FV^DGRPMS(X)'=1 Y="@60113";.3214;I X="" D
+  PRF^DGRPE S Y="@60103";S Y="@6013";
+  ...................
+  |"PATVEE"|DGRPE.INT.1
+   +93  601003 ;;@60103;D SET32^DGRPE(DA,.DIPA,3);.3296;S DIPA("X3")=X 
+  S:X="" Y="@60199" S:$$FV^DGRPMS(X)'=1 Y="@60113";.3214;I X="" D PRF^DGRPE
+  S Y="@60103";S Y="@6013";
+
+
+=============================================================================
+User Information:                          Hold Date     : DEC 12, 2006
+Entered By  : KOPP,TERRY M                  Date Entered  : OCT 25, 2006
+Completed By: SADA,WILLIAM J                Date Completed: DEC 11, 2006
+Released By : HEUER,CINDY                   Date Released : DEC 12, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

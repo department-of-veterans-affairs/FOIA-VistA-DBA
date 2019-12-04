@@ -1,0 +1,471 @@
+
+=============================================================================
+Run Date: JAN 19, 2006                     Designation: SD*5.3*394
+Package : SD - SCHEDULING                     Priority: Mandatory
+Version : 5.3       SEQ #371                    Status: Released
+                  Compliance Date: FEB 19, 2006
+=============================================================================
+
+Associated patches: (c)IB*2*318        install with patch       `SD*5.3*394'
+                    (v)SD*5.3*263  <<= must be installed BEFORE `SD*5.3*394'
+                    (v)SD*5.3*273  <<= must be installed BEFORE `SD*5.3*394'
+                    (v)SD*5.3*280  <<= must be installed BEFORE `SD*5.3*394'
+                    (v)SD*5.3*296  <<= must be installed BEFORE `SD*5.3*394'
+                    (v)SD*5.3*325  <<= must be installed BEFORE `SD*5.3*394'
+                    (v)SD*5.3*327  <<= must be installed BEFORE `SD*5.3*394'
+                    (v)SD*5.3*399  <<= must be installed BEFORE `SD*5.3*394'
+                    (v)SD*5.3*459  <<= must be installed BEFORE `SD*5.3*394'
+
+Subject: DISPLAYRATED DISABILITIES AND SERVICE CONNECTED % WHEN MAKING AN APPOINTMENT
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ This patch enhances Scheduling and EWL (Electronic Wait List) 
+ functionality, providing a means of tracking service connected 
+ appointments and prioritizing veterans waiting for appointments related 
+ to their service connected condition. It should be noted that this
+ patch will effect outpatient appointment scheduling only and inpatient
+ scheduling will not be effected by this patch. Patch IB*2.0*318 will be
+ loaded directly following patch SD*5.3*394. This patch will populate the
+ BILLABLE APPOINTMENT TYPE file (#352.1) with the new SERVICE CONNECTED
+ appointment type.
+  
+ Patients which are NON-SERVICE CONNECTED will not be affected by this
+ patch.
+  
+ NOTE: See patch description for more detailed information of patch 
+       IB*2.0*318.
+  
+ The SERVICE CONNECTED PERCENTAGE (#.302) field of the PATIENT (#2) file is
+ added to the SD WAIT LIST (#409.3) file as the SERVICE CONNECTED 
+ PERCENTAGE (#14) field. The option SD EWL BACKGROUND JOB, scheduled as
+ a task to run daily, monitors the field SERVICE CONNECTED PERCENTAGE
+ (#.302) in the PATIENT (#2) file, and appropriately updates the new field
+ SERVICE CONNECTED PERCENTAGE (#14) in file SD WAIT LIST (#409.3) when the
+ SERVICE CONNECTED PERCENTAGE (#.302) field changes in the PATIENT (#2)
+ file. Appropriate MailMan messages regarding changes to the SERVICE 
+ CONNECTED PERCENTAGE (#.302) field are sent to members of the
+ mail group SD EWL BACKGROUND UPDATE, as described below in further detail.
+  
+ The field SERVICE CONNECTED PRIORITY (#15) is the other new field added to
+ file SD WAIT LIST (#409.3), which is set to 'YES' if the EWL entry
+ is a priority appointment. Patients with a service connected percentage
+ greater than 49% automatically have priority, while those patients with a
+ service connected percentage less than 50% only have priority if their 
+ requested appointment is related to their service connected condition. If a
+ patient's service connected percentage changes, the following rules are
+ applied to the patient's service connected priority:
+  
+    The SERVICE CONNECTED PRIORITY (#15) field will be set to 'YES' 
+    if the SERVICE CONNECTED PERCENTAGE (#.302) field changes from
+    less than 50% to greater than 49%.  If the SERVICE CONNECTED PERCENTAGE
+    (#.302) field changes and the SERVICE CONNECTED PRIORITY is updated, a
+    Mailman bulletin with a subject line of "EWL Service Connected Patient
+    Update with SC Priority" will be sent to members of the mail group
+    SD EWL BACKGROUND UPDATE, listing the patients' names whose SERVICE
+    -CONNECTED PERCENTAGE (#.302) changed (see Message 1 in 4 Bulletins of
+    V.Technical Information in the Release Notes.)
+  
+    A Mailman bulletin with a subject line of "EWL Service Connection 
+    Patient Update with SC Percentage Change" will be sent to members of 
+    the mail group SD EWL BACKGROUND UPDATE if the SERVICE CONNECTED PERCENTAGE
+    (#.302) changes from greater than 49% to less than 50% (see Message 2 in
+    4 Bulletins of V. Technical Information in the Release Notes.) This 
+    bulletin will also be sent to the above mail group if the SERVICE CONNECTED
+    PERCENTAGE (#.302)is initially less than 50% and changes to a differen
+    value that is also less than 50%, but less than its initial SERVICE CONNECTED
+    PERCENTAGE (#.302) field value.  The bulletin will list the patient(s)
+    and include an additional note, "EWL SC PRIORITY MAY REQUIRE MANUAL
+    UPDATE. PLEASE REVIEW". Each site will determine whether the SERVICE
+    CONNECTION PRIORITY (#15) needs updating and will need to change this
+    field manually. The new option Service Connected Wait List (Sch/PCMM)
+    Edit [SD WAIT LIST SC PRIORITY EDIT] was created to edit the new field
+    SERVICE CONNECTED PRIORITY (#15). The EWL coordinator at each site 
+    should decide who to assign this option to.
+  
+    NOTE: SC PRIORITY cannot be updated automatically from 'YES' to 'NO' 
+          because the EWL entry may have been set up as 'YES' with SC<50%
+          if requested appointment is for a service connected condition.
+   
+ The post init routine SDWLP394 will create the fields SERVICE 
+ CONNECTED PERCENTAGE (#14) and SERVICE CONNECTED PRIORITY (#15) in
+ the SD WAIT LIST (#409.3) file.  If the patient has a value in the SERVICE
+ CONNECTED PERCENTAGE (#.302) field of the PATIENT (#2) file, the SERVICE
+ CONNECTED PERCENTAGE (#14)  field is populated with that value. If the
+ patient has a service connected percentage of 50% or greater, the routine
+ will set the SERVICE CONNECTED PRIORITY (#15) field to "YES".  If the 
+ patient has a service connected percentage of less than 50%, the SERVICE 
+ CONNECTED PRIORITY (#15) will be set to 'NO' by the post init routine. 
+ The EWL coordinator can review SERVICE CONNECTED veterans that are less 
+ than 50% using the 'Appointment (Sch/PCMM) Wait List Report'[SD WAIT LIST 
+ APPT REPORT]. Wait List entries for these veterans may have to be updated 
+ to 'YES' if the site prefers to have historical data updated. No mail
+ messages are sent when the post init routine is run. The post init routine
+ will also populate the 'SDAM APPOINTMENT EVENTS' protocol with the the
+ 'SDAM APPT TYPE VALIDATION' event. A message will be displayed to the user
+ on successful completion. The routine SDWLP394 is deleted after it runs to
+ completion.
+  
+ The options Appointment (Sch/PCMM) Wait List Report [SD WAIT LIST APPT 
+ REPORT] (detailed report only) and Inquire Wait List (Sch/PCMM) [SD WAIT
+ LIST INQUIRY] are modified to display the field SERVICE CONNECTED PRIORITY
+ (#15).
+  
+ When adding a patient to the WAIT LIST, the patient's service connected 
+ percentage and rated disabilities are displayed.  If a patient has a 
+ service connected percentage of less than 50%, a prompt will ask if the
+ appointment is for a service connected condition (Y or N). If the 
+ requested appointment is SERVICE CONNECTED, the SERVICE CONNECTED PRIORITY
+ (#15) field is set to 'YES' and is stored in SD WAIT LIST (#409.3). If a
+ patient has a service connected percentage of 50% or greater, the prompt
+ will not display and the SERVICE CONNECTED PRIORITY (#15) field is set to
+ "YES" because patients with a service connected percentage of 50% or
+ greater automatically have priority.
+  
+ A new appointment type 'SERVICE CONNECTED' is added to the APPOINTMENT 
+ TYPE file (#409.1).  When entering the option 'MAKE APPOINTMENT 
+ [MA]'[SDM] or 'UNSCHEDULED VISIT [UN]'[SDI] in APPOINTMENT MANAGEMENT 
+ [SDAM APPT MGT], users will see each patient's service connected 
+ percentage and rated disabilities.  If a patient is less than 50% service 
+ connected, a prompt will ask the user if the appointment is for a service 
+ connected appointment (Y or N).  The 'APPOINTMENT TYPE ' prompt is then 
+ displayed.  If the DEFAULT APPOINTMENT TYPE (#2507) for a clinic in the 
+ HOSPITAL LOCATION (#44) file is 'REGULAR' and the answer to the service 
+ connected appointment prompt is Y, then the APPOINTMENT TYPE prompt will 
+ change to 'SERVICE CONNECTED'.  If the DEFAULT APPOINTMENT TYPE 
+ (#2507) for a clinic in the HOSPITAL LOCATION (#44) file is not 'REGULAR' 
+ and the answer to the service connected appointment question is Y, the 
+ APPOINTMENT TYPE prompt will display the value in the DEFAULT APPOINTMENT 
+ TYPE (#2507) field. The user still has the option to enter SERVICE 
+ CONNECTED as the appointment type, overriding the default appointment
+ type. If the answer to the service connected appointment question is N,
+ the APPOINTMENT TYPE prompt will display the value in the DEFAULT
+ APPOINTMENT TYPE (#2507) field. If at checkout the provider answers the 
+ question 'Is this appointment for an SC condition' different from the 
+ answer given by the user making the appointment - the provider's answer 
+ will take precedence and set the APPOINTMENT TYPE.
+  
+ When entering a patient on the SD WAIT LIST or making an appointment, if
+ the following discrepancies exist between PRIMARY ELIGIBILITY CODE
+ (#.361), SERVICE CONNECTED PERCENTAGE (#.302) and SERVICE CONNECTED?
+ (#.301) in the PATIENT file (#2), the error message: "'SC
+ Percent','Service Connected' and 'Primary Eligibility Code' are OUT OF
+ SYNC, Please CORRECT the problem" is displayed on the screen
+ notifying the user:
+  
+  
+         * If SERVICE CONNECTED? (#.301) equals YES, PRIMARY ELIGIBILITY 
+           CODE (#.361) must be a service connected eligibility (i.e.
+           equals "SC LESS THAN 50%" or "SERVICE CONNECTED 50% to 100%")
+           and SERVICE CONNECTED PERCENTAGE (#.302) must be greater than 
+           0, or the error message is displayed.
+  
+         * If SERVICE CONNECTED? (#.301) equals NO, PRIMARY ELIGIBILITY 
+           CODE (#.302) must be a non service connected eligibility and 
+           SERVICE CONNECTED PERCENTAGE (#.302) must be 0 or NULL, or the
+           error message is displayed.
+  
+ If the SERVICE CONNECTED? (#.301) equals NULL, the following error 
+ message is displayed:
+  
+         * 'SERVICE CONNECTED?' field is blank please update patient 
+           record.
+  
+ If the PRIMARY ELIGIBILITY CODE (#.302) equals NULL, the following error 
+ message is displayed:
+  
+         * 'PRIMARY ELIGIBILITY CODE' field is blank please update patient 
+           record.
+  
+ NOTE: New functionality allows users to select service connected
+       appointment type based on service connected percentage leaving end
+       users responsible for correcting problems as displayed in error
+       messages.
+  
+ An error was identified in routine SDWLI when PRIORITY is displayed. The
+ field 19 was incorrectly used to extract the data element, rather than field
+ 10. 
+  
+ Incorrect code:
+  
+ .S SDWLP=0 I SDWLPRI W !,"Priority -",$$EXTERNAL^DILFD(409.3,19,,SDWLPRI)
+  S SDWLP=1
+  
+ Correct code:
+  
+ .S SDWLP=0 I SDWLPRI W !,"Priority - ",$$EXTERNAL^DILFD(409.3,10,,SDWLPRI)
+  S SDWLP=1
+  
+  
+ The following documentation will be available:
+ ===============================================
+  
+      File Name                 Description
+  
+ SD_53_P394.KID            KIDS host file SD*5.3*394 & IB*2.0*318 
+ SD_53_P394_RN.PDF         Electronic Wait List for Scheduling 5.3 
+                           Enhancements RELEASE NOTES
+                                Patch SD*5.3*394
+  
+ The preferred method is to FTP the file from:
+  
+           download.vista.med.va.gov
+  
+ Sites may retrieve the documentation directly using FTP from
+ the ANONYMOUS.SOFTWARE directory at the following OI Field Offices:
+  
+           Albany:  ftp.fo-albany.med.va.gov
+           Hines:  ftp.fo-hines.med.va.gov
+           Salt Lake City:  ftp.fo-slc.med.va.gov
+  
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+  
+ There is no NSR associated with this patch.
+  
+  
+ This patch addresses the following NOIS message(s):
+ ---------------------------------------------------
+  
+ Primary Call: CHA-0303-30460
+ Duplicates:   SBY-1103-31157
+               ANN-0204-41710
+  
+ Test Sites:
+ -----------
+ EL PASO, TX
+ OKLAHOMA CITY, OK
+ FORT HARRISON, MT 
+  
+        ================INSTALLATION INSTRUCTIONS =================
+  
+ If installed during the normal workday, it is recommended that the 
+ following selection(s) in the OPTION (#19) file and all of their 
+ descendants be disabled to prevent possible conflicts while running the 
+ KIDS Install. Other VISTA users will not be affected.
+  
+          APPOINTMENT MANAGEMENT [SDAM APPT MGT]
+          Make Appointment [SDM]
+          Wait List (Sch/PCMM) Menu [SD WAIT LIST MENU]
+  
+ Install Time - less than 5 minutes
+  
+   1.   LOAD A DISTRIBUTION 
+        --------------------
+        Use the 'LOAD A DISTRIBUTION' option on the Kernel Installation &
+        Distribution menu. The Host File name is SD_53_P394.KID.
+        Answer YES to the question:  "Want to Continue with Load? YES//"
+     
+   
+   2.   COMPONENTS SENT WITH PATCH 
+        --------------------------
+        The following is a list of the routines included in this patch.  
+        The second line of each of these routines now looks like: 
+   
+                    <tab>;;5.3;Scheduling;**[patch list]**;Aug 13, 1993
+  
+                           CHECK^XTSUMBLD results
+         Routine name   Before Patch       After Patch         Patch List
+         ============   ============       ===========         ==========
+         SCMSVUT1            3564673           3561373       66,143,180,239
+                                                          247,258,296,295,321
+                                                           341,387,459,394
+         SDAMVSC                 N/A           2985132            394
+         SDCO22              3380469           3390976  150,222,244,325,394
+         SDM4                7405010          16821231  263,273,327,394
+         SDWLE111            8501275           8505372      263,273,280,394
+         SDWLE113            4019365           4119599        263,273,394
+         SDWLI              17313416          17687353        263,327,394  
+         SDWLMSG            11130529          13200618          327,394
+         SDWLP394                N/A               N/A            394
+         *** NOTE *** This routine is auto deleted at post install.
+         SDWLPL             13668368          14023798          327,394
+         SDWLQSC            12692136          16879204          327,394
+         SDWLRPT1           14834003          15293660        263,399,394
+         SDWLSC                  N/A           4608462            394
+         SDWLSCPE                N/A           9117064            394
+  
+  
+     
+       Total number of routines modified:   14
+       Total number of new routines:         4
+  
+                              CHECK1^XTSUMBLD results
+  
+                             SCMSVUT1  value = 67824096
+                             SDAMVSC   value = 5938600
+                             SDCO22    value = 8621069
+                             SDM4      value = 31128100 
+                             SDWLE111  value = 21954594
+                             SDWLE113  value = 7911045
+                             SDWLI     value = 52231226
+                             SDWLMSG   value = 36616948
+                             SDWLP394  value = 9500337
+                             **Deleted at post-install**
+                             SDWLPL    value = 30342220
+                             SDWLQSC   value = 73044330
+                             SDWLRPT1  value = 43599634
+                             SDWLSC    value = 8811789
+                             SDWLSCPE  value = 24572837
+  
+        
+        This patch modifies the functionality of the following options:
+                .
+        Option Name                                 File  New/Modified
+        -----------                                 ----  ------------
+        MAKE APPOINTMENT [SDM]                      44      MODIFIED
+  
+        Appointment (Sch/PCMM) Wait List Report 
+        [SD WAIT LIST APPT REPORT]                  409.3   MODIFIED
+   
+        Inquire Wait List (Sch/PCMM)
+        [SD WAIT LIST INQUIRY]                      409.3   MODIFIED
+  
+        The following is a list of options included in this patch:
+  
+        Option Name                                 File  New/Modified
+        -----------                                 ----  ------------
+        SD EWL BACKGROUND JOB       
+        [SD EWL BACKGROUND JOB]                      409.3   NEW
+  
+        Service Connected Wait List(Sch/PCMM)Edit
+        [SD WAIT LIST SC PRIORITY EDIT]              409.3   NEW
+  
+        **NOTE: The EWL coordinator at each site should decide who to 
+                assign this option to.
+  
+  
+  
+        The following is a list of new DD file changes included in 
+        this patch:
+  
+                                           UP    SEND  DATA
+                                           DATE  SEC.  COMES  SITE  RSLV
+        FILE #  NAME                       DD    CODE  W/FILE DATA  PTS 
+ ------------------------------------------------------------------------
+        409.3   SD WAIT LIST               YES   NO    NO     N/A   NO
+        Partial DD:
+                 FIELD NAME:  SERVICE CONNECTED PERCENTAGE
+               FIELD NUMBER:  14
+                  DATA TYPE:  NUMERIC
+                HELP-PROMPT:  Type a Number between 0 and 100, 0 Decimal 
+                              Digits
+  
+                 FIELD NAME:  SERVICE CONNECTED PRIORITY
+               FIELD NUMBER:  15
+                  DATA TYPE:  SET OF CODES
+                                   CODE: 0     WILL STAND FOR: NO
+                                   CODE: 1     WILL STAND FOR: YES
+  
+  
+        409.1   APPOINTMENT TYPE           NO    NO    YES    MERG   NO
+        The following entry is included in this patch:
+  
+        Entry (Field Number)             File Name (Number)
+        -------------------           ------------------
+        SERVICE CONNECTED (.01)       APPOINTMENT TYPE (409.1)
+  
+        **NOTE: If your site has local entries in the APPOINTMENT TYPE 
+                (#409.1) file, an error message will display during
+                installation. The installation will continue and add the
+                entry to the end of the file.  The error message is a
+                warning only and will not affect local entries.
+  
+        START UP KIDS 
+        -------------
+        Start up the Kernel Installation and Distribution System Menu 
+        [XPD MAIN]: 
+    
+             Edits and Distribution ...  
+             Utilities ...  
+             Installation ...  
+    
+   Select Kernel Installation & Distribution System Option: INStallation 
+                                                            ---
+             Load a Distribution 
+             Print Transport Global 
+             Compare Transport Global to Current System 
+             Verify Checksums in Transport Global 
+             Install Package(s) 
+             Restart Install of Package(s) 
+             Unload a Distribution 
+             Backup a Transport Global 
+    
+   Select Installation Option: 
+    
+   3.   Select Installation Option: 
+        ---------------------------
+        NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+               NAME, enter SD*5.3*394):
+       
+        a.  Backup a Transport Global - This option will create a backup
+            message of any routines exported with this patch. It will not
+            backup any other changes such as DD's or templates.
+        b.  Compare Transport Global to Current System - This option will
+            allow you to view all changes that will be made when this patch
+            is installed.  It compares all components of this patch
+            (routines, DD's, templates, etc.).
+        c.  Verify Checksums in Transport Global - This option will allow
+            you to ensure the integrity of the routines that are in the
+            transport global.
+      
+   4.   Select Installation Option: Install Package(s) 
+                                    ----------------
+        **This is the step to start the installation of this KIDS patch: 
+    
+    
+        a.  Choose the Load a Distribution option to start the patch
+            install.
+  
+        b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+            YES//' answer NO (unless otherwise indicated)
+        
+        c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+            Options, and Protocols? YES//' answer YES (unless otherwise
+            indicated)
+  
+        d.  When prompted 'Enter options you wish to mark as 'Out Of
+            Order':'  Enter the following options:
+  
+            APPOINTMENT MANAGEMENT [SDAM APPT MGT]
+            MAKE APPOINTMENT [SDM]
+            Wait List (Sch/PCMM) Menu [SD WAIT LIST MENU]  
+  
+        e.  When prompted 'Enter protocols you wish to mark as 'Out Of 
+            Order':' press <return>.
+
+Routine Information:
+====================
+Routine Name: SCMSVUT1
+Routine Name: SDAMVSC
+Routine Name: SDCO22
+Routine Name: SDM4
+Routine Name: SDWLE111
+Routine Name: SDWLE113
+Routine Name: SDWLI
+Routine Name: SDWLMSG
+Routine Name: SDWLP394
+Routine Name: SDWLPL
+Routine Name: SDWLQSC
+Routine Name: SDWLRPT1
+Routine Name: SDWLSC
+Routine Name: SDWLSCPE
+
+=============================================================================
+User Information:
+Entered By  : HOUTCHENS,THOMAS              Date Entered  : SEP 03, 2004
+Completed By: SHERLOCK,CHRIS                Date Completed: JAN 13, 2006
+Released By : CANNEDY,JOELLEN               Date Released : JAN 19, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

@@ -1,0 +1,226 @@
+$TXT Created by HARTIN,JAMES at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 03/23/05 at 13:55
+=============================================================================
+Run Date: MAY 31, 2005                     Designation: GMPL*2*31
+Package : GMPL - PROBLEM LIST                 Priority: Mandatory
+Version : 2        SEQ #28                      Status: Released
+                  Compliance Date: JUL 01, 2005
+=============================================================================
+
+Associated patches: (v)GMPL*2*26   <<= must be installed BEFORE `GMPL*2*31'
+
+Subject: CORRECT DIAGNOSIS PTR UPDATE IN PROBLEM LIST FILE
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch will correct the problem of invalid characters (~) appearing 
+ in the DIAGNOSIS (pointer to the ICD DIAGNOSIS file #80) in the PROBLEM 
+ FILE (9000011). This modification will also add a check for the ICD code 
+ not being found. (-1 being returned instead of pointer from ICD #80 file 
+ search) The problem occurs when Adding a Problem or changing a Problem via
+ the CPRS GUI. 
+  
+ This patch will also add code, that will record an audit trail when a 
+ Problem comment is modified.
+  
+ ASSOCIATED E3R(s):
+ ==================
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ ========================
+ Albuquerque,NM
+ Huntington,WV
+ Loma Linda,CA
+       
+ Associated NOIS/REMEDY:
+ ======================
+ ALB-1103-50361=HD67772     question on '~~ appended to code
+ Duplicates:
+  MUS-0105-71402=HD68693     INVALID ICD9 CODES
+  DUR-0105-30225=HD68609     Problem List entry, Clinical Reminder index
+  LOM-0205-60864=HD68834     Undefined DT+22^GMPLHIST
+  HUN-1203-20879=HD67812     DT+22^GMPLHIST Errors with OR*206
+  HD0000000086990    <UNDEFINED>DT+22^GMPLHIST
+  
+ WRJ-0802-11299=HD67506     PROBLEM LIST COMMENTS EDIT PROBLEM
+  
+ NOIS OVERVIEW:
+ ==============
+ 1. ALB-1103-50361     question on '~~ appended to code
+  
+    Problem:
+    --------
+    In the PROBLEM (#9000011) file it was noticed the Diagnosis (#.01) field 
+    (pointer to the ICD DIAGNOSIS (#80) file) was corrupt. In the NOIS a "~" 
+    was noticed as part of the pointer. In testing it was found that it may
+    also contain "-1~" followed by error text.
+  
+    Solution: 
+    ---------
+    The code was updated to test for an error code (-1) on return from the
+    ICD problem code lookup. It was also modified to only file numeric
+    values for the pointer. A clean up post routine GMPL31P is included. It
+    will loop through the Problem List and the Problem List Audit file
+    looking for ICD-9 pointers which contain a "~" or "-1". In the case "~'
+    it will be removed. In the case of a "-1", it will be updated to point
+    to the ICD-9 799.9. The routine writes to the screen what was found and
+    modified.
+  
+ 2. WRJ-0802-11299     PROBLEM LIST COMMENTS EDIT PROBLEM
+   
+    Problem:
+    --------
+    It was noticed when a Comment (Note) to a Problem was changed there 
+    was no record of a change being made. 
+  
+    Solution: 
+    ---------
+    The code was updated to record an audit trail of changes made to Problem 
+    Comments (Notes). It records the date the change was made, as well as a 
+    copy of the Comment as it appeared before the change was made, in the   
+    PROBLEM LIST AUDIT (#125.8) file.
+  
+     
+ ROUTINE SUMMARY:
+ ================
+ The following is a list of the routine(s) included in this patch.  The 
+ second line of each of these routine(s) will look like:        
+    
+ <tab>;;2.0;Problem List;**[Patch List]**;Aug 25,1994
+                                                                
+                       CHECK^XTSUMBLD results 
+      
+ Routine Name      Before Patch          After Patch          Patch List
+ ============      ============          ===========          ==========
+ GMPLHIST          7977520               8031673              7,26,31
+ GMPLSAVE          7901113               9094613              26,31
+ GMPL31P           N/A                   6440583              31
+    
+ INSTALLATION INSTRUCTIONS:
+ ==========================                                                
+  
+     
+ This patch may be installed with users on the system; however it should 
+ be installed at a non-peak time to minimize disruption to the user. 
+ Installation will take less than 1 to several minutes depending on how 
+ large the PROBLEM (#9000011) and the PROBLEM LIST AUDIT (#125.8) files 
+ are.(The post routine GMPL31P loops thru both files to clean up bad ICD-9
+ pointers.)
+  
+ 1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu.               
+          
+ 2.  Review your mapped set.  If any of the routines listed in the ROUTINE 
+     SUMMARY section are mapped, they should be removed from the mapped  
+     set at this time.
+   
+ 3.  From the Kernel Installation and Distribution System Menu, select the 
+     Installation menu.
+  
+ 4.  From this menu, you may elect to use the following options (when 
+     prompted for INSTALL NAME, enter GMPL*2.0*31):
+             
+        a.  Backup a Transport Global
+        b.  Compare Transport Global to Current System
+        c.  Verify Checksums in Transport Global
+       
+ 5.  Use the Install Packages(s) option and select the package 
+     GMPL*2.0*31.  
+    
+     a. When prompted "Want KIDS to INHIBIT LOGONs during the install?
+     YES//", answer NO.
+  
+     b. When prompted "Want to DISABLE Scheduled Options, Menu Options, and
+     Protocols? YES//", answer YES.
+  
+     c. When prompted "Enter option you wish to mark as ' Out of ORDER':",
+     enter the following option:
+  
+         GMPL DATA ENTRY      Problem List Data Entry
+    
+ 6.  If routines were unmapped as part of step 2, they should be returned 
+     to the mapped set once the installation has run to completion.
+  
+ 7.  A clean up post routine GMPL31P is included. It will loop through the
+     Problem list looking for ICD-9 pointers which contain a "~" or "-1".
+     In the case "~' it will be removed. In the case of a "-1", it will be
+     updated to point to the ICD-9 799.9. The routine writes to the screen
+     what was found and modified. Following is an example of the output:
+     
+     >D EN^GMPL31P
+  
+     THE FOLLOWING PROBLEM LIST ENTRIES CONTAINED BAD ICD9 POINTERS
+     AND HAVE BEEN MODIFIED WITH A CORRECTED POINTER
+  
+     PROBLEM IEN     BAD POINTER        CORRECTED POINTER
+     ___________     ___________         _______________
+     242             -1                  5570
+     246             -1                  5570
+     248             -1                  5570
+     249             1499~               1499
+     252             1080~               1080
+     256             -1~NO CODE SELECTED 5570 
+  
+     TOTAL ITEMS WORKED = 289
+     TOTAL ITEMS ADJUSTED = 6
+      
+     THE FOLLOWING PROBLEM LIST AUDIT ENTRIES CONTAINED BAD ICD9 POINTERS
+     AND HAVE BEEN MODIFIED WITH A CORRECTED POINTER
+  
+     PROBLEM IEN     BAD POINTER        CORRECTED POINTER
+     ___________     ___________         _______________
+     188947          -1~NO CODE SELECTED 5570
+     195624          8782~               8782
+     196557          1202~               1202
+     199860          8782~               8782
+     203296          -1                  5570
+     203298          -1                  5570
+     203302          -1                  5570
+     204601          8827~               8827
+     215756          8815~               8815
+     222388          8827~               8827
+  
+     TOTAL AUDIT ITEMS WORKED = 109
+     TOTAL AUDIT ITEMS ADJUSTED = 10
+     AN ITEM IEN MAY APPEAR UP TO 2 TIMES ONE FOR EACH BAD PIECE
+     AS THE FIFTH AND SIXTH PIECES ARE CHECKED
+  
+     NOTE:  This routine is not automatically deleted and can be kept as a
+     IRM tool or not. 
+
+Routine Information:
+====================
+
+Routine Name:
+  - GMPLSAVE
+
+
+Routine Checksum:
+
+Routine Name:
+  - GMPLHIST
+
+
+Routine Checksum:
+
+Routine Name:
+  - GMPL31P
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : HARTIN,JAMES                  Date Entered  : JAN 13, 2005
+Completed By: ILUSTRISIMO,LUCY              Date Completed: MAY 16, 2005
+Released By : MONTGOMERY,ALAN               Date Released : MAY 31, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,326 @@
+$TXT Created by THEROUX,JOHN at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 03/24/05 at 17:37
+=============================================================================
+Run Date: MAY 05, 2005                     Designation: DG*5.3*614
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #571                    Status: Released
+                  Compliance Date: JUN 05, 2005
+=============================================================================
+
+Associated patches: (v)DG*5.3*516  <<= must be installed BEFORE `DG*5.3*614'
+                    (v)DG*5.3*601  <<= must be installed BEFORE `DG*5.3*614'
+                    (v)DG*5.3*606  <<= must be installed BEFORE `DG*5.3*614'
+
+Subject: PTF EMPTY TRANSMISSIONS/RAI-MDS HL7 PACKET FOR DIAGNOSIS/PTF MESSAGING
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+   This patch will prevent sending blank PTF transmissions to
+   Austin Automation Center. 
+    
+   The patch will modify the HL7 packet for RAI/MDS (COTS)
+   by increasing the number of secondary diagnoses reported from 9 to 12.
+    
+   The patch will modify routine VADPT1 to check the ethnicity method
+   of collection for null before updating the data.
+   
+  ASSOCIATED NOIS:
+  ===============
+  HD63579 - ATG-0803-31354   Empty PTF Transmissions
+  HD63997 - TOM-0604-41598   PTF NOT UPDATING ALL 13 DIAGNOSIS IN HL7
+  HD64115 - HUN-0804-20632   VADPT1 ERROR DURING PROCESS DICOM IMAGES
+   
+  ASSOCIATED E3R(s):
+  ================
+  N/A
+   
+  PARTICIPATING TEST SITES:
+  ======================
+  Tomah,WI
+  Upstate NY HCS
+  Hudson Valley HCS 
+   
+  NOIS OVERVIEW:
+ ===============
+  
+ 1) HD63579 - ATG-0803-31354   Empty PTF Transmissions
+  
+  Problem:
+  ========
+  Occasionally a PTF transmission to Austin is blank.  When a batch
+  of PTF records are being prepared for transmission, as it adds each
+  record to the message, the routine checks whether the total number 
+  of lines exceeds the field LINES/MSG FIXED LENGTH RECORD (#.02)
+  in the TRANSMISSION ROUTER FILE (407.7). Although this field allows
+  up to 1400 lines, most sites have set the value at 100 or 150. 
+  When this limit is reached, the transmission is sent, which usually
+  allows about 10 to 20 PTF records per transmission.  Occasionally
+  a patient record will exceed the limit by itself.  The software
+  then sends the transmission without first populating the message
+  with that patient's data, resulting in a blank transmission.  
+   
+  Resolution:
+  ==========
+  Routine DGPTFTR was modified to populate the message with data.
+  
+ 2) HD63997 - TOM-0604-10792   PTF NOT UPDATING ALL 13 DIAGNOSIS IN HL7
+   
+  Problem:
+  --------
+  With patch DG*5.3*517, the PTF was modified to collect up to 12
+  secondary diagnoses, but the HL7 messaging to RAI/MDS is
+  only sending the first 9.
+   
+  Resolution:
+  -----------
+  Modify routine VAFHLDG1 to collect and send up to 12 secondary
+  diagnoses in the HL7 messaging to RAI/MDS.
+  In addition, add this cross reference to each of fields 
+  79.241 thru 79.244:
+  
+              TYPE:   MUMPS
+       Node: 1       N DG1 S DG1=$P(^DGPT(DA,0),"^",1) N X S X="DGRUDD01" X
+                     ^%ZOSF("TEST") Q:'$T  D:(+DG1>0) ADGRU^DGRUDD01(DG1)
+       Node: 2       N DG1 S DG1=$P(^DGPT(DA,0),"^",1) N X S X="DGRUDD01" X
+                     ^%ZOSF("TEST") Q:'$T  D:(+DG1>0) ADGRU^DGRUDD01(DG1)
+  
+                     Create a ADT/HL7 PIVOT (#391.71) entry when diagnosis
+                     changes
+  
+   
+ 3) HD64115 - HUN-0804-20632   VADPT1 SYNTAX ERROR DURING DICOM IMAGES
+   
+  Problem:
+  --------
+  Site receiving syntax error during Process Dicom Images in routine VADPT1.
+   
+  Resolution:
+  -----------
+  Modify coding in routine VADPT1 that when processing the METHOD OF
+  COLLECTION (field #.02) of the ETHNICITY INFORMATION sub-file (#2.06)
+  of the Patient file (#2), to check for a null value prior to saving 
+  the data in the array.
+   
+  We have also updated the Vista Documentation Library (VDL) at
+ http://www.va.gov/vdl/VistA_Lib/Clinical/Admis_Disch_Transfer_(ADT)/pimstm
+ .pdf under the Chapter titled "VADPT Variables" section III, 1 DEM^VADPT,
+ to add:
+  
+ VADM(11)        Number of entries found in the
+ ETHNICITY INFORMATION
+ multiple. (e.g., 1)
+  
+ VADM(11,1..n)   Nth repetition of ETHNICITY
+ INFORMATION for the patient in
+ internal^external format.
+ (e.g., 1^HISPANIC OR LATINO)
+  
+ VADM(11,1..n,1) METHOD OF COLLECTION for
+ the Nth repetition of ETHNICITY
+ INFORMATION for the patient in
+ internal^external format.
+ (e.g., 2^PROXY))
+  
+ VADM(12)        Number of entries found in the
+ RACE INFORMATION multiple.
+ (e.g., 1)
+  
+ VADM(12,1..n)   Nth repetition of RACE
+ INFORMATION for the patient in
+ internal^external format.
+ (e.g., 11^WHITE)
+  
+ VADM(12,1..n,1) METHOD OF COLLECTION for
+ the Nth repetition of RACE
+ INFORMATION for the patient in
+ internal^external format.
+ (e.g., 2^PROXY))
+  
+    
+  ROUTINE SUMMARY
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+   
+    <tab>;;5.3;Registration;**[PATCH LIST]**;Aug 13,1993
+   
+                     CHECK^XTSUMBLD results
+   Routine name    Before Patch    After Patch    Patch List
+   ============    ============    ===========    ==========
+    DGPTFTR           9571338         9723196     37,415,530,601,614    
+    VADPT1           13239148        13262767     415,489,516,614
+    VAFHLDG1         12526140        11425791      94,151,190,511,
+                                                    606,614
+  
+   
+ TECHNICAL DOCUMENTATION:
+ =======================
+  
+ Modified routine VAFHLDG1 in following manner:
+  
+ Before:
+  
+ IN+26  F VAFLD=79,79.16,79.17,79.18,79.19,79.201,79.21,79.22,
+               79.23,79.24 S VAFHICD=$$GET1^DIQ(45,VAFHPTF,
+              VAFLD,"I") I VAFHICD]"" S VACNT=VACNT+1,VAFHICD(
+               VACNT)=VAFHICD ;Check each ICD field for data and 
+               store in array if data exists
+  
+ After:
+   
+ IN+26  F VAFLD=79,79.16:.01:79.19,79.201,79.21:.01:79.24,79.241,
+           79.242,79.243,79.244 D
+         . S VAFHICD=$$GET1^DIQ(45,VAFHPTF,VAFLD,"I") 
+         . I VAFHICD]"" S VACNT=VACNT+1,VAFHICD(VACNT)=VAFHICD ;Check each
+               ICD field for data and store in array if data exists
+  
+  
+ Modified routine DGPTFTR in following manner:
+  
+ Before:
+   23)            W !!,"Now transmitting 125 column ",$P(DGRTY0,U)," 
+ records..."
+  
+ After:
+   23)            ; DG*5.3*614 - DGFIRST identifies first record in a batch
+   24)            N DGFIRST S DGFIRST=1
+   25)            W !!,"Now transmitting 125 column ",$P(DGRTY0,U)," 
+ records..."
+  
+ Before:
+   36)            S T1=0,T2=9999999,Y=J,X=0 S:DGRTY=2 T2=+DGCN0_".9", 
+ T1=+$P(DGCN0,U,5) D LINES^DGPTFVC2 I (DGCNT+X)>VAT("F") S J=P G XMIT
+  
+ After:
+   38)            S T1=0,T2=9999999,Y=J,X=0 S:DGRTY=2 T2=+DGCN0_".9", 
+ T1=+$P(DGCN0,U,5) D LINES^DGPTFVC2 I (DGCNT+X)>VAT("F"),'$G(DGFIRST) 
+  S J=P G XMIT
+   39)            I $G(DGFIRST)=1 S DGFIRST=0
+  
+ Before:
+   53)            K DGK S DGCNT=1,DGID=DGID+1,J=DGJ Q:J'>0  D 
+ SETTRAN^DGPTUTL1 G:'DGOUTX PWR
+  
+ After:
+   56)            S DGFIRST=1
+   57)            K DGK S DGCNT=1,DGID=DGID+1,J=DGJ Q:J'>0  D 
+ SETTRAN^DGPTUTL1 G:'DGOUTX PWR
+  
+ Modified routine VADPT1 in following manner: 
+   
+ Before:
+   41)            ..S Z=$P(NODE,"^",2)
+   42)            ..S @VAV@($P(VAS,"^",11),Y,1)=
+ Z_"^"_$P($G(^DIC(10.3,Z,0)),"^",1)
+  
+ After:
+   41)            ..S Z=$P(NODE,"^",2) I Z D
+   42)            ...S @VAV@($P(VAS,"^",11),Y,1)= 
+ Z_"^"_$P($G(^DIC(10.3,Z,0)),"^",1)
+  
+ Before:
+   50)            ..S Z=$P(NODE,"^",2)
+   51)            ..S @VAV@($P(VAS,"^",12),Y,1)=
+ Z_"^"_$P($G(^DIC(10.3,Z,0)),"^",1)
+  
+ After:
+   50)            ..S Z=$P(NODE,"^",2) I Z D
+   51)            ...S @VAV@($P(VAS,"^",12),Y,1)= 
+ Z_"^"_$P($G(^DIC(10.3,Z,0)),"^",1)
+   
+ INSTALLATION INSTRUCTIONS
+ =========================
+  Medical Records coders should be off the system when this patch is   
+  installed. Installation will take less than 2 minutes.
+   
+  1.  Choose the PackMan message containing this patch and invoke the 
+      INSTALL/CHECK MESSAGE PackMan option.
+   
+  2.  (DSM for Open VMS sites only) Disable routine mapping on all systems
+      for the routines listed in the Routine Summary.
+    
+  3.  Start up the Kernel Installation and Distribution System Menu 
+      [XPD MAIN]: 
+     
+           Edits and Distribution ...  
+           Utilities ...  
+           Installation ...  
+     
+      Select Kernel Installation & Distribution System Option: INStallation
+                                                                ---
+                                                                 
+           Load a Distribution 
+           Print Transport Global 
+           Compare Transport Global to Current System 
+           Verify Checksums in Transport Global 
+           Install Package(s) 
+           Restart Install of Package(s) 
+           Unload a Distribution 
+           Backup a Transport Global  
+   
+  4.  From this menu, you may elect to use the following options
+      (when prompted for the INSTALL NAME, enter DG*5.3*614):
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will not
+          backup any other changes such as DD's or templates.
+      b.  Compare Transport Global to Current System - This option will
+          allow you to view all changes that will be made when this patch
+          is installed.  It compares all components of this patch
+          (routines, DD's, templates, etc.).
+      c.  Print Transport Global - this option will allow you to view the
+          components of the KIDS build.
+      d.  Verify Checksums in Transport Global - This option will allow
+          you to ensure the integrity of the routines that are in the
+          transport global.
+   
+  5.  Use the Install Package(s) option and select the package DG*5.3*614.
+      a.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+          YES//', answer NO (unless otherwise indicated).
+      b.  When prompted 'Want to DISABLE Scheduled Options, Menu Options,
+          and Protocols? YES//', answer NO.
+      c.  When prompted 'Enter protocols you wish to mark as 'Out Of 
+          Order':', press <return>.
+   
+  6.  (DSM for Open VMS sites only) Optional - Include the routines
+      distributed with this patch in the mapped routine set.
+      
+      NOTE: This step is only necessary if you performed step 2 or if
+      you wish to include the routines in your mapped set.
+
+Routine Information:
+====================
+
+Routine Name:
+  - VAFHLDG1
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGPTFTR
+
+
+Routine Checksum:
+
+Routine Name:
+  - VADPT1
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : BECKWITH,RALPH                Date Entered  : JUL 15, 2004
+Completed By: BOWEN,MARY JANE               Date Completed: MAY 04, 2005
+Released By : FITCH,DONNA                   Date Released : MAY 05, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

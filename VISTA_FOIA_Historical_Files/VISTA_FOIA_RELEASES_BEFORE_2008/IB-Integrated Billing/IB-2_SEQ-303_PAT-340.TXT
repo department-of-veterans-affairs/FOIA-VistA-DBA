@@ -1,0 +1,267 @@
+$TXT Created by MINARDI,CHRISTOPHER P. at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 04/06/06 at 10:39
+=============================================================================
+Run Date: APR 25, 2006                     Designation: IB*2*340
+Package : IB - INTEGRATED BILLING             Priority: EMERGENCY
+Version : 2       SEQ #303                      Status: Released
+                  Compliance Date: APR 26, 2007
+=============================================================================
+
+
+Subject: CANCEL COPAY CHARGES FOR KATRINA VETERANS
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch accompanies Accounts Receivable patch, PRCA*4.5*241, in
+ support of veterans affected by Hurricane Katrina.  Patch IB*2*340
+ can be installed immediately, and it must be installed prior to the
+ installation of patch PRCA*4.5*241.
+  
+ The purpose of this patch is to support the VHA Chief Business Office
+ (CBO) request to automatically cancel all veteran co-payments, charged
+ to veterans affected by Hurricane Katrina, for treatment provided from
+ 8/29/05 through 2/28/06.  This action has been approved by the Office 
+ of the Under Secretary for Health.  The patch provides two pieces of 
+ functionality:
+  
+ 1. Upon installation, the patch will add the new entry 'KATRINA AFFECTED
+    VETERAN' to the IB CHARGE REMOVE REASONS (#350.3) file.
+  
+ 2. The patch provides the new routine IBAKAT, which will be invoked by
+    the PRCA*4.5*241 post initialization process.  This routine will
+    identify the co-payment charges specified above that should be
+    cancelled, and invoke Accounts Receivable to apply the appropriate
+    credit to each veteran's account.
+  
+  
+ Following is a detailed description of the processing that is completed
+ when routine IBAKAT is invoked upon the installation of Accounts
+ Receivable patch PRCA*4.5*241:
+  
+ 1. If the new entry in the IB CHARGE REMOVE REASONS (#350.3) file
+    cannot be identified, processing will not continue and an
+    error condition will be passed back to Accounts Receivable.
+  
+ 2. Every patient who has had a co-payment charge added to the
+    INTEGRATED BILLING ACTION (#350) file since 8/29/05 will be
+    analyzed.  If the patient has been flagged as a Katrina veteran
+    in the PATIENT (#2) file, but not yet flagged as having charges
+    cancelled in the AR DEBTOR (#340) file, the patient's co-payment
+    charges will be analyzed.
+  
+ 3. For each patient that meets the criteria in #2 above, the system
+    will identify each charge that was created for treatment provided
+    to the veteran from 8/29/05 through 2/28/06.  This will include
+    Means Test co-payment and per diem charges where either the charges
+    'Billed From' or 'Billed To' dates fall within this date range.
+    Note that this only includes medication co-payment charges for
+    prescriptions that were released between 8/29/05 and 2/28/06.
+    Charges that have been cancelled will be ignored.
+  
+ 4. If a charge has been identified that is 'on hold' in Integrated
+    Billing and has not yet been passed to Accounts Receivable (for
+    example, because the veteran has billable health insurance),
+    the charge will be cancelled only in Integrated Billing.  The
+    charge will be flagged with the cancellation reason 'KATRINA
+    AFFECTED VETERAN.'
+  
+ 5. If a charge has been identified that has been passed to Accounts
+    Receivable, the charge will not be cancelled in Integrated Billing.
+    Accordingly, the veteran's maximum co-payment billing cap amount
+    and Means Test billing clock will not be adjusted.  Instead, only
+    the veteran's account in Accounts Receivable will be decreased by
+    the amount of the charge.
+  
+    *** Important Note ***
+  
+    In some cases, it may not be appropriate to decrease the veteran's
+    account in Accounts Receivable, because the veteran's account was
+    credited previously due to the receipt of an insurance company
+    payment for the same episode of care.  This software will search
+    for such credit if the charge was placed on hold before being
+    passed to Accounts Receivable.  These credit adjustments to the
+    veteran's account will be identified by examining all decrease
+    adjustments applied to the corresponding receivable after the
+    increase adjustment that represents the billed charge to the
+    veteran.  If any such credits are found, they will be deducted
+    from the amount of the charge that will be used to decrease the
+    veteran's account.
+  
+ 6. The veteran's account will be decreased in the following manner:
+  
+    a. If the receivable on which the charge was billed has a positive
+       principal balance, that balance will be reduced from the
+       receivable by creating a decrease adjustment.  If the total
+       charge could not be reduced from the receivable, the unreduced
+       balance of the charge is saved and processed after all the
+       veteran's charges have been processed.
+  
+    b. If the receivable on which the charge was billed does not
+       have a positive principal balance, the total charge amount is
+       saved and processed after all the veteran's charges have been
+       processed.
+  
+    c. After all of the veteran's charges have been processed, any
+       unreduced charge amounts are then processed in the following
+       manner:
+  
+       i.  All of the veteran's open and active receivables are
+           examined to exempt interest and administrative charge
+           balances, and decrease receivable balances.  This
+           process continues until the entire unreduced charge
+           amount is exhausted.
+  
+       ii. If the entire unreduced charge amount is not consumed
+           in the process described in (i) above, a pre-payment
+           is created for the veteran in the amount of that balance
+           of the unreduced charge amount that was not consumed.
+  
+  
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+ There is no NSR associated with this patch.
+  
+  
+ This patch addresses the following NOIS/Remedy Ticket(s):
+ ---------------------------------------------------------
+ There are no NOIS/Remedy tickets associated with this patch.
+  
+  
+ Components Sent With Patch 
+ --------------------------
+  
+ Routines:
+  
+ The following is a list of the routines included in this patch.  
+ The second line of each of these routines now looks like: 
+   
+      <tab>;;2.0;INTEGRATED BILLING;**[patch list]**;21-MAR-94
+   
+                        CHECK^XTSUMBLD results
+  
+ Routine         Before Patch     After Patch     Patch List 
+ -------         ------------     -----------     ----------
+ IBAKAT             N/A             7551010          340
+   
+  
+                        CHECK1^XTSUMBLD results
+  
+ Routine         Before Patch     After Patch     Patch List 
+ -------         ------------     -----------     ----------
+ IBAKAT             N/A             24533552         340
+  
+ Total number of routines - 1 
+   
+   
+ Test Sites:
+ -----------
+ Alexandria
+ Biloxi
+ Houston
+ Little Rock
+ Loma Linda
+ Louisville
+ New Orleans
+ Wilmington
+  
+  
+ Pre/Post Installation Overview
+ ------------------------------
+ Upon installation, this patch will invoke the post initialization
+ process by calling CANRES^IBAKAT.  This process will add an entry
+ to the IB CHARGE REMOVE REASONS (#350.3) file.  Please note that
+ routine IBAKAT is invoked when patch PRCA*4.5*241 is installed,
+ and it may need to be executed in the future.  Thus, this routine
+ was written in a primary Integrated Billing namespace (IBA*) and
+ should remain on the system after the installation of patches
+ IB*2*340 and PRCA*4.5*241.
+  
+  
+        ================INSTALLATION INSTRUCTIONS =================
+  
+ **There are no options that need to be disabled for this installation.**
+  
+  
+ Install Time - less than 5 minutes 
+  
+  
+ 1.  LOAD TRANSPORT GLOBAL 
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the 
+     INSTALL/CHECK MESSAGE PackMan option.  
+              
+ 2.  START UP KIDS 
+     -------------
+     Start up the Kernel Installation and Distribution System Menu 
+     [XPD MAIN]: 
+    
+          Edits and Distribution ...  
+          Utilities ...  
+          Installation ...  
+    
+ Select Kernel Installation & Distribution System Option: INStallation 
+                                                          ---
+                             
+          Load a Distribution 
+          Print Transport Global 
+          Compare Transport Global to Current System 
+          Verify Checksums in Transport Global 
+          Install Package(s) 
+          Restart Install of Package(s) 
+          Unload a Distribution 
+          Backup a Transport Global 
+    
+ Select Installation Option: 
+    
+ 3.  Select Installation Option: 
+     ---------------------------
+     NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+            NAME, enter IB*2.0*340):
+       
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when this patch
+         is installed.  It compares all components of this patch
+         (routines, DD's, templates, etc.).
+     c.  Verify Checksums in Transport Global - This option will allow
+         you to ensure the integrity of the routines that are in the
+         transport global.
+      
+ 4.  Select Installation Option: Install Package(s) 
+                                 ------------------
+     **This is the step to start the installation of this KIDS patch: 
+    
+     a.  Choose the Install Package(s) option to start the patch
+         install.
+     b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+         YES//' answer NO (unless otherwise indicated)
+     c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+         Options, and Protocols? YES//' answer NO (unless otherwise 
+         indicated)
+ 
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: IBAKAT
+    Before:       n/a  After: B24533552  **340**
+
+=============================================================================
+User Information:
+Entered By  : FERRARESE,MARY ANN            Date Entered  : FEB 10, 2006
+Completed By: KUREK,STANLEY M               Date Completed: APR 25, 2006
+Released By : MURRAY,JOHN J                 Date Released : APR 25, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,187 @@
+$TXT Created by WANG,CHI at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 07/20/09 at 14:40
+=============================================================================
+Run Date: OCT 15, 2009                     Designation: IB*2*407
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #386                      Status: Released
+                  Compliance Date: NOV 15, 2009
+=============================================================================
+
+Associated patches: (v)IB*2*377    <<= must be installed BEFORE `IB*2*407'
+                    (v)IB*2*397    <<= must be installed BEFORE `IB*2*407'
+
+Subject: FIX IN THE PROCESSING OF MRA RETURN MESSAGES
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch addresses the issue regarding site not receiving the Medicare
+ Remittance Advice (MRA) payments as noted on the Bill Status Report [IB 
+ BILL STATUS REPORT]. This report is run daily or weekly to generate a
+ summary of bill rate types and statuses. This patch will get the temporary
+ messages "unstuck" from the Return Message Filing Exceptions [IBCE RETURN
+ MSG PROCESSING] option.
+  
+ ASSOCIATED REMEDY TICKETS:
+ ==========================
+ 1. HD0000000254378  Not Receiving MRAs
+    HD0000000263790  Unable to receive Medicare Remittances
+    HD0000000263818  Not Receiving Medicare Payments
+    HD0000000266480  Unable to file MRA's individually
+    HD0000000266989  MRA's are not being received from Traiblazers
+    HD0000000280413  MRA claims
+    HD0000000281289  Site is not getting all MRA's
+    HD0000000286733  Salisbury: MRA claims issue
+    HD0000000286736  Salem: MRA claim issue
+    HD0000000280916  Not receiving MRA affixed to claims
+  
+ ASSOCIATED NSR(s):
+ ==================
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ HUDSON VALLEY HCS 
+ HUNTINGTON, WV
+ LEXINGTON, KY
+ LOUISVILLE, KY
+ MARTINSBURG, WV
+ SAGINAW, MI
+ SALEM, VA
+ SALT LAKE CITY, UT
+  
+ REMEDY OVERVIEW:
+ ================
+ 1. HD0000000254378 Not Receiving MRAs
+  
+  Problem:
+  --------
+  The Return Message Filing Exceptions [IBCE RETURN MSG PROCESSING] option
+  doesn't process the EDI return messages properly and treats them as
+  duplicates when their associated MailMan message numbers were used once
+  and are used again for the EDI functionality.
+  
+  Resolution:
+  -----------
+  Modified routine IBCESRV to retrieve the most recent EDI batch number 
+  associated with the EDI claim batch instead of the oldest batch number.
+  
+  Also modified routines IBCEST and IBCEOB to remove the duplicate checker
+  on the "AC" cross-xref in the BILL STATUS MESSAGE (#361) file and the 
+  EXPLANATION OF BENEFITS (#361.1) file that caused the EDI return messages
+  to get 'stuck' in the EDI MESSAGES (#364.2) file and not be processed
+  further.
+  
+  Created a post-init routine (IB20P407) to process the EDI return
+  messages that are already 'stuck' in the EDI MESSAGES (#364.2) file 
+  and are currently showing up in the Return Message Filing Exceptions
+  [IBCE RETURN MSG PROCESSING] option. This routine will file messages
+  dated from the install date of this patch going back one year and also
+  delete messages older than one year as long as the associated bill has
+  been collected/closed or cancelled in AR from the temporary file EDI
+  MESSAGES (#364.2) when a background job is complete. Two Mailman messages
+  will be generated with the installation of the patch and both 
+  will go to the installer. One will contain a list of Return Messages 
+  Filed by the post-init routine, and the other a list of those Deleted by
+  the post-init routine. Those records will no longer appear in the option.
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ It is recommended that this patch be installed outside of normal business
+ hours to avoid any complications resulting from users on the system.
+ The installation time will depend on the size of the global in
+ the database, but will probably take less than 10 minutes.
+  
+ 1.   LOAD TRANSPORT GLOBAL 
+      ---------------------
+      Choose the PackMan message containing this patch and invoke the
+      INSTALL/CHECK MESSAGE PackMan option.  
+  
+ 2.   START UP KIDS
+      -------------
+      Start up the Kernel Installation and Distribution System Menu
+      [XPD MAIN]: 
+  
+             Edits and Distribution ...  
+             Utilities ...  
+             Installation ...
+  
+      Select Kernel Installation & Distribution System Option: INStallation
+                                                               ---
+             Load a Distribution 
+             Print Transport Global 
+             Compare Transport Global to Current System 
+             Verify Checksums in Transport Global 
+             Install Package(s)
+             Restart Install of Package(s)
+             Unload a Distribution 
+             Backup a Transport Global 
+  
+ 3.   Select Installation Option:
+      ---------------------------
+      NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+             NAME, enter IB*2.0*407):
+  
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will not
+          backup any other changes such as DD's or templates.
+      b.  Compare Transport Global to Current System - This option will
+          allow you to view all changes that will be made when this patch
+          is installed.  It compares all components of this patch
+          (routines, DD's, templates, etc.).
+      c.  Verify Checksums in Transport Global - This option will allow
+          you to ensure the integrity of the routines that are in the
+          transport global.
+  
+ 4.   Select Installation Option: Install Package(s)
+  
+      **This is the step to start the installation of this KIDS patch:
+      a. Choose the Install Package(s) option to start the patch install.
+      b. When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+         No//' answer NO
+      c. When prompted 'Want to DISABLE Scheduled Options, Menu Options,
+         and Protocols? No//' answer NO
+  
+ 5.   Forward the MailMan messages you get (generated by the post-init
+      routine) entitled: 'IB*2.0*407 Post-Init Completed' to the Billing
+      supervisor with a copy of this patch description.
+  
+ 6.   Clean-up the Post-Init Routine
+      ------------------------------
+      Optional - Once this patch has been successfully installed you may 
+      delete the post-init routine: IB20P407.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;2.0;INTEGRATED BILLING;**[Patch List]**;21-MAR-94;Build 29
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: IB20P407
+    Before:       n/a   After: B39074068  **407**
+Routine Name: IBCEOB
+    Before: B58527801   After: B58398383  **137,135,265,155,377,407**
+Routine Name: IBCESRV
+    Before: B69133762   After: B69744017  **137,181,196,232,296,320,407**
+Routine Name: IBCEST
+    Before: B78288248   After: B76027306  **137,189,197,135,283,320,368,
+                                           397,407**
+ 
+Routine list of preceding patches: 377, 397
+
+=============================================================================
+User Information:
+Entered By  : WANG,CHI                      Date Entered  : SEP 11, 2008
+Completed By: DAWSON,TIM                    Date Completed: OCT 14, 2009
+Released By : CAULFIELD,MARY                Date Released : OCT 15, 2009
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

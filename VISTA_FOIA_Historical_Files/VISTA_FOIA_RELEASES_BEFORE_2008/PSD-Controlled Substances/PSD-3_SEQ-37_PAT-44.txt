@@ -1,0 +1,214 @@
+$TXT Created by HOUTCHENS,THOMAS at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 11/12/03 at 08:09
+=============================================================================
+Run Date: FEB 18, 2004                     Designation: PSD*3*44
+Package : PSD - CONTROLLED SUBSTANCES         Priority: Mandatory
+Version : 3        SEQ #37                      Status: Released
+                  Compliance Date: MAR 20, 2004
+=============================================================================
+
+
+Subject: MODIFICATION OF 'DR' STRING IN ROUTINE PSDSTK.
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This is a patch to correct a problem in the Controlled Substances package.
+ The enter/edit parameters would not allow for the signing out of partial
+ liquid amounts (i.e. 2.5ml) of medications. Therefore, 2.5ml would have
+ to be signed out as 3ml with .5ml being returned and/or wasted and a 
+ witness signature.  It was found that the Pharmacy option was not prompting
+ for LIQUID? (yes or no) in the set up for the Narcotics Area of Use (NAOU)
+ dispensing the drug.  A modification to routine PSDSTK was required to the
+ entry/edit parameter variable (DR string) and a change in the logic flow
+ of this routine. This menu option is [PSD STOCK DRUG EDIT] Stock CS Drugs
+ - Enter/Edit on the Controlled Substance main menu.
+ 
+ ASSOCIATED E3R(S):
+ ==================
+ N/A
+ 
+ This patch addresses the following NOIS(s):
+ ---------------------------------------------------
+ 1. BIL-0603-31609       FRACTIONAL ML DOSE SIGN OUT.
+ 2. BAC-0603-41484       NO WITNESS REQUIRED FOR CONTROLLED SUBS ADJUSTMENT.
+ 
+ Overview of NOIS(s):
+ ----------------------------
+ 1. BIL-0603-31609       Fractional ml dose sign out
+ 
+ Problem:
+ --------
+ Multiple problems were reported on this NOIS, however the problem addressed
+ with this patch (PSD*3.0*44) relates to the coding structure of the 'DR'
+ string.  The 'DR' string as coded did not function and invoke the
+ appropriate fields during fraction dose sign out.
+ 
+ Resolution:
+ -----------
+ The VA FileMan edit string (DR string) was modified in accordance to VA
+ FileMan documentation. In addition, the conditional statement was removed
+ from the string and inserted into a dot structure model.
+ 
+ 2. BAC-0603-41484       No witness required for Controlled Subs adjustment
+ 
+ Problem:
+ --------
+ Multiple problems were reported on this NOIS and the issue addressed on 
+ NOIS BIL-0603-31609 of the coding structure of the 'DR' string related to
+ the 'NO WITNESS REQUIRED' issue.
+ 
+ Resolution:
+ -----------
+ As stated on NOIS BIL-0603-31609, the 'DR' string modification should correct
+ this issue.
+ 
+ TECHNICAL:
+ ==========
+ NOIS: BIL-0603-31609
+       BAC-0603-41484
+ 
+ In the routine PSDSTK a modification of the DR string of a VA FileMan DIE
+ call required modification.
+ 
+        Before:
+        -------
+        DR="1;I $P(^PSD(58.8,PSDA,0),""^"",2)'=""N"" S Y=16;15;16;2;4;5;I
+        $P(^PSD(58.8,PSDA,0),""^"",2)=""N"" S Y=9;7;8;26;28;29;8.5;9;10;11"
+ 
+        After:
+        ------
+        ..I $P(^PSD(58.8,PSDA,0),U,2)'="N" D
+        ...S DR=16,DR(2,58.800116)=.01 D ^DIE
+        ...S DR=15,DR(2,58.800115)=.01 D ^DIE
+        ...K DR S DR="2;4;5" D ^DIE
+        ..I $P(PSD(58.8,PSDA,0),U,2)="N" D
+        ...S DR="9;7;8;26;28;29;8.5;10;11" D DIE
+ 
+ The code in question evaluates the DRUG ACCOUNTABILITY STATS file 
+ PSD(58.8) LOCATION TYPE (FIELD #1) for ordering status. If this field
+ does not contain an 'N', meaning that this site is either an 'S' Satellite,
+ 'M' Master Vault or 'P' Primary the following fields will be prompted for
+ editing.
+        Field #16  INVENTORY TYPE
+        Field #15  WARD (FOR DRUG)
+        Field #2   STOCK LEVEL
+        Field #4   REORDER LEVEL
+        Field #5   QUANTITY TO REORDER
+ 
+ If the LOCATION TYPE is an 'N', narcotic then the prompts will be as follows:
+        Field #9   MANUFACTURER
+        Field #7   BREAKDOWN UNIT
+        Field #26  PACKAGE SIZE
+        Field #28  LIQUID?
+        Field #29  ALWAYS PRINT VA FORM 10-2638?
+        Field #8.5 MAXIMUM QUANTITY PER ORDER
+        Field #10  DRUG
+        Field #11  EXPIRATION DATE
+ 
+ Note: This change in the 'DR' string does not change the business model or
+ process, but merely the mechanism for determining the appropriate fields for
+ the DIE edit.
+ 
+ PARTICIPATING TEST SITES:
+ =========================
+ Black Hills HCS
+ Fayetteville, AR
+ Oklahoma City
+ 
+ DATA DICTIONARY CHANGES:
+ ========================
+ N/A
+ 
+ TEMPLATES:
+ ==========
+ N/A
+ 
+ ROUTINE SUMMARY:
+ ================
+ The following is a list of the routine(s) included in this patch. The second
+ line of each of these routine(s) will look like:
+ 
+        <tab>;;3.0; CONTROLLED SUBSTANCES ;**[patch list]**;13 Feb 97
+ 
+  Routine name   Before Patch    After Patch     Patch List
+  ============   ============    ===========     ==========
+  PSDSTK             13320484       12184547         44
+ 
+  Total Routines: 1
+ 
+ DISTRIBUTION:
+ =============
+ This patch is exported using KIDS.
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ This patch may be run with users on the system, but it is recommended 
+ that it be queued to run after normal business hours to minimize the 
+ impact on users of the CONTROLLED SUBSTANCES package.
+  
+ Installation will take less than 2 minutes.
+  
+ 1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu to unload the 
+    KIDS distribution included with the message.
+  
+ 2. Review your mapped set. If any of the routines listed in the ROUTINE
+    SUMMARY section are mapped, they should be removed from the mapped set.
+  
+ 3. From the Kernel Installation and Distribution System Menu, select
+    the Installation menu.
+  
+ 4. From this menu, you may elect to use the following options
+    (when  prompted for INSTALL NAME, enter PSD*3.0*44):
+  
+         a. Compare Transport Global to Current System - this option will 
+            allow you to view all changes that will be made when the patch 
+            is installed. It compares all components of the patch 
+            (routines, DDs, templates, etc.).
+  
+         b. Verify Checksums in Transport Global - this option will allow
+            you to ensure the integrity of the routines that are in the 
+            Transport Global.
+  
+         c. Print Transport Global - this option will allow you to view 
+            the components of the KIDS build.
+  
+ 5. Use the Install Package(s) option and select the package PSD*3.0*44.
+  
+ 6. When prompted with, 'Want KIDS to INHIBIT LOGONs during the install? 
+    NO//.
+  
+ 7. When prompted with, 'Want to DISABLE CONTROLLED SUBSTANCES Options, 
+    Menu Options, and Protocols? YES//', respond YES// NO.
+  
+ 8. If routines were unmapped as part of step 2, they should be returned 
+    to the mapped set once the installation has run to completion.
+  
+ POST INSTALLATION INSTRUCTIONS:
+ ===============================
+ N/A
+
+Routine Information:
+====================
+
+Routine Name:
+  - PSDSTK
+
+ 
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : HOUTCHENS,THOMAS              Date Entered  : AUG 15, 2003
+Completed By: ANDERSON,MAXINE               Date Completed: FEB 18, 2004
+Released By : LYTTLE,KIM M                  Date Released : FEB 18, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

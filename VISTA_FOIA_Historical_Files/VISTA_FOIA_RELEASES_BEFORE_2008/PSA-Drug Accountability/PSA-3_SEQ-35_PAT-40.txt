@@ -1,0 +1,283 @@
+$TXT Created by FRANCE,VENESSA at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 11/22/04 at 15:51
+=============================================================================
+Run Date: DEC 13, 2004                     Designation: PSA*3*40
+Package : PSA - DRUG ACCOUNTABILITY           Priority: Mandatory
+Version : 3        SEQ #35                      Status: Released
+                  Compliance Date: JAN 13, 2005
+=============================================================================
+
+Associated patches: (v)PSA*3*36    <<= must be installed BEFORE `PSA*3*40'
+
+Subject: INCORRECT QUANTITY ADDED TO DRUG IN DRUG FILE
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch will modify the Edit Verified Invoices [PSA EDIT VERIFIED INVOICE] 
+ process so only the DISPENSE UNITS PER ORDER UNIT field (#15) of the Drug file
+ (#50) * QUANTITY INVOICED field (#2) of the multiple LINE ITEM DATA field (#5)
+ of the multiple INVOICE DATA field (#2) of the DRUG ACCOUNTABILITY ORDER file
+ (#58.811) is added and subtracted to/from the CURRENT INVENTORY field (#50) 
+ in the DRUG file (#50) when a user edits the drug.  This will also update the
+ balances in the Drug Accountability Stats file (#58.8) for each drug.
+ Currently, when a new drug is selected only the QUANTITY INVOICED is
+ subtracted from the original drug and the QUANTITY INVOICED as well as the 
+ QUANTITY INVOICED * DISPENSE UNITS PER ORDER UNIT is added to the new drug.
+  
+ ASSOCIATED NOIS:
+ ================ 
+ CLL-0104-41071   PSA EDIT VERIFIED INVOICE   Edit Verified Invoices
+ PHO-1004-60774   Editing Verified Invoices Problems With DUOU
+ BED-0904-11474   Incorrect Quantity Received
+  
+ ASSOCIATED E3R:
+ ===============
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Fayetteville, AR VMS/CACHE
+ Ann Arbor, MI    ALPHA/DSM
+ Clarksburg, WV	 VMS/CACHE
+ Phoenix, AZ	 VMS/CACHE
+ 
+  
+ NOIS OVERVIEW:
+ ==============
+ CLL-0104-41071          PSA EDIT VERIFIED INVOICE       Edit Verified Invoices
+  
+ Problem:
+ --------
+ In the Edit Verified Invoices [PSA EDIT VERIFIED INVOICE] process, when a new 
+ drug is selected only the QUANTITY INVOICED field (#2) of the multiple LINE 
+ ITEM DATA field (#5) of the multiple INVOICE DATA field (#2) of the DRUG 
+ ACCOUNTABILITY ORDER file (#58.811) is subtracted from the original drug and 
+ the QUANTITY INVOICED as well as the QUANTITY INVOICED * DISPENSE UNITS PER 
+ ORDER UNIT field (#15) is added to the new drug.
+ 
+ Resolution:
+ ----------- 
+ Modify this process so the QUANTITY INVOICED * old DISPENSE UNITS PER ORDER
+ UNIT is subtracted from the current drug and the QUANTITY INVOICED * new
+ DISPENSE UNITS PER ORDER UNIT is added to the new drug when the user changes 
+ the drug in Edit Verified Invoices.
+  
+ Technical:
+ ==========
+ CLL-0104-41071          PSA EDIT VERIFIED INVOICE       Edit Verified Invoices
+  
+ Problem:
+ -------- 
+ Routine PSAVERA only subtracts the Ordered Quantity from the current drug yet
+ adds the QUANTITY INVOICED as well as the DISPENSE UNITS PER ORDER UNIT * 
+ QUANTITY INVOICED to the new drug when editing a verified invoice.
+ Routine PSAVERA needs to be modified in tag ASK to set a variable equal to the
+ current Dispense Units per Order Unit then subtract the current DISPENSE UNITS
+ PER ORDER UNIT * QUANTITY INVOICED from the current drug and only add the 
+ new DISPENSE UNITS PER ORDER UNIT * QUANTITY INVOICED to the new drug.
+  
+ Before:
+ -------
+ DISP    S PSAITM=$S('$D(PSAITM):$O(INVARRAY(PSAORD,PSAINV,0)),1:$O(INVARRAY(PSAO
+ RD,PSAINV,PSAITM))) G LINEASK:PSAITM'>0 S LINENUM=$G(LINENUM)+1
+         S DATA=$G(INVARRAY(PSAORD,PSAINV,PSAITM))
+         S PSAOU=$P(DATA,"^",4) I $G(PSAOU) S PSAOU(1)=$P($G(^DIC(51.5,$P(DATA,"^
+ ",4),0)),"^") ;Curent Order Unit
+ ...
+          S PSAVEND=$P(^PSD(58.811,PSAIEN,0),"^",2)
+          ;
+ DRG      W !,"Select (D)rug or (O)rder Unit " R AN:DTIME G Q:AN["^"!(AN="") W
+ $S("Dd"[AN:"rug","oO"[AN:"rder Unit",1:"??") I "DdOo"'[AN W !,"Enter a 'D' to
+ edit the Drug, or 'O' to edit the order unit",! K AN G DRG
+ ...
+         I $P($G(^PSDRUG(PSADRG,660)),"^",5)'=$G(PSADUOU) W !,"Please enter the
+ appropriate Dispense Units per order unit" S DIE="^PSDRUG(",DA=PSADRG,DR="15" D
+ ^DIE S PSADUOU=$P(^PSDRUG(PSADRG,660),"^",5)
+         K DIE,DA,DR
+ ASK     R !!,"Are you sure about this ?  NO// ",AN:DTIME G Q:AN["^"!(AN="")
+         S AN=$E(AN) I "yYnN"'[AN W !,"Answer yes, and the data on file for the
+ current drug will be transferred",!,"to the new drug selection.",!,"That
+ includes Order Unit, Dispense Unit, Dispense Units per Order Unit, etc.",!! 
+ G ASK
+         ;VMP OIFO BAY PINES;VGF;PSA*3.0*36
+         S PSAAFTER=PSADRG,PSADRG=PSABEFOR
+         I $D(^PSDRUG(PSADRG)) D
+         .W !,"Removing "_$G(PSAQTY)_" from "_PSABEFOR(1)
+         .S FMDATA=$P($G(^PSDRUG(PSADRG,660.1)),"^")-PSAQTY
+         .S DIE="^PSDRUG(",DA=PSADRG,DR="50////^S X="_FMDATA D ^DIE K FMDATA
+         S PSADRG=PSAAFTER
+         I $G(PSAPOU)="",$G(PSAPRICE)'="" S PSAPOU=PSAPRICE
+         W !,"Adding "_$G(PSAQTY)_" to "_$P($G(^PSDRUG(PSADRG,0)),"^")
+         S FMDATA=$P($G(^PSDRUG(PSADRG,660.1)),"^")+PSAQTY
+         S DIE="^PSDRUG(",DA=PSADRG,DR="50////^S X="_FMDATA D ^DIE K FMDATA
+         W !,"Entering new drug selection as an adjustment."
+         S PSAREA="",PSADJFLD="D",PSADJ=PSADRG D RECORD^PSAVER2
+         D 50^PSAVER7
+ FILE    ;File data in 58.8
+  
+ After:
+ ------
+ DISP    S PSAITM=$S('$D(PSAITM):$O(INVARRAY(PSAORD,PSAINV,0)),1:$O(INVARRAY(PSAO
+ RD,PSAINV,PSAITM))) G LINEASK:PSAITM'>0 S LINENUM=$G(LINENUM)+1
+         S DATA=$G(INVARRAY(PSAORD,PSAINV,PSAITM))
+         S PSAOU=$P(DATA,"^",4) I $G(PSAOU) S PSAOU(1)=$P($G(^DIC(51.5,$P(DATA,"^
+ ",4),0)),"^") ;Current Order Unit
+ ...
+         S PSAVEND=$P(^PSD(58.811,PSAIEN,0),"^",2)
+         ;VMP OIFO BAY PINES;VGF;PSA*3.0*40;GET ORIGINAL DISPENSE UNITS PER
+ ORDER UNIT FOR SUBTRACTION
+         S PSAODUOU=PSADUOU
+         ;
+ DRG     W !,"Select (D)rug or (O)rder Unit " R AN:DTIME G Q:AN["^"!(AN="") W
+ $S("Dd"[AN:"rug","oO"[AN:"rder Unit",1:"??") I "DdOo"'[AN W !,"Enter a 'D' to
+ edit the Drug, or 'O' to edit the order unit",! K AN G DRG
+         I "Dd"'[AN G ^PSAVERA3
+ ...
+         ;VMP OIFO BAY PINES;VGF;PSA*3.0*36
+         I $P($G(^PSDRUG(PSADRG,660)),"^",5)'=$G(PSADUOU) W !,"Please enter the
+ appropriate Dispense Units per order unit" S DIE="^PSDRUG(",DA=PSADRG,DR="15" D
+ ^DIE S PSADUOU=$P(^PSDRUG(PSADRG,660),"^",5)
+         K DIE,DA,DR
+ ASK     R !!,"Are you sure about this ?  NO// ",AN:DTIME G Q:AN["^"!(AN="")
+         S AN=$E(AN) I "yYnN"'[AN W !,"Answer yes, and the data on file for the
+ current drug will be transferred",!,"to the new drug selection.",!,"That 
+ includes Order Unit, Dispense Unit, Dispense Units per Order Unit, etc.",!! 
+ G ASK
+         ;VMP OIFO BAY PINES;VGF;PSA*3.0*36
+         S PSAAFTER=PSADRG,PSADRG=PSABEFOR
+         I $D(^PSDRUG(PSADRG)) D
+         .;VMP OIFO BAY PINES;VGF;PSA*3.0*40
+         .W !,"Removing "_($G(PSAQTY)*$G(PSAODUOU))_" from "_PSABEFOR(1)
+         .S FMDATA=$P($G(^PSDRUG(PSADRG,660.1)),"^")-(PSAODUOU*PSAQTY)
+         .S DIE="^PSDRUG(",DA=PSADRG,DR="50////^S X="_FMDATA
+         .F  L +^PSDRUG(DA,0):0 I  Q
+         .D ^DIE
+         .L -^PSDRUG(DA,0)
+         .K FMDATA
+         S PSADRG=PSAAFTER
+         I $G(PSAPOU)="",$G(PSAPRICE)'="" S PSAPOU=PSAPRICE
+         W !,"Adding "_($G(PSAQTY)*$G(PSADUOU))_" to"_$P($G(^PSDRUG(PSADRG,0)),
+ "^")
+         W !,"Entering new drug selection as an adjustment."
+         S PSAREA="",PSADJFLD="D",PSADJ=PSADRG D RECORD^PSAVER2
+         D 50^PSAVER7
+ FILE     ;File dispense units per order units into 58.811
+          S DIE="^PSD(58.811,"_PSAIEN_",1,"_PSAIEN1_",1,"
+          S DA=PSALINE,DA(1)=PSAIEN1,DA(2)=PSAIEN
+          S DR="10///"_PSADUOU
+          D ^DIE
+          ;File data in 58.8 
+ ...
+ Q       K AN,D,DA,DATA,DIC,DIR,INVARRAY,LINENUM,PSA50IEN,PSABAL,PSABEFOR,PSACS,
+ PSADATA,PSADJ,PSADJFLD,PSADRG,PSADT,PSADUREC,PSAGAIN,PSAIEN,PSAIEN1,PSAIN,
+ PSAINV,PSALINE,PSALINEN
+         K PSALOC,PSANDC,PSAORD,PSAOUT,PSAQTY,PSAREA,PSAREORD,PSASLN,PSASTOCK,
+ PSASUB,PSASUP,PSASUPP,PSAT,PSAVER,X,X1,X2,X3,XX,XXX,Y,PSAODUOU
+ 
+ 
+ 
+ DATA DICTIONARY CHANGES:
+ ========================
+ N/A
+  
+ TEMPLATES:
+ ==========
+ N/A
+  
+ ROUTINE SUMMARY:
+ ================
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+ 
+      <tab>;;3.0; DRUG ACCOUNTABILITY/INVENTORY INTERFACE;**[patch list]**;
+ 10/24/97
+ 
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  PSAVERA               26757127             27316373          21,36,40
+  
+ Total number of routines - 1
+  
+ DISTRIBUTION:
+ =============
+ This patch is exported using KIDS.
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ This patch can be installed during business hours, but because the option 
+ will be out of service during the installation process it is suggested 
+ that it be queued for non-peak hours.
+ Installation will take less than 5 minutes.
+  
+   
+ 1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu. [Note:
+    TEXT PRINT/DISPLAY option in the PackMan menu will display the
+    patch text only].
+      
+ 2. (DSM for Open VMS sites only) Disable routine mapping on all systems
+       for the routines listed in the Routine Summary.  
+  
+       NOTE:  If the routines included in this patch are not currently in 
+       your mapped routine set, please skip this step.
+  
+ 3. From the Kernel Installation and Distribution System (KIDS)
+    menu, select the Installation menu.
+  
+ 4. From this menu, you may elect to use the following options:
+    (when prompted for INSTALL NAME, enter PSA*3.0*40)
+     
+    a.  Backup a Transport Global - this option will create a backup
+        message of any routines exported with the patch.  It will
+        NOT backup any other changes such as DDs or templates.
+    b.  Compare Transport Global to Current System  - this option
+        will allow you to view all changes that will be made when
+        the patch is installed.  It compares all components of the
+        patch (routines, DDs, templates, etc.).
+    c.  Verify Checksums in Transport Global - this option will
+        allow you to ensure the integrity of the routines that are
+        in the transport global.
+    d.  Print Transport Global - this option will allow you to view
+        the components of the KIDS build.
+     
+ 5. Use the Install Package(s) option and select the package
+    PSA*3.0*40
+     
+ 6. When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+    YES//', respond NO
+     
+ 7. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+    Protocols? YES//', respond YES.  When prompted to select the options
+    you would like to place out of order, enter the following:
+  
+ 	PSA EDIT VERIFIED INVOICE       Edit Verified Invoices
+  
+ 8. If routines were unmapped as part of step 2 (DSM for Open VMS sites
+    only), they should be returned to the mapped set once the installation 
+    has run to completion.
+  
+
+Routine Information:
+====================
+
+Routine Name:
+  - PSAVERA
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : FRANCE,VENESSA                Date Entered  : FEB 20, 2004
+Completed By: ANDERSON,MAXINE               Date Completed: DEC 08, 2004
+Released By : LYTTLE,KIM M                  Date Released : DEC 13, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

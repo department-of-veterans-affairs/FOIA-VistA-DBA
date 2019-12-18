@@ -1,0 +1,422 @@
+
+=============================================================================
+Run Date: OCT 22, 2003                     Designation: DG*5.3*522
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #476                    Status: Released
+                  Compliance Date: NOV 22, 2003
+=============================================================================
+
+Associated patches: (v)DG*5.3*231  <<= must be installed BEFORE `DG*5.3*522'
+                    (v)DG*5.3*244  <<= must be installed BEFORE `DG*5.3*522'
+                    (v)DG*5.3*454  <<= must be installed BEFORE `DG*5.3*522'
+                    (v)DG*5.3*505  <<= must be installed BEFORE `DG*5.3*522'
+                    (v)XU*8*292    <<= must be installed BEFORE `DG*5.3*522'
+                    (v)DG*5.3*547  <<= must be installed BEFORE `DG*5.3*522'
+                    (v)PSS*1*75    <<= must be installed BEFORE `DG*5.3*522'
+
+Subject: INTERIM ADDRESS ENHANCEMENTS
+
+Category: 
+  - Data Dictionary
+  - Routine
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ PROJECT OVERVIEW
+ ================
+ In January 2003, the Registration, Enrollment, and Eligibility Group 
+ (REEG) released software to support the Geographic Means Test (GMT) 
+ initiative. Part of that release included address enhancements designed 
+ to provide a more accurate and cleaner address for use in comparison 
+ against a newly instituted geographic-based monetary threshold. 
+ Specifically, the enhancements allowed for the automatic population of 
+ city, state, and county based on entry of a zip code, automatic update of 
+ "recent" address changes throughout VA Medical Centers (VAMCs) and the 
+ Health Eligibility Center (HEC), and the addition of two new files - one 
+ for county (#5.1) and one for postal codes (#5.12).
+  
+ The Interim Address Enhancements (IAE) project addresses the following 
+ issues and requirements:
+  
+ VistA Enrollment/Registration:
+       1. Patient Permanent Mailing Address update 
+            a. Allow review and manual accept/reject of patients permanent 
+               mailing address using IVM Demographic Upload Functionality
+               for patients receiving pharmacy mailout prescriptions
+            b. Allow automatic upload of "new" patient's permanent mailing 
+               address to site(s) if the Bad Address Indicator (BAI) is set
+               AND/OR there are no active pharmacy scripts AND the address
+               being sent is newer than the one on file at the site(s)
+            c. Allow the IVM BACKGROUND JOB to automatically upload "new 
+               patient's permanent mailing address if the site hasn't taken
+               any action to review and accept or reject the address change
+               after 14 days.
+            d. Allow city selection for multiple cities per zip
+       2. Reporting on changes to patients permanent mailing address
+            a. Create a report containing changed addresses
+            b. Create a report containing the addresses to be auto uploaded
+       3. IVM Demographics Upload Cleanup for address fields
+       4. Periodic cleanup of IVM Demographic Upload File for non-address 
+          fields
+       5. Filter the outbound HL7 message from VistA to ignore sending 
+          "bad" addresses to HEC
+  
+ Infrastructure and Security Services (ISS):
+       1. Add entries for other cities to the USPS Postal Codes File
+       2. Add longitude and latitude values to County File
+       3. Provide an API that will return the valid city or cities name(s)
+          for a given ZIP Code
+       4. Modify MFN~M05 message to include new postal code fields
+  
+ FUNCTIONAL DESCRIPTION
+ ======================
+ The functional changes that will be introduced with this patch include:
+  
+ 1. For patient permanent address, for a specific zip code that 
+ corresponds to a geographical location on file, a list of city choices 
+ will be provided, with "*" indicating the default city for the zip code. 
+ If a city name has a standard USPS abbreviation, the standard 
+ abbreviation will be listed, and saved when chosen.
+  
+ 2. Users with the "EAS GMT COUNTY EDIT" key will be allowed to edit State 
+ and County, enter a zip code that is not currently in file #5.12 as the 
+ patient's zip code (yet without adding the zip code to file #5.12), or 
+ enter free text city name. The "EAS GMT COUNTY EDIT" key should be
+ assigned to the proper individual(s) at your facility.
+  
+ 3. If more than one state and county correspond to a zip code, the user 
+ will be allowed to edit the State and County fields, even if the user 
+ does not have the "EAS GMT COUNTY EDIT" key.
+  
+ 4. Manila, Philippines will be exempt from the Rules 1-3 above, where
+ users will be able to edit all the patient permanent address fields 
+ without the zip code linking features.
+  
+ 5. After address edits are complete, "before change" and "after change" 
+ values for the patient permanent address fields will be displayed to the 
+ user, and the changes will be saved only if the user confirms their 
+ accuracy. If the user answers No, "^" or "^^" to the confirmation
+ question, all changes will be aborted.
+  
+ 6.If a user enters "^" or "^^" during the editing of patient permanent 
+ address, "EXIT NOT ALLOWED ??" will be displayed, and the same field will 
+ be prompted until the user provides a valid input.
+  
+ 7. If a user times out during the editing of patient permanent address, 
+ all changes during the editing sessions are aborted.
+  
+ 8. A new report, Report - All Address Changes [DG ALL ADDRESS CHANGE
+ REPORT], will be available for the user to compare the patient current
+ address to patient address as of 24 hours previously for those patients
+ whose permanent address fields have been modified during the past 24
+ hours. The report will be emailed, and the default recipient is a local
+ mail group named "DG DAILY ADDRESS CHANGE". The report can be scheduled as
+ a daily task via TaskMan. It is recommended to run the report during other
+ than normal business hours. The option, Report - All Address Changes [DG
+ ALL ADDRESS CHANGE REPORT], will be added to the Registration Menu [DG
+ REGISTRATION MENU]. A sample of the report:
+  
+ Subj: DG ALL ADDRESS CHANGE (AUG 28,2003@14:55)  [#21717] 08/28/03@14:56
+ 20 lines
+ From: David,Jones  In 'IN' basket.   Page 1
+ -----------------------------------------------------------------------
+  
+ Audit is off for the ZIP CODE field
+  
+                            ALL ADDRESS CHANGE REPORT
+                     Date/Time Report Run: AUG 28,2003@14:56
+  
+  PATIENT: JAMES,NEWMAN                          SSN: 1121P
+     USER: JOHNSON,MARY                         DATE: AUG 29,2003  11:28
+   SOURCE: VAMC       ALBANY                       
+   BEFORE: 123 OAK LN
+           DALLAS,TEXAS 75252
+           COUNTY CODE: 085                                     
+    AFTER: 234 PRESTON RD
+           MC KINNEY,TEXAS 75070
+           COUNTY CODE: 085
+  
+  
+ 9. The patch will create a new mail group DG DAILY ADDRESS CHANGE. The 
+ patch will not add any local or remote member to the mail group. Please 
+ add member(s) to the mail group before using the mail group. 
+  
+ Rules 1 to 7 apply to the editing of patient permanent address through DG 
+ LOAD PATIENT DATA and DG REGISTER PATIENT.
+  
+ TEST SITES
+ ==========
+ Bay Pines, FL
+ Martinez, CA
+ Clarksburg, WV
+ Reno, NV
+ Salisbury, NC 
+  
+ TECHNICAL DESCRIPTION
+ =====================
+ The following is a summary of the changes included in this patch.  For a 
+ detailed description of these changes, please refer to the Interim 
+ Address Enhancement Software Design Documents.  These documents can be 
+ found on the web page for the project.  The address is: 
+ http://tspr.vista.med.va.gov/warboard/anotebk.asp?proj=764&Type=Active
+  
+ DATA DICTIONARY CHANGE
+ ======================
+ A new field, Address Change User (#.122) is added to the Patient File 
+ (#2).
+  
+ A traditional cross-reference is added to the Address Change DT/TM field 
+ (#.118), which will be triggered to update the Address Change User 
+ (#.122) field.
+  
+ OPTION SUMMARY
+ ==============
+ The following new menu option has been added to the Registration Menu [DG
+ REGISTRATION MENU]:
+ Report - All Address Changes [DG ALL ADDRESS CHANGE REPORT]
+  
+ ROUTINE SUMMARY
+ ===============
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;5.3;Registration;**[patch list]**;Aug 13, 1993
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  DG53522P                   N/A               643893            522
+  DGREGAED                   N/A              4557696            522
+  DGREGARP                   N/A              7947772            522
+  DGREGAZL                   N/A              6475972            522
+  DGREGDD1               5639069              6263387          454,522
+  DGRPCE1                3964391              3429841        108,226,470
+                                                             454,489,505
+                                                                 522
+  DGRPE                 26312039             24202318        32,114,139
+                                                             169,175,247
+                                                             190,343,397
+                                                             342 454,415
+                                                             489,506,244
+                                                               547,522
+  
+ SOFTWARE AND DOCUMENTATION  RETRIEVAL
+ =====================================
+ The software for this patch is being distributed in a host file.  The 
+ host file will contain two KIDS builds.
+  
+      Host file name: DG_53_P522.KID
+  
+              Builds:  DG*5.3*522
+                       IVM*2.0*79
+  
+ The following documentation will be available:
+   
+     File Name                 Description
+     ---------                 -----------
+     DG_5_3_P522_UM.PDF        Revised PIMS V.5.3 Registration User Manual
+     IVM_2_P79_TM.PDF          Revised IVM V. 2.0 Technical Manual
+     IVM_2_P79_UM.PDF          Revised IVM V. 2.0 User Manual
+  
+ Sites may retrieve the software and documentation directly using FTP from 
+ the ANONYMOUS.SOFTWARE directory at the following OI Field Offices:
+  
+         Albany:  ftp.fo-albany.med.va.gov
+          Hines:  ftp.fo-hines.med.va.gov
+ Salt Lake City:  ftp.fo-slc.med.va.gov
+  
+ * Note: Use ASCII mode when transferring the .KID file. Use Binary mode 
+ when transferring the .PDF file.  The .PDF files can be read on a PC 
+ using the Adobe Acrobat Reader program. The VistA Documentation Library 
+ [VDL] contains all end-user manuals.
+  
+ INSTALLATION INSTRUCTIONS 
+  
+         * * * * * *  A  T  T  E  N  T  I  O  N  * * * * * * 
+   
+ It is recommended this patch be installed outside of normal business 
+ hours to avoid any complications resulting from users on the system. 
+ Installation will take approximately 20 minutes.
+  
+ This patch should NOT be installed while the IVM BACKGROUND JOB [IVM 
+ BACKGROUND JOB] is running.
+  
+ In order to prevent missing HL7 traffic while this patch is being 
+ installed, TaskMan should be placed in a wait state.
+  
+ Installation Steps
+ ==================
+ 1. KIDS will not install data dictionary or data changes in files that 
+ require a higher level of Fileman access than is defined for the user 
+ doing the KIDS install.  To insure that all data dictionary and data 
+ changes distributed in a patch are installed correctly, DUZ(0) must be 
+ set equal to the "@" symbol.  Set this variable if necessary, e.g.:
+  
+      >S DUZ(0)="@" 
+  
+ 2. Download the KIDS file DG_53_P522.KID from the ANONYMOUS.SOFTWARE 
+ directory of either Albany, Hines, or the Salt Lake CIOFO to the 
+ appropriate directory on your system.
+  
+ 3. Use the 'LOAD A DISTRIBUTION' option on the KIDS INSTALLATION menu, 
+ and enter: DG_53_P522.KID. When prompted 'Want to RUN the Environment
+ Check Routine? YES//', please respond YES.
+  
+ 4. Review your mapped set.  If any of the routines listed in the ROUTINE 
+ SUMMARY section of patches DG*5.3*522 or IVM*2*79 are mapped, they should 
+ be removed from the mapped set at this time.
+  
+ 5. From the 'Kernel Installation & Distribution System' menu, select the 
+ Installation menu.
+  
+ 6. From this menu, you may elect to use the following options (when 
+ prompted for INSTALL NAME, enter DG*5.3*522).
+  
+      a. Backup a Transport Global - This option will create a backup
+         message of any routines exported with the patch.  It will NOT
+         backup any other changes such as DDs or templates.
+  
+      b. Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when the patch
+         is installed.  It compares all components of the patch
+         (routines, DDs, templates, etc.).
+  
+      c. Verify Checksums in Transport Global - This option will allow
+         you to ensure the integrity of the routines that are in the
+         transport global.
+  
+      d. Print Transport Global - This option will allow you to view the
+         components of the KIDS build.
+  
+ 7. Use the Install Package(s) option and select DG*5.3*522.
+  
+ 8. When prompted 'Enter the Coordinator for Mail Group 'DG DAILY ADDRESS 
+ CHANGE':', please enter the name of the coordinator. 
+  
+ 9. The install will ask if you wish to rebuild menu trees.  It is 
+ recommended that you answer NO to this prompt.  The trees will be rebuilt 
+ the next time the system does this task.
+  
+ 10. When prompted 'Want KIDS to INHIBIT Logon's during the install? 
+ YES//', it is recommended you answer NO.
+  
+ 12. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and 
+ Protocols? YES//', respond YES.  When prompted to select the options you 
+ would like to place out of order, enter the following:
+  
+         IVM BACKGROUND JOB
+  
+ 13. If routines were unmapped as part of Step 3, they should be returned 
+ to the mapped set once the installation has run to completion.
+  
+ 14. Return TaskMan to it's normal state.
+  
+ 15. If you unscheduled the IVM Background Job, please reschedule it.
+  
+ 16. Environment checking routine DG53522P can be deleted after successful 
+ installation.
+  
+ POST-INSTALLATION INFORMATION
+ ==============================
+ 1. The patch will create a local mail group DG DAILY ADDRESS CHANGE, 
+ without adding any members to the mail group. Please add members to the 
+ mail group before using the mail group. To add members to the mail group:
+  
+  Select Group/Distribution Management Option: MAIL GROUP EDIT
+  Select MAIL GROUP NAME: DG DAILY ADDRESS CHANGE
+  MAIL GROUP NAME: DG DAILY ADDRESS CHANGE  Replace
+  Select MEMBER: (please add in all the members to whom the DG ALL ADDRESS 
+ CHANGE REPORT should be sent) 
+  
+ 2. Task IVM ADDR UPDT PENDING REVIEW menu option using the following 
+ instructions:
+                                                               
+ Select Taskman Management Option: Schedule/Unschedule Options
+  
+ Select OPTION to schedule or reschedule: IVM ADDR UPDT PENDING REVIEW   
+    IVM Address Updates Pending Review
+    Are you adding 'IVM ADDR UPDT PENDING REVIEW' as a new OPTION
+ SCHEDULING (the 64TH)? No// Y  (Yes)
+  
+                           Edit Option Schedule
+     Option Name: IVM ADDR UPDT PENDING REVIEW  
+     Menu Text: IVM Address Updates Pending Revi          TASK ID:
+   
+ __________________________________________________________________________
+  
+   QUEUED TO RUN AT WHAT TIME: SEP 9,2003@00:30 ---> please schedule to be 
+ run after midnight           
+  
+ DEVICE FOR QUEUED JOB OUTPUT: P-SLAVE HP FORM;P-SLAVE HP FOR ---> please 
+ select a proper device for your location
+  
+  QUEUED TO RUN ON VOLUME SET:           
+  
+       RESCHEDULING FREQUENCY: 1D                           
+  
+              TASK PARAMETERS:
+  
+             SPECIAL QUEUEING:                     
+  
+ __________________________________________________________________________
+ Exit     Save     Next Page     Refresh
+
+Routine Information:
+====================
+
+Routine Name:
+  - DGRPE
+
+
+Routine Checksum:
+
+Routine Name:
+  - DG53522P
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGREGAED
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGREGARP
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGREGAZL
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGREGDD1
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGRPCE1
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : MORGAN,BRIAN                  Date Entered  : MAY 21, 2003
+Completed By: CURTIN,EDNA                   Date Completed: OCT 21, 2003
+Released By : GROOMS,ANTHONY E              Date Released : OCT 22, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

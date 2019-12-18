@@ -1,0 +1,267 @@
+$TXT Created by SCHMITZ,STEVEN at MNTVBB.FO-WASH.MED.VA.GOV  (KIDS) on Tuesday, 03/13/07 at 13:18
+=============================================================================
+Run Date: JUL 11, 2007                     Designation: PRC*5.1*105
+Package : PRC - IFCAP                         Priority: Mandatory
+Version : 5.1        SEQ #93                    Status: Released
+                  Compliance Date: AUG 11, 2007
+=============================================================================
+
+Associated patches: (v)PRC*5.1*79  <<= must be installed BEFORE `PRC*5.1*105'
+
+Subject: CORRECT FPDS FOR DO AMEND - HD151142/DUNS# INPUT CHANGE - HD138428/HD162377
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ This patch addresses three issues.  The first issue involves contract
+ numbers not being sent in the FPDS HL7 message of Amendments to Delivery
+ Orders.  Because the contract number is not sent the orders are being
+ interpreted as an open market order causing problems in Austin.
+  
+ The second and third issues are related to the DUN & Bradstreet DUNS#'s 
+ changing format.  Formerly DUNS#'s used the 9th digit as a check 
+ digit and lengths were variable.  Now the 9th digit will no longer be 
+ used as a check digit and valid lengths are either 9 or 13 numbers only.
+  
+  
+ ASSOCIATED REMEDY TICKETS:
+ =========================
+  
+ 1. HD151142     Contract order was amended and the amendment did not pick 
+                 up that it is a contract and it makes it appear to be open
+                 market.
+    Duplicates:  HD151972, HD152090, HD152125
+  
+ 2. HD162377     Removal Check-digit DUNS#
+  
+ 3. HD138428     DUN & BRADSTREET # -- DD's allow 1-9 or 12 characters
+      
+ ASSOCIATED IT SERVICE REQUEST(S):
+ =================================
+ N/A
+      
+ PARTICIPATING TEST SITES:
+ =========================
+ Richmond,VA
+ White City,OR
+ South Texas    
+  
+ REMEDY OVERVIEW:
+ ==============
+  
+ 1. HD151142   Contract order was amended and the amendment did not pick 
+               up that it is a contract and it makes it appear to be open
+               market.
+      
+ Problem:
+ -----------
+  
+ Currently an FPDS message is sent to Austin for Delivery Orders that are
+ over a certain dollar amount. The FPDS for the original order transmits
+ the contract number.  If the order is amended the corresponding FPDS
+ message for the amendment does not contain the contract number and it
+ appears to Austin that it is an open market order.
+  
+ Resolution:
+ -------------
+  
+ Made a change to the code to transmit the contract number for Amended 
+ Delivery Orders in the FPDS message sent to Austin.
+  
+  
+ 2. HD162377     Removal Check-digit DUNS#
+  
+ Problem:
+ --------
+ Currently Dun & Bradstreet #'s use the 9th digit in the DUNS # as a 
+ check-digit for the rest of the numbers.  This is no longer going to be 
+ used.
+  
+ Resolution:
+ -----------
+ Changed the Input Transform for the VENDOR file(# 440) and the VENDOR 
+ EDIT file(# 440.3) to remove the code that calls the decryption routine.
+  
+ 3. HD138428     DUN & BRADSTREET # -- DD's allow 1-9 or 12 characters
+  
+ Problem:
+ --------
+ Currently the DUNS#'s are set to accept lengths of 1-9 or 12 characters, 
+ depending on the file/field.  All fields now will only accept either 9 or 
+ 13 numbers to allow for the DUNS plus 4 functionality now being
+ implemented.
+  
+ Resolution:
+ -----------
+ Changed the Input Transform for the VENDOR file(# 440) and the VENDOR 
+ EDIT file(# 440.3) for the DUN & BRADSTREET# field (#18.3) to only allow
+ for a numeric value of either 9 or 13.
+  
+ Technical Description
+ =====================
+ 1. HD151142   Contract order was amended and the amendment did not pick 
+               up that it is a contract and it makes it appear to be open
+               market.
+       
+ Made a change to routine PRCHAAC1 that creates the CDM segment of the 
+ FPDS HL7 message to include the contract number regardless if it is an 
+ amendment.  In the code shown below PRCAM=1 if it is an amendment 
+ otherwise it is empty.
+  
+ Existing Code:
+  
+         ;======== CDM Segment ===========
+         S PRCSEG="CDM"
+         S $P(PRCSEG,HLFS,2)="V"_PRCROOT      ;primary key value
+         S $P(PRCSEG,HLFS,4)="PROCUREMENT DETAIL FROM IFCAP"
+         S:$G(PRCAM)="" $P(PRCSEG,HLFS,12)=PRCCN           ;contract number
+         S:$G(PRCAM)="" $P(PRCSEG,HLFS,13)=PRCVEN_HLCS_HLCS_PRCDB
+         S HLA("HLS",3)=PRCSEG
+  
+ New Code:
+  
+         ;======== CDM Segment ===========
+         S PRCSEG="CDM"
+         S $P(PRCSEG,HLFS,2)="V"_PRCROOT      ;primary key value
+         S $P(PRCSEG,HLFS,4)="PROCUREMENT DETAIL FROM IFCAP"
+         S $P(PRCSEG,HLFS,12)=PRCCN           ;contract number
+         S:$G(PRCAM)="" $P(PRCSEG,HLFS,13)=PRCVEN_HLCS_HLCS_PRCDB
+         S HLA("HLS",3)=PRCSEG
+  
+  
+ 2. HD162377     Removal Check-digit DUNS#
+  
+ Currently file 440 field 18.3 input transform:
+  
+ DUN & BRADSTREET # INPUT TRANSFORM: S:$E(X,1,3)="DUN" X=$E(X,4,99) 
+ K:$L(X)>12!($
+ L(X)<1) X I $D(X)#10,'$$DBCHK^PRCHQ1B(X) D EN^DDIOL("Failed D&B 
+ Checksum") K X
+  
+ Removed:
+  
+ ,'$$DBCHK^PRCHQ1B(X) D EN^DDIOL("Failed D&B Checksum") K X
+  
+ This code was used to test the check digit which is no longer used.
+  
+ 3. HD138428     DUN & BRADSTREET # -- DD's allow 1-9 or 12 characters
+  
+ Field 18.3 for file 440 and 440.3 were changed to the exact same input 
+ transform to only allow DUNS#'s of 9 or 13 numeric values in length.  The
+ new input transform looks like:
+  
+ S:$E(X,1,3)="DUN" X=$E(X,4,99) K:X'?9N&(X'?13N) X
+  
+  
+ ================INSTALLATION INSTRUCTIONS =================
+    
+   This patch can be installed with users on the system.
+  
+   Install Time - less than 2 minutes.  
+      
+      
+   1.   LOAD TRANSPORT GLOBAL 
+        ---------------------
+        Choose the PackMan message containing this patch and invoke the 
+        INSTALL/CHECK MESSAGE PackMan option.  
+      
+   2.   START UP KIDS 
+        -------------
+        Start up the Kernel Installation and Distribution System Menu 
+        [XPD MAIN]: 
+      
+               Edits and Distribution ...  
+               Utilities ...  
+               Installation ...  
+      
+        Select Kernel Installation & Distribution System Option: 
+                  INStallation 
+                                                                
+               Load a Distribution 
+  
+               Print Transport Global 
+               Compare Transport Global to Current System 
+               Verify Checksums in Transport Global 
+               Install Package(s) 
+               Restart Install of Package(s) 
+               Unload a Distribution 
+               Backup a Transport Global 
+    
+   3.   Select Installation Option: 
+        ---------------------------
+        NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+               NAME, enter PRC*5.1*105):
+      
+        a.  Backup a Transport Global - This option will create a backup
+            message of any routines exported with this patch. It will not
+            backup any other changes such as DD's or templates.
+        b.  Compare Transport Global to Current System - This option will
+            allow you to view all changes that will be made when this patch
+            is installed.  It compares all components of this patch
+            (routines, DD's, templates, etc.).
+        c.  Verify Checksums in Transport Global - This option will allow
+            you to ensure the integrity of the routines that are in the
+            transport global.
+      
+   4.   Select Installation Option: Install Package(s) 
+                                    ------------------
+        **This is the step to start the installation of this KIDS patch: 
+      
+        a. Choose the Install Package(s) option to start the patch install.
+    
+        b. When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+           YES//' answer NO
+    
+        c. When prompted 'Want to DISABLE Scheduled Options, Menu Options, 
+           and Protocols? YES//' answer YES
+       
+        d. When prompted 'Enter options you wish to mark as 'Out Of 
+           Order':'  Enter the following options:
+      
+              Amendment To Delivery Order     [PRCH AMEND DELIVERY ORDER]
+      
+        e. When prompted 'Enter protocols you wish to mark as 'Out Of 
+           Order':' press <return>.
+  
+ ROUTINE SUMMARY 
+ ===============
+    
+ The following is a list of the routines included in this patch.  
+ The second line of each of these routines now looks like: 
+    
+              <tab>;;5.1;IFCAP;**[patch list]**;Oct 20, 2000
+  
+      CHECK^XTSUMBLD results
+    
+       Routine           Before Patch   After Patch      Patch List
+       --------          ------------   -----------      ----------
+       PRCHAAC1          12239128        12186374        79,105
+    
+       Number of Routines = 1     
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PRCHAAC1
+    Before:       n/a   After: B40484689  **79,105**
+ 
+Routine list of preceding patches: 79
+
+=============================================================================
+User Information:
+Entered By  : SCHMITZ,STEVEN                Date Entered  : AUG 09, 2006
+Completed By: BOWEN,MARY JANE               Date Completed: JUL 06, 2007
+Released By : NELSON,VICKI M                Date Released : JUL 11, 2007
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

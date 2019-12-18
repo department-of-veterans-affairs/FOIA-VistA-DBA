@@ -1,0 +1,275 @@
+$TXT Created by THEROUX,JOHN at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 02/06/06 at 15:37
+=============================================================================
+Run Date: MAR 22, 2006                     Designation: DG*5.3*687
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #603                    Status: Released
+                  Compliance Date: APR 22, 2006
+=============================================================================
+
+Associated patches: (v)DG*5.3*478  <<= must be installed BEFORE `DG*5.3*687'
+
+Subject: CLINICAL REMINDERS INDEX
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Other
+
+Description:
+============
+
+ This patch corrects problems caused when Patient Treatment file (#45)
+ records are deleted.
+  
+ ASSOCIATED Remedy Tickets:
+ =========================
+ 1) HD 91968 - CR errors caused by corrupt hanging PTF xrefs 
+    duplicates:
+    HD 90714 - CHA - Undefined Error PTF+3^DGPTPXRM
+    HD 90727 - MOU - PTF+3^DGPTPXRM Errors
+    HD 94738 - Cross Ref in PXRMINDX(45
+    HD 98702 - <UNDEFINED>PTF+3^DGPTPXRM
+    HD 109565- NIN - Getting errors evaluation reminders
+    HD 113794- Dangling "AADA" x-refs in file 45 
+    HD 116917- Undefined  PTF+3^DGPTPXRM
+    HD 117690- <UNDEFINED>PTF+3^DGPTPXRM
+    HD 120592- <UNDEFINED>PTF+3^DGPTPXRM
+    HD 121313- UNDEFINED PTF+3^DGPTPXRM
+    HD 124760- <UNDEFINED>PTF+3^DGPTPXRM
+    HD 133928 - Invalid PTF entry causing error in error trap
+     
+ 2) HD 100540- Questions re: ptf file records
+  
+ ASSOCIATED E3R(s):
+ ==================
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Charleston, SC
+ Hines, IL
+ Roseburg, OR
+  
+ REMEDY OVERVIEW:
+ ===============
+ 1) HD 91968 - CR errors caused by corrupt hanging PTF xrefs
+  
+ Problem:
+ ========
+ There are several ways to delete Patient Treatment file (PTF) records, 
+ such as:
+ 1) deleting the admission using the "Extended Bed Control" option;
+ 2) using the "Delete PTF" option (provided the record is open or is first 
+ re-opened);
+ 3) using the "PTF Archive/Purge" option.
+ When a PTF record is deleted, it creates a bogus "AADA" cross-reference 
+ entry.
+ The "AADA" cross-reference is intended to provide a list of PTF records 
+ for in-house inpatients.  
+ When other packages such as Clinical Reminders rely on the "AADA" 
+ cross-reference to obtain data from the PTF record, a system error
+ occurs because there is no PTF record for that bogus "AADA" entry.
+  
+ Another negative result of deleting PTF records is that ^PXRMINDX 
+ entries for certain PTF movements are not deleted.
+ These are the entries created by the ACR9MICD1 through ACR9MICD10 indexes 
+ which cover the ICD9 codes for the "501" movements.  We have traced this 
+ problem to an error in the kill command of the "AC" cross-reference  
+ on the discharge date (field #70).
+  
+ Solution:
+ =========
+ 1) The "AC" cross-reference on the discharge date (field #70) will be 
+ corrected by the pre-init routine DG687PRE.
+ 2) The "AADA1" cross-reference on the same field will be corrected by 
+ the preinit routine DG687PRE not to create an "AADA" entry when the 
+ PTF record is being deleted.
+ 3) A post-init routine DG687PST will cleanup any "AADA" entries that don't
+ have a matching PTF record (have no zero node).
+ 4) The Post Install instructions will recommend that the "PXRM Index 
+ Build" option be run to re-index the records for ^PXRMINDX(45.
+  
+ This is from the "AC" cross-reference before this patch:
+  
+ KILL STATEMENT:
+ S %=$S($D(^DGPT(DA,"M",1,0)):^(0),1:""),%D=+$P(%,U,10),^(0)=$P(%
+ _"^^^^^^^^^^",U,1,9)_U_U_$P(%,U,11,99) K ^DGPT(DA,"M","AM",%D,1),%,%D
+  
+ and after this patch:
+  
+ KILL STATEMENT:
+ S %=$S($D(^DGPT(DA,"M",1,0)):^(0),1:""),%D=+$P(%,U,10),^(0)=$P(%
+ _"^^^^^^^^^^",U,1,9)_U_X_U_$P(%,U,11,99) K ^DGPT(DA,"M","AM",%D,1),%,%D
+  
+ This is from the "AADA1" cross-reference before this patch:
+  
+ KILL STATEMENT:
+ S L=$P(^DGPT(DA,0),"^",2) I L?7N.E S ^DGPT("AADA",L,DA)=""
+  
+ and after this patch:
+  
+ KILL STATEMENT:
+ S L=$P(^DGPT(DA,0),"^",2) I L?7N.E,$G(DIK)'="^DGPT(" S ^DGPT("AA
+ DA",L,DA)=""
+  
+ 2) HD 100540 - Questions re: ptf file records
+  
+ Problem:
+ ========
+ The ticket raises these questions:
+ 1.  Should PTF Archive/Purge be included in the ban?  If so we should 
+ issue a patch placing the option out of order.
+ 2.  If PTF Archive/Purge is not banned, perhaps an informational patch 
+ that the PXRM reindex should be done.
+  
+ Solution:
+ =========
+ 1.  The option "DGPT Archive/Purge" is being placed out of order.
+ Good records should not be purged because of the ban on deleting 
+ clinical data. 
+ 2.  The "PXRM Index Build" option should be run to re-index the 
+ ^PXRMINDX(45 global because of the problem explained in HD 91968 
+ above.  Please see the Post Install Instructions.
+  
+ Documentation:
+ ==============
+ The following documents have been modified to reflect that the PTF 
+ Archive/Purge option will no longer be available:
+  
+ PIMS Release Notes
+ PIMS Technical Manual
+ User Manual - PTF Menu
+  
+ The changes to the VDL will be made within a week of the patch being 
+ released to the field.
+    
+ ROUTINE SUMMARY:
+ ================
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+     
+      <tab>;;5.3;Registration;**[patch list]**;Aug 13, 1993
+     
+ Using old logic:
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  DG687PRE               N/A               2377721             687
+  DG687PST               N/A                426378             687
+  
+  
+ Using new logic:
+                             CHECK1^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  DG687PRE               N/A               3068531             687
+  DG687PST               N/A                700925             687
+   
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ This patch may be run with users on the system.
+  
+ Installation will take less than 10 minutes.
+  
+ Note: Since this patch involves a Data Dictionary change, the user
+ installing needs to have their DUZ(0) set to @.
+  
+ 1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu to unload
+     the KIDS distribution included with this message.
+     NOTE:  If the required patches are not installed, the transport global
+            will be removed.  If the transport global is removed you will
+            need to repeat this step.
+  
+ 2.  From the Kernel Installation and Distribution System Menu, select
+     the Installation menu.
+  
+ 3.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter DG*5.3*687):
+     a.  Compare Transport Global to Current System  - this option will
+         allow you to view all changes that will be made when the patch
+         is installed.  It compares all components of the patch (routines,
+         DDs, templates, etc.).
+     b.  Verify Checksums in Transport Global - this option will
+         allow you to ensure the integrity of the routines that are in
+         the transport global.
+     c.  Print Transport Global - this option will allow you to view the
+         components of the KIDS build.
+     d.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+  
+ 4.  Use the Install Package(s) option and select the package DG*5.3*687.
+  
+ 5.  When prompted 'Want KIDS to Rebuild Menu Trees Upon Completion of 
+     Install? YES//' respond NO.
+  
+ 6.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+     YES//', respond NO.
+  
+ 7.  When prompted,'Want to DISABLE Scheduled Options, Menu Options, and 
+     Protocols? NO//', respond Yes.
+     When prompted,'Enter options you wish to mark as 'Out Of Order':',
+     enter:
+             PTF Menu  [DG PTF MENU] 
+     When prompted,'Enter protocols you wish to mark as 'Out Of Order':', 
+     press enter.
+  
+ POST-INSTALL INSTRUCTIONS:
+ ==========================
+  
+ Please run the following option and SELECT only "4 - PTF".  It is 
+ important that the run be scheduled AFTER HOURS because while the 
+ index is being rebuilt, any reminders that use the PTF index cannot be 
+ properly evaluated.  Other errors/messages may also be generated 
+ while the index is being rebuilt.
+  
+ Select OPTION NAME: CLINICAL REMINDERS INDEX BUILD  PXRM INDEX BUILD     
+ Clinical Reminders Index Build
+ Which indexes do you want to (re)build?
+   1 - LABORATORY TEST (CH, Anatomic Path, Micro)
+   2 - MENTAL HEALTH
+   3 - ORDER
+   4 - PTF
+   5 - PHARMACY PATIENT
+   6 - PRESCRIPTION
+   7 - PROBLEM LIST
+   8 - RADIOLOGY
+   9 - V CPT
+  10 - V EXAM
+  11 - V HEALTH FACTORS
+  12 - V IMMUNIZATION
+  13 - V PATIENT ED
+  14 - V POV
+  15 - V SKIN TEST
+  16 - VITAL MEASUREMENT
+ Enter your list:  (1-16): 4
+  
+ Do you want this to be tasked? Y// ES
+ Queue the Clinical Reminders index job.
+ Enter the date and time you want the job to start.
+ It must be after <NOW>
+ Start the task at: <SLOWEST TIME OF THE NIGHT>
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: DG687PRE
+    Before:            After:  B3068531  **687*
+Routine Name: DG687PST
+    Before:            After:   B700925  **687*
+
+=============================================================================
+User Information:
+Entered By  : THEROUX,JOHN                  Date Entered  : NOV 07, 2005
+Completed By: DAWSON,TIM                    Date Completed: MAR 22, 2006
+Released By : FITCH,DONNA                   Date Released : MAR 22, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

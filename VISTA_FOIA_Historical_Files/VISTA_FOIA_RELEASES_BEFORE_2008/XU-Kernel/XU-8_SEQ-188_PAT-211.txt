@@ -1,0 +1,238 @@
+$TXT Created by OGI,MICHAEL at FM22-PATCH.FO-OAKLAND.MED.VA.GOV  (KIDS) on TUESDAY, 02/26/02 at 15:18
+=============================================================================
+Run Date: MAR 04, 2002                     Designation: XU*8*211
+Package : XU - KERNEL                          Priority: Mandatory
+Version : 8       SEQ #188                       Status: Released
+=============================================================================
+
+Associated patches: (v)XU*8*134    <<= must be installed BEFORE `XU*8*211'
+                    (v)XU*8*152    <<= must be installed BEFORE `XU*8*211'
+
+Subject: FORMAT OF SOURCE NAME WHEN COMPONENTS ARE EDITED
+
+Category: 
+  - Data Dictionary
+  - Routine
+
+Description: 
+============
+
+ Background:
+ ----------
+ Patch XU*8*134, the New Person Name Standardization patch, introduced the
+ NAME COMPONENTS (#20) file that stores the component parts of a name
+ stored in a field in another file (to be referred to as the source name
+ field). A new-style MUMPS-type cross-reference is defined on the NAME
+ COMPONENTS file. It updates that source name field when any of the
+ component parts of the name are edited. The cross-reference helps keep the
+ components in the NAME COMPONENTS file in synch with the source name
+ field.
+  
+ Prior to this patch, the cross-reference always used the standard form of
+ the name components to build the name to be stored in the source name
+ field. For example, if the name components are changed to:
+  
+        Family Name: ST. ORES
+         Given Name: JOHN
+  
+ the name built and placed in the source field is: STORES,JOHN.
+  
+ The Patient Name Standardization effort identified a problem with storing
+ standardized names in the .01 field of the PATIENT (#2) file. VistA
+ software often directly accesses the value of the .01 field in
+ $P(^DPT(ien,0),U,1) for display. Displaying the name in standardized form
+ could result in the name being misrepresented or mispronounced.
+  
+ Representing and pronouncing a patient's name correctly is considered to
+ be an important element in demonstrating due respect to the patient. It
+ may also be a patient safety issue if, for example, patients called from a
+ waiting room are misidentified.
+  
+  
+ 1. Changes to the NAME COMPONENTS file (#20)
+ --------------------------------------------
+ To address the problem, this patch makes two changes to the NAME
+ COMPONENTS file:
+  
+    a. Adds a field: SOURCE NAME FORMAT FLAGS (#7).
+    b. Modifies the "ANAME" MUMPS cross-reference.
+  
+ The "ANAME" cross-reference is modified to look at the contents of the new
+ SOURCE NAME FORMAT FLAGS field to determine how to format the name that is
+ to be stored in the source name field when the component parts of the name
+ are edited. Here is a description of the SOURCE NAME FORMAT FLAGS field:
+  
+     New field: SOURCE NAME FORMAT FLAGS (#7)
+   Description: When the name fields in the Name Components file are 
+                edited, the "ANAME" cross-reference updates the
+                corresponding name field in the source file. This SOURCE
+                NAME FORMAT FLAGS field can be used to control the format
+                of the name placed in the source name field.
+                 
+                Answer with the flags used in $$NAMEFMT^XLFNAME API. For 
+                example, 
+                 
+                  C  : Return a Comma between the Family (Last) and Given 
+                       (First) Names.
+                  L  : Truncate the returned name to the maximum length as 
+                       specified by the data type of the source name field.
+                  L# : Truncate the returned name to a maximum length of #
+                       characters, where # is an integer between 1 and 256.
+                  S  : Standardize the name components before building the 
+                       formatted name.
+                 
+                If this field is null (i.e., no flags are specified), the 
+                default is "CLS".
+  
+ Since the contents of the SOURCE NAME FORMAT FLAGS field is null for all
+ NEW PERSON file names, and since a default format flags of "CLS" is
+ assumed when the SOURCE NAME FORMAT FLAGS field is null, the names stored
+ in the .01 field of the NEW PERSON file will continue to be stored in
+ standard format. The new SOURCE NAME FORMAT FLAGS field, however, can be
+ used by Patient Name Standardization to allow names in the PATIENT file to
+ be stored in non-standard format.
+  
+  
+ 2. Change to Controlled Subscription API UPDCOMP^XLFNAME2
+ ---------------------------------------------------------
+ The UPDCOMP^XLFNAME2 API (a controlled subscription API) can be used to
+ update an entry in the NAME COMPONENTS file. This patch adds a new FLAGS
+ parameter to that API:
+  
+   UPDCOMP^XLFNAME2(FILE,[.]RECORD,FIELD,[.]NAME,PTRFIELD,PTRVAL,FLAGS)
+  
+ The API takes the contents of the FLAGS parameter and stores it in the
+ SOURCE NAME FORMAT FLAGS field of the NAME COMPONENTS file entry being
+ updated. Patient Name Standardization can use this API to initially 
+ populate entries in the NAME COMPONENTS file with the flags "CL", for
+ example. If the "S" flag is omitted from the FLAGS parameter, the "ANAME"
+ cross-reference will NOT standardize the NAME COMPONENTS before building
+ the name to be stored in the source name field.
+  
+  
+ 3. Change to Supported Reference API: NAMECOMP^XLFNAME
+ ------------------------------------------------------
+ This procedure takes a name in standard format and returns in an array 
+ the component parts of that name. Before this patch, if the name 
+ contained no suffix or middle name portion, the API did not set the nodes 
+ in the output array that corresponded to those name components. For 
+ example,
+  
+   >S MYNAME="MCDONALD,MARY" D NAMECOMP^XLFNAME(.MYNAME) ZW MYNAME
+   MYNAME=MCDONALD,MARY
+   MYNAME("FAMILY")=MCDONALD
+   MYNAME("GIVEN")=MARY
+   
+ This patch changes the API so that if the name contains no suffix or 
+ middle name portion, the corresponding nodes in the output array are set 
+ to null:
+   
+   >S MYNAME="MCDONALD,MARY" D NAMECOMP^XLFNAME(.MYNAME) ZW MYNAME
+   MYNAME=MCDONALD,MARY
+   MYNAME("FAMILY")=MCDONALD
+   MYNAME("GIVEN")=MARY
+   MYNAME("MIDDLE")=
+   MYNAME("SUFFIX")=
+  
+ This change also corrects a problem that occurred when you edit the .01
+ field of the NEW PERSON file directly with FileMan's ENTER OR EDIT FILE 
+ ENTRIES option. If you deleted the middle name of an existing entry in the
+ NEW PERSON file, the value of MIDDLE NAME field for the corresponding
+ entry in the NAME COMPONENTS file would not be deleted. For example, if 
+ you changed the name of an entry from "SMITH,JOHN A" to "SMITH,JOHN", the 
+ MIDDLE NAME field in the NAME COMPONENTS file would still be "A".
+   
+  
+ Blood Bank Team Coordination:
+ ============================
+ Clearance - Dec 7, 2001
+    
+  
+ Thanks to Test Sites:
+ ====================
+ Battle Creek
+ Bay Pines
+ Clarksburg
+ Charleston
+ Dublin
+ Martinez
+ Miami
+ Nashville
+  
+   
+ Routine Summary:
+ ===============
+ The following routine is included in this patch. The second line of the
+ routine now looks like:
+  
+   <tab>;;8.0;KERNEL;**[patch list]**;Jul 10, 1995
+  
+ CHECK^XTSUMBLD results:
+  
+   Routine Name   Before Patch    After Patch     Patch List
+   ============   ============    ===========     ==========
+     XLFNAME        7311068         7393126        134,211
+     XLFNAME2       3037800         3488962        134,211
+  
+  
+ Installation Instructions:
+ =========================
+ This patch can be installed with VistA users online. However, it is
+ recommended that it be installed or queued for install during non-peak
+ times.
+  
+ TaskMan does not need to be STOPPED or placed in a WAIT state.
+  
+   1. AXP/DSM sites: Review your mapped routine set. If any of the
+ routine(s) listed in the ROUTINE SUMMARY section are mapped, they should
+ be removed from the mapped set at this time.
+  
+   2.  Use the "INSTALL/CHECK MESSAGE" option on the PackMan menu. This
+ option loads the patch into a Transport Global on your system.
+  
+   3.  On the KIDS menu, select the "Installation" menu, and use the
+ following options to install the Transport Global:
+  
+       Verify Checksums in Transport Global
+       Print Transport Global
+       Compare Transport Global to Current System
+       Backup a Transport Global
+       Install Package(s)
+  
+       Select INSTALL NAME: XU*8.0*211
+                            ==========
+       Want KIDS to INHIBIT LOGONs during the install? NO
+                                                       ==
+       Want to DISABLE Scheduled Options, Menu Options, and Protocols? NO
+                                                                       ==
+  
+   4.  AXP/DSM sites: After the patch has been installed, if any routines
+ were removed from the mapped set in Step 1 above, rebuild your map set.
+
+Routine Information:
+====================
+
+Routine Name:
+  - XLFNAME2
+
+
+Routine Checksum:
+
+Routine Name:
+  - XLFNAME
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : OGI,MICHAEL                    Date Entered : AUG 15, 2001
+Completed By: SINGH,GURBIR                  Date Completed: FEB 28, 2002
+Released By : GIBBONS,JOE                   Date Released : MAR 04, 2002
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

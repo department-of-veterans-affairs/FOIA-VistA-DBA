@@ -1,0 +1,218 @@
+$TXT Created by NABER,DAVID A at DEVCUR.FO-SLC.MED.VA.GOV  (KIDS) on Thursday, 04/03/03 at 14:27
+=============================================================================
+Run Date: APR 14, 2003                     Designation: OR*3*177
+Package : OR - ORDER ENTRY/RESULTS REPORTING Priority: Mandatory
+Version : 3       SEQ #162                       Status: Released
+                  Compliance Date: MAY 15, 2003
+=============================================================================
+
+Associated patches: (v)OR*3*165    <<= must be installed BEFORE `OR*3*177'
+
+Subject: Additional event delayed order fixes
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+ This patch will fix a number of issues related to event delayed
+ orders functionality.
+  
+ 1. TAM-0103-32035     DC+6~ORQ20:2 on details for d/c'd orders
+  
+ When performing a detailed display, a hard error may occur. The error is
+ due to patient movement data being unavailable for the order.  A change
+ has been made to prevent the error from occurring, when no data is
+ available.
+  
+ 2. CIN-0203-40155     SYSTEM PARAMETERS SHOW BROKEN POINTERS
+  
+ With the installation of patch OR*3*141 (GUI v20), a number of Order 
+ Entry parameters became obsolete.  These parameters were deleted, however 
+ the corresponding entries that pointed to these parameters were not
+ deleted.  When displaying the System parameter settings, broken pointer 
+ values were displayed. A post-init routine (ORY177) will remove these
+ broken pointers.  This routine may be deleted after installation of this
+ patch.
+  
+ 3. CPH-0103-40718 Event Delayed Orders: Treating Specialty/Location
+    warning
+  
+ When writing delayed orders, a warning box is presented if the patient's 
+ current location and/or treating specialty matches the definition of the 
+ event chosen.  If the event were a child event, this warning box was not
+ displayed.  The warning box will now display as expected.
+  
+ 4. BEC-0103-21953     Outpatient Meds Not D/C'ing Upon Admission
+  
+ When an admission auto-dc rule is defined and it includes outpatient 
+ medications, the outpatient medications were not auto-discontinuing as 
+ expected.  Outpatient medications are screened from the active orders 
+ display for inpatients.  When assembling orders to be considered for 
+ auto-discontinuing, outpatient medications were omitted from the list, as
+ the patient was already an inpatient at the time the auto-discontinue
+ rules were invoked.  Outpatient medications are now included in the list
+ of orders when an admission auto-discontinue rule is invoked.
+  
+ 5. MAD-1202-42027     Orders not DC after discharge from readmit
+    WRJ-1202-11753     EDO PROBLEM WITH OBSEVATION RE-ADMIT
+  
+ When a patient is discharged from observation and immediately readmitted 
+ for follow up care, their existing inpatient orders may be "carried over" 
+ to the new episode of care.  These orders should be subject to any active 
+ auto-discontinue rule when movements occur.  Prior to this patch, these 
+ orders were not considered for auto-discontinuing when subsequent 
+ movements occurred, as they were outside of the current admission 
+ timeframe, which is used to determine which orders should be affected.  
+ Orders "carried over" are now properly considered for auto-discontinuing 
+ on any subsequent movement.
+  
+ 6. Related to the above NOIS, if a delayed generic admission order were 
+ entered for the patient's admission onto an observation ward, it was not 
+ being auto-discontinued as expected.  The logic has been changed so that 
+ this order, if it exists, will be auto-discontinued when the patient is 
+ discharged from observation, regardless of whether they will have follow 
+ up care or not.
+  
+ 7. When a patient is discharged from observation and the patient will
+ be immediately readmitted for follow up care, any inpatient medications
+ that are discontinued by inpatient pharmacy are stored for reinstatement
+ upon readmission. Readmission must occur within one hour for the orders to
+ be reinstated. Prior to this patch, the time comparison was being done
+ incorrectly and the orders would reinstate regardless of how much time had
+ passed. The logic has been updated so that orders are only reinstated if
+ less than one hour has elapsed since the patient's discharge from
+ observation.
+  
+ 8. When a patient is discharged from an observation ward and will be 
+ immediately readmitted for follow up care, there was no check to make 
+ sure the patient was actually readmitted.  Orders that were protected 
+ with the expectation that the patient would be readmitted were never 
+ auto-discontinued.  New functionality has been added that starts a timer 
+ that will check the status of the patient one hour after discharge from 
+ observation.  If the patient is not readmitted within the one hour time 
+ frame, the orders that were protected will be auto-discontinued as if the 
+ patient had been discharged directly from the observation ward.
+  
+  
+ ROUTINE SUMMARY:
+ ================
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+  
+      <tab>;;3.0;ORDER ENTRY/RESULTS REPORTING;**[patch list]**;Dec 17, 1997
+  
+                            CHECK^XTSUMBLD results
+ Routine name         Before Patch          After Patch         Patch List
+ ============         ============          ===========         ==========
+ ORCACT0                  19977015             20852820       7,27,48,72,86,92,
+                                                               94,141,165,177
+ OREVNT                   19674810             20322141           141,177
+ ORMEVNT                  17927586             18914687       24,45,70,79,141,
+                                                                  165,177
+ ORMEVNT1                 15886105             17761469         141,165,177
+ ORMEVNT2                      N/A              7599981             177
+ ORQ11                    20127012             20286165       7,27,48,72,78,99,
+                                                               94,148,141,177
+ ORQ20                    21247645             21256519       12,27,92,94,116,
+                                                                  141,177
+ ORY177                        N/A               893630             177
+  
+ INSTALLATION INSTRUCTIONS:  
+ =========================
+ This patch should be loaded during non-peak hours to minimize disruption
+ to users.  Users may be on the system during installation. Installation
+ will take less than 5 minutes.
+  
+ 1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+  
+ 2.  Review your mapped set.  If any of the routines listed in the ROUTINE
+     SUMMARY section are mapped, they should be removed from the mapped set
+     at this time.
+  
+ 3.  From the Kernel Installation and Distribution System Menu, select the
+     Installation menu.
+  
+ 4.  From this menu, you may elect to use the following options (when 
+     prompted for INSTALL NAME, enter OR*3.0*177):
+       a.  Backup a Transport Global
+       b.  Compare Transport Global to Current System
+       c.  Verify Checksums in Transport Global
+  
+ 5.  Use the Install Package(s) options and select the package OR*3*177.
+  
+ 6.  When prompted 'Want KIDS to INHIBIT LOGONS during install? YES//',
+     respond "NO".
+  
+ 7.  When prompted 'Want to DISABLE Scheduled Options, Menu Options and 
+     Protocols? YES//', respond "NO".
+  
+ 8.  If routines were unmapped as part of step 2, they should be returned
+     to the mapped set once the installation has run to completion.
+  
+ 9.  After successful installation, routine ORY177 may be deleted. 
+
+Routine Information:
+====================
+
+Routine Name:
+  - ORMEVNT1
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORMEVNT
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORMEVNT2
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORY177
+
+
+Routine Checksum:
+
+Routine Name:
+  - OREVNT
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORCACT0
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORQ11
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORQ20
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : NABER,DAVID A                 Date Entered : FEB 14, 2003
+Completed By: STERNHAGEN,SHERRIL            Date Completed: APR 14, 2003
+Released By : SCOTT,JEAN M                 Date Released : APR 14, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

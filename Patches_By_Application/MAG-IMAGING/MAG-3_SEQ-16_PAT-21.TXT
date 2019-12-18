@@ -1,0 +1,563 @@
+
+=============================================================================
+Run Date: OCT 30, 2003                     Designation: MAG*3*21
+Package : MAG - IMAGING                       Priority: Mandatory
+Version : 3        SEQ #16                      Status: Released
+                  Compliance Date: NOV 30, 2003
+=============================================================================
+
+
+Subject: DICOM Maintenance
+
+Category: 
+  - Other
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+  
+  
+ This patch, MAG*3*21, contains several miscellaneous fixes for the VistA
+ Imaging Digital Imaging and Communication in Medicine (DICOM) Gateways.
+ Modifications are to the image acquisition, processing of images and
+ associations of images to correct patient and application reports.
+  
+ This patch consists of the following files:
+ MAGDCM.RTN - Routines to be restored on the DICOM Gateways.
+  
+ MAG3_0P21.KID - Kernel Installation & Distribution System (KIDS)
+         application to be installed on hospital database. 
+  
+ UID.DIC - Dictionary file to be copied to the DICOM\DICT folder.
+  
+ SCP_LIST.DIC - Dictionary file to be copied to the DICOM\DICT folder.
+  
+ MAG_AbstrTGA.exe - executable that creates the TGA abstracts. 
+         Copy this file to the Program Files\VistA\Imaging\DICOM folder. 
+  
+  
+ To receive this patch, a site must have their Site Agreement on file with 
+ and approved by the VistA Imaging Group. Once the required documents are 
+ received and approved, software will be available on the Imaging FTP
+ server in the \SOFTWARE\RELEASED_SOFTWARE folder. For information
+ concerning the status of a site, contact Kathy Trombetta via phone
+ (301-734-0357) or email (Kathy.Trombetta@med.va.gov).
+  
+  
+ Items corrected in this patch are:
+ ==================================== 
+ 1) A correction to the Unique Identifier (UID) generation routine was 
+ made to use the site's station number instead of the occasional use of 
+ the site's Institution name.  The use of the Institution names was 
+ causing errors because it exceeded the 64 characters in length of the 
+ DICOM standards.  If a UID is over 64 characters the DICOM gateway 
+ execution will stop and require user interaction. The following is a 
+ sample of the alert message:
+  ***************************************** 
+ The following UID is longer than 64 characters!
+ 123.456.7894358435.38450834058345840358034.580234.8503485.03485384 (an 
+ example)
+ ERROR IN DICOM UNIQUE IDENTIFIER GENERATION
+  ***************************************** 
+  
+ 2) Improved the generation and handling of the DICOM to TARGA file format
+ and the TARGA to ABSTRACT file format. Temporary files are created on the 
+ local gateway, a check is performed to ensure that the files are of 
+ correct size and then the files are copied to the Imaging network 
+ location. A final check is made to ensure that the files were copied 
+ correctly to the Imaging network locations. If any of file checks fail 
+ then the gateway execution stops, a message is displayed on the gateway 
+ and a message is sent to a mail group.  This error will require manual 
+ intervention to correct the situation and restart the DICOM gateway 
+ process.  The previous temporary scratch files will be deleted before new 
+ ones are created.
+  
+ 3) On occasion, an outside Radiology report is scanned and this usually 
+ precedes the scanning of the images. The gateway will attempt to attach 
+ the image to the scanned report and an error regarding the Image group 
+ will stop the process.   If an image pointer exists for the Radiology 
+ study then a check is made to determine if the image pointer belongs to 
+ Radiology images. The check is made on field #3, OBJECT TYPE, in the IMAGE
+ file (2005).  Entries with the value of 11 are X-RAY groups while the
+ value of 15 is used for a scanned document. If the Image pointer
+ is to a scanned report then a new image pointer is created and the images 
+ are associated to the new group entry. 
+  
+ 4) Some studies require two or more different modalities.  For example, a
+ lower GI endoscopy procedure may require both fluoroscopy and endoscopy 
+ equipment. Previously, the images from each modality were displayed in the
+ order that they were collected, intermixed.  Now each set of images are
+ stored in its own group so that they are displayed as a contiguous entity.
+  
+  
+ 5) The DICOM gateway's code has been modified to disallow attaching 
+ images to a cancelled Radiology exam.  The images will be added to the 
+ DICOM FIX file for user interaction and processing at a later time. These 
+ images will have a 'CANCELLED' in field 1 (FAILED REASON) of the DICOM 
+ FAILED IMAGES file (#2006.575). 
+  
+ 6) A change has been made to the patient match logic; previously the 
+ logic allowed an approximate match for patient id this was to accommodate 
+ so many manually entered entries that had minor errors.  Since the DICOM 
+ Modality Worklist is now commonplace, the gateway will require an exact 
+ patient id match.  If the patient id doesn't exactly match, then the 
+ study is placed into the DICOM Correct file with the status "PID ERROR".
+  
+ 7) The DICOM Gateway now has a site configuration option to suppress the 
+ display of the Patient Name, Patient Identification, and Accession Number
+ during Image Processing.  This option may be used to help the site better
+ comply with HIPAA requirements.  However, it may make it harder to monitor
+ the progress of the application.  The default for this option is to 
+ suppress the display of the identification fields.  It is required to use
+ this mode if the gateway is located in a public area.  It may not be
+ necessary, however, if the gateway is already located in a restricted
+ access area like a locked computer room.
+  
+ This option can be easily changed via Menu Option 4,2,2:
+      Gateway Configuration and DICOM Master Files -- DICOM Text Gateway
+  
+         2  Update Gateway Configuration Parameters
+  
+      Display Patient Name/ID in Image Processing? NO// Y
+  
+ 8) Updates IMAGE file (#2005) field numbers 40 (PACKAGE INDEX), 41 (CLASS 
+ INDEX), 42 (TYPE INDEX), 43 (PROC/EVENT INDEX), and 44 (SPEC/SUBSPEC 
+ INDEX) with data acquired from the DICOM images. These fields were 
+ introduced by Imaging patch MAG*3*17.
+  
+ 9) Much better Modality Worklist user interaction is provided.
+  
+ 10) When performing the "patient safety check" against the image file 
+ (#2005) and the radiology report file (#74), the 3rd piece of the 
+ zero-node is no longer used to determine the internal enter number of the 
+ last entry.  Rather, the much more reliable "reverse $Order" is used to 
+ obtain this value instead.
+  
+ 11) Corrects the problem where certain abstract images appeared black when
+ using the Clinical Display.  This generally affects, but not limited to, 
+ Nuclear Medicine (NM), Ultrasound (US), and possible Secondary Capture 
+ (SC) devices. This problem occurred when the original image had 16 bits 
+ allocated, but only 8 bits are stored for each pixel value. The previous 
+ code converted all abstracts to a depth of 8 bits, using the upper 8 bits 
+ to represent the pixel value.  Since there was no data in the upper 8 
+ bits, all pixel values were zero (0) and the abstract appeared black.  
+ The code has been modified to use only the lower 8 bits to represent the 
+ pixel value and ignore the upper 8 bits.  A pixel value histogram has 
+ been added to improve the image quality of the abstract images.  This is 
+ accomplished by finding the true Window Width and Window Center. 
+ Note: some 9 bit image abstracts may look dark, particularly if there are
+ burned-in pixels with value 4095.
+  
+  
+ 12) Email will be sent to the local mail group for all errors that halt 
+ processing.  Critical errors will also be sent to the National Imaging 
+ mail group.  (If the local mail group is not defined on the gateway 
+ parameters, all error messages will be sent to the national imaging mail 
+ group by default.)  All error messages are documented in the VistA DICOM 
+ Users Manual. 
+  
+ The following are the requirements when defining the mail group in the 
+ DICOM gateway parameters:  
+ - The names of mail groups may contain letters and digits and dashes, but 
+ no spaces.
+ - The name of the mail group and the name of the server where this group 
+ resides are separated by one at-sign (@). For example: 
+ G.MAGDBB@LAVC.ISC-WASH.VA.GOV  
+  
+ Remember to create the mail group on the VistA server and add the 
+ appropriate personnel before defining the entry in the DICOM gateway 
+ parameters. The DICOM software uses SMTP protocol to send the mail 
+ messages and not the FORUM transcription script. 
+  
+ 13) Corrected a race condition that can exist between deleting an image 
+ in IMAGE (#2005) and tracking the deleted entry in the IMAGE AUDIT file 
+ (#2005.1).  Previous execute was comparing the entries in the 0 node 
+ (i.e., ^MAG(2005,0). The comparison is now checking the last entry of 
+ 2005 and 2005.1 to select the greatest subscript.  Lock the (greatest + 
+ 1) node while updating the data in 2005.1.  A second process that finds 
+ the lockset will use the next largest IEN (greatest +2)
+  
+ 14) Resolves reported problems with MAGDMENU
+ a)      MAGDMENU 2-8-3 now finds the expected "C" cross-reference.
+         2 - Text Gateway
+           8 - Send DICOM Images to Another Storage Server
+             3 - Initialize Image Transmission queue
+  
+ b)      MAGDMENU 2-4 no longer calls a routine that does not exist
+         2 - Text Gateway
+           4 - Increment DICOM Image Input Pointer
+  
+ c)      MAGDMENU 3-9 no longer produces a line error
+         3 - Routing Gateway
+           9 - Remove Obsolete Entries from Transmission Queue
+  
+  
+  NOIS entries that will be resolved by this patch 
+  ================================================ 
+  BIR-0902-30614
+  TNV-1202-30621
+  ALX-1102-72072
+  PHO-0303-60492
+  NCH-0103-42549
+  MOU-0303-31749
+  POR-0303-51015
+  PRE-0103-61661
+  FGH-1002-30527
+  WAS-0203-21104
+  BRX-0203-10902
+  CMS-0303-30943
+  PUG-1202-51683
+  HEH-0102-42496
+  WAS-0703-20745
+  
+  Test sites:
+ ==============
+ Birmingham
+ Washington
+ Columbia, SC
+ Mountain Home
+  
+  =========== 
+  
+   ROUTINE SUMMARY:
+   ================
+   The following is a list of the routine(s) included in this patch.  The 
+ second line of each of these routine(s) will look like:
+  
+      <tab>;;3.0;Imaging;**21**;Sept 04,2003
+  
+  
+                             CHECK^XTSUMBLD results
+  
+   Routine name      After Patch           Patch List
+   ============      ============          ===========       
+ Routines installed by KIDs application: 
+     MAGDLB6           3354488              **21**
+     MAGGSIA           5811759              **7,21**
+     MAGGTIA1          6825885              **21**
+     MAGIPS21          2652995              **21**
+ Routine MAGIPS21 is a post install routine that is deleted after the KIDS 
+ install. 
+  
+ Routines installed on the DICOM Gateways by using Routine Restore (^%RR) 
+ to install the MAGDCM.RTN file:    
+      <tab>;;3.0;Imaging;**21**;10-September-2003
+  
+  
+                             CHECK^XTSUMBLD results
+     MAGDACP1        12530411               **21**
+     MAGDACU          4307948               **21**
+     MAGDFCNV         3548122               **21**
+     MAGDHR1         16841313               **21** 
+     MAGDIR1         18093617               **21**
+     MAGDIR1A        14943843               **21**
+     MAGDIR1B         5837818               **21**
+     MAGDIR1C         6700474               **21**
+     MAGDIR2          5791861               **9,21**
+     MAGDIR2A        10069976               **9,21**
+     MAGDIR2B        14256248               **21**
+     MAGDIR2C        14600766               **26,21**
+     MAGDIR2D        11872889               **26,21**
+     MAGDIR4         10415146               **21**
+     MAGDIR99        30966947               **21**
+     MAGDIRE         16228139               **21**
+     MAGDLB1A        14970151               **21**
+     MAGDMENA        11682161               **9,21**
+     MAGDMENU         9318675               **9,21**
+     MAGDMFB          7273656               **9,21**
+     MAGDMFB1        15761768               **9,21**
+     MAGDMFB2        10685026               **21**
+     MAGDMFBB        14033895               **9,21**
+     MAGDMFBC        11378106               **9,21**
+     MAGDMFBD        10100900               **21**
+     MAGDMFBE        11060469               **9,21**
+     MAGDMLGV        12349230               **21**
+     MAGDMMSG         8724430               **21**
+     MAGDSTRT        12208110               **21**
+     MAGDUID1         4449114               **21**
+     MAGDVRSN         3510833               **1,7,9,26,21**
+     MAGDWLU          5883997               **21**
+     MAGDWLU1        11227860               **21**
+     MAGDWLU2        10926242               **21**
+     MAGDWLU3        13819673               **21**
+     MAGGSIA          5811759               **7,21**
+     MAGGTIA1         6825885               **21**
+     MAGUE           15802555               **21**
+     MAGXMA           3165496               **21**
+  
+  
+  
+  
+ Routine changes:
+ MAGDACP1 - Set SYSTITLE variable for error trap.  Removed unnecessary 
+ calls to MAGDACPC
+  
+ MAGDACU - Added SYSTITLE variable for error trap.  If there is only one 
+ entry in SCU_LIST.DIC, this code now automatically selects it.
+  
+ MAGDFCNV - has $$CONSOLID check for VistA.  This is a new routine in 
+ preparation for future patches MAG*3*10 and MAG*3*11.
+  
+ MAGDHR1 - changed to get SITE from gateway configuration, instead of HL7 
+ message - this is needed for creating the UIDs properly. The SYSTITLE 
+ variable was added for error trap. It identifies the gateway in error 
+ messages that are emailed.
+  
+ MAGDIR1 - gets the location of the DICOM gateway for filing purposes - 
+ also looks up imaging service (RAD or CON) directly to get the ACCESSION 
+ NUMBER or CASE NUMBER.  Several subroutines are called differently.  The 
+ variable SYSTITLE was added for error trapping.
+  
+ MAGDIR1A - prevents adding exams to a cancelled radiology examination - 
+ now performs an exact match of SSN for Patient ID matching, rather than 
+ an approximate one - also contains CONLKUP as well as MEDLKUP.  The 
+ READFILE subroutine has been transferred to MAGDIR1C because of the 10k 
+ size limitation.
+  
+ MAGDIR1B - Changed "patient safety" check in the Radiology Report file 
+ (#74) from using 3rd piece of zero-node to reverse $order-ing to get the 
+ last internal entry number.
+  
+ MAGDIR1C - new routine containing READFILE and COUNT subroutines - now it 
+ sets the DICOM object FILESIZE variable for MAGDIR2D and MAGDIR7D file 
+ size checking.  Site parameter added to suppress display of the patient 
+ name, patient id, and accession number to comply with the HIPPA standards.
+  
+ MAGDIR2 - now branches directly to MAGDIR2A for radiology transactions 
+ and MAGDIR2E for consults transactions (in preparation for future patch 
+ MAG*3*10).  Site parameter added to suppress display of the patient name, 
+ patient id, and accession number to comply with HIPPA standards.  
+  
+ MAGDIR2A - Posts images to the appropriate group for the study. This is 
+ accomplished by checking the value of field OBJECT TYPE (#3) in the IMAGE 
+ file (#2005) to ensure that it is of value 11, which is XRAY GROUP.  Also 
+ modified to handle future patch MAG*3*8 requirements to set fields #40, 
+ #41, #42, #43, and #44 in the IMAGE file. 
+  
+ MAGDIR2B - checks that there are no files on the server that can be 
+ overwritten. Also modified to handle future patch MAG*3*8 requirements to 
+ set file 2005 fields #40, #41, #42, #43, and #44.  
+  
+ MAGDIR2C - now build the TARGA and ABSTRACT files locally, then copies 
+ them to the server, verifies that each operation worked properly, and 
+ that the each file has the correct size.  Handles all command shell 
+ execution errors.
+  
+ MAGDIR2D - now build the ABSTRACT files locally, then copies it the 
+ server.  For both the DICOM file and the ABSTRACT files, it verifies that 
+ each operation worked properly and that the each file has the correct 
+ size.  Handles all command shell execution errors.
+  
+ MAGDIR4 - require VADM array data to be present (i.e., doesn't use $G's 
+ any more) to write to the *.TXT file - this was a patient safety issue to 
+ ensure that no null values are written by mistake.  Creation of the 
+ "about image text file" is now done in two steps.  First the file is 
+ created locally, and second it is copied to the file server.
+  
+ MAGDIRE - new error reporting routine to replace old MAGDIRER
+  
+ MAGDLB1A - vestigial code removed; protection against empty subscripts 
+ installed.
+  
+ MAGDMENA - corrected incorrect call to a Routing routine use for the 
+ Purge Routing menu option. 
+  
+ MAGDMENU - Added Routine menu option.
+  
+ MAGDMFB - contains the GETPLACE and LOCATION subroutines for consolidated 
+ / non-consolidated sites.  Site parameter added to suppress display of 
+ the patient name, patient id, and accession number.
+  
+ MAGDMFB1 - now contains up to 24 questions needed for future patches 
+ MAG*3*10 and MAG*3*11.
+  
+ MAGDMFB2 - saying NO to the "Build the Element Dictionary" question no 
+ longer is treated as a fatal error.
+  
+ MAGDMFBB - initializes new gateway configuration parameters for future 
+ patch MAG*3*10 and MAG*3*11.  Site parameter added to suppress 
+ display of the patient name, patient id, and accession number; to comply 
+ with HIPPA standards.
+  
+ MAGDMFBC - several questions have been split between MAGDMFBC/D/E because 
+ of 10k size limitations.  Added the functionality to send error messages 
+ to a mail-group.  If there is a commercial PACS, ask the "Include DASHES 
+ in Social Security Numbers sent to PACS" question.
+  
+ MAGDMFBD - several questions have been split between MAGDMFBC/D/E because 
+ of 10k size limitations
+  
+ MAGDMFBE - several questions have been split between MAGDMFBC/D/E because 
+ of 10k size limitations.  Site parameter added to suppress display of the 
+ patient name, patient id, and accession number.
+  
+ MAGDMLGV - This is a new routine to display an existing message log or 
+ new activity in real time. 
+  
+ MAGDMMSG - This is a new routine used in sending error message via email.
+  
+ MAGDSTRT - Generate email for error traps to local mail group.  Email 
+ messages are sent to Silver Spring for critical problems involving 
+ patient safety.
+  
+ MAGDUID1 - now checks the length of the UID to make sure that it doesn't 
+ exceed 64 characters
+  
+ MAGDVRSN - always present - records version information.
+  
+ MAGDWLU - Major rewrite of user Modality Worklist interface.
+  
+ MAGDWLU1 - Major rewrite of user Modality Worklist interface.
+  
+ MAGDWLU2 - Major rewrite of user Modality Worklist interface.
+  
+ MAGDWLU3 - Major rewrite of user Modality Worklist interface.
+  
+ MAGGS1A - MUMPS locking of  ^MAG(2005,NEWIEN) is improved.
+  
+ MAGGTIA1 - now works at both consolidated and non-consolidated sites
+  
+ MAGUE - New MUMPS error code decoder routine.
+  
+ MAGDXMA - PROC/EVENT INDEX (^MAG(2005), field 43) mapping API routine.
+  
+ Data Dictionary changes:
+ ========================== 
+ The KIDS application will update the DICOM FAILED IMAGES (#2006.575) 
+ dictionary.  The FAILED REASON (#1) field has been modified to store the 
+ value of CANCELLED. The entries that fall into this category will be 
+ images that have been acquired on a Radiology modality and have a 
+ cancelled Radiology study in the DICOM header.  This result could be from 
+ a technician selecting an entry that has been cancelled or a possible 
+ race condition where the entry is selected and during the process the 
+ study has been cancelled. 
+  
+ The file DICOM ERROR MESSAGE QUEUE (#2006.598) is new and is used to 
+ store temporarily copies of error message that are to be e-mailed. The 
+ normal sequence of operation is store the message in this file, transmit 
+ the message in an e-mail message and then remove the message from this 
+ file. This global is resident only on the DICOM gateways.
+  
+  
+   INSTALLATION INSTRUCTIONS: 
+   ==========================
+   This patch may be loaded with users on the system.  
+   
+   Note: Patches MAG*3*1, MAG*3*7, MAG*3*9 and MAG*3*26 are REQUIRED BUILDs
+ for this KIDS distribution.  KIDS will not allow the installation of this
+ patch without these builds installed prior to loading this patch.
+  
+   Installation will take less than one minute.
+                                                                                 
+  1.  From the Kernel Installation and Distribution System Menu, select the
+      Installation menu.
+  2.  Use the Kernel Installation and Distribution System Menu option to
+       load the MAG3_0p21KID.
+  3.  From this menu, you may elect to use the following options (when
+       prompted for the INSTALL NAME, enter MAG*3.0*21).
+                                                                                 
+     a. Backup a Transport Global - this option will create a backup
+        message of any routines exported with the patch.  It will NOT
+        backup any of the other changes.
+                                                                                 
+     b. Compare Transport Global to Current System - this option will allow
+        you to view all changes that will be made when the patch is
+        installed.
+  
+        It compares all components of the patch (routines and options).
+                                                                                 
+     c. Verify Checksums in Transport Global - this option will allow you
+        to ensure the integrity of the routines that are in the transport
+        global.
+                                                                                 
+  4.  Use the Install Package(s) option and select the package MAG*2.5*8
+  5.  When prompted "Want KIDS to Rebuild Menu Trees Upon Completion of
+      Install? Yes// " respond "NO".
+  6.  When Prompted to "Want KIDS to INHIBIT LOGONs during the install?
+      NO//" respond "NO".
+  7.  When prompted "Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols? YES//" respond "NO".  
+  
+                                                                                 
+ DICOM Image and Text GATEWAYS - Installation instructions for MAGDCM.RTN, 
+ UID.DIC and MAG_AbstrTGA.exe files.
+  ===========================================      
+  
+ STOP ALL PROCESSES on the DICOM gateways being updated: 
+  
+ Copy the UID.DIC and SCP_LIST.DIC files to the appropriate DICOM\DICT
+ folder on your DICOM Image and Text gateways.
+  
+ Copy the MAG_AbstrTGA.exe file to the Program Files\VistA\Imaging\DICOM 
+ folder.  Delete the AbstrTGA.exe file in this directory. 
+       
+ Use a telnet session to 127.0.0.1 and drop into programmer's mode into 
+ the DCM uci.  (Remember that dropping into programmer's mode will require 
+ a programmer's access code that was setup during the initial installation 
+ of the DICOM software.)
+                                                                                 
+ The following is an example; please provide the correct full path for 
+ the MAGDCM.RTN file. The file contains 38 routines.
+  
+                                                                                 
+ [DCM,DCM]>D ^%RR
+                                                                                 
+           MSM - Routine Restore Utility 03:12 PM 08/19/2003
+  
+                                                                           
+ Enter input device <HFS>:   Host File Server
+ File Name >: MAGDCM.RTN
+ Routine(s) saved at 01:33 PM 09/10/2003
+ Header comment is: DICOM Gateway MUMPS routines Build V3.0p21Build445_T15
+ Selective restore? (allows rename) <N>: NO
+ Restoring...
+  
+ MAGDACP1  MAGDACU   MAGDFCNV  MAGDHR1   MAGDIR1   MAGDIR1A  MAGDIR1B  
+ MAGDIR1C  MAGDIR2   MAGDIR2A  MAGDIR2B  MAGDIR2C  MAGDIR2D  MAGDIR4
+ MAGDIR99  MAGDIRE   MAGDLB1A  MAGDMENA  MAGDMENU  MAGDMFB   MAGDMFB1  
+ MAGDMFB2  MAGDMFBB  MAGDMFBC  MAGDMFBD  MAGDMFBE  MAGDMLGV  MAGDMMSG  
+ MAGDSTRT  MAGDUID1  MAGDVRSN  MAGDWLU   MAGDWLU1 MAGDWLU2   MAGDWLU3  
+ MAGGSIA   MAGGTIA1  MAGUE     MAGXMA
+ 39 Routines restored.
+                                                                                 
+  
+ To verify that the correct version has been installed use the menu 
+ option on the DICOM Gateways.  The path is the following: 
+   4- System Maintenance, 
+     1 - System Operation,  
+       4 Display the Version  of  the Software.
+                                                                                 
+ Example of display:
+                                     
+ This is "IMAGING 3.0" created on 10-September-2003.
+ Installed patches:
+ Patch 1: 28-March-2002
+ Patch 7: 03-June-2002
+ Patch 9: 12-March-2003
+ Patch 21: 10-September-2003
+ Patch 26: 10-April-2003
+  
+ After the routines have been installed, use the option to re-initialize 
+ all master files.  This is required because of the changes to the 
+ SCP_LIST.dic and the UID.DIC files contained in this patch. 
+    4 - System Maintenance
+         2 - Gateway Configuration and DICOM Master Files
+            8 - Reinitialize All the DICOM Master Files
+
+Routine Information:
+====================
+
+=============================================================================
+User Information:
+Entered By  : BARRIOS,LUCILLE               Date Entered  : APR 08, 2003
+Completed By: CARR,ROSEMARY                 Date Completed: OCT 28, 2003
+Released By : LOVING,MANLEY                 Date Released : OCT 30, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

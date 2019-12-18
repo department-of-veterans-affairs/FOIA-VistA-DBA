@@ -1,0 +1,516 @@
+$TXT Created by PHELPS,TY at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 06/14/04 at 22:56
+=============================================================================
+Run Date: JUL 27, 2004                     Designation: IB*2*244
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #244                      Status: Released
+                  Compliance Date: AUG 27, 2004
+=============================================================================
+
+Associated patches: (v)IB*2*133    <<= must be installed BEFORE `IB*2*244'
+                    (v)IB*2*254    <<= must be installed BEFORE `IB*2*244'
+
+Subject: IB DM EXTRACT DATA FILE CORRUPTED AND SUBSCRIBER ID CONTAINS HYPHENS
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ ********************************** N O T E *********************************
+ There is no conflict between this patch and the CoreFLS implementation.
+ Installation of this patch by the CoreFLS sites will not cause any problems.
+ ****************************************************************************
+  
+ This patch corrects two input transforms: one for the MONTH/YEAR 
+ (#.01) field of the IB DM EXTRACT DATA (#351.71) file, and the 
+ other for the SUBSCRIBER ID (#1) sub-field of the INSURANCE TYPE 
+ (#2.312) sub-file of the PATIENT (#2) file; and then a post-install 
+ routine cleans up data in both fields.
+  
+ ASSOCIATED NOIS:
+ ----------------
+ 1. MEM-0402-71736     IB DM EXTRACT DATA File Corruption
+    Duplicate:
+       TOG-0103-12521     IB DM EXTRACT DATA File Corruption
+       BHS-1203-10357     IB DM EXTRACT DATA File Corruption
+ 2. BAY-0802-31184     INSURANCE INFO FROM FILE 2 IS NOT CROSSING TO 
+                       ACCUMAX
+    
+ ASSOCIATED E3R(s):
+ ------------------
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ -------------------------
+ Bay Pines, FL
+ Memphis, TN
+ Coatesville, PA
+ Big Spring, TX
+ Anchorage, AK
+  
+ NOIS OVERVIEW:
+ --------------
+ 1. MEM-0402-71736     IB DM EXTRACT DATA File Corruption
+  
+    Problem:
+    --------
+    The MONTH/YEAR (#.01) field of the IB DM EXTRACT DATA (#351.71)
+    file should not contain days, nor should it contain future 
+    month/year dates. (Example: December 2003 would be stored 
+    as 3031200.)
+  
+    Resolution:
+    -----------
+    Routines IBJDE and IBJDE1 have been modified to prevent invalid 
+    dates from being entered. The input transform for the MONTH/YEAR 
+    (#.01) field of the IB DM EXTRACT DATA (#351.71) file has also been 
+    modified to prevent dates in the future from being added. The 
+    complete changes to the data dictionary will be:
+  
+       Before Patch:
+       -------------
+       Input Transform:  S %DT="E" D ^%DT S X=Y K:Y<1!($E(Y,6,7)'="00") X
+                          I $D(X) S DINUM=X
+       Help-Prompt:  Enter the month/year corresponding to the
+                          extracted data.
+  
+       After Patch:
+       ------------
+       Input Transform:  S %DT="E,M",%DT(0)="-NOW" D ^%DT K %DT(0) S X=Y
+                              K:Y<1!($E(Y,6,7)'="00") X I $D(X) S DINUM=X
+       Help-Prompt:  Enter the month/year corresponding to the
+                          extracted data.  Future dates are not allowed.
+  
+    A post-install routine will clean up any invalid entries in the IB DM 
+    EXTRACT DATA (#351.71) file. The entries will be saved in a temporary 
+    global, ^XTMP("IB20P244"), for 120 days after the installation of this 
+    patch.  If a site finds that valid data has been removed, the routine
+    IB20R244 may be used to restore the past and or future dates that were
+    removed.  See the below section concerning the data restore routine
+    for more information.
+  
+ 2. BAY-0802-31184     INSURANCE INFO FROM FILE 2 IS NOT CROSSING TO 
+                       ACCUMAX
+  
+    Problem:
+    --------
+    A site reported that the SUBSCRIBER ID (#1) sub-field of the 
+    INSURANCE TYPE (#2.312) sub-file of the PATIENT (#2) file contained 
+    hyphens (-). This can cause validation errors and needs to be 
+    corrected.  
+  
+    Resolution:
+    -----------
+    To fix this problem, edits have been added to the input transform
+    routine, IBCNSU1, to remove non-alphanumeric characters from the
+    SUBSCRIBER ID if the SUBSCRIBER ID is the same as the SOCIAL SECURITY
+    NUMBER for the patient.  The input transform changes are:
+  
+       Before Patch:
+       -------------
+ SUBID   ; -- Input Transform for sub-file #2.312, Subscriber ID (#1)
+         N NODE,L,
+         S NODE=^DPT(DA(1),.312,DA,0)
+         ;
+         ; - if the policy is a Medicare policy, make sure the subscriber ID
+         ;   is a valid HICN number
+         I $P(NODE,U)=+$$GETWNR^IBCNSMM1 S X=$TR(X,"-","") I '$$VALHIC^IBCNSMM(X) D HLP^IBCNSM32 K X Q
+         ;
+         S R=$P(NODE,U,16)
+         S L=$P(^DPT(DA(1),0),U,9)
+         S R=$S(R="01":1,R="":1,1:0)
+         ;
+         ; - if "SS" is entered, and the policy belongs to the patient,
+         ;   convert that string to the patient's SSN
+         I R=1,X="SS" W "  ",L S X=L
+         ;
+         K:$L(X)>20!($L(X)<3) X
+         Q
+  
+  
+       After Patch:
+       ------------
+ SUBID   ; -- Input Transform for sub-file #2.312, Subscriber ID (#1)
+         N NODE,L,R,CHAR,X1
+         S CHAR="~`!@#$%^&*()_-+={}[]|\/?.,<>;:' """
+         S NODE=^DPT(DA(1),.312,DA,0)
+         ;
+         ; - if the policy is a Medicare policy, make sure the subscriber ID
+         ;   is a valid HICN number
+         I $P(NODE,U)=+$$GETWNR^IBCNSMM1 S X=$TR(X,"-","") I '$$VALHIC^IBCNSMM(X) D HLP^IBCNSM32 K X Q
+         ;
+         S R=$P(NODE,U,16)
+         S L=$TR($P(^DPT(DA(1),0),U,9),CHAR,"")
+         S R=$S(R="01":1,R="":1,1:0)
+         ;
+         ; - if subscriber ID is the SSN of patient, remove all extraneous
+         ;   characters
+         S X1=$TR(X,CHAR,"") I X1?9N,X1=L S X=X1
+         ;
+         ; - if "SS" is entered, and the policy belongs to the patient,
+         ;   convert that string to the patient's SSN
+         I R=1,X="SS" W "  ",L S X=L
+         ;
+         K:$L(X)>20!($L(X)<3) X
+         Q
+  
+  
+    A change will also be made to the API which returns the patient's
+    Medicare HIC number in routine IBCNSU1.  It will be modified to remove
+    any hyphens which might exist in the SUBSCRIBER ID before returning the
+    value.
+    
+    The post-install routine, IB20P244, will also clean extraneous 
+    characters from the SUBSCRIBER ID (#1) sub-field of the INSURANCE TYPE 
+    (#2.312) sub-file of the PATIENT (#2) file.  The extraneous characters
+    removed are:
+  
+       Medicare numbers:  ~`!@#$%^&*()_-+={}[]|\/?.,<>;:' "
+  
+       All others:  ~`!@$%^&*()_+={}[]|:;<>?'"
+          When SUBSCRIBER ID is same as SSN, the Medicare number list of
+          characters is used.
+  
+    The SUBSCRIBER IDs which are modified will be saved in a temporary
+    global, ^XTMP("IB20P244"), for 120 days after the installation of this
+    patch.  If during the clean-up process, a Medicare number of a living
+    patient (no date of death) is determined to be in an invalid format a
+    mailman message(s) will be generated and sent to the IB EDI SUPERVISOR
+    mail group, the user and the developer.  This information should be
+    used to correct the Medicare number into a valid format.
+  
+    If a site finds that valid data has been removed by the post-install
+    routine, the routine IB20R244 may be used to restore the SUBSCRIBER IDs
+    which were removed.  See the below section concerning the data restore
+    routine for more information.
+  
+ DATA RESTORE ROUTINE:
+ ---------------------
+ The routine IB20R244 has been included to give sites a way to back out the
+ data changes made by the post-install routine in the event valid data is
+ removed.  It uses the data stored in the ^XTMP("IB20P244") temporary
+ global to accomplish this task.  This global is scheduled to be purged
+ 120 days after installation of this patch.  Once purged, the data needed
+ to use this routine will no longer be available.  The restore routine is
+ designed to be initiated from the programmer's prompt and has 5 possible
+ entry points.  They are described below:
+  
+ UNDOALL^IB20R244 - This entry point will undo all data changes made by
+                    the post-install routine.  This includes all past and
+                    future dates removed from the IB DM EXTRACT DATA
+                    (#351.71) file and all SUBSCRIBER IDs which were
+                    modified.
+  
+ UNDOSUB^IB20R244 - This entry point will undo only the SUBSCRIBER ID
+                    changes.  You may select specific patients, specific
+                    insurance companies, or undo all SUBSCRIBER ID changes.
+  
+ SUBPRNT^IB20R244 - This entry point may be used to print to the screen a
+                    list of all the SUBSCRIBER ID changes made by the
+                    post-install routine which have not been restored.  This
+                    list is formatted so it can easily be ported to a
+                    spreadsheet.  It is recommended you increase your display
+                    to 132 characters if possible.  This will prevent any of
+                    the data from wrapping, thus reducing the amount of
+                    user intervention required to move this data into a
+                    spreadsheet.  It uses carets as delimiters and the data
+                    is sorted by Insurance Name and Patient Name.  It is
+                    formatted to display like the following:
+  
+                    INSURANCE NAME^PATIENT NAME(SSN)^ORIGINAL ID^MODIFIED ID
+                    
+ UNDOF^IB20R244 - This entry point will undo the changes related to future
+                  dates in the IB DM EXTRACT DATA (#351.71) file.
+  
+ UNDOP^IB20R244 - This entry point will undo the changes related to past
+                  dates in the IB DM EXTRACT DATA (#351.71) file.
+  
+                  [Future and Past dates are relative to the running of the
+                  post-install routine.]
+  
+ Any entries which can not be changed back to their original value will
+ display a message stating so.  All entries which are changed back to their
+ original settings will be resaved to a new node in the ^XTMP("IB20P244"
+ file.  This allows the user to re-run, as many times is necessary, any of
+ the 5 restore entry points above to view the remaining entries which may
+ need user intervention to be converted back.
+  
+ SUMMARY OF ANCILLARY DATA:
+ --------------------------
+ The scroll up messages that appear as the conversion happens - this is a 
+ list of before and after Subscriber IDs and a summary of the IB DM 
+ EXTRACT DATA (#351.71) file clean up.
+  
+ The ^XTMP("IB20P244") temporary global - contains all before and after 
+ data and is the source for all restore and SUBPRNT functions (see the DATA
+ RESTORE ROUTINE section).
+  
+ The Mailman message sent to the IB EDI SUPERVISOR mail group - contains a 
+ list of the MEDICARE (WNR) SUBSCRIBER ID entries that remain in an 
+ invalid state post conversion.
+  
+ TECHNICAL:
+ ----------
+ The size of the temporary ^XTMP("IB20P244) global will vary depending on
+ the amount of data modified at the site.  It is estimated that each 
+ SUBSCRIBER ID modified will add a maximum of 80 bytes to the file.  This
+ means a site which modifies 1739 SUBSCRIBER IDs will create a file
+ 139,120 bytes or less in size.  It is anticipated that most sites will
+ not have any data to clean up in the IB DM EXTRACT DATA (#351.71) file,
+ but for those who do, the size of each record created in the temporary
+ file will be between 40 and 80 bytes.
+  
+ Actual ^XTMP("IB20P244") global size at test sites:
+  
+                        SUBSCRIBER ID'S     DATES CLEANED      COMBINED
+ SITE                    TOTAL #(SIZE)      TOTAL #(SIZE)     TOTAL SIZE
+ ----                   ---------------     -------------     ----------
+ ANCHORAGE                2013 (134556)             0 (0)     134556 Bytes
+ BAY PINES                  310 (19847)             0 (0)     19847 Bytes
+ BIG SPRING               9074 (625057)             0 (0)     625057 Bytes
+ COATESVILLE              8533 (566787)             0 (0)     566787 Bytes
+ MEMPHIS                17069 (1130107)     3826 (241038)     1371145 Bytes
+  
+  
+ ROUTINE SUMMARY 
+ ===============
+ The following is a list of the routines included in this patch.  
+ The second line of each of these routines now looks like: 
+  
+   <tab>;;2.0;INTEGRATED BILLING;**[PATCH LIST]**;21-MAR-94
+  
+                        CHECK^XTSUMBLD results
+ Routine name      Before Patch        After Patch       Patch List
+ ============      ============        ===========       ==========
+  IB20P244                  N/A           14385207       244
+  IB20R244                  N/A           19480896       244
+  IBCNSU1               3361049            3761676       103,133,244
+  IBJDE                 8711078            8843578       100,118,123,235,
+                                                            248,254,244
+  IBJDE1               15622817           16434293       100,118,123,159,
+                                                            254,244
+  
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+ This patch can be loaded with users in the system, but it is recommended
+ that it be installed at a time when user activity is low. If scheduled,
+ this patch should be scheduled at a time when the Queue Means Test
+ Compilation of Charges [IB MT NIGHT COMP] is not running. Use Taskman to
+ determine when the background job is scheduled to run. 
+  
+ Installation time will vary depending on the amount of data to be modified 
+ by the post-install routine. At the test sites the times were between 12 
+ and 30 minutes.
+  
+  1.  Choose the PackMan message containing this patch and invoke the 
+      INSTALL/CHECK MESSAGE PackMan option.  
+  
+  2.  (DSM for Open VMS sites only) Disable routine mapping on all systems
+      for the routines listed in the Routine Summary.
+  
+      NOTE:  If the routines included in this patch are not currently
+      in your mapped routine set, please skip this step.
+  
+  3.  Start up the Kernel Installation and Distribution System Menu
+      [XPD MAIN]: 
+  
+           Edits and Distribution ...  
+           Utilities ...  
+           Installation ...  
+  
+      Select Kernel Installation & Distribution System Option: Installation
+                                                               ---
+           1      Load a Distribution
+           2      Verify Checksums in Transport Global
+           3      Print Transport Global
+           4      Compare Transport Global to Current System
+           5      Backup a Transport Global
+           6      Install Package(s)
+                  Restart Install of Package(s)
+                  Unload a Distribution
+  
+  4.  From this menu, you may elect to use the following options
+      (When prompted for the INSTALL NAME, enter IB*2.0*244):
+  
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will
+          not backup any other changes such as DD's or templates.
+      b.  Compare Transport Global to Current System - This option
+          will allow you to view all changes that will be made when
+          this patch is installed.  It compares all components of this
+          patch (routines, DD's, templates, etc.).
+      c.  Verify Checksums in Transport Global - This option will
+          allow you to ensure the integrity of the routines that are
+          in the transport global.
+  
+  5.  Use the Install Package(s) option and select the package
+      IB*2.0*244.
+  
+      a.  When prompted 'Want KIDS to INHIBIT LOGONs during the
+          install? YES//', answer NO.
+      b.  When prompted 'Want to DISABLE Scheduled Options and Menu 
+          Options and Protocols? YES//', answer YES.
+      c.  When prompted 'Want to DISABLE Scheduled Options and Menu Options?
+          YES//', Answer YES.
+      d.  When prompted 'Enter options you wish to mark as 'Out Of Order':'
+          Enter the following options:
+  
+          Patient Insurance Info View/Edit [IBCN PATIENT INSURANCE]
+          Medicare Insurance Intake [IBCN MEDICARE INSURANCE INTAKE]
+  
+      e.  When prompted 'Enter protocols you wish to mark as 'Out Of Order':
+          press <return>.
+  
+  6.  (DSM for Open VMS sites only) Optional - Include the routines
+      distributed with this patch in the mapped routine set.
+  
+      NOTE: This step is only necessary if you performed step 2 or if
+      you wish to include the routines in your mapped set.
+  
+  
+ POST INSTALLATION INSTRUCTIONS
+ ==============================
+  
+ ***************************************************************************
+ *** WARNING:  The data stored in the ^XTMP("IB20P244") temporary global ***
+ *** is scheduled to be purged 120 days after installation of this       ***
+ *** patch.  Once purged, the data needed to perform the following steps ***
+ *** will no longer be available.                                        ***
+ ***************************************************************************
+  
+  1.  We recommend IRM run SUBPRNT^IB20R244 from the programmers prompt
+      and provide the generated report of converted subscriber id's to the
+      MCCR supervisor.  Further information concerning this call is
+      available under the DATA RESTORE ROUTINE section listed earlier in
+      this description.  Below is an example of what the report will look
+      like:
+  
+ MNT,VBB>D SUBPRNT^IB20R244
+  
+ ABC INSURANCE COMPANY COMP^AGRICOLA,MICHAEL(111111111)^!@#$%^#
+ ABC INSURANCE COMPANY COMP^DISTASO,MICHAEL(222222222)^E[PK46^EPK46
+ ABC INSURANCE COMPANY COMP^SHER,JOEL(333333333)^E[PK46^EPK46
+ ABC INSURANCE COMPANY COMP^ZAB,TAB(123455667)^;ELW,RT34^ELWRT34
+ AETNA^O'KEEFE,BONNIE(009876544)^1[3OI4NT6^13OI4NT6
+ BLUE SHIELD^DING,E(202010111P)^SDF[KG^SDFKG
+ GHI^DISTASO,MICHAEL(554426654)^K[3OP456^K3OP456
+ GHI^SHER,JOEL(333333333)^K[3OP456^K3OP456
+ MEDICARE (WNR)^ZAB,TAB(123455667)^*********** A^123455667A
+ MEDICARE (WNR)^ZAB,TAB(123455667)^***********A^123455667A
+ TEST NEW COMP^RUBIN,LEX(406042145P)^;LK88^LK88
+ MNT,VBB>
+  
+  2.  The MCCR supervisor, or other billing personnel, should review the
+      changes displayed in the above mentioned report and determine if any
+      of the changes were inappropriate.  They should also keep an eye out
+      for any claims rejected by the payer due to incorrect subscriber ids.
+      
+  3.  If corrections need to be made, the changes can be made thru the user
+      menus or the changes can be made by using UNDOSUB^IB20R244 at the
+      programmers prompt.  Further information concerning this call is
+      available under the DATA RESTORE ROUTINE section listed earlier in
+      this description.  Next are examples of using this call to change all
+      ids for a single patient and a single insurance company:
+  
+ MNT,VBB>D UNDOSUB^IB20R244
+  
+ DO YOU WANT TO RESTORE (A)LL OR (S)ELECTED SUBSCRIBER ID'S? QUIT// S
+ DO YOU WANT TO RESTORE BY (P)ATIENT OR BY (I)NSURANCE COMPANY? QUIT// P
+  
+ SELECT PATIENT TO RESTORE SUBSCRIBER ID'S FOR: SHER,JOEL  SHER,JOEL        *SENSITIVE*    *SENSITIVE*       NO     NON-VETERAN (OTHER)          8CD SURG  
+  
+                                  ***WARNING***
+                             ***RESTRICTED RECORD***
+    * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+    * This record is protected by the Privacy Act of 1974. If you elect     *
+    * to proceed, you will be required to prove you have a need to know.    *
+    * Accessing this patient is tracked, and your station Security Officer  *
+    * will contact you for your justification.                              *
+    * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+  
+  
+ Do you want to continue processing this patient record? No// Y  (Yes)
+ SELECT PATIENT TO RESTORE SUBSCRIBER ID'S FOR: 
+  
+ The SUBSCRIBER ID for SHER,JOEL (333333333),
+      insurance company GHI, has been restored
+      from the MAY 17, 2004@10:39:30 data conversion.
+ The SUBSCRIBER ID for SHER,JOEL (333333333),
+      insurance company ABC INSURANCE COMPANY COMP, has been restored
+      from the MAY 17, 2004@10:39:30 data conversion.
+  
+ SELECT PATIENT TO RESTORE SUBSCRIBER ID'S FOR: 
+ DO YOU WANT TO RESTORE BY (P)ATIENT OR BY (I)NSURANCE COMPANY? QUIT// I
+ SELECT INSURANCE COMPANY TO RESTORE SUBSCRIBER ID'S FOR: ABC INSURANCE COMPANY COMP       2123 MAIN STREET         NEW YORK     NEW YORK       Y
+ SELECT INSURANCE COMPANY TO RESTORE SUBSCRIBER ID'S FOR: 
+  
+ The SUBSCRIBER ID for DISTASO,MICHAEL (222222222),
+      insurance company ABC INSURANCE COMPANY COMP, has been restored
+      from the MAY 17, 2004@10:39:30 data conversion.
+ The SUBSCRIBER ID for AGRICOLA,MICHAEL (111111111),
+      insurance company ABC INSURANCE COMPANY COMP, has been restored
+      from the MAY 17, 2004@10:39:30 data conversion.
+  
+ Original SUBSCRIBER ID contains a semi-colon (;).  Unable to restore
+      SUBSCRIBER ID for ZAB,TAB (123455667), insurance
+      company ABC INSURANCE COMPANY COMP.  Use Fileman to enter
+      ID of ";ELW,RT34".
+  
+  
+ SELECT INSURANCE COMPANY TO RESTORE SUBSCRIBER ID'S FOR: 
+ DO YOU WANT TO RESTORE BY (P)ATIENT OR BY (I)NSURANCE COMPANY? QUIT// 
+ DO YOU WANT TO RESTORE (A)LL OR (S)ELECTED SUBSCRIBER ID'S? QUIT// 
+ MNT,VBB>
+  
+  4.  The post-install and restore routines, IB20P244 and IB20R244, may be
+      deleted once it is determined the data changes were not in error or
+      all corrections have been made.
+
+Routine Information:
+====================
+
+Routine Name:
+  - IB20P244
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNSU1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBJDE
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBJDE1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IB20R244
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : PHELPS,TY                     Date Entered  : SEP 22, 2003
+Completed By: DAWSON,TIM                    Date Completed: JUL 27, 2004
+Released By : NEWLIN,JARED                  Date Released : JUL 27, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

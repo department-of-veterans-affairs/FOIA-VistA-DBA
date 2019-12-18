@@ -1,0 +1,500 @@
+$TXT Created by BLOCKER,DAVE at MNTVAA.ISC-BIRM.VA.GOV  (KIDS) on MONDAY, 01/14/02 at 09:11
+=============================================================================
+Run Date: FEB 27, 2002                     Designation: PSA*3*21
+Package : PSA - DRUG ACCOUNTABILITY           Priority: Mandatory
+Version : 3        SEQ #23                      Status: Released
+=============================================================================
+
+Associated patches: (v)PSA*3*3     <<= must be installed BEFORE `PSA*3*21'
+                    (v)PSA*3*12    <<= must be installed BEFORE `PSA*3*21'
+                    (v)PSA*3*15    <<= must be installed BEFORE `PSA*3*21'
+                    (v)PSA*3*17    <<= must be installed BEFORE `PSA*3*21'
+                    (v)PSA*3*19    <<= must be installed BEFORE `PSA*3*21'
+                    (v)PSA*3*20    <<= must be installed BEFORE `PSA*3*21'
+                    (v)PSA*3*23    <<= must be installed BEFORE `PSA*3*21'
+                    (v)PSA*3*27    <<= must be installed BEFORE `PSA*3*21'
+
+Subject: UPDATING NDC & PRICE CHANGES
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description: 
+============
+
+  1. This patch modifies the method used to update a drug's NDC and other
+  pricing information.
+   
+  The revised method of updating the NDC and price information is as
+  follows:
+   
+  If the NDC on an invoiced item does not match the NDC field (#31) in
+  the DRUG file (#50), then the NDC entry in the DRUG file (#50) will be 
+  changed to the invoiced NDC.
+   
+  If the invoiced item's Order Unit and Dispense Units per Order Unit match
+  the same fields in the DRUG file, but the price of the dispense unit has
+  changed then the following process occurs:
+   
+   a. The new price per dispense unit is compared with the PRICE PER
+      DISPENSE UNIT field (#16) in the DRUG file (#50), to see if it is
+      within 5%. If it is not within the 5% difference, the PRICE PER
+      DISPENSE UNIT field (#16) in DRUG file (#50) is set to the invoiced 
+      price per dispense unit, and the PRICE PER ORDER UNIT field (#13)
+      in the DRUG file (#50) is set to the invoiced price per order unit.
+  
+   b. A MailMan message is sent to members of a new mail group called:
+      'PSA NDC UPDATES' to inform them of the price change. The subject of
+      this message is: "DRUG file Price/NDC Update".
+   
+   c. Because of the problems with price calculations in the past, a post
+      patch install routine has been added to correct current incorrect
+      prices.
+  
+  2. When processing invoices, the system checks for the pharmacy locations
+  that will be used during processing. If no locations are found the 
+  program proceeds to exit the option. However, in the exit logic the
+  system checks to see if the user has up arrowed or if something has
+  failed. If the exit variable has not been set, the program continues on
+  to automatically enter the invoice into VISTA.
+   
+  3. Another problem this created was when the user would proceed with manual
+  processing of these invoices, the pharmacy location field would be empty.
+  This creates an undefined global node when the program tried to find the
+  location name. If pharmacy locations are not set up, the exit variable
+  is not set, therefore the invoices are processed.
+   
+  4. When the Connect Unlinked DRUG/ITEM MASTER file Entries [PSA UNLINKED 
+     LOOP] option is executed an undefined error occurs. The problem stems
+     from the user not selecting a drug to link to. The solution to this
+     problem is to change where the routine is called.
+   
+  5. When printing the Verification Error Report if the report is printed to
+     the screen or a slave printer it's fine. If the report is queued to a
+     printer, none of the data prints out.
+   
+  The problem with this was that the variable saved for the print job was
+  a simple variable, not a variable array as it should be.
+  
+  6. Due to site integration, invoices can sometimes be processed more
+  than once. The invoice file is checked during uploading to see if the
+  invoice currently exists, but the check is not performed when the user
+  processes the information. The solution to this is a check being added
+  that will compare the invoice's Order Number, Invoice Number and the
+  line items against what is stored in VistA. If a close enough match is 
+  found, a comparison array of data will be displayed for the user. After
+  displaying the data, the user has the option of eliminating the incoming
+  invoice.
+  
+  7. The option Delete Un-processed Invoices [PSA DELETE INVOICES] has been
+  created to delete invoices that are on file past a user specified date.
+  
+  8. When processing invoices, if an item has the same vendor stock number
+  but different NDCs, a new synonym entry is created. When the item is
+  being processed again, the system will display the same drug as two
+  different choices. The problem is, that there is not enough detailed
+  information provided for proper selection. The solution to this was to
+  add the NDC to the display.
+  
+  
+  9. When invoices are processed for multiple divisions or by multiple
+  personnel, all invoices show the same person as the processor. This
+  was caused by the last function of processing. When the user finishes
+  processing, the program would look at each invoice. If the invoice
+  was marked as processed, the data would be moved into the proper files.
+  the program did not distinguish between users. The solution to this is
+  to file the data immediately for each invoice as it is marked as
+  processed.
+  
+  Associated NOISs:
+  =================
+  ALX-0601-71398
+  AUG-1100-31830
+  BOI-0501-52141
+  BOI-0501-50781
+  CLA-0202-21275
+  CPH-1200-41893
+  CTX-0200-70121
+  CTX-1200-71091
+  EKH-0101-41994
+  IOW-0299-42392
+  IOW-0300-40321
+  IOW-0400-40184
+  LAH-0899-60553
+  LAH-0999-61293
+  LAH-0801-60481
+  LOU-0500-42282
+  MAN-0401-11339
+  MOU-0300-32066
+  MOU-0301-31731
+  MOU-0601-32485
+  MOU-1100-30092
+  MOU-1201-32138
+  NHM-1200-10447
+  NYH-0101-12702
+  NYH-0400-11241
+  NYH-1200-12365
+  NYH-1200-12370
+  PHI-0201-20287
+  PHI-0501-20413
+  PTH-0300-22975
+  PTH-0301-22523
+  SDC-0500-62327
+  SPO-0601-52542
+  WIM-1001-20526
+  WIM-1201-22486
+  
+  Test Sites:
+  ===========
+  MANCHESTER, NH
+  MOUNTAIN HOME, TN    
+  UPSTATE NEW YORK HCS
+  PITTSBURGH HCS, PA
+  SPOKANE, WA
+  GREATER LOS ANGELES HCS, CA    
+  WILMINGTON, DE
+  
+  Routine Summary:
+  ================
+  The second line now reads as follows:
+  
+  <TAB>;;3.0; DRUG ACCOUNTABILITY/INVENTORY INTERFACE;**[PATCH LIST]**; 10/24/97
+  
+  CHECK^XTSUMBLD results:
+  
+  Routine         Before Patch   After Patch     Patch List
+  -------         ------------   -----------     ----------
+  PSAAOP          N/A            10885786        21
+  PSADRUGP        12414836       13010759        3,21
+  PSAENT          12921190       13039239        21
+  PSAENTO         27340455       27368508        12,21
+  PSAHELP         2586025        2919088         12,17,21
+  PSALOC          N/A            15589257        21
+  PSALOC1         N/A            9831465         21
+  PSALOC2         N/A            14829287        21
+  PSALOCO         N/A            33380925        21
+  PSAOP3          1227059        1525582         21
+  PSAORDP1        28897034       29506902        3,12,21
+  PSAPROC         27535348       27677754        3,12,21
+  PSAPROC1        20967612       21541873        12,21
+  PSAPROC4        22230314       22326012        3,21
+  PSAPROC6        30343262       29515184        3,21
+  PSAPROC7        15462820       12923348        3,12,24,27,21
+  PSAPTCH         N/A            9391536         21
+  PSAREC1         13458863       13401004        21
+  PSAREORD        15276579       15081883        3,21
+  PSATI           16442798       16854127        8,18,23,21
+  PSAUNL          6117772        6605697         21
+  PSAUP4          25801732       26128564        3,12,20,21
+  PSAUP5          21619902       22337523        3,21
+  PSAUTL1         23400858       23122150        3,12,15,21
+  PSAUTL4         14057491       13862959        3,21
+  PSAUTL5         N/A            9503573         21
+  PSAVER2         20753667       20761451        3,12,21
+  PSAVER3         28844070       28853622        3,19,21
+  PSAVER6         16191522       16179156        1,3,21
+  PSAVER7         15717859       13035973        12,21
+  PSAVERA         N/A            26659488        21
+  PSAVERA1        N/A            13428166        21
+  PSAVERA2        N/A            5014686         21
+  PSAVERA3        N/A            5768891         21
+  
+  Installation Instructions and Documentation Retrieval
+  ======================================================
+  
+  Sites will retrieve VistA software from the following FTP addresses.  The
+  preferred method is to FTP the files from download.vista.med.va.gov. This
+  transmits the files from the first available FTP server. Sites may also
+  elect to retrieve software directly from a specific server as follows:
+  
+  OI FIELD OFFICE  FTP ADDRESS               DIRECTORY 
+  
+  Albany           ftp.fo-albany.med.va.gov  anonymous.software
+  Hines            ftp.fo-hines.med.va.gov   anonymous.software
+  Salt Lake City   ftp.fo-slc.med.va.gov     anonymous.software 
+  
+   FILE NAME                            DESCRIPTION
+  
+  Change page docs:
+  DA_3_P21_UM_CP.pdf                   User Manual
+  DA_3_P21_TM_CP.pdf                   Technical Manual
+   
+  Updated manuals:
+  DA_3_UM_R0202.pdf                    User Manual
+  DA_3_TM_R0202.pdf                    Technical Manual
+  
+   Once released, documentation can also be retrieved from VISTA 
+   Documentation Library (VDL) on the VA Intranet at the following address,
+   http://vista.med.va.gov/vdl
+  
+  Suggested time to install: non-peak requirement hours
+     - A post-init conversion on the DRUG file (#50), may prove to be very
+     taxing on the user's system. It is strongly suggested that this
+     patch not be installed when users are on the system.
+  
+  1. Use the INSTALL/CHECK MESSAGE option in the PackMan function.
+  
+  2. Review your mapped set. If the routines are mapped, they should
+     be removed from the mapped set at this time.
+  
+  3. From the Kernel Installation & Distribution System Option, select
+     the Installation Option.
+  
+  4. From this option, you may select to use the following items:
+     (when prompted for INSTALL NAME, enter PSA*3.0*21).
+    a. Backup a Transport Global - this option will create a backup
+       message of any routines exported with the patch. It will NOT
+       backup any other changes such as DDs or templates.
+    b. Compare Transport Global to Current System - this option will
+       allow you to view all changes that will be made when the patch
+       is installed. It compares all components of the patch (routines,
+       DDs, templates, etc.).
+    c. Verify Checksums in Transport Global - this option will ensure
+       the integrity of the routines that are in the transport global.
+  
+  5. Use the Install Package(s) option and select the package PSA*3.0*21.
+  
+  6. When prompted "Enter the Coordinator for Mail Group 'PSA NDC UPDATES':"
+     press return. Pharmacy personnel can set this up later by using
+     the Setup Mail Message Recipients [PSA MSG RECIPIENTS] option 
+     located under the Pharmacy Location Maintenance Menu.
+  
+  7. When prompted "Enter the Coordinator for Mail Group 'PSA REORDER 
+     LEVEL': " press return. Pharmacy personnel can set this up later
+     by using the Setup Mail Message Recipients [PSA MSG RECIPIENTS]
+     option, located under the Pharmacy Location Maintenance Menu.
+  
+  8. When prompted "Want KIDS to Rebuild Menu Trees Upon Completion of
+     Install? YES//" respond NO.
+  
+  9. When prompted "Want KIDS to INHIBIT LOGONS during the install? YES//"
+     respond NO.
+  
+ 10. When prompted "Want to DISABLE Scheduled Options, Menu Options, and
+     Protocols? YES//" respond NO.
+  
+ 11. The post-installation routine performs a price fix on synonym data
+     in the DRUG file (#50). A loop is performed on every NDC in the DRUG 
+     file (#50). The program then updates the prices per the new conversion
+     standard.
+
+Routine Information:
+====================
+
+Routine Name:
+  - PSAVER7
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSADRUGP
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAPROC
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAPROC6
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAUP5
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAUTL1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAUTL4
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAUTL5
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAVERA
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAVERA1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAVERA2
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAVERA3
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAUNL
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAVER3
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAVER6
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAAOP
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAVER2
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAPTCH
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAREORD
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAPROC4
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAPROC7
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAENT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAENTO
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSALOC
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSALOC1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSALOC2
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSALOCO
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAHELP
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAORDP1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAREC1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSATI
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAUP4
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAOP3
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSAPROC1
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : BLOCKER,DAVE                   Date Entered : OCT 14, 1999
+Completed By: GREER,MIKE                    Date Completed: FEB 26, 2002
+Released By : CONSENTINO,ALBERT             Date Released : FEB 27, 2002
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

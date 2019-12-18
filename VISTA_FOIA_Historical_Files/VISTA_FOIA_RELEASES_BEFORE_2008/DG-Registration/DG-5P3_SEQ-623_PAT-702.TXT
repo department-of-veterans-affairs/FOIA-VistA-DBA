@@ -1,0 +1,350 @@
+$TXT Created by THEROUX,JOHN at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 06/12/06 at 15:45
+=============================================================================
+Run Date: JUN 20, 2006                     Designation: DG*5.3*702
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #623                    Status: Released
+                  Compliance Date: JUL 01, 2006
+=============================================================================
+
+Associated patches: (v)DG*5.3*643  <<= must be installed BEFORE `DG*5.3*702'
+                    (v)DG*5.3*672  <<= must be installed BEFORE `DG*5.3*702'
+                    (v)DG*5.3*680  <<= must be installed BEFORE `DG*5.3*702'
+
+Subject: PATIENT NAME COMPONENTS ON COLLATERAL REGISTRATIONS
+
+Category: 
+  - Routine
+  - Other
+
+Description:
+============
+
+ This patch fixes a problem with collateral patient names, the zip codes
+ of emergency contacts and designees, the data dictionary of the 
+ INPATIENT CPT CODE file (#46) and the 'Edit Census Date Parameters'
+ option.
+  
+ ASSOCIATED REMEDY TICKETS:
+ ==========================
+  
+ 1) HD 130222 - Collateral Registrations only store last & first name in 
+                file #20
+ 2) HD 129545 - Registration screens
+    duplicate:
+    HD 141569
+ 3) HD 135204 - Data dictionary for file #46
+ 4) HD 135579 - DO NOT ALLOW EDITING CENSUS DATE FILE
+  
+ ASSOCIATED E3R'S:
+ =================
+ N/A
+  
+ TEST SITES:
+ ===========
+ Maryland HCS
+ Bay Pines,FL
+ Salisbury,SC
+  
+ REMEDY OVERVIEW:
+ ================
+  
+ 1) HD 130222 - Collateral Registrations only store last & first name in 
+                file #20
+  
+ Problem:
+ ========
+ When registering a collateral patient, if the patient's name is
+ changed in response to the "Patient Name Components" prompt, the changes 
+ are stored in the Patient file but not in the Name Component file #20.
+ A duplicate record with the changes is actually created in the 
+ Name Component file, but the Patient file record still points to
+ the original Name Component record which is not deleted by Fileman.
+ The duplicate record points to the correct Patient file record, but with
+ an incorrect format, i.e., field #.03 contains "0," following the 
+ internal entry number.
+  
+ Solution:
+ =========
+ We found that the Fileman problem was caused by a DA(1) variable 
+ being left in the symbol table.  The easiest solution is to kill 
+ the DA,DIE,DR variables before making the DIE call to update the 
+ patient name components.  DPTLK2 was modified.
+  
+ A cleanup routine DG702PST is also included as a post-init. It will
+ step through the "BB" crossreference on file #20 looking for records
+ with a "0," in field #.03.  For each such record, it will a) repoint
+ the Patient file record to this file #20 record, b) kill the file #20
+ record that the Patient file record was pointing to, and c) repoint
+ the good file #20 record to the Patient file record, i.e., without 
+ the "0,".  
+  
+ We expect few, if any, records to require cleanup, but the post-init
+ routine will display any that are modified and a total count.
+  
+ 2) HD 129545 - Registration screens
+  
+ Problem:
+ ========
+ In Screen #3 in Registration Load/Edit, when editing the Emergency 
+ contact or the Designee, the zip code is taken from the Next of Kin.
+  
+ Solution:
+ =========
+ Routine DGRPE was modified to only do this if the Emergency contact 
+ or Designee is the same as the NOK.
+  
+ 3) HD 135204 - Data dictionary for the INPATIENT CPT CODE file (#46)
+  
+ Problem:
+ ========
+ The data dictionary for file #46 has this bad node:
+  
+ ^DD(46,"GL",0,"3 ",.03)=
+  
+ This causes a problem for anyone who tries to run the Check/Fix DD 
+ FileMan option on file 46.  FileMan goes into an infinite loop due to the 
+ bad DD.
+  
+ Solution:
+ =========
+ That node will be replaced by:
+  
+ ^DD(46,"GL",0,3,.03)=""
+  
+ Pre-init routine DG702PRE will make the DD correction.
+  
+ 4) HD 135579 - DO NOT ALLOW EDITING CENSUS DATE FILE
+  
+ Problem:
+ ========
+ The Supervisor Menu on the PTF Census includes option 'Edit Census Date
+ Parameters'. Since census went to the 19th as the close-out date (January,
+ April, July and  October), there is no longer any reason for the 
+ Census Date file parameters to be updated, and census problems have 
+ happened when editing was done.
+  
+ Solution:
+ =========
+ The option 'Edit Census Date Parameters' [DGPT CENSUS DATE EDIT] is
+ being renamed 'Display Census Date Parameters' [DGPT CENSUS DATE DISPLAY].
+ It will only display the parameters, and can still be used to view 
+ the WORKFILE LAST UPDATED field in order to monitor the completion of the 
+ regeneration of the Census workfile.
+ Routine DGPTC was also modified not to prompt for editing the file.
+ The description for these options was also modified:
+ 'Supervisor Menu' [DGPT CENSUS SUPERVISOR]
+ 'Regenerate Census Workfile' [DGPT CENSUS REGEN WORKFILE]
+  
+ Documentation:
+ ==============
+ The following documents have been modified to reflect that the Edit 
+ Census Date Parameters option was changed to Display Census Date 
+ Parameters:
+  
+ PIMS User Manual - Menus, Intro, Orientation, etc.
+ PIMS User Manual - PTF Menu
+  
+ The changes to the VDL will be made within a week of the patch being 
+ released to the field.
+  
+ INSTALLATION INSTRUCTIONS:
+ ===========================
+ This patch may be run with users on the system, HOWEVER because
+ the Registration options need to be placed out of order, we
+ suggest it be installed after business hours.  The postinit 
+ routine must also process all patient name entries in the 
+ Name Component file #20 and this will take a few minutes. 
+  
+ Installation time will vary depending on the size of the Name Component
+ file #20.
+  
+ 1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu to unload
+     the KIDS distribution included with this message.
+     NOTE:  If the required patches are not installed, the transport global
+            will be removed.  If the transport global is removed you will
+            need to repeat this step.
+  
+ 2.  From the Kernel Installation and Distribution System Menu, select
+     the Installation menu.
+  
+ 3.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter DG*5.3*702):
+     a.  Compare Transport Global to Current System  - this option will
+         allow you to view all changes that will be made when the patch
+         is installed.  It compares all components of the patch (routines,
+         DDs, templates, etc.).
+     b.  Verify Checksums in Transport Global - this option will
+         allow you to ensure the integrity of the routines that are in
+         the transport global.
+     c.  Print Transport Global - this option will allow you to view the
+         components of the KIDS build.
+     d.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+  
+ 4.  Use the Install Package(s) option and select the package DG*5.3*702.
+  
+ 5.  When prompted 'Want KIDS to Rebuild Menu Trees Upon Completion of 
+     Install? YES//', respond NO.
+  
+ 6.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+     YES//', respond NO.
+  
+ 7.  When prompted,'Want to DISABLE Scheduled Options, Menu Options, and 
+     Protocols? NO//', respond Yes.
+     When prompted,'Enter options you wish to mark as 'Out Of Order':',
+     enter:
+            Register a Patient [DG REGISTER PATIENT]
+            Load/Edit Patient Data [DG LOAD PATIENT DATA]
+            Preregister a Patient [DGPRE PRE-REGISTER OPTION]
+            Collateral Patient Register [DG COLLATERAL PATIENT]  
+            Supervisor Menu [DGPT CENSUS SUPERVISOR]
+  
+     When prompted,'Enter protocols you wish to mark as 'Out Of Order':', 
+     hit enter.
+  
+ ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;5.3;Registration;**[patch list]**;Aug 13,1993
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  DG702PRE                   N/A               163457             702
+  DG702PST                   N/A              2938176             702
+  DGPTC                  4869203              4672714          383,643,702 
+  DGRPE                 27337785             27333162   32,114,139,169,175
+                                                       247,190,343,397,342
+                                                       454,415,489,506,244
+                                                       547,522,528,555,508
+                                                       451,626,638,624,677
+                                                                   672,702
+  DPTLK2                17278125             17283117   32,197,214,244,532
+                                                       578,615,620,647,680
+                                                                       702
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: DG702PRE
+    Before:       n/a  After:   B227239  **702**
+Routine Name: DG702PST
+    Before:       n/a  After:  B6208847  **702**
+Routine Name: DGPTC
+    Before: B12346357  After: B11894116  **383,643,702**
+ Description of Changes:
+  DGPTC.INT.1                   |"PATVEE"|DGPTC.INT.1  
+  **************************************************************************
+  *****
+  DGPTC.INT.1
+   +2         ;;5.3;Registration;**383,643,702**;Aug 13, 1993
+  ...................
+  |"PATVEE"|DGPTC.INT.1
+   +2         ;;5.3;Registration;**383,643**;Aug 13, 1993
+  ---------------------------------------
+  DGPTC.INT.1
+   +41        ;S DA=DGCN,DIE="^DG(45.86,",DR="[DGPT CENSUS DATE]" D ^DIE K 
+  DIE,DR
+  ,DQ,DE
+   +42        ;I '$D(Y) S D0=DGCN D PAR W !!
+  ...................
+  |"PATVEE"|DGPTC.INT.1
+   +41        S DA=DGCN,DIE="^DG(45.86,",DR="[DGPT CENSUS DATE]" D ^DIE K 
+  DIE,DR,
+  DQ,DE
+   +42        I '$D(Y) S D0=DGCN D PAR W !!
+  **************************************************************************
+  *****
+
+Routine Name: DGRPE
+    Before: B49313400  After: B49305780  **32,114,139,169,175,247,190,
+                                          343,397,342,454,415,489,506,244,
+                                          547,522,528,555,508,451,626,638,
+                                          624,677,672,702**
+ Description of Changes:
+  DGRPE.INT.1                   |"PATVEE"|DGRPE.INT.1  
+  **************************************************************************
+  *****
+  DGRPE.INT.1
+   +2         
+  ;;5.3;Registration;**32,114,139,169,175,247,190,343,397,342,454,415
+  ,489,506,244,547,522,528,555,508,451,626,638,624,677,672,702**;Aug 13, 19
+  93
+  ...................
+  |"PATVEE"|DGRPE.INT.1
+   +2         
+  ;;5.3;Registration;**32,114,139,169,175,247,190,343,397,342,454,415
+  ,489,506,244,547,522,528,555,508,451,626,638,624,677,672**;Aug 13, 1993
+  ---------------------------------------
+  DGRPE.INT.1
+   +53  303   ;;N DGX1,DGX2;I '$L($P($G(^DPT(DFN,.21)),U)) S 
+  Y="@33";.3305//NO;I 
+  X="Y" S Y="@34",DGX1=1 S:$D(^DPT(DFN,.22)) $P(^(.22),U,1)=$P(^(.22),U,7);
+  @33;.331;S:X']"" DGX1=2,Y="@34";.332;@34;
+  ...................
+  |"PATVEE"|DGRPE.INT.1
+   +53  303   ;;N DGX1,DGX2;I '$L($P($G(^DPT(DFN,.21)),U)) S 
+  Y="@33";.3305//NO;I 
+  X="Y" S Y="@34",DGX1=1;@33;S:$D(^DPT(DFN,.22)) $P(^(.22),U,1)=$P(^(.22),U
+  ,7);.331;S:X']"" DGX1=2,Y="@34";.332;@34;
+   
+            
+  ---------------------------------------
+  DGRPE.INT.1
+   +58  305   ;;N DGX1,DGX2;I '$L($P($G(^DPT(DFN,.21)),U)) S 
+  Y="@37";.3405//NO;I 
+  X="Y" S DGX1=1,Y="@371" S:$D(^DPT(DFN,.22)) $P(^(.22),U,2)=$P(^(.22),U,7)
+  ;@37;.341;S:X']"" DGX1=2,Y="@371";.342;@371;
+  ...................
+  |"PATVEE"|DGRPE.INT.1
+   +58  305   ;;N DGX1,DGX2;I '$L($P($G(^DPT(DFN,.21)),U)) S 
+  Y="@37";.3405//NO;I 
+  X="Y" S DGX1=1,Y="@371";@37;S:$D(^DPT(DFN,.22)) $P(^(.22),U,2)=$P(^(.22),
+  U,7);.341;S:X']"" DGX1=2,Y="@371";.342;@371;
+  **************************************************************************
+  *****
+
+Routine Name: DPTLK2
+    Before: B31148790  After: B31398139  **32,197,214,244,532,578,615,
+                                          620,647,680,702**
+ Description of Changes:
+  DPTLK2.INT.1                  |"PATVEE"|DPTLK2.INT.1  
+  **************************************************************************
+  *****
+  DPTLK2.INT.1
+   +2         
+  ;;5.3;Registration;**32,197,214,244,532,578,615,620,647,680,702**;A
+  ug 13, 1993
+  ...................
+  |"PATVEE"|DPTLK2.INT.1
+   +2         
+  ;;5.3;Registration;**32,197,214,244,532,578,615,620,647,680**;Aug 1
+  3, 1993
+   
+            
+  ---------------------------------------
+  DPTLK2.INT.1
+   +21        K DA,DIE,DR
+  ...................
+  |"PATVEE"|DPTLK2.INT.1
+  **************************************************************************
+  *****
+
+
+=============================================================================
+User Information:
+Entered By  : THEROUX,JOHN                  Date Entered  : FEB 14, 2006
+Completed By: BOWEN,MARY JANE               Date Completed: JUN 20, 2006
+Released By : CDEBACA,LARRY                 Date Released : JUN 20, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

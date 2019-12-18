@@ -1,0 +1,454 @@
+$TXT Created by KOPECKY,STEVE at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Friday, 06/04/04 at 14:36
+=============================================================================
+Run Date: JUL 15, 2004                     Designation: EAS*1*50
+Package : EAS - ENROLLMENT APPLICATION SYSTEM Priority: Mandatory
+Version : 1        SEQ #41                      Status: Released
+                  Compliance Date: JUL 27, 2004
+=============================================================================
+
+Associated patches: (v)EAS*1*37    <<= must be installed BEFORE `EAS*1*50'
+
+Subject: MEANS TEST LETTERS NOT PRINTING FOR USER ENROLLEE'S
+
+Category: 
+  - Routine
+  - Other
+
+Description:
+============
+
+ Local updates to a site's Institution data introduced by Kernel Patch 
+ XU*8*335 has resulted in some Means Test Renewal Letters for veterans at 
+ facilities to not print.  This is due to a parent entity being returned 
+ by a Kernel API now being different than the User Enrollee Site which was 
+ previously returned by the User Enrollee API.  As a result of patch 
+ XU*8*335 directions, the parent for a VAMC as returned by the Kernel API 
+ will now most likely be a "VISN" entity.  However, the User Enrollee 
+ functionality needs the administrative parent which is normally the VAMC.
+  
+ *************************** IMPORTANT **********************************
+  
+ Please Note: There is a circumstance under which the Means Test Letters 
+ for some veterans may not print.  If after installing Kernel patch 
+ XU*8*335 you configured your facility's parent-child relationships within 
+ Institution File as: VISN <- HCS <- VAMC, you may find that the User 
+ Enrollee Site field for some veterans may contain the HCS and some may 
+ contain the VAMC.  In this situation, veterans with the VAMC User 
+ Enrollee Site will be identified by the User Enrollee functionality as 
+ "Not User Enrollee at this Site" and their letters will not print.  If 
+ the parent-child relationship in the Institution File for your site is 
+ VISN <- VAMC, you should not have any problems.  
+  
+ To help determine your situation, run the following commands from the 
+ command prompt:
+                        W $$SITE^VASITE
+                        500^ALBANY^500
+                                   ---
+  
+ Take the third piece (underlined above) and place it as a parameter in 
+ the following command:
+                        W $$PSITE^EASUER(500)
+                        500
+  
+ If the same facility number is returned, you should have no problems.  If 
+ a different number is returned, run the report listed in paragraph 3 of 
+ the Resolution section below to help identify those veterans with a 
+ status of "Not User Enrollee at this Site".
+  
+ A subsequent patch (EAS*1.0*55 - Fix Parent Facility API) will address
+ the corrections required to the identify the Parent Facility in the 
+ Institution File when the site has configured the facility's 
+ parent-child relationships within the Institution File as: 
+  
+                      VISN <- HCS <- VAMC
+  
+ There will also be an additional Letters cleanup that will 
+ automatically run at the sites with this configuration.  If the site 
+ does not have this configuration the clean up will not be necessary, 
+ and will not run.
+  
+ **************************************************************************
+  
+  
+ This patch addresses the following E3R(s):
+ ------------------------------------------
+ There are no E3Rs associated with this patch
+  
+  
+ This patch addresses the following NOIS message(s):
+ ---------------------------------------------------
+ BUT-0204-20267     Unusually Low Number of Means Test Letters Printing
+ BRX-0204-11065     MT Letters to print: 0
+ CHS-0204-41741     EAS MT LETTER WILL NOT PRINT
+ CPH-0304-41526     Means test letters not printing
+ NOL-0304-71097     Low Number of Means Test Letters Printing
+ CLA-0304-20854     Means Test Letters not printing
+ PTH-0304-20713     MT LETTERS PRINT PROBLEM
+  
+  
+ Overview of NOIS Message(s):
+ ---------------------------
+  
+ Problem:
+ ========
+ Patch EAS*1*25 implemented part of the Geographic Means Testing Phase II 
+ project which provided functionality supporting a new category of 
+ veterans termed User Enrollees.  These are veterans who are actually 
+ utilizing their health care benefits and are the only veterans now 
+ required to provide an assessment of financial status.  The USER ENROLLEE 
+ SITE Field (#.3618) in the PATIENT File (#2) stores the current 
+ administrative parent for the patient's User Enrollee status.  This value 
+ may change depending on which site is processing an action against the 
+ patient.  The actual value needs to be the parent VAMC for the User 
+ Enrollee function to work correctly.  The UE API which determines this 
+ uses the Kernel PRNT^XUAF4() API to determine the parent facility from 
+ the INSTITUTION File (#4).  Unless a veteran is identified as a User 
+ Enrollee for that site, the Means Test renewal letters will not be 
+ printed.  
+  
+ Kernel patch XU*8*335 provided options to allow sites to locally update 
+ their Institution Data as part of a goal to correctly identify 
+ parent/child facility relationships in the Institution File.  The 
+ directions distributed in patch XU*8*335, instructed sites that child 
+ facilities should point to their administrative parent.  As a result, 
+ where sites use to point back to themselves, they are now pointing to a 
+ new administrative parent.  For VAMCs', this new parent is usually their 
+ VISN entity.  When a VAMC is now passed into the Kernel PRNT^XUAF4() API, 
+ the VISN is returned as the "parent" facility.  When the Means Test 
+ Letters software checks the User Enrollee Site value stored in the 
+ PATIENT File (#2) against the results of the PRNT^XUAF4() API, the two 
+ values may no longer match causing the Means Test Letters software to 
+ turn-off the current letter as the veteran is NOT considered a User 
+ Enrollee at that Site. 
+  
+  
+ Resolution:
+ ===========
+ The User Enrollee API has been updated to determine whether the parent 
+ being returned by the Kernel API is a VISN entity.  If it is, the UE API 
+ will not return the VISN entry, but will return the current VAMC entry.
+  
+ The EAS MT LETTER STATUS File (#713.2) will be scanned for letters which 
+ may have been turned-off by the User Enrollee checks.  If a letter has 
+ been turned off and not printed due to the User Enrollee Site not being 
+ valid, the letter will be re-flagged to print during the next print 
+ session.  When the cleanup is complete, the user will receive a mailman 
+ notification with a summary of the cleanup.  
+  
+ A new report, User Enrollee Status for MT Letters, is being provided 
+ which will display UE information for patients with pending MT Letters.  
+ This report is located on the Reports Menu [EAS MT REPORT MENU].  This 
+ report should help in troubleshooting MT Letters not printing due to User 
+ Enrollee problems.
+  
+ Test Sites:
+ -----------
+ Bronx
+ New Orleans VAMC
+ Clarksburg VAMC
+ Pittsburgh HCS
+  
+  
+        ================INSTALLATION INSTRUCTIONS =================
+  
+ If installed during the normal workday, it is recommended that the 
+ following menu options (File #19) and all of their descendants be 
+ disabled to prevent possible conflicts while running the KIDS Install. 
+ Other VISTA users will not be affected.  
+  
+          Search For MT Anniversary Dates
+          Letters Print Menu
+          Report Menu
+  
+ Install Time - Less than 5 minutes
+  
+  
+   1.   LOAD TRANSPORT GLOBAL 
+        ---------------------
+        Choose the PackMan message containing this patch and invoke the 
+        INSTALL/CHECK MESSAGE PackMan option.  
+              
+   2.   DISABLE ROUTINE MAPPING   (DSM for Open VMS sites only) 
+        -----------------------
+        Optionsl - Review your mapped set.  If any of the routines listed 
+        in the Routine Summary section of this guide are mapped, they 
+        should be removed from the mapped set at this time.
+       
+   3.   SCHEDULE/UNSCHEDULE OPTIONS
+        ---------------------------
+         Unschedule the following tasks on your system using the 
+         schedule/Unschedule Options [XUTM SCHEDULE].
+  
+         Background print job for EAS MT Letters [EAS MT LETTERS BG PRINT]
+         Background search for MT Anniversary dates [EAS MT LETTERS BG
+         SEARCH]
+       
+   4.   COMPONENTS SENT WITH PATCH 
+        ---------------------------
+        The following is a list of the routines included in this patch.  
+        The second line of each of these routines now looks like: 
+   
+    <tab>;;1.0;ENROLLMENT APPLICATION SYSTEM;**[patch list]**;Mar 15, 2004
+  
+                             CHECK^XTSUMBLD results
+     Routine name      Before Patch          After Patch         Patch List
+     ============      ============          ===========         ==========
+     EAS150P1                   N/A              6844516             50
+     EAS150PT                   N/A              4797481             50
+     EASUER                 3143454              3463813          25,37,50
+  
+     
+            Total number of routines - 3 
+   
+   5.   START UP KIDS 
+        -------------
+        Start up the Kernel Installation and Distribution System Menu 
+        [XPD MAIN]: 
+    
+             Edits and Distribution ...  
+             Utilities ...  
+             Installation ...  
+    
+   Select Kernel Installation & Distribution System Option: INStallation 
+                                                            ---
+             Load a Distribution 
+             Print Transport Global 
+             Compare Transport Global to Current System 
+             Verify Checksums in Transport Global 
+             Install Package(s) 
+             Restart Install of Package(s) 
+             Unload a Distribution 
+             Backup a Transport Global 
+    
+   Select Installation Option: 
+    
+   6.   Select Installation Option: 
+        --------------------------
+        NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+               NAME, enter EAS*1*50):
+       
+        a.  Backup a Transport Global - This option will create a backup
+            message of any routines exported with this patch. It will not
+            backup any other changes such as DD's or templates.
+        b.  Compare Transport Global to Current System - This option will
+            allow you to view all changes that will be made when this patch
+            is installed.  It compares all components of this patch
+            (routines, DD's, templates, etc.).
+        c.  Verify Checksums in Transport Global - This option will allow
+            you to ensure the integrity of the routines that are in the
+            transport global.
+      
+   7.   Select Installation Option: Install Package(s) 
+                                    ----------------
+        **This is the step to start the installation of this KIDS patch: 
+    
+        a. Choose the Install Package(s) option to start the patch install.
+        b. When prompted 'Want KIDS to Rebuild Menu Trees Upon Completion 
+           of Install? YES//' answer NO
+        c. When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+           YES//' answer NO 
+        d. When prompted 'Want to DISABLE Scheduled Options, Menu 
+           Options, and Protocols? YES//' answer YES 
+        e. When prompted 'Enter options you wish to mark as 'Out Of
+           Order':'  Enter the following options:
+   
+          Search For MT Anniversary Dates [EAS MT LETTERS SEARCH]       
+          Letters Print Menu [EAS MT PRINT MENU]       
+          Report Menu [EAS MT REPORT MENU]     
+  
+   8.  REBUILD MAPPED ROUTINE(S)  (DSM for Open VMS sites only)
+       -------------------------
+       Optional - Include the routines distributed with this patch
+       in the mapped routine set.
+      
+       NOTE: This step is only necessary if you performed step 2 or 
+              if you wish to include the routines in your mapped set.
+  
+   9. SCHEDULE/UNSCHEDULE
+       -------------------
+       Re-Schedule the following tasks if they were unscheduled in 
+       step 3 above: 
+  
+       Background print job for EAS MT Letters [EAS MT LETTERS BG PRINT]
+       Background search for MT Anniversary dates [EAS MT LETTERS BG 
+        SEARCH]    
+  
+  
+  
+ Post Installation
+ =================
+   1.  After the patch has been installed, from command mode, run the
+       following clean-up:
+  
+      >D EN^EAS150PT
+  
+   You will receive the following display.  You will be asked to select a 
+   print device where the MT Letter Clean-up report will be printed to and
+   to a enter a start time.
+  
+      Preparing to run the EAS*1*50 Post Install MT Letters Cleanup
+      After the cleanup, you will be sent a MailMan summary of the cleanup
+      statistics.  You will also be asked to select a printer to send the
+      detailed results to.  This report could be quite lengthy.  Please 
+      DO NOT run the report to your screen!
+  
+      DEVICE: HOME// DEV$PRT 10/6/UP  Development HP5 Si  
+  
+      Requested Start Time: NOW//  (MAY 26, 2004@14:07:53)
+  
+           Task: 2465546 Queued.
+     
+  
+   2. After the completion of the Letters Cleanup, check the summary
+      MailMan message.  This message will be sent to the user starting the 
+      cleanup and will indicate how many letters where re-flagged.
+  
+  
+   Subj: EAS*1*50 POST INSTALL SUMMARY  [#1867240] 05/26/04@14:08  7 lines
+   From: EAS*1*50 POST INSTALL SUMMARY  In 'IN' basket.   Page 1  *New*
+   
+ -------------------------------------------------------------------------
+   Begin: May 26, 2004@14:07:55
+   End:   May 26, 2004@14:08:03
+   Processing Time:  0:00:08
+  
+   60-Day Letters:   3
+   30-Day Letters:   0
+    0-Day Letters:   53
+  
+  
+   3. Get the report for the re-flagged letters.  This report will 
+      indicate the Name and the letter which was re-flagged as a result of
+      this cleanup.  This report is in alphabetical order.
+   
+  
+   Patch EAS*1*50 MT Letter Cleanup Results
+   Patch Install Date: May 28, 2004
+   Page: 1
+  
+                                  Letter
+   Name                           Reset
+   =========================================================================
+   ANGELO,MICHAEL                 60D
+   ASIHTEST,ABR                   60D
+   BILL,NEW                       30D
+   BIRD,CHARLES                   0D
+   BROSNAN,PAT                    0D
+  
+  
+   4. Run the User Enrollee Status Report.  This report was installed as a
+      new menu option on the EAS MT REPORT MENU.  Select the Report 
+      sub-menu on the Automated Means Test Letter Menu.  Then select the
+      User Enrollee Status for MT Letters menu option.  This report will
+      show the User Enrollee Status, UE Valid Through date and the current
+      User Enrollee Site, and the current calendar year for the pending
+      Means Test Letters for patients (in alphabetical order).
+  
+  
+ User Enrollee Status for Pending Means Test Letters
+ Calendar Year for MT Letters to Print: 2004
+ Print Date: May 28, 2004
+ Page: 1
+  
+ Current Station: 500:ALBANY
+ Current Administrative Parent: 500:ALBANY
+  
+ Name                LAST4  UE-FY  UE Status   UE Site             LT-CY
+ =======================================================================
+  
+ AQUAFINA,WATER L    1950   2004   UE          ALBANY              2004
+ DATA,THEODORE A     2153   2004   UE          ALBANY              2004
+ KOPE,EDDY ONE       4568   2030   UE          ALBANY              2004
+  
+ Enter RETURN to continue or '^' to exit: 
+  
+  
+ User Enrollee Status Summary for Pending Means Test Letters
+ Print Date: May 28, 2004
+ =========================================================================
+  
+  
+     Patients with User Enrollee Status at this site:              3
+  
+     Patients which DO NOT have User Enrollee Status at this site: 0
+  
+     Patients which do not have User Enrollee Status:              0
+  
+     Total Patients Reviewed:                                      3
+
+Routine Information:
+====================
+
+Routine Name:
+  - EAS150PT
+
+ This is a new routine
+
+Routine Checksum:
+
+Routine Name:
+  - EAS150P1
+
+ This is a new routine
+
+Routine Checksum:
+
+Routine Name:
+  - EASUER
+
+ Before
+ ======
+  
+ 101 PSITE(STA) --
+             ;Get parent site IEN
+ 102        N PRNT
+ 103        S PRNT=+$$PRNT^XUAF4(STA)
+ 104        I 'PRNT S PRNT=+$$PRNT^XUAF4($E($G(STA),1,3))
+ 105        I 'PRNT S PRNT=$O(^DIC(4,"D",$E($G(STA),1,3),""))
+ 106        Q PRNT
+  
+  
+ After
+ =====
+  
+ 102 PSITE(STA) --
+             ;Get parent site IEN
+ 103        N PRNT,STNTYP,VISNTYP,ATPRNT
+ 104        ;
+ 105        S ATPRNT=0
+ 106        S PRNT=+$$PRNT^XUAF4(STA)
+ 107        ;
+ 108        I PRNT>0,$$CHKPRNT(PRNT) S PRNT=STA Q PRNT
+ 109        I 'PRNT S PRNT=+$$PRNT^XUAF4($E($G(STA),1,3))
+ 110        I $$CHKPRNT(PRNT) S PRNT=$E($G(STA),1,3) Q PRNT
+ 111        I 'PRNT S PRNT=$O(^DIC(4,"D",$E($G(STA),1,3),""))
+ 112        Q PRNT
+ 113        ;
+ 114 CHKPRNT(PRNT) --
+             ; Check if parent is a VISN entity
+ 115        N RSLT,STNTYP,VISNTYP
+ 116        ;
+ 117        ; Get the IEN for the facility type of "VISN" and then get the Facility type
+ 118        ; for the station passed in.  If the station is a "VISN", return 1 else  return
+ 119        ; a 0
+ 120        ;
+ 121        S VISNTYP=$O(^DIC(4.1,"B","VISN",0))
+ 122        S STNTYP=$$GET1^DIQ(4,PRNT,13,"I")
+ 123        I $G(VISNTYP)=$G(STNTYP) S RSLT=1
+ 124        Q $G(RSLT)
+ 125        ;
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : KOPECKY,STEPHEN C.            Date Entered  : FEB 20, 2004
+Completed By: MULLER,RICHARD                Date Completed: JUL 15, 2004
+Released By : GROOMS,ANTHONY E              Date Released : JUL 15, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

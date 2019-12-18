@@ -1,0 +1,138 @@
+Released A4A7*1.01*7 SEQ #8
+Extracted from mail message
+A4A7CHK
+A4A7CHK ;CLKS/SO  CHECK NEW PERSON, USER, & PERSON FILES ;6/22/94  12:30
+ ;;1.01;A4A7;**7**;12/29/94
+ASK ; Ask Beginning & Ending VA(200 IEN
+RA1 S A4UX="" W !,"Begin checking the New Person file at IEN: FIRST//" R A4UX:$S($D(DTIME):DTIME,1:180) G XIT:'$T!(A4UX[U) S:A4UX="" A4UX=0 I A4UX'=+A4UX W *7,!,"Responce must be a number." G RA1
+ S A4UBIEN=+A4UX I A4UBIEN'=0 S A4UBIEN=A4UBIEN-.00001
+RA2 S A4UX="" W !,"End checking the New Person file at IEN: LAST//" R A4UX:$S($D(DTIME):DTIME,1:180) G XIT:'$T!(A4UX[U) S:A4UX="" A4UX=9E12 I A4UX'=+A4UX W *7,!,"Responce must be a number." G RA2
+ S A4UEIEN=+A4UX
+ I A4UEIEN<A4UBIEN W *7,!,"Beginning IEN must be less than the Ending IEN." K A4UBIEN,A4UEIEN G RA1
+RA3 S A4UX="" W !,"How would you like 'Out of SYNC' conditions reported?",!,?10,"D=detail  S=summary: S//" R A4UX:$S($D(DTIME):DTIME,1:180) G XIT:'$T!(A4UX[U)
+ I A4UX=""!("Ss"[A4UX) S A4USD=0 ; Summary only
+ I '$D(A4USD),"Dd"[A4UX S A4USD=1 ; Detail list
+ I '$D(A4USD) W !,*7,"Please tell me how you want 'Out of SYNC' reported." G RA3
+RA4 ; Also Check Provider File Linkage
+ S DIR("A")="Would you also like to check the PROVIDER File linkage? ",DIR(0)="Y",DIR("B")="Yes" D ^DIR G XIT:$D(DIRUT) S A4UCPL=$S(Y=1:1,1:0)
+DEV ; Get device info
+ S %ZIS="MQ" D ^%ZIS K %ZIS I POP S POP=0 G XIT
+ I $D(IO("Q")) S ZTRTN="DEQUE^A4A7CHK",ZTDESC="CHECK NEW PERSON, USER & PERSON FILE",ZTIO=ION,(ZTSAVE("A4UBIEN"),ZTSAVE("A4UEIEN"),ZTSAVE("A4USD"))="",ZTSAVE("A4UCPL")=""
+ I $D(IO("Q")) S %DT="AEFRX",%DT("A")="Queue for what date & time? ",%DT("B")="NOW",%DT(0)="NOW" D ^%DT K %DT G XIT:Y<0 S ZTDTH=Y
+ I $D(IO("Q")) K IO("Q") S ZTDTH=$S($D(ZTDTH):ZTDTH,1:$H) D ^%ZTLOAD,HOME^%ZIS W !,"Task number: ",ZTSK G XIT
+ U IO
+DEQUE ; Do the report thing
+ D RPT^A4A7CHKA,RSYNCP3 D:$D(A4UBS) SUMMW^A4A7CHKA D:A4UCPL RPT^A4A7CHKB
+XIT ; Common Exit Point
+ K A4UBIEN,A4UCPL,A4UCS,A4UEIEN,A4UHDR,A4UNPL,A4UO,A4UPG,A4UPL,A4URDT,A4URDW,A4USD,A4UUL,A4UX,DTOUT,DUOUT,IO("Q") I '$D(ZTQUEUED),$E(IOST)="P" D ^%ZISC
+ Q
+RSYNCP3 ; Resync $Piece #3 VA(200, DIC(3, DIC(16
+ L +^VA(200,0),+^DIC(3,0),+^DIC(16,0)
+ S A4UMAX=$$MAX^XLFMTH(+$P(^VA(200,0),U,3),+$P(^DIC(3,0),U,3)),A4UMAX=$$MAX^XLFMTH(A4UMAX,+$P(^DIC(16,0),U,3))
+ S $P(^VA(200,0),U,3)=A4UMAX,$P(^DIC(3,0),U,3)=A4UMAX,$P(^DIC(16,0),U,3)=A4UMAX L
+ K A4UMAX,%1,%2
+ Q
+NOASKS ; Check VA(200 from beginning to the end - Summary
+ S A4UBIEN=0,A4UEIEN=9E12,A4USD=0 G DEV
+NOASKD ; Check VA(200 from beginning to end - Detail
+ S A4UBIEN=0,A4UEIEN=9E12,A4USD=1 G DEV
+DEQUES ; Queueable entry point - Summary
+ S A4UBIEN=0,A4UEIEN=9E12,A4USD=0 G DEQUE
+DEQUED ; Queueable entry point - Detail
+ S A4UBIEN=0,A4UEIEN=9E12,A4USD=1 G DEQUE
+
+A4A7CHKA
+A4A7CHKA ;CLKS/SO  CHECK NEW PERSON, USER, & PERSON FILES CONT. ;3/4/94  15:22
+ ;;1.01;A4A7;**7**;12/29/94
+RPT ; Report Entry Point
+ D HDR S A4UX=A4UBIEN F  S A4UX=+$O(^VA(200,+A4UX)) Q:'A4UX!(+A4UX>A4UEIEN)  D CHK D:($Y>(IOSL-5)) HDR
+ Q
+CHK ; Check various New Person, User, Person file conditions
+ ; A4UCS=1=compare .01 fields for equality  A4UCS=0=skip .01 field comp.
+VA200 ; Check New Person File Relationships
+ S (A4UO,A4UO(200),A4UO(3),A4UO(16))="",A4UO("C")="Out of SYNC",A4UCS=1
+ I '$D(^VA(200,+A4UX,0))#2 S A4UO(200)="Missing Zeroeth Node",(A4UO(3),A4UO(16))="Can't chain to",A4UO("C")="" D SUMMW,W Q
+ S A4UO(200)=$P($G(^VA(200,+A4UX,0)),U) I A4UO(200)="" S A4UO(200)=".01 field is NULL",A4UCS=0,A4UO("C")="" D SUMMW
+DIC3 ; Check User File Relationships
+ I '$D(^DIC(3,+A4UX,0))#2 S A4UO(3)="Missing Zeroeth Node",A4UO(16)="Can't chain to",A4UO("C")="" D SUMMW,W Q
+ S X=$G(^DIC(3,+A4UX,0)),A4UO(3)=$P(X,U),A4UY=+$P(X,U,16) I A4UO(3)="" S A4UO(3)=".01 field is NULL",A4UCS=0,A4UO("C")="" D SUMMW
+DIC16 ; Check Person File Relationships
+ I 'A4UY S A4UO(16)="Missing Person File Pointer",A4UO("C")="" D SUMMW,W Q
+ I '$D(^DIC(16,+A4UY,0))#2 S A4UO(16)="Missing Zeroeth Node",A4UO("C")="" D SUMMW,W Q
+ S A4UO(16)=$P($G(^DIC(16,+A4UY,0)),U) I A4UO(16)="" S A4UO(16)=".01 field is NULL",A4UCS=0,A4UO("C")="" D SUMMW
+ S A4UA3=+$P($G(^DIC(16,+A4UY,"A3")),U) I A4UA3'=+A4UX S A4UO("C")="IEN'=A3 Value" D SUMMW,W K A4UA3,A4UY Q
+ K A4UA3,A4UY I A4UCS I A4UO(200)=A4UO(3),A4UO(3)=A4UO(16) S A4UO("C")="OK"
+ Q:A4UO("C")="OK"
+ I 'A4USD,'A4UCS D W Q
+ I 'A4USD,A4UCS D SUMM Q
+ I A4USD D W
+ Q
+W W !,+A4UX,?10,A4UO(200),?45,A4UO(3),?80,A4UO(16),?115,A4UO("C") Q
+HDR ; Header Sub-Routine
+ I '$D(A4UHDR) S (A4UHDR,A4UPG)=0 D NOW^%DTC,YX^%DTC S Y=$TR(Y,"@"," "),A4URDT=$P(Y,":",1,2) D DW^%DTC S A4URDW=X,A4UNPL=$P(^VA(200,0),U,3),A4UUL=$P(^DIC(3,0),U,3),A4UPL=$P(^DIC(16,0),U,3) W !
+ I A4UHDR W @IOF
+ S A4UHDR=1,A4UPG=A4UPG+1 W "New Person - User - Person Diagnostic Report",$S('A4USD:" (SUMMARY)",A4USD:" (DETAIL)"),"     ",A4URDW,"     ",A4URDT,?(IOM-10),"Page: ",A4UPG
+ W !,?10,"Last New Person IEN: ",A4UNPL,?45,"Last User IEN: ",A4UUL,?80,"Last Person IEN: ",A4UPL
+ W !,"N.P. IEN",?10,"New Person",?45,"User",?80,"Person",?115,"Comments"
+ S A4UX1="",$P(A4UX1,"=",IOM)="" W !,A4UX1 K A4UX1
+ Q
+SUMM ; Out of SYNC summary only
+ I '$D(A4UBS) S (A4UBS,A4UES)=+A4UX Q
+ S A4UES=+A4UX Q
+SUMMW ; Print summary line
+ Q:'$D(A4UBS)  W !,"OUT of SYNC started with New Person IEN: ",A4UBS," and ended with New Person IEN: ",A4UES K A4UBS,A4UES Q
+ Q
+
+A4A7CHKB
+A4A7CHKB ;CLKS/SO,ISCSF/RWF - CHECK PROVIDER FILE LINKAGE ;3/14/93  16:23
+ ;;1.01;A4A7;**7**;12/29/94
+ N DIR
+ S DIR(0)="Y",DIR("A",1)="If there are problems in the linkage between the PROVIDER file",DIR("A",2)=" and the NEW PERSON file.",DIR("A")="Should Problems be  FIXed"
+ D ^DIR G:$D(DUOUT) XIT S A4FIX=+Y
+DEV ; Get Output Device
+ S %ZIS="MQ" D ^%ZIS I POP S POP=0 G XIT
+ I $D(IO("Q")) S ZTDESC="PROVIDER FILE LINKAGE CHECK",ZTRTN="DEQUE^A4A7CHKB"
+ I $D(IO("Q")) S %DT="AEFRX",%DT("A")="Queue for what date & time? ",%DT("B")="NOW",%DT(0)="NOW" D ^%DT K %DT G XIT:Y<0 S ZTDTH=Y
+ I $D(IO("Q")) K IO("Q") S ZTDTH=$S($D(ZTDTH):ZTDTH,1:$H) D ^%ZTLOAD,HOME^%ZIS W !,"Task number: ",ZTSK G XIT
+ U IO
+DEQUE ; Deque Entry Point
+RPT ; Print Report ; Called fron ^A4A7CHK
+ D HDR S A4UX=0,A4FIX=+$G(A4FIX)
+ F  S A4UX=$O(^DIC(6,+A4UX)) Q:+A4UX<1  D CHK
+XIT ; Common Exit Point
+ K A4UA3,A4UA6,A4UC,A4UHDR,A4UPG,A4URDT,A4URDW,A4UX
+ Q:$D(A4UCPL)
+ I '$D(ZTQUEUED),$E(IOST)="P" D ^%ZISC
+ Q
+CHK ; Begin Linkage Checks
+ S (A4UN,A4UN(16),A4UN(3),A4UN(200),A4UC)="",X=$G(^DIC(6,+A4UX,0))
+ I X="" S A4UC="Missing Zero node" D W Q
+ I A4UX'=+X S A4UC="IEN '= .01 Pointer Value" S (A4UN,A4UN(16))="" D W Q
+ S A4UN(16)=$P($G(^DIC(16,+A4UX,0)),U),A4UA3=+$P($G(^DIC(16,+A4UX,"A3")),U),A4UA6=+$P($G(^DIC(16,+A4UX,"A6")),U)
+ I 'A4UA6 S A4UC="Missing 'A6' Pointer value" D W Q
+ I A4UX'=+A4UA6 S A4UC="Coorupted 'A6' Pointer value." D W Q
+ I 'A4UA3 S A4UC="Missing 'A3' Pointer value." D W Q
+ S A4UN(3)=$P(^DIC(3,+A4UA3,0),U),A4UN(200)=$P(^VA(200,+A4UA3,0),U)
+ I '$D(^XUSEC("PROVIDER",+A4UA3))#2 S A4UNPK=1 I A4FIX D PKFIX S A4UNPK=2
+ I A4UN(16)'=A4UN(3),A4UN(3)'=A4UN(200) D
+ . S A4UC="Names are not equal "_A4UN(16)_$S(A4UN(16)=A4UN(3):" = ",1:" '= ")_A4UN(3)_$S(A4UN(3)=A4UN(200):" = ",1:" '= ")_A4UN(200)
+ . I $D(A4UNPK) S A4UNC=A4UC_$S(A4UNPK=2:" & PROVIDER key added.",1:" & doesn't own  PROVIDER key.")
+ . Q
+ I A4UC]"" D W K A4UNPK Q
+ I $D(A4UNPK) S A4UC="Doesn't own PROVIDER key." D W K A4UNPK Q
+ Q
+W ; Write Out Error
+ W !,+A4UX,?15,A4UN(16),?50,A4UC S A4UC="" K A4UN Q
+HDR ; Header Sub-Routine
+ I '$D(A4UHDR) S (A4UHDR,A4UPG)=0 D NOW^%DTC,YX^%DTC S Y=$TR(Y,"@"," "),A4URDT=$P(Y,":",1,2) D DW^%DTC S A4URDW=X
+ I A4UHDR W @IOF
+ S A4UHDR=1,A4UPG=A4UPG+1 W "Provider File Linkage Checks     ",A4URDW,"     ",A4URDT,?(IOM-10),"Page: ",A4UPG
+ W !,"Prov. IEN",?15,"Provider",?50,"Comment" S A4UX1="",$P(A4UX1,"=",IOM)="" W !,A4UX1 K A4UX1
+ Q
+PKFIX ;Fix missing Provider key
+ N DIK,DA
+ S DIK="^DIC(6,",DIK(0)=.01,DA=A4UX D EN1^DIK
+ Q
+
+
+

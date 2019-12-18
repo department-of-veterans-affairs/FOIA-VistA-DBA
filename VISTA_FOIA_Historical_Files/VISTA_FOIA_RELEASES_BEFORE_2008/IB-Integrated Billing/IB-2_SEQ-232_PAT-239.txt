@@ -1,0 +1,234 @@
+$TXT Created by PHELPS,TY at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 01/26/04 at 16:33
+=============================================================================
+Run Date: MAR 04, 2004                     Designation: IB*2*239
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #232                      Status: Released
+                  Compliance Date: APR 04, 2004
+=============================================================================
+
+Associated patches: (v)IB*2*191    <<= must be installed BEFORE `IB*2*239'
+
+Subject: INSURANCE COMPANY PROVIDER CARE UNIT DISPLAYS INCORRECT DATA
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch corrects the issue of the Care Units displaying incorrectly in
+ the Provider ID Maintenance under option INSURANCE CO IDS.  The Edit an
+ ID Record was corrected to prevent duplicate entries and to correct the
+ error when a Care Unit is not entered.  The Add an ID Record was also
+ corrected to prevent a Null subscript error.
+  
+ ASSOCIATED NOIS:
+ ---------------
+ 1. LIT-0403-71841     Adding Provider ID's
+  
+ ASSOCIATED E3R(s):
+ -----------------
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ ------------------------
+  
+ NOIS OVERVIEW:
+ -------------
+ 1. LIT-0403-71841     Adding Provider ID's
+  
+    Problem:
+    --------
+  
+    A site reported a problem with incorrect Care Units displaying on the
+    INSURANCE CO PROVIDER ID screen.  This was found by selecting PROVIDER
+    ID  EDITS:  INSURANCE CO IDS from the Provider ID Maintenance [IBCE
+    PROVIDER MAINT] menu option located under the MCCR System Definition
+    Menu [IB SYSTEM DEFINITION MENU] option.
+  
+    When adding or editing a default Provider ID, the user would select
+    an available Care Unit.  When the screen refreshes, the Care Unit
+    displayed is now different from the one entered.  If the user attempts
+    to correct the Care Unit by selecting EDIT an ID Record [IBCE PRVINS
+    EDIT] protocol, they see the correct Care Unit displayed before making
+    any changes.  But, upon returning to the main screen would again see
+    the wrong Care Unit displayed.
+  
+    The developer discovered 5 other issues during testing.  The first
+    problem was seen when deleting a record from the above screen by
+    selecting Delete an ID Record (Delete a Provider ID [IBCE PRVINS 
+    DELETE] protocol).  This displayed an incorrect Care Unit.
+    
+    The second issue discovered was an inconsistency in the software
+    behavior.  When adding a new provider entry from the INSURANCE CO
+    PROVIDER ID screen, the program would prevent the user from creating
+    a duplicate entry.  This is not so with the edit function.
+    When using Edit an ID Record [IBCE PRVINS EDIT] protocol, the user
+    can change every single entry to the same combination.
+  
+    The third issue discovered was that while editing a record where the
+    Care Unit is not entered (Null), if the user returned past the Care
+    Unit prompt without entering a valid value, the system would store a
+    -1 as the Care Unit value.  As -1 is an invalid entry, this would
+    cause a Null Subscript Error.
+  
+    The fourth issue discovered was a Null subscript error could occur
+    while using the "Add an ID Record" (Add Insurance Co ID [IBCE PRVINS
+    ADD]) protocol from the INSURANCE CO PROVIDER ID maintenance screen.
+   
+    The fifth issue discovered was that the Care Units displayed for
+    selection were not always a complete list.  Only specific matches for
+    a combination were being displayed, which sometimes resulted in a
+    blank list.
+  
+    Resolution:
+    -----------
+    It was found that this problem is caused by the software using the 
+    wrong Care Unit pointer value to access the name from the CARE UNIT
+    (#0.1) field of the IB PROVIDER ID CARE UNIT (#355.95) file. 
+   
+    The Care Unit displayed on the INSURANCE CO PROVIDER ID screen and when
+    using the Delete a Provider ID [IBCE PRVINS DELETE] protocol from said
+    screen will be corrected.  The Edit an ID Record [IBCE PRVINS EDIT]
+    protocol will also be corrected to prevent duplicate entries from being
+    created and to prevent the Care Unit value from being stored
+    incorrectly as a -1.  A post-init routine is being added to clean up any 
+    -1 values from the PROVIDER ID CARE UNIT (#.03) field of the IB
+    INSURANCE CO LEVEL BILLING PROV ID (#355.91) file.  A temporary file,
+    ^XTMP("IB20P239"), will be created and contain any records which were
+    modified by the post-init in their pre-modified form.  This file is
+    expected to be quite small and will be automatically deleted 30 days
+    after its creation.  It will also remove any leftover "AC" and "AUNIQ"
+    cross references that still contain a -1 value for the INDEX VALUE CARE
+    UNIT (#.1) field entry.  The "Add an ID Record" (Add Insurance Co ID
+    [IBCE PRVINS ADD]) protocol will be corrected to prevent the Null
+    subscript error from occurring.  Finally, the FileMan ^DIR call to
+    prompt for the Care Unit was modified to find all possible combination
+    matches.
+  
+      
+    ROUTINE SUMMARY 
+    ===============
+    The following is a list of the routines included in this patch.  
+    The second line of each of these routines now looks like: 
+  
+    <tab>;;2.0;INTEGRATED BILLING;**[PATCH LIST]**;21-MAR-94
+  
+                        CHECK^XTSUMBLD results
+    Routine name      Before Patch        After Patch       Patch List
+    ------------      ------------        -----------       ----------
+    IB20P239          N/A                  8424049          239
+    IBCEP0            21204221            21510008          137,191,239
+    IBCEP5B           20574021            24388459          137,239
+    IBCEP5C            9482729            17283897          137,239
+  
+  
+    INSTALLATION INSTRUCTIONS
+    =========================
+    This patch can be loaded with users in the system.  Installation time
+    will be less than 5 minutes.
+  
+    1. Choose the PackMan message containing this patch and invoke the 
+       INSTALL/CHECK MESSAGE PackMan option.  
+  
+    2. (DSM for Open VMS sites only) Disable routine mapping on all systems
+       for the routines listed in the Routine Summary.
+  
+      NOTE:  If the routines included in this patch are not currently
+      in your mapped routine set, please skip this step.
+  
+    3. Start up the Kernel Installation and Distribution System Menu
+       [XPD MAIN]: 
+  
+           Edits and Distribution ...  
+           Utilities ...  
+           Installation ...  
+  
+      Select Kernel Installation & Distribution System Option: Installation
+                                                               ---
+           1      Load a Distribution
+           2      Verify Checksums in Transport Global
+           3      Print Transport Global
+           4      Compare Transport Global to Current System
+           5      Backup a Transport Global
+           6      Install Package(s)
+                  Restart Install of Package(s)
+                  Unload a Distribution
+  
+    4. From this menu, you may elect to use the following options
+       (When prompted for the INSTALL NAME, enter IB*2.0*239):
+      
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will
+          not backup any other changes such as DD's or templates.
+      b.  Compare Transport Global to Current System - This option
+          will allow you to view all changes that will be made when
+          this patch is installed.  It compares all components of this
+          patch (routines, DD's, templates, etc.).
+      c.  Verify Checksums in Transport Global - This option will
+          allow you to ensure the integrity of the routines that are
+          in the transport global.
+  
+    5. Use the Install Package(s) option and select the package
+       IB*2.0*239.
+      
+      a.  When prompted 'Want KIDS to INHIBIT LOGONs during the
+          install? YES//', answer NO.
+      b.  When prompted 'Want to DISABLE Scheduled Options and Menu 
+          Options and Protocols? YES//', answer YES.
+      c.  When prompted 'Enter options you wish to mark as 'Out of
+          Order':', enter the following:  
+        
+             Provider ID Maintenance [IBCE PROVIDER MAINT]
+     
+      d.  When prompted 'Enter protocols you wish to mark as 'Out of
+          Order':', press <RETURN>.
+  
+    6. (DSM for Open VMS sites only) Optional - Include the routines
+        distributed with this patch in the mapped routine set.
+   
+      NOTE: This step is only necessary if you performed step 2 or if
+      you wish to include the routines in your mapped set.
+  
+    7. The post-installation routine, IB20P239, may be deleted after
+       successfully installing this patch.
+
+Routine Information:
+====================
+
+Routine Name:
+  - IBCEP0
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCEP5B
+
+
+Routine Checksum:
+
+Routine Name:
+  - IB20P239
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCEP5C
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : PHELPS,TY                     Date Entered  : AUG 03, 2003
+Completed By: ILUSTRISIMO,LUCY              Date Completed: MAR 03, 2004
+Released By : BOTTINI,STEVE                 Date Released : MAR 04, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

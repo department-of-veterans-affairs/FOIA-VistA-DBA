@@ -1,0 +1,327 @@
+$TXT Created by WOLF,ED at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 11/20/02 at 17:27
+=============================================================================
+Run Date: JUL 03, 2003                     Designation: PX*1*96
+Package : PX - PCE PATIENT CARE ENCOUNTER   Priority: Mandatory
+Version : 1        SEQ #96                      Status: Released
+                  Compliance Date: AUG 03, 2003
+=============================================================================
+
+Associated patches: (c)SD*5.3*257      install with patch       `PX*1*96'
+                    (v)PX*1*95     <<= must be installed BEFORE `PX*1*96'
+                    (v)PX*1*111    <<= must be installed BEFORE `PX*1*96'
+
+Subject:  CHANGE TO DATA2PCE- OUTSIDE LOCATION/DELETE ENCOUNTER/ACCEPT INSTITUTION
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+  
+ I. FUNCTIONAL OVERVIEW
+ ========================
+  
+ 1. Development Team for the Clinical Reminders Package requested modification of
+ DATA2PCE^PXAPI API to support the entry of historical encounter location or 
+ outside location. The TYPE field (#.03) of the VISIT file (#9000010) will be 
+ determined depending on whether the OUTSIDE LOCATION field (#2101) or the 
+ pointer to the INSTITUTION file is passed to PCE. Additionally, a free text
+ response will now be accepted for the OUTSIDE LOCATION when entered
+ from CPRS/GUI. 
+  
+ The TYPE field (#.03) will be set to O (Other) when the OUTSIDE LOCATION 
+ is passed.  Currently its value is equal to the default DUZ("AG") that
+ corresponds to the AGENCY CODE field of the KERNEL SYSTEM PARAMETERS file
+ (#8989.3) of the system that processes the data via DATA2PCE^PXAPI.
+   
+ If the OUTSIDE LOCATION is entered from CPRS/GUI as a free text then it 
+ will be accepted due to the processing of a new subscript passed
+ to DATA2PCE^PXAPI.
+  
+ This part of the patch addresses the following NOIS messages:
+ ---------------------------------------------------------------
+  ISL-0799-50548  Mandated Clinical Reminders requires change to DATA2PCE
+  PAL-0802-62589  ADD OUTSIDE LOCATION
+  
+ 2. There was not a complete deletion of a visit and its outpatient 
+ encounter when a stand alone visit/encounter was created and a HOSPITAL 
+ LOCATION had both the STOP CODE NUMBER (#8) and the CREDIT STOP CODE 
+ (#2503) fields defined. This problem has been addressed by deleting a credit 
+ stop visit and its outpatient encounter when a request is sent to
+ delete the credit stop.
+ 
+  NOTE: This part of the patch has to be implemented with SD*5.3*257, which 
+  ----  addresses a similar problem in the Scheduling package.
+ 
+                   ---------------------------
+ 
+ The patches have modified the routines in such a way that users can now 
+ accomplish edits/deletions that were not possible before, even if there 
+ were no entries pointing to a visit. This provides a mechanism for cleaning 
+ up so called 'duplicate' visits/encounters and prevents from keeping 
+ 'duplicates' from deletion in the future.
+ 
+ Users should be fully aware of what can and cannot be deleted with 
+ the patch. If a site does have verified 'duplicates' with entries from 
+ outside the PCE, i.e. TIU DOCUMENT, CLAIMS TRACKING, A&SP CLINIC VISIT etc.,
+ is unable to reassign them, and needs assistance with deleting the
+ visit/encounter, then a NOIS call should be logged.
+ 
+ If while trying to delete a visit/encounter you see a message:
+ 
+ 'Could not delete the encounter.  There are still users of it.'
+  
+ it may indicate that the entries like (DX, CPT, etc) are deleted but
+ the encounter date/time is still there because of entries pointing to the 
+ visit from packages outside of PCE.
+ 
+ This is how it works. If an outpatient encounter is created, it points to 
+ the previously created visit and all entry information (DX, CPT, Progress
+ Notes etc) point to the visit as well. If you want to delete the encounter all 
+ entries to that visit must be deleted. Some of those entries are from PCE 
+ and some from other packages as TIU etc. The patches address a 
+ problem of properly deleting entries related to PCE but no action is taken 
+ regarding other entries. 
+ 
+ Another words, you may still expect that the system does not allow you to 
+ delete encounters that have at least one entry and, it cannot be deleted 
+ from PCE. Before those patches were implemented it was not possible to 
+ delete a visit/encounter with the outpatient encounter being the only entry
+ pointing to the visit and/or its credit/stop visit. That problem has been
+ corrected and this is what the patches address.
+ 
+ If a site does have verified 'duplicates' with entries from outside the 
+ PCE, i.e. TIU DOCUMENT, CLAIMS TRACKING, A&SP CLINIC VISIT etc., is unable 
+ to reassign them, and needs assistance with deleting the visit/encounter,
+ then a NOIS call should be logged.
+   
+                         ------------------------------
+ 
+ This part of the patch addresses the following NOIS messages:
+ ---------------------------------------------------------
+  SDC-0801-62236  deleting encounters-still users of it
+  UNY-0802-11825  Action Required Duplicate Encounter
+  UNY-0802-10110  Need Option to Delete Duplicate Visit
+  SLC-0798-51246  DUPLICATE VISITS VIA TIU/PCE/APPT MANAGEMENT
+ 
+ 3. If the INSTITUTION is passed to PCE a new visit/encounter should be 
+    created with the corresponding entries. Currently a visit without any
+    entries is created and all entries are filed on the visit with 
+    the default INSTITUTION pointed to from the DIVISION field of the
+    HOSPITAL LOCATION file. This situation happens frequently when
+    procedures with the same Hospital Location, Patient Name and
+    Date/Time but different Institution are passed to PCE. The passed
+    Institutions were expected to be credited with the corresponding entries.
+ 
+    This problem originally was addressed as generation of duplicate 
+    providers on one visit: 
+ 
+    NOIS: LIT-0602-71276   DUPLICATE PROVIDERS 
+ 
+    However, it came out during the investigation that the situation described
+    above contributed to the issue that was addressed in this NOIS.
+  
+    The determination of how to implement the described functionality was
+    made on Nov 1st, 2002 during a teleconference with Gail Graham - 
+    Director - HIMP, Frank Stalling - Lab developer, Mary Marks - 
+    Registration developer and Ed Wolf - PCE developer.
+ 
+  NOTE: This part of patch PX*1.0*96 has to be implemented with SD*5.3*257,
+  ----  which addresses related problem in the Scheduling package.
+ 
+ II. Technical Components:
+ ========================
+ 
+ 1. The Integration Agreement DBIA1889-A has been modified to include as an
+    optional subscript:
+ 
+    "ENCOUNTER",1,"OUTSIDE LOCATION")
+ 
+     This is an outside location of an encounter, not included in the
+     INSTITUTION file.
+ 
+     Format: Free text
+ 
+     The OUTSIDE LOCATION should exclude the INSTITUTION:
+ 
+     "ENCOUNTER",1,"INSTITUTION") and the INSTITUTION should exclude
+      the OUTSIDE LOCATION.
+ 
+ 2. Routine PXAIVST, which creates ^TMP("PXK" global, used for filing an
+    encounter, has been modified to include a logic to setup the TYPE and to
+    accept the OUTSIDE LOCATION if passed to DATA2PCE^PXAPI. Another
+    modification to the PXAIVST routine includes passing the Institution,  
+    as the LOC. OF ENCOUNTER field (#.06) of the VISIT file, to the
+    $$LOOKVSIT^PXUTLVST call.
+ 
+ 3. Routine PXUTLSTP has been modified to identify an outpatient encounter
+    pointing to a visit with already deleted entries, and to delete the
+    outpatient encounter as well.
+    That action allows the software to delete the visit completely as there
+    will no longer be an entry pointing to it.
+ 
+ 4. Routine PXKCO has been modified to accept the passed Institution, filed in
+    the VISIT entry.
+  
+            ============ INSTALLATION INSTRUCTIONS ==================
+  
+  NOTE: This patch installation should follow installation of SD*5.3*257 to 
+        address fully the visit/encounter deletion problem.
+ 
+ This patch should be loaded with a very low activity in the system,
+ outside of the regular working hours, when transferring data from other
+ packages to PCE does not take place.
+ 
+ It is recommended that the following menu options (File #19) and all of their
+ descendants be disabled to prevent possible conflicts while running the KIDS
+ Install. Other VISTA users will not be affected.
+ 
+     SDAM APPT CHECK IN/OUT                Appointment Check-in/Check-out
+     SDAM APPT MGT                         Appointment Management
+     SDAM APPT UPDATE                      Appointment Status Update
+     SDAM APPT UPDATE MENU                 Appointment Status Update Menu
+     PXCE ENCOUNTER DATA ENTRY             PCE Encounter Data Entry
+     PXCE ENCOUNTER ENTRY & DELETE         PCE Encounter Data Entry and Delete
+     PXCE ENCOUNTER ENTRY SUPER            PCE Encounter Data Entry - Supervisor
+ 
+     Install Time - 1 minute
+  
+ 1.  LOAD TRANSPORT GLOBAL
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the
+     INSTALL/CHECK MESSAGE PackMan option.
+  
+ 2.  DISABLE ROUTINE MAPPING  (DSM for Open VMS sites only)
+     -----------------------
+     Disable routine mapping on all systems for the routines listed in
+     step 3 below.
+ 
+     NOTE: If the routines included in this patch are not currently in
+     your mapped routine set, please skip this step.
+ 
+ 3.  COMPONENTS SENT WITH PATCH
+     --------------------------
+  
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+ 
+      <tab>;;1.0;PCE PATIENT CARE ENCOUNTER;**[patch list]**;Aug 12, 1996
+ 
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  PXAIVST                4475034              5345807        5,9,15,74,111
+                                                                  96
+  PXCEVFI2               9289770              9333893         22,73,95,96
+  PXKCO                  3403563              4137094          28,41,96
+  PXUTLSTP               4878652              6159240            1,96
+  
+     Total number of routines - 4
+ 
+ 4.  START UP KIDS
+     -------------
+     Start up the Kernel Installation and Distribution System Menu
+     [XPD MAIN]:
+ 
+           Edits and Distribution ...
+           Utilities ...
+           Installation ...
+ 
+ Select Kernel Installation & Distribution System Option: INStallation
+                                                          ---
+           Load a Distribution
+           Verify Checksums in Transport Global
+           Print Transport Global
+           Compare Transport Global to Current System
+           Backup a Transport Global
+           Install Package(s)
+           Restart Install of Package(s)
+           Unload a Distribution
+ 
+ Select Installation Option: 
+ 
+ 5.  Select Installation Option:
+     ---------------------------
+     NOTE: When prompted for the INSTALL NAME, enter PX*1.0*96.
+  
+     a. Backup a Transport Global - this option will create a backup
+        message of any routines exported with the patch. It will not backup
+        any other changes such as DD's or templates.
+     b. Compare Transport Global to Current System  - This option will
+        allow you to view all changes that will be made when the patch
+        is installed. It compares all components of the patch.
+     c. Verify Checksums in Transport Global - This option will allow you
+        to ensure the integrity of the routines that are in the transport
+        global.
+  
+ 6.  Select Installation Option: Install Package(s)
+                                 ------------------
+     a. Choose the Install Package(s) option to start the patch install.
+  
+     b. When prompted "Want KIDS to INHIBIT LOGONs during the install? YES//'.
+        answer NO.
+  
+     c. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+        Protocols? YES//', answer 'YES'.
+ 
+     d. When prompted 'Enter options you wish to mark as 'Out of Order':' 
+        Enter the following options:
+ 
+     
+     SDAM APPT CHECK IN/OUT              [Appointment Check-in/Check-out]
+     SDAM APPT MGT                       [Appointment Management]
+     SDAM APPT UPDATE                    [Appointment Status Update]
+     SDAM APPT UPDATE MENU               [Appointment Status Update Menu]
+     PXCE ENCOUNTER DATA ENTRY           [PCE Encounter Data Entry]
+     PXCE ENCOUNTER ENTRY & DELETE       [PCE Encounter Data Entry and Delete]
+     PXCE ENCOUNTER ENTRY SUPER          [PCE Encounter Data Entry-Supervisor]
+ 
+     e. When prompted 'Enter protocols you wish to mark as "Out Of Order':'
+        press <return>,
+  
+ 7.  REBUILD MAPPED ROUTINE(S)  (DSM for Open VMS sites only)
+     ==========================
+     NOTE: This step is only necessary if you performed step 2 or if you 
+     wish to include the routines in your mapped set.
+ 
+
+Routine Information:
+====================
+
+Routine Name:
+  - PXAIVST
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCEVFI2
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXKCO
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXUTLSTP
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : HARDING,PETER                  Date Entered : JUN 28, 2000
+Completed By: RUDINGER,NANCY L             Date Completed: JUL 03, 2003
+Released By : NELSON,VICKI M               Date Released : JUL 03, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

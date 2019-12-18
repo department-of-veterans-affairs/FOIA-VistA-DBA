@@ -1,0 +1,319 @@
+$TXT Created by HUA,PATRICK at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 07/08/03 at 13:24
+=============================================================================
+Run Date: JUL 18, 2003                     Designation: DG*5.3*495
+Package : DG - REGISTRATION                    Priority: Mandatory
+Version : 5.3       SEQ #456                     Status: Released
+                  Compliance Date: AUG 18, 2003
+=============================================================================
+
+Associated patches: (v)DG*5.3*456  <<= must be installed BEFORE `DG*5.3*495'
+
+Subject: FIX MT NO LONGER REQUIRED ISSUE
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+ This patch (DG*5.3*495) is associated with patch IVM*2.0*74, and can be 
+ installed independently.
+  
+ Issue:
+ When a VistA site adds multiple events (Income Tests) for a veteran 
+ between the times the IVM BACKGROUND JOB [IVM BACKGROUND JOB] is run, the 
+ potential exists for those events to be transmitted and populated out of 
+ sequence in terms of income year at the Health Eligibility Center (HEC).
+  
+ EXAMPLE: Site A adds Means Tests for the following income years: 1998, 
+ 1999, and 2000.  The income year 2000 entry populates the IVM PATIENT
+ (#301.5) File first, followed by income years 1998 and 1999.  Upon the 
+ next run of the IVM BACKGROUND JOB [IVM BACKGROUND JOB] an ORU~Z07 
+ (unsolicited Full Data HL7 transmission) is sent to the HEC, which 
+ contains all three income years in the following order: 2000, 1998, and 
+ 1999.  When the HEC receives this data, it is uploaded in the order it is 
+ sent in the ORU~Z07 HL7 message.  In other words, the income year 2000 
+ test would upload before the previous income years data.  This is 
+ problematic in terms of the determination of which income test is 
+ actually primary for a particular income year and in the determination of 
+ the CAD (Centralized Anniversary Date).  
+  
+ The potential to skew the CAD as well as which test may or may not be 
+ primary for a given income year exists within the Income Verification 
+ Module (IVM).  Because of these anomalies, under a particular set of 
+ circumstances the VistA system can potentially file an incoming income 
+ test from the HEC in a status of 'NO LONGER REQUIRED'.  
+  
+ A patient requires a means test under the following conditions:
+     - The Primary Eligibility is NSC or the patient is not SC 0% 
+           non-compensable
+     - The vet is not receiving disability retirement from the military
+     - The vet is not eligible for Medicaid
+     - The vet is not on a DOM ward
+     - The vet has not been means tested in the past year
+     - The vet is not a Purple Heart recipient
+  
+ Resolution:
+ Patch IVM*2*74 is implementing a flag to indicate that an Income Test is 
+ resulting from an upload from the HEC via either an ORU~Z10 (unsolicited 
+ Income Test Data HL7 Transmission) or an ORF~Z10 (solicited Income Test 
+ Data HL7 Transmission).  
+  
+ If any of the above conditions is not met, the Means Test status is 
+ updated to 'NO LONGER REQUIRED'.  In addition to the above conditions, an 
+ additional check is being added for the existence of the ORU/ORF~Z10 
+ Income Test Data type HL7 transmission.  If the flag exists, the incoming 
+ test from HEC will not be changed to a status of 'NO LONGER REQUIRED'.  
+ The functionality to check for this flag is being implemented with this 
+ patch (DG*5.3*495 FIX MT NO LONGER REQUIRED ISSUE).
+  
+  
+ This patch addresses the following E3R(s):
+ ------------------------------------------
+ There are no E3Rs associated with this patch.
+  
+  
+ This patch addresses the following NOIS message(s):
+ ---------------------------------------------------
+  
+ HEH-0102-41899  No Longer Required Status
+ LEB-0102-22512  Patch not working as advertised.
+ MAD-0101-42975  Duplicate Primary Mt
+ MAN-0902-11081    HEC RETURNING REQUIRED MEANS TEST
+  
+  
+ Overview of NOIS Message(s):
+ ---------------------------
+  
+ HEH-0102-41899  No Longer Required Status
+ Problem:  When both the current and prior income year means tests are 
+ transmitted to a facility from the HEC, VistA may file a new means test 
+ entry with a NO LONGER REQUIRED status.  This new (erroneous) entry 
+ becomes the 2nd PRIMARY test for that income year.  The HEC did not 
+ transmit that NLR test and does not have a record of it unless the site 
+ has sent a subsequent full data transmission.  VistA needs to stop 
+ generating the NLR entry in this situation.
+  
+ Resolution:  If the upload from the HEC is either an ORU~Z10 (unsolicited 
+ Income Test Data HL7 Transmission) or an ORF~Z10 (solicited Income Test 
+ Data HL7 Transmission) the Income Test will not be changed to a status of 
+ 'NO LONGER REQUIRED'.
+  
+ LEB-0102-22512  Patch not working as advertised.
+ Problem:  Many patients with a Cat C Means Tests are generating letters 
+ to have the patient do a MT - when they come back and get entered it 
+ seems to trigger the No Longer Required.
+  
+ Resolution:  If the upload from the HEC is either an ORU~Z10 (unsolicited 
+ Income Test Data HL7 Transmission) or an ORF~Z10 (solicited Income Test 
+ Data HL7 Transmission) the Income Test will not be changed to a status of 
+ 'NO LONGER REQUIRED'.
+  
+ MAD-0101-42975  Duplicate Primary Mt
+ Problem:  Many patients are showing up with a Primary MT of No Longer 
+ Required and Category C.
+  
+ Resolution:  If the upload from the HEC is either an ORU~Z10 (unsolicited 
+ Income Test Data HL7 Transmission) or an ORF~Z10 (solicited Income Test 
+ Data HL7 Transmission) the Income Test will not be changed to a status of 
+ 'NO LONGER REQUIRED'.
+  
+  
+ MAN-0902-11081    HEC RETURNING REQUIRED MEANS TEST
+ Problem:  Many patients are showing up with a Primary MT of No Longer 
+ Required and Category C.
+  
+ Resolution:  If the upload from the HEC is either an ORU~Z10 (unsolicited 
+ Income Test Data Transmission) or an ORF~Z10 (solicited Income Test Data 
+ Transmission) the Income Test will not be changed to a status of 'NO 
+ LONGER REQUIRED'.
+  
+  
+ Test Sites:
+ -----------
+  
+ Madison
+ Lebanon
+ Manchester 
+  
+        ================INSTALLATION INSTRUCTIONS =================
+  
+ If installed during the normal workday, it is recommended that the 
+ following menu options (File #19) and all of their descendants be 
+ disabled to prevent possible conflicts while running the KIDS Install. 
+ Other VISTA users will not be affected.
+  
+        IVM BACKGROUND JOB                     [IVM BACKGROUND JOB]
+        Means Test User Menu                   [DG MEANS TEST USER MENU]
+        Add a New Means Test                   [DG MEANS TEST ADD]         
+        Complete a Required Means Test         [DG MEANS TEST COMPLETE]    
+        Edit an Existing Means Test            [DG MEANS TEST EDIT]        
+        Copay Exemption Test User Menu         [DG CO-PAY TEST USER MENU]  
+        Add a Copay Exemption Test             [DG CO-PAY TEST ADD]        
+        Edit an Existing Copay Exemption Test  [DG CO-PAY TEST EDIT]       
+  
+ Install Time - 20 minutes
+  
+  
+   1.   LOAD TRANSPORT GLOBAL 
+        ---------------------
+        Choose the PackMan message containing this patch and invoke the 
+        INSTALL/CHECK MESSAGE PackMan option.  
+              
+   2.   DISABLE ROUTINE MAPPING   (DSM for Open VMS sites only) 
+        -----------------------
+        Disable routine mapping on all systems for the routines listed in 
+        step 3 below.  
+       
+ NOTE:  If the routines included in this patch are not currently in 
+               your mapped routine set, please skip this step.
+   
+   3.   COMPONENTS SENT WITH PATCH 
+        ------------------------
+        The following is a list of the routines included in this patch.  
+        The second line of each of these routines now looks like: 
+   
+            ;;5.3;Registration;**[patch list]**;Aug 13, 1993
+   
+                            CHECK^XTSUMBLD results
+  
+        Routine        Before Patch     After Patch         Patch List 
+        -------        ------------     -----------    --------------------
+        DGMTCOR        9742851          9786215        21,45,182,290,305
+                                                       330,344,495
+        DGMTR          11265084         11316086       45,93,114,137,141
+                                                       147,177,182,146,305
+                                                       326,314,344,402,426
+                                                       456,495
+   
+         Total number of routines - 2
+   
+  
+   4.   START UP KIDS 
+        -------------
+        Start up the Kernel Installation and Distribution System Menu 
+        [XPD MAIN]: 
+    
+             Edits and Distribution ...  
+             Utilities ...  
+             Installation ...  
+    
+   Select Kernel Installation & Distribution System Option: INStallation 
+                                                            ---
+             Load a Distribution 
+             Print Transport Global 
+             Compare Transport Global to Current System 
+             Verify Checksums in Transport Global 
+             Install Package(s) 
+             Restart Install of Package(s) 
+             Unload a Distribution 
+             Backup a Transport Global 
+    
+   Select Installation Option: 
+    
+   5.   Select Installation Option: 
+        --------------------------
+        NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+               NAME, enter DG*5.3*495):
+       
+        a.  Backup a Transport Global - This option will create a backup
+            message of any routines exported with this patch. It will not
+            backup any other changes such as DD's or templates.
+        b.  Compare Transport Global to Current System - This option will
+            allow you to view all changes that will be made when this patch
+            is installed.  It compares all components of this patch
+            (routines, DD's, templates, etc.).
+        c.  Verify Checksums in Transport Global - This option will allow
+            you to ensure the integrity of the routines that are in the
+            transport global.
+      
+   6.   Select Installation Option: Install Package(s) 
+                                    ----------------
+        **This is the step to start the installation of this KIDS patch: 
+    
+        a.  Choose the Install Package(s) option to start the patch install
+        b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+            YES//' answer NO (unless otherwise indicated)
+        c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+            Options, and Protocols? YES//' answer YES (unless otherwise
+            indicated)
+        d.  When prompted 'Enter options you wish to mark as 'Out Of
+            Order':'  Enter the following options:
+   
+        IVM BACKGROUND JOB                    [IVM BACKGROUND JOB]
+        Means Test User Menu                  [DG MEANS TEST USER MENU]
+        Add a New Means Test                  [DG MEANS TEST ADD]
+        Complete a Required Means Test        [DG MEANS TEST COMPLETE]
+        Edit an Existing Means Test           [DG MEANS TEST EDIT]
+        Copay Exemption Test User Menu        [DG CO-PAY TEST USER MENU]
+        Add a Copay Exemption Test            [DG CO-PAY TEST ADD]
+        Edit an Existing Copay Exemption Test [DG CO-PAY TEST EDIT]
+  
+       e.  When prompted 'Enter protocols you wish to mark as 'Out Of 
+           Order':'  press <return>.
+  
+   7.    REBUILD MAPPED ROUTINE(S)  (DSM for Open VMS sites only)
+        -------------------------
+        Optional - Include the routines distributed with this patch
+        in the mapped routine set.
+      
+        NOTE: This step is only necessary if you performed step 2 or 
+              if you wish to include the routines in your mapped set.
+
+Routine Information:
+====================
+
+Routine Name:
+  - DGMTR
+
+ Before:
+   .I DGREQF,'$G(DGADDF),(('DGCS)!(OLD)),'$G(DGMDOD) D ADD Q
+   .I 'DGREQF,DGCS,DGCS'=3,'$G(DGDOM),'$G(DGMDOD) D NOL Q
+   ;be sure to check whether or not patient is subject to RX copay!
+   D EN^DGMTCOR
+   Q
+  
+ After:
+   .I DGREQF,'$G(DGADDF),(('DGCS)!(OLD)),'$G(DGMDOD) D ADD Q
+   .I 'DGREQF,DGCS,DGCS'=3,'$D(DGDOM),'$D(DGMDOD),'+$G(IVMZ10F) D NOL Q
+   ;be sure to check whether or not patient is subject to RX copay!
+   D EN^DGMTCOR
+   Q
+
+Routine Checksum:
+
+Routine Name:
+  - DGMTCOR
+
+ Before:
+   Q:($G(DGWRT)=8)!($G(DGWRT)=9)   ;brm;quit if inpatient or dom;DG*5.3*290
+   I 'DGMTCOR,'$G(DGADDF),'$G(DGMDOD) D NLA
+   I DGMTCOR,'$G(DGADDF),'$G(DGMDOD) D INC
+   I DGRGAUTO&'$G(DGADDF) D QREGAUTO ;if cp event driver not fired off & 
+ NOT a new means test
+   ;
+ ENQ  Q
+  
+ After:
+   Q:($G(DGWRT)=8)!($G(DGWRT)=9)   ;brm;quit if inpatient or dom;DG*5.3*290
+   I `DGMTCOR,`$G(DGADDF),`$G(DGMDOD),`+$G(IVMZ10F) D NLA
+   I DGMTCOR,'$G(DGADDF),'$G(DGMDOD) D INC
+   I DGRGAUTO&'$G(DGADDF) D QREGAUTO ;if cp event driver not fired off & 
+ NOT a new means test
+   ;
+ ENQ  Q
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : MULLER,RICHARD                 Date Entered : JAN 29, 2003
+Completed By: LANDRY,DANNA                  Date Completed: JUL 18, 2003
+Released By : GROOMS,ANTHONY E             Date Released : JUL 18, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

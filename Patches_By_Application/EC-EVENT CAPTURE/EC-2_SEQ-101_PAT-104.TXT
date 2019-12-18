@@ -1,0 +1,187 @@
+$TXT Created by YORTY,M. ROBERT at MNTVLL.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 04/27/10 at 09:33
+=============================================================================
+Run Date: NOV 10, 2010                     Designation: EC*2*104
+Package : EC - EVENT CAPTURE                  Priority: Mandatory
+Version : 2       SEQ #101                      Status: Released
+                  Compliance Date: DEC 11, 2010
+=============================================================================
+
+Associated patches: (v)EC*2*23     <<= must be installed BEFORE `EC*2*104'
+                    (v)EC*2*76     <<= must be installed BEFORE `EC*2*104'
+                    (v)EC*2*95     <<= must be installed BEFORE `EC*2*104'
+
+Subject: REVISIONS FOR UNSUPPORTED FIELDS IN FILES 81,81.3
+
+Category: 
+  - Routine
+
+Description:
+============
+
+  Three routines in the EVENT CAPTURE namespace (EC) have been found with
+  references to fields in the CPT file (#81) or the CPT MODIFIER file (#81.3),
+  which will no longer be supported or available after installation of patch
+  ICPT*6*46.
+   
+  These references have been removed and replaced with calls to the supported
+  functions within the Code Set API.
+   
+  (1) Routine ECRDSSA - This routine is called by Event Capture GUI reports
+      Remote Procedure Call (RPC) [EC REPORTS] to generate the DSS Unit 
+      Activity Report.
+    
+      In subroutine GETPRNM the supported function $$CPT^ICPTCOD is used
+      to obtain a procedure name rather than a lookup to the CPT file (#81).
+   
+  (2) Routine ECSUM2 - This routine is called by Event Capture GUI reports
+      Remote Procedure Call (RPC) [EC REPORTS] to generate the Category and 
+      Procedure Summary Report. 
+   
+      In subroutine SETP the supported function $$CPT^ICPTCOD is used to 
+      obtain the procedure name rather than extracting the data directly
+      from the CPT file (#81) global.
+   
+  (3) Routine ECUURPC - The tag FNDIEN of this routine is called by the 
+      [EC GETIEN] RPC of the Event Capture GUI to perform a lookup on a 
+      VistA file and return the internal entry number.
+   
+      Subroutine FNDIEN now uses supported function $$MOD^ICPTMOD to set
+      up a filter for lookups on the CPT MODIFIER file (#81.3).
+   
+   
+  ASSOCIATED REMEDY:
+  ==================
+  N/A
+   
+   
+  ASSOCIATED NSR(s):
+  ==================
+  N/A
+   
+   
+  PARTICIPATING TEST SITES:
+  =========================
+  Bay Pines FL
+  Montana HCS
+  New Jersey HCS
+   
+   
+  INSTALLATION INSTRUCTIONS:
+  ==========================
+  This patch may be run with users on the system, but it is recommended
+  that it be run after normal business hours.
+  
+  Installation will take less than 2 minutes.
+  Suggested time to install: non-peak requirement hours.
+    
+      1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+  
+      2. From the Kernel Installation & Distribution System menu, select
+         the Installation menu.
+  
+      3. From this menu, you may select to use the following options
+         (when prompted for INSTALL NAME, enter EC*2.0*104)
+        a. Backup a Transport Global - this option will create a backup
+           message of any routines exported with the patch. It will NOT
+           backup any other changes such as DDs or templates.
+        b. Compare Transport Global to Current System - this option will
+           allow you to view all changes that will be made when the patch
+           is installed. It compares all components of the patch (routines,
+           DDs, templates, etc.).
+        c. Verify Checksums in Transport Global - this option will ensure
+           the integrity of the routines that are in the transport global.
+        d. Print Transport Global - this option will allow you to view the
+           components of the KIDS build.
+  
+      4. Use the Install Package(s) option and select the package EC*2.0*104.
+  
+      5. When prompted "Want KIDS to INHIBIT LOGONs during the install?
+         NO//" you may accept the default.
+  
+      6. When prompted "Want to DISABLE Scheduled Options, Menu Options, 
+         and Protocols? NO//" you may accept the default.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;2.0; EVENT CAPTURE ;**[Patch List]**;8 May 96;Build 7
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: ECRDSSA
+    Before:B100885193   After:B102481577  **95,104**
+ Description of Changes:
+  BLDTMP+27:BLDTMP+28
+  -------------------  
+    before:
+    . S ECREC=ECREC_$E($$GETPROC($G(ECREC(721,ECIENS,8,"I"))),1,5)_"^"
+    . S ECREC=ECREC_$E($$GETPRNM($G(ECREC(721,ECIENS,8,"I"))),1,10)_"^"
+    
+    after:
+    . S ECDT=$P($G(ECREC(721,ECIENS,2,"I")),".",1)
+    . S ECREC=ECREC_$E($$GETPROC($G(ECREC(721,ECIENS,8,"I"))),1,5)_"^"
+    . S ECREC=ECREC_$E($$GETPRNM($G(ECREC(721,ECIENS,8,"I")),ECDT),1,10)_"^"
+    
+  GETPRNM
+  -------  
+    before:
+    GETPRNM(ECVIEN) ;get procedure name
+      
+    after:
+    GETPRNM(ECVIEN,ECDT) ;get procedure name
+    
+  GETPRNM+11
+  ----------  
+    before:
+    Q $S(ECFILE["ICPT(":$$GET1^DIQ(81,ECIEN_",",2),
+     ECFILE["EC(725":$$GET1^DIQ(725,ECIEN_",",.01),1:"")
+    
+    after:
+    Q $S(ECFILE["ICPT(":$P($$CPT^ICPTCOD(ECIEN,ECDT),U,3),
+     ECFILE["EC(725":$$GET1^DIQ(725,ECIEN_",",.01),1:"")
+    
+
+Routine Name: ECSUM2
+    Before:  B7805386   After:  B8262843  **4,19,23,104**
+ Description of Changes:
+  SETP+6
+  ------  
+    before:
+    I ECFILE=81 S ECPN=$S($P($G(^ICPT(+ECP,0)),"^",2)]"":$P(^(0),"^",2),
+     1:"UNKNOWN"),NATN=$S($P($G(^ICPT(+ECP,0)),"^")]"":$P(^(0),"^"),
+     1:"NOT LISTED")
+    
+    after:
+    I ECFILE=81 S ECPN=$P($$CPT^ICPTCOD(+ECP),"^",3),ECPN=$S(ECPN]"":ECPN,
+     1:"UNKNOWN"),X=$P($$CPT^ICPTCOD(+ECP),"^",2),NATN=$S(X["NO SUCH ENTRY":
+     "NOT LISTED",X="":"NOT LISTED",1:X)
+    
+
+Routine Name: ECUURPC
+    Before:  B5658914   After:  B5650806  **25,42,49,94,95,76,104**
+ Description of Changes:
+  FNDIEN+13
+  ---------
+    before:
+    I FIL=81.3 S DIC("S")="I $P(^DIC(81.3,Y,0),U,5)'=1"
+    
+    after:
+    I FIL=81.3 S DIC("S")="I +$P($$MOD^ICPTMOD(Y,""I""),U,7)=1"
+    
+
+ 
+Routine list of preceding patches: 23, 76
+
+=============================================================================
+User Information:
+Entered By  : PAJERSKI,JAN                  Date Entered  : APR 23, 2009
+Completed By: BARBER,HAROLDINE              Date Completed: OCT 04, 2010
+Released By : HATTER,JACKIE L               Date Released : NOV 10, 2010
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

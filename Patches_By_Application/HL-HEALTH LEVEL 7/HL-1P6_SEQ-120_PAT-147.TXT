@@ -1,0 +1,508 @@
+Original message: "HL*1.6*147 TAUG23,2010" [#35125]
+=============================================================================
+Run Date: NOV 08, 2010                     Designation: HL*1.6*147
+Package : HL - HEALTH LEVEL SEVEN             Priority: Mandatory
+Version : 1.6       SEQ #120                    Status: Released
+                  Compliance Date: DEC 09, 2010
+=============================================================================
+
+Associated patches: (v)HL*1.6*146  <<= must be installed BEFORE `HL*1.6*147'
+
+Subject: HLO PRIORITY QUEUES
+
+Category: 
+  - Routine
+  - Enhancement (Mandatory)
+  - Data Dictionary
+  - Input Template
+  - Other
+
+Description:
+============
+
+ Patch HL*1.6*147 provides several enhancements to the Health Level Seven
+ Optimized (HLO) software and makes several corrections.
+  
+  Test Sites:
+  ===========
+  Upstate New York HCS (Bath)
+  Oklahoma City
+  Black Hills
+  
+   
+  Remedy:  
+  ======
+  HD0000000354715
+  HD0000000377552 
+  HD0000000394173 
+  
+ Software Enhancements:
+ ======================
+ 
+  1. A new option TROUBLESHOOTING MENU [HLO TROUBLESHOOTING MENU] has 
+     been added to the HL7 (Optimized) MAIN MENU [HLO MAIN MENU] option.
+     It contains options for troubleshooting problems that are preventing 
+     the transmission of HLO messages.  It includes the following options:
+  
+     a. CLIENT TRACE [HLO CLIENT TRACE] option.  This is a new option that
+        runs an outgoing client process in the foreground.  As it tries to
+        transmit a message it displays status messages to the screen as
+        it executes so that hopefully the existing problem can be diagnosed.
+        This tool was made available in patch HL*1.6*146, but until now
+        it had to be run in programmer mode and was not available from
+        the menu manager.
+  
+     b. SERVER TRACE [HLO SERVER TRACE] option.  This is a new option that
+        runs a server process in the foreground.  As it tries to
+        receive a message it displays status messages to the screen as
+        it executes so that hopefully the existing problem can be diagnosed.
+        This tool was made available in patch HL*1.6*146, but until now
+        it had to be run in programmer mode and was not available from
+        the menu manager.
+        
+        Note:  A server process needs exclusive access to the port that
+        it runs on. If a VMS TCPIP Service is currently enabled on
+        that port then this option won't work, so it is necessary to
+        TEMPORARILY shut down that service to use this option.
+  
+     c. PING REMOTE SYSTEM [HLO PING] option.  This new option can be used to
+        test a remote server by sending it a PING message. The option can be
+        used to test either a VistA HL7 1.6 server or a VistA HLO server. It
+        may also be used to test a non-VistA server, though it is not
+        guaranteed to work in that case.  The key difference
+        between this option and the old HL PING (TCP ONLY) option is that
+        whereas HL PING (TCP ONLY) used a message not formatted
+        to the HL7 standard, the new HLO PING option does use a message
+        correctly formatted to the HL7 standard, though with the non-standard
+        ZZZ~ZZZ message type and an NTE segment containing the text
+        "This is a PING message to test connectivity."  (The HL7 standard
+        does not define a PING message.)
+   
+        This new option uses the new ^HLOPING routine.  The old
+        HL PING [Ping (TCP Only)] has been modified to also use this new
+        routine.
+  
+        The new ping functionality will ignore the PING IP field (#70) and
+        the PING DOMAIN (PARTIAL) field (#80) in the HL COMMUNICATION SERVER
+        PARAMETERS file (#869.3). Those fields will most likely be starred
+        for deletion in a future patch. The new ping functionality can be used
+        to attempt pinging any remote server, though there may be some
+        non-VistA servers that will fail to respond even when they are in fact
+        operational and reachable.  However, the ping should work with most HL7
+        servers, as long as that server knows to return a commit acknowledgment
+        when requested.
+   
+    d. LOG READ/WRITE ERRORS [HLO LOG READ/WRITE ERRORS] option.  Normally
+        HLO does NOT record READ or WRITE errors to the Kernel Error Trap
+        because those errors are a normal part of communication over TCP/IP.
+        However, for troubleshooting connectivity problems logging those errors
+        might be useful, and this new option allows that to be done.  Logging
+        of READ and WRITE errors should be enabled for only short periods
+        while the system is being monitored.
+  
+  2) The option HL PING [Ping (TCP Only)]is being modified to use the new
+     routine described in 1.c. above.  The advantage is that it can be
+     used to test either HL7 1.6 servers or HLO servers, as well as some
+     non-VistA systems.
+   
+  3) The system operations staff may now set the priority of outgoing HLO
+     queues.  The purpose of setting a queue's priority is to speed
+     up a specific queue that tends to be backed up. A queue's default
+     priority is 50, but it can be set to any number between 20 and 100.
+     A queue of priority 100 will run roughly twice as fast as a queue
+     of priority 50, and a queue of priority 25 will run roughly
+     one half as fast as a queue of priority 50. 
+    
+     NOTE:  It would not work to set all queues to priority 100!  Increasing
+     a queue's priority does not increase the available computing resources
+     devoted to HL7 messaging, rather, it shifts those computing resources
+     to queues according to their relative priorities. It is recommended that
+     a queue's priority be changed from the default only if it tends to get
+     backed up. 
+ 
+     The option SET OUTGOING QUEUE PRIORITY [HLO SET QUEUE PRIORITY]
+     is used to alter a queue's priority.  It is located on the
+     HLO Developer Menu option, though it is actually meant for use by
+     operations staff rather than application developers. 
+   
+     The OUTGOING QUEUES screen of the HLO SYSTEM MONITOR option [HLO SYSTEM
+     MONITOR] has been modified to include the priority of each outgoing
+     queue.
+  
+     The new file HLO PRIORITY QUEUES (#779.9) contains the priority
+     settings for queues that have been modified from their default
+     priority. 
+     
+     There is an API for setting a queues priority.  The API was developed
+     for applications such as the Austin MPI that has hundreds of
+     queues, with the name being based on the patient's ICN.  Most
+     applications should NOT set a queue's priority programmatically. Rather,
+     it should be left to the operations staff to set the priority using
+     the option described above.
+ 
+    API: SETP^HLOQUE(QUEUE,PRIORITY,LINK)       ;
+         Description: This is an API for setting an outgoing queue's priority.
+         Input:
+            QUEUE (required) the name of the queue
+            PRIORITY (required) the priority, 20-100
+            LINK (optional) name or IEN of an HL Logical Link. If specified, 
+                            the priority will be applied only to the specific
+                            link, otherwise the priority will be applied to all
+                            queues named QUEUE.
+        Notes:
+              1) If the priority is specified at both the link level and
+               at the higher level (all links) the link-specific value will
+               override the other value.
+         Output:
+              function returns 1 on success, 0 on failure
+         Example:
+        I $$SETP^HLOQUE("MPI QUE 1","VAALB") ;return value indicates success
+        
+ 
+  4) This enhancement provides the ability to screen (filter) message
+     errors displayed in the HLO MESSAGE VIEWER [HLO MESSAGE VIEWER]
+     option. Two types of error screens are provided.  The first
+     allows the user to select error messages to be included in the 
+     display based on text that appears in the error message.  The second
+     type of screen allows the user to exclude error messages from being
+     included in the display based on text that appears in the error message. 
+    
+     The new option HLO EDIT ERROR SCREENS [HLO EDIT ERROR SCREENS],
+     which appears on the HL7 (Optimized) MAIN MENU [HLO MAIN MENU],is
+     used to create the error screens.
+   
+     The new file HLO ERROR SCREENS (filer #779.11) contains the
+     screens.
+  
+     When the user displays a list of errors he/she identifies the
+     error screen by its name, so it is recommended that the name
+     be namespaced and sufficiently descriptive so as to be easily
+     identifiable.
+ 
+  5) The user dialogue for these action protocols on the HLO SYSTEM
+     MONITOR [HLO SYSTEM MONITOR] OPTION have been streamlined:
+    
+      a.  HLO DELETE TOP MESSAGE [HLO DELETE TOP MESSAGE]
+      b.  DEL QUE [HLO OUTBOUND DELETE]
+      c.  SEQUENCE QUEUE DELETE [HLO SEQUENCE DELETE]
+  
+  6) The Server Trace Tool released in patch HL*1.6*146 was enhanced. Formally,
+     when the remote client dropped its TCP connection to the server, running
+     in the foreground as the Server Trace Tool, the tracing session would
+     terminate.  The tool as been modified so that the TCP disconnect will NOT
+     terminate the tracing session. Rather, the tracing session will continue
+     until the user either enters CTRL-C or responds 'NO' to the prompt "Do
+     you want to trace another group of message transmissions?".
+  
+  7) A new field, BOX-VOLUME PAIR (#.13) was added the HLO SYSTEM PARAMETERS
+     file (#779.1).  It is an optional system parameter that allows a site
+     to specify what volume:cpu the HLO process should execute on. This is not
+     generally necessary, but if a site has multiple servers they can use this
+     new parameter as a tool to balance the load over the servers.
+  
+  8) A new field, BOX-VOLUME PAIR (#.16) was added the HLO PROCESS REGISTRY
+     file (#779.3).  It is an optional system parameter that allows a site
+     to specify what volume:cpu a specific type of HLO process should execute
+     on. If specified, it will override for the specific HLO process type
+     the similar parameter in the HLO SYSTEM PARAMETERS (#779.1) file. See #7
+     above.
+ 
+     This new parameter was introduced to support Cache sites that use the
+     Kernel listener instead of the VMS TCPIP Services.  It can be used on
+     a system with multiple server to designate which server the listener
+     should run on, or even to utilize multiple servers running on multiple
+     nodes.  See software correction #4, NT Problem #3, below.
+  
+     Note: VMS sites should use the VMS TCPIP Services, so this new parameter
+     is NOT needed for thir listener. 
+  
+  9. The new option HLO RECOUNT MESSAGE QUEUES [HLO RECOUNT MESSAGE QUEUES]
+     has been created to recount the messages pending on all HLO queues. The
+     purpose is to prevent the counts that are displayed in the HLO System
+     Monitor from becoming substantially off.  This new option should be
+     scheduled to be run once daily during off-peak hours.  Some caution
+     is needed in using this new option, because it does turn off all HLO
+     processes for several minutes while counting the message queues.
+  
+  10. We are now recommending that the option HLO DAILY STARTUP [HLO DAILY
+      STARTUP] be scheduled to run every 6 hours rather than once daily
+      as was our prior recommendation.  This will insure that HLO does not
+      inadvertently stop for a significant period of time.
+  
+ 
+ Software Corrections:
+ =====================
+  
+  1) This patch fixes a bug that affected the display of outgoing queues
+     in the HLO SYSTEM MONITOR [HLO SYSTEM MONITOR] option.
+     In the case where the number of outgoing queues did not fit on a
+     single page the last page was occasionally missing some queues.
+  
+  2) The action protocol DEL QUE [HLO OUTBOUND DELETE] on the OUTGOING
+     QUEUES screen of the HLO SYSTEM MONITOR would occasionally
+     error out with an undefined variable.  This patch fixes that.
+  
+  3) When using HLO sequence queues the receipt of a message would
+     occasionally (though very rarely) fail to cause the queue to
+     advance.  This patch fixes that.
+  
+  4) NT sites have run into several problems in connection to the HLO listener.
+     This patch fixes those problems:
+     
+       NT Problem #1
+       -------------
+       The HLO System Monitor at some NT sites was showing the listener to be
+       not running when in fact it was running.  This has been fixed.
+  
+       NT Problem #2
+       -------------
+       HLO not supposed to enter TCP/IP READ errors to the Kernel Error Trap
+       unless, for debugging purposes, the site has turned logging of those
+       errors on via the LOG READ/WRITE ERRORS [HLO LOG READ/WRITE ERRORS]
+       option. See #1.d above. For NT systems, READ errors were being
+       recorded in the Kernel Error trap.  This patch fixes that.
+  
+       NT Problem #3
+       -------------
+       For NT sites, the listener runs as a TaskMan process.  Prior to this
+       patch, HLO permitted only a single instance of the listener to run,
+       and sites were unable to designate which server to run the listener on.
+       This caused sites with multiple servers using load-balancing problems.
+ 
+       This patch introduces the ability to designate which server the HLO
+       listener should run on.  Furthermore, it allows a listener to be started
+       on multiple nodes.  Instructions for NT sites to do this follow:
+  
+      To utilize an HLO Listener that runs under Taskman:
+       a. Edit the entry in the HLO PROCESS REGISTRY file (#779.1) called
+           'TASKMAN MULTI-LISTENER'
+       b. Set the ACTIVE field (#.02) to 'YES'.
+       c. Set the DEDICATED LINK field (#.14) to the entry in the HL Logical
+          Link file (#890) to the link that represents your site's listener.
+          It is used to determine the port that the HLO listener should run on.
+       d) If the listener should run on a specific server, then set the value
+          of the BOX-VOLUME PAIR field (#.16) to the entry in the TASKMAN
+          SITE PARAMETERS file (#14.7) that identifies the CPU and volume
+          set of the server. 
+     
+          It would also be advisable to append a *short* indicator of the
+          specific server (i.e., node) to the name field (#.01) of the HLO
+          process in order to make it more obvious which node the listener
+          process is running on.
+  
+          Example:
+          If the server (i.e., node) is named 'NXT', then you might rename the
+          process 'TASKMAN MULTI-LISTENER_NXT' instead of
+          'TASKMAN MULTI-LISTENER'.
+   
+      To utilize another HLO listener that runs uner Taskman on a different
+      server, but listening on the same port:
+      a) Copy the entry for the 'TASKMAN MULTI-LISTENER' to a new entry
+         in the HLO PROCESS REGISTRY file (#779.1).
+      b) Change the name to 'TASKMAN MULTI-LISTENER' with a short acronym
+         for the server appended to the name. For example, for the server OEX
+         name the second listener 'TASKMAN MULTI-LISTENER_OEX'.
+      C) Edit the value of the BOX-VOLUME PAIR field (#.16) to indicate which
+         server the listener should execute on.  This is done by setting it to
+         the entry in the TASKMAN SITE PARAMETERS file (#14.7) that
+         identifies the CPU and volume set of the server.   
+  
+  
+ Installation Instructions:
+ =========================
+  
+    1.  Users are allowed to be on the system during the installation. 
+        Installation time is under 3 minutes.  
+        
+    2.  Disable the HL7 TCPIP services for the HLO multi-listener running on
+        all nodes in the cluster. For example, at the VMS prompt in your
+        production account:
+  
+          ISC6A1> TCPIP          <-- at the VMS prompt
+          TCPIP> DISABLE SERVICE HLS5001CACHE  
+  
+          In your test account:
+  
+          ISC6A1> TCPIP          <-- at the VMS prompt
+          TCPIP> DISABLE SERVICE HLS5026CACHE  
+  
+         You could also do this from the M programmer's prompt as follows:
+   
+         VISTA> D ^%CLI   <-- at the M programmer's prompt                       
+         CLI command: TCPIP                 
+         TCPIP> DISABLE SERVICE HLS5001CACHE  
+  
+   3.   Use the STOP HLO option of the HLO SYSTEM MONITOR screen to temporarily
+        stop the transmission of HLO messages. Wait several minutes to insure 
+        that all HLO processes have terminated.
+  
+        NOTE: There is a pre-install routine that will abort the installation
+        if any HLO process is still running.  If the installation is aborted,
+        verify that HLO is stopped, and restart the installation.
+  
+    4.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This
+        option will load the KIDS package onto your system.
+  
+    5.  This patch is now loaded into a transport global on your system.
+        The next step is to use KIDS to install the Transport global.  On
+        the KIDS menu, under the 'Installation' menu, use the following
+        options:
+  
+           Verify Checksums in Transport Global
+  
+           Print Transport Global 
+  
+           Compare Transport Global to Current System 
+  
+           Backup a Transport Global
+  
+           Install Package(s) 
+  
+        When using the Install Package(s) menu option to install the patch
+        build, you will be asked several questions.  The questions, and the
+        answers you should supply, are shown below.
+  
+        INSTALL NAME: <HL*1.6*147>
+  
+        Want KIDS to Rebuild Menu Trees Upon Completion of Install?  <NO>
+  
+        Want KIDS to INHIBIT LOGONS during the install?  <NO>
+  
+        Want to DISABLE Scheduled Options, Menu Options,
+  
+          and Protocols?  <NO>
+   
+       A pre-install routine will verify that all HLO processes have been
+       stopped before the installation will complete. 
+   
+  
+       NOTE: The routine HLOP147 will be automatically deleted upon
+       completion of the installation.  
+  
+    6. Enable the HL7 TCPIP services for the multi-listeners
+  
+          For example, in a production account at the VMS prompt:
+          ISC6A1> TCPIP             <-- at the VMS prompt
+          TCPIP> ENABLE SERVICE HLS5001CACHE 
+  
+          For example, in a test account:
+  
+          ISC6A1> TCPIP             <-- at the VMS prompt
+          TCPIP> ENABLE SERVICE HLS5026CACHE 
+  
+         You could also do this from the M programmer's prompt as follows:
+  
+         VISTA> D ^%CLI   <-- at the M programmer's prompt                       
+         CLI command: TCPIP
+         TCPIP> ENABLE SERVICE HLS5001CACHE   
+  
+    
+    7. Use the START HLO option within the HLO SYSTEM MONITOR screen
+       to resume transmission of HLO messages in your production account.
+       This step is optional in test systems.
+   
+    8. On production systems, verify that outgoing messages have resumed
+       being transmitted.  You can do this by monitoring the system via the
+       HLO System Monitor for a few minutes to insure that the count of
+       messages pending transmission is not growing.
+ 
+    9. Schedule the new option HLO RECOUNT MESSAGE QUEUES [HLO RECOUNT
+       MESSAGE QUEUES] to run once daily during off-peak hours. Some caution
+       is needed in scheduling this new option, as it does result in all
+       HLO processes being stopped for several minutes while the recount
+       is in progress.
+  
+   10. Our new recommendation is that the option HLO DAILY STARTUP [HLO DAILY
+       STARTUP] should be rescheduled to run every 6 hours rather than just
+       once daily.  This will insure that HLO does not inadvertently stop
+       running for a long period of time.
+ 
+ 
+   Note: Several routines have been consolidated into the routine HLOUSR7,
+   which resulted in the routines HLOAPI5, HLOQUE1, and HLOQUE2 being deleted.
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;1.6;HEALTH LEVEL SEVEN;**[Patch List]**;Oct 13, 1995;Build 15
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: HLOAPI5
+    Before: B90305828   After:    Delete  
+Routine Name: HLOASUB1
+    Before: B91447015   After: B91573157  **126,134,138,146,147**
+Routine Name: HLOCLNT
+    Before: B86058650   After: B80403155  **126,130,131,134,137,139,143,147**
+Routine Name: HLOP147
+    Before:       n/a   After:   B890981  **147**
+Routine Name: HLOPING
+    Before:       n/a   After: B23547701  **147**
+Routine Name: HLOPROC
+    Before: B26547261   After: B28480069  **126,134,146,147**
+Routine Name: HLOPROC1
+    Before: B91809391   After:B102064543  **126,138,139,147**
+Routine Name: HLOQUE
+    Before: B97643227   After:B148335504  **126,132,134,137,138,143,147**
+Routine Name: HLOQUE1
+    Before: B78441748   After:    Delete  
+Routine Name: HLOQUE2
+    Before:       n/a   After:    Delete  
+Routine Name: HLOSITE
+    Before:  B6862294   After:  B8246314  **126,138,147**
+Routine Name: HLOSRVR
+    Before: B84549527   After: B84093197  **126,130,131,134,137,138,139,
+                                           143,147**
+Routine Name: HLOSRVR1
+    Before: B86429474   After: B86348500  **126,130,131,133,134,137,138,
+                                           139,143,146,147**
+Routine Name: HLOSRVR3
+    Before:  B2176219   After:  B1081356  **138,147**
+Routine Name: HLOSTRAC
+    Before: B33783349   After: B43533858  **146,147**
+Routine Name: HLOTRACE
+    Before: B65294426   After: B65409615  **146,147** 
+Routine Name: HLOUSR
+    Before: B92223063   After:B121177713  **126,130,134,137,138,139,146,147**
+Routine Name: HLOUSR1
+    Before:B106022744   After:B106982040  **126,134,137,138,143,147**
+Routine Name: HLOUSR2
+    Before: B47461747   After: B85470396  **126,134,137,138,147**
+Routine Name: HLOUSR3
+    Before: B66849245   After: B69258883  **126,134,138,139,147**
+Routine Name: HLOUSR4
+    Before: B15146335   After: B15343784  **137,138,147**
+Routine Name: HLOUSR6
+    Before: B24863677   After: B27362137  **138,146,147**
+Routine Name: HLOUSR7
+    Before:       n/a   After: B22703242  **138,139,146,147**
+
+=============================================================================
+User Information:
+Entered By  : MOORE,CHARLES J               Date Entered  : AUG 11, 2009
+Completed By: BEST,LISA                     Date Completed: OCT 22, 2010
+Released By : APOLONIO,AUGUSTO              Date Released : NOV 08, 2010
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

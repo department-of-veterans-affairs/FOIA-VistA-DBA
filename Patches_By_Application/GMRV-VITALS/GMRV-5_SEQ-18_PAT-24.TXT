@@ -1,0 +1,196 @@
+$TXT Created by MCNEILE,KEN at DEV.DEV.FO-HINES.MED.VA.GOV  (KIDS) on Monday, 02/22/10 at 09:34
+=============================================================================
+Run Date: APR 26, 2010                     Designation: GMRV*5*24
+Package : GMRV - GEN. MED. REC. - VITALS      Priority: Mandatory
+Version : 5        SEQ #18                      Status: Released
+                  Compliance Date: MAY 27, 2010
+=============================================================================
+
+Associated patches: (v)GMRV*5*22   <<= must be installed BEFORE `GMRV*5*24'
+                    (v)XU*8*491    <<= must be installed BEFORE `GMRV*5*24'
+
+Subject: HOSPITAL LOCATION FIX
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ A problem introduced by patch GMRV*5.0*3 caused an incorrect Hospital
+ Location (field #.05) to be stored in the GMRV VITAL MEASUREMENT file 
+ (# 120.5) when a patient was selected from the Ward list in the Vitals
+ Graphical User Interface (GUI). This was corrected by patch GMRV*5.0*22
+ but a clean-up of the GMRV VITAL MEASUREMENT file is needed to correct the
+ Hospital Location pointers that have already been filed.
+  
+ When this patch is installed, a background job will search the GMRV VITAL 
+ MEASUREMENT file and correct any records which are determined to have the 
+ wrong Hospital Location pointers.
+  
+ All corrected records will also be uploaded to the Health Data Repository
+ (HDR).
+  
+ It is possible that some sites won't have any bad records if they are 
+ using the CPRS Vitals Lite instead of the Vitals GUI.
+  
+  
+ ASSOCIATED NSR(S)
+ =================
+ N/A
+  
+  
+ ASSOCIATED REMEDY TICKETS
+ =========================
+ 1. HD0000000230495 - Clinical Reminders PXRM patch installation problem
+ 2. HD0000000366784 - 2 Errors after patch PXRM*2*12
+  
+  
+ PARTICIPATING TEST SITES
+ ========================
+ Dublin VAMC
+ Phoenix HCS
+ San Diego HCS
+ Maryland HCS
+ Washington VAMC
+  
+  
+ REMEDY TICKET OVERVIEW
+ ======================
+  
+   Problem
+   -------
+   A bug introduced by patch GMRV*5.0*3 caused an incorrect Hospital 
+   Location (field #.05) to be stored in the GMRV VITAL MEASUREMENT file
+   (#120.5) when a patient was selected from the Ward list in the Vitals
+   GUI.  This was corrected by patch GMRV*5.0*22 but a clean-up of file
+   120.5 is needed to correct the Hospital Location pointers that have
+   already been filed.
+  
+   Resolution
+   ----------
+   A post-init routine (GMVFIXHL) has been created that will correct the
+   Hospital Location pointers.  This routine will be executed in a 
+   background job after the patch is installed.
+  
+   When the routine finishes, it will send a MailMan message to the
+   installer.  It will also create a file (GMRV_5_24.DAT file in the
+   current directory) to document which records were changed.  The routine
+   will also update the HDR with the new Hospital Location pointer.
+   
+   The logic flow of GMVFIXHL is below:
+  
+   -- It finds the earliest date that GMRV*5.0*3 was installed because 
+      that's when the bug was introduced and subtracts 7 days from it.
+   -- It finds the earliest date that GMRV*5.0*22 was installed because 
+      that is when the bug was corrected.
+   -- It loops through all of the records between those dates and checks
+      if the patient was an inpatient.
+   -- If not an inpatient, the record is bypassed.
+   -- If the record's hospital location does not point to a valid file #44
+      HOSPITAL LOCATION record, the record is changed to use the inpatient
+      hospital location. 
+   -- It documents the record number, old hospital location pointer and 
+      new hospital location in the GMRV_5_24.DAT file on the current
+      directory of the user's system.  The file name and directory are 
+      listed in the MailMan message.
+  
+       
+  
+   Example of the MailMan message:
+   -------------------------------
+   Subj: GMRV*5.0*24 HOSPITAL LOCATION REPAIR UTILITY [#526239] 3 lines
+   From: POSTMASTER  In 'IN' basket.   Page 1
+   -----------------------------------------------------------------------
+               The repair utility started at: 10/19/2009@15:27:01
+              The repair utility finished at: 10/19/2009@15:46:51
+                   Number of records checked: 3206966
+                   Number of records changed: 22167
+ Number of records that could not be changed: 0
+  
+ The GMRV_5_24.DAT file in the SYS$USER:[TEMP] directory contains a listing
+ of entries changed .    
+  
+   Enter message action (in IN basket): Ignore// 
+  
+  
+   Example of the GMRV_5_24.DAT file:
+   ----------------------------------
+   RECORD: 6240034  OLD LOCATION: 3242  NEW LOCATION: 1321
+   RECORD: 6240042  OLD LOCATION: 189  NEW LOCATION: 4169
+   RECORD: 6240043  OLD LOCATION: 189  NEW LOCATION: 4169
+   RECORD: 6240045  OLD LOCATION: 36  NEW LOCATION: 4169
+   RECORD: 6240046  OLD LOCATION: 36  NEW LOCATION: 4169
+   ...
+   ...
+   ...
+                               Start Date/time: 10/19/2009@15:27:01
+                              Finish Date/time: 10/19/2009@15:46:51
+                     Number of records checked: 3206966
+                     Number of records changed: 22167
+   Number of records that could not be changed: 0
+  
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+ This patch can be installed at any time.  Users do not need to be off
+ the system.  Install time will be less than 2 minutes.
+      
+  1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu. [Note:
+     TEXT PRINT/DISPLAY option in the PackMan menu will display the
+     patch text only].
+      
+  2. From the Kernel Installation and Distribution System (KIDS)
+     menu, select the Installation menu.
+      
+  3. From this menu, you may elect to use the following options:
+     (when prompted for INSTALL NAME, enter GMRV*5.0*24)
+      
+     a.  Backup a Transport Global - this option will create a backup
+         message of any routines exported with the patch.  It will
+         NOT backup any other changes such as DDs or templates.
+     b.  Compare Transport Global to Current System  - this option
+         will allow you to view all changes that will be made when
+         the patch is installed.  It compares all components of the
+         patch (routines, DDs, templates, etc.).
+     c.  Verify Checksums in Transport Global - this option will
+         allow you to ensure the integrity of the routines that are
+         in the transport global.
+     d.  Print Transport Global - this option will allow you to view
+         the components of the KIDS build.
+     
+  4. Use the Install Package(s) option and select the package
+     GMRV*5.0*24.
+      
+  5. When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+     NO//', respond NO.
+      
+  6. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+     Protocols? NO//', respond NO.
+  
+ ***NOTE:  After the successful install of the patch, you may delete 
+           routine GMVFIXHL.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.0;GEN. MED. REC. - VITALS;**[Patch List]**;Oct 31, 2002;Build 24
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: GMVFIXHL
+    Before:       n/a   After: B41436949  **24**
+
+=============================================================================
+User Information:
+Entered By  : MCNEILE,KEN                   Date Entered  : MAR 05, 2008
+Completed By: WERNER,GARY                   Date Completed: APR 12, 2010
+Released By : KREUZ,SHERI B                 Date Released : APR 26, 2010
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

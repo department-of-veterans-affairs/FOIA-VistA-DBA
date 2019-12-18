@@ -1,0 +1,372 @@
+$TXT Created by CEBELINSKI,GREGORY J at DEV.DEV.FO-HINES.MED.VA.GOV  (KIDS) on Wednesday, 04/04/07 at 06:36
+=============================================================================
+Run Date: JUN 04, 2007                     Designation: RA*5*75
+Package : RA - RADIOLOGY/NUCLEAR MEDICINE     Priority: Mandatory
+Version : 5        SEQ #69                      Status: Released
+                  Compliance Date: JUL 05, 2007
+=============================================================================
+
+Associated patches: (v)RA*5*31     <<= must be installed BEFORE `RA*5*75'
+                    (v)RA*5*35     <<= must be installed BEFORE `RA*5*75'
+                    (v)RA*5*36     <<= must be installed BEFORE `RA*5*75'
+                    (v)RA*5*41     <<= must be installed BEFORE `RA*5*75'
+                    (v)RA*5*51     <<= must be installed BEFORE `RA*5*75'
+                    (v)RA*5*55     <<= must be installed BEFORE `RA*5*75'
+                    (v)RA*5*69     <<= must be installed BEFORE `RA*5*75'
+                    (v)RA*5*82     <<= must be installed BEFORE `RA*5*75'
+
+Subject: REASON FOR STUDY, PATIENT AGE ALGORITHM/DISPLAY, & DATE DESIRED DEFAULT ISSUE
+
+Category: 
+  - Data Dictionary
+  - Input Template
+  - Routine
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ This patch addresses three issues within the VistA Radiology/Nuclear 
+ Medicine application.
+  
+ + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + 
+ +                                                                       +
+ +                                                                       +
+ +            ATTENTION : Sites using Nuance PowerScribe                 +
+ +                                                                       +
+ +                                                                       +
+ +   PowerScribe cannot handle certain characters that may be entered    +
+ +   into the new REASON FOR STUDY field (Issue One.)  Inclusion of any  +
+ +   of these characters would cause the entire order to disappear from  +
+ +   the PowerScribe display screen.                                     +
+ +                                                                       +
+ +   These characters are reserve characters in XML : ampersand (&),     + 
+ +   apostrophe ('), quote ("), greater than (>), and less than (<).     +
+ +                                                                       +
+ +   PowerScribe has a software fix planned, but has not announced a     +
+ +   release date for this fix.  Therefore, the person responsible for   +
+ +   your site's PowerScribe interface should contact the PowerScribe    +
+ +   National Support Center at 800.833.7776 and request a Dictaphone    +
+ +   work order to correct this issue before patch RA*5.0*75 is          +
+ +   installed.                                                          +
+ +                                                                       +
+ + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + 
+  
+  
+ ISSUE ONE
+ ---------
+  
+ When VistA Radiology exam data are sent to the Nuance PowerScribe voice
+ recognition system, this system cannot accept CLINICAL HISTORY data of 
+ indefinite length.  It can only accept the REASON FOR STUDY data of a 
+ limited length, 64 characters maximum, meeting DICOM standards.
+  
+ Because the physician using PowerScribe cannot view the REASON FOR STUDY
+ that is embedded in the CLINICAL HISTORY, s/he has to go back to the
+ VistA Radiology system to get the data.  This patch will obviate the need
+ for PowerScribe users to access REASON FOR STUDY from the VistA Radiology
+ system.
+  
+ This issue was reported in Remedy ticket #175929.
+  
+ To correct this issue, this patch will require the user entering the
+ request to input the reason for the request into a new field, 'REASON FOR
+ STUDY', which will be stored in the RAD/NUC MED ORDERS (#75.1) file.
+  
+ This patch will change the 'CLINICAL HISTORY FOR EXAM' prompt from being 
+ required to optional.
+  
+ VistA Radiology/Nuclear Medicine reports, orders, and patient profile 
+ options will be enhanced to display both the REASON FOR STUDY and 
+ CLINICAL HISTORY data.
+  
+ Operation when ordering through the front door
+ ----------------------------------------------
+ CPRS GUI v27 (OR*3.0*243) will have separate boxes for REASON FOR STUDY 
+ and for CLINICAL HISTORY.
+  
+ CPRS GUI v26 currently has one box for both HISTORY & REASON FOR EXAM.  
+ This patch will, in the background, auto-populate the REASON FOR STUDY 
+ field with "See Clinical History:".  This will be displayed in various 
+ reports, orders, and patient profile where CLINICAL HISTORY is displayed.
+  
+ Operation when ordering through the backdoor
+ --------------------------------------------
+ VistA Radiology/Nuclear Medicine will collect the REASON FOR STUDY
+ (required) and CLINICAL HISTORY (optional). 
+  
+ CPRS GUI v27 (OR*3.0*243) will display REASON FOR STUDY and CLINICAL 
+ HISTORY in separate boxes.
+  
+ CPRS GUI v26 with this patch, RA*5*75, will display both the REASON FOR 
+ STUDY and the CLINICAL HISTORY inside the HISTORY & REASON FOR EXAM box 
+ as follows:
+  
+ The REASON FOR STUDY will be displayed first and flagged by "REASON FOR 
+ STUDY:", then a line of hyphens, then the CLINICAL HISTORY.  For example:
+  
+             "REASON FOR STUDY: This is an example only
+             ------------------------------------------
+             The Clinical History starts here.........."
+  
+  
+ ISSUE TWO
+ ---------
+ When displaying a Radiology Requisition, the patient's age is calculated
+ against the date the request is displayed instead of calculating the
+ patient's age against the date the request was entered.
+  
+ The incorrect patient age is currently displayed when either of the
+ following options is executed:
+ * Print Rad/Nuc Med Requests by Date [RA ORDERPRINTS]
+ * Print Selected Requests by Patient [RA ORDERPRINTPAT]
+  
+ This issue was reported in Remedy ticket #162508.
+  
+ To correct this issue, a modification will be made in the routine
+ RAORD5 to calculate the patient's age based on the following:
+ * The patient's Date of Birth
+ * The date the request was entered
+  
+ In addition, routine RAORD6 will be modified to change the request report
+ header as follows:
+ * The label "Age" will be changed to "Age at req"
+ * The first line will now contain the word "Printed:" to indicate that the
+   date is the date of printing, not the date of the request.
+  
+ ISSUE THREE
+ -----------
+ Whether an order is entered through CPRS or through the VistA 
+ Radiology/Nuclear Medicine application, an erroneously entered "Date
+ Desired" value impacts a radiology department's ability to comply with the
+ thirty day out-patient appointment wait times mandate. Physicians 
+ sometimes use the default date of "Today" as a matter of convenience,
+ rather than inputting the actual date in which they want the examination.
+  
+ This issue was reported in E3R #19834 (Change DESIRED DATE default)
+  
+ The solution is to remove the automatic default date of "Today" and 
+ require the physicians to enter a date they actually desire to have the 
+ examination. This patch only addresses the backdoor (VistA 
+ Radiology/Nuclear Medicine application) order entry. CPRS GUI v27 will 
+ address the front door removal of "Today" as the default to "Date 
+ Desired."
+  
+ ASSOCIATED REMEDY/NOIS TICKETS
+ ==============================
+ Issue One: HD0000000175929
+ Issue Two: HD0000000162508
+ Issue Three: E3R #19834
+  
+ Integration Agreements 2265 and 2266 have been updated to pass the REASON 
+ FOR STUDY to subscribing applications. Please refer to these specific IAs 
+ for further information.
+  
+  
+ INSTALLATION FILES:
+ ==================
+  
+ The following software files are exported as part of this patch:
+  
+ File Name           Contents                              Retrieval Format
+ ---------           --------                              ----------------
+ RA5_0RN_P75.pdf     Release Notes (Adobe Acrobat version) ASCII
+ RA5_0RN_P75.doc     Release Notes (Word version)          ASCII
+ RA5_0UM.pdf         User Manual (Adobe Acrobat version)   ASCII
+ RA5_0UM.doc         User Manual (Word version)            ASCII
+  
+ The files listed above may be obtained via FTP.  The preferred method is
+ to FTP the files from:
+  
+              download.vista.med.va.gov
+  
+ This transmits the files from the first available FTP server.  Sites may
+ also elect to retrieve software directly from a specific server as
+ follows:
+  
+ OI FIELD OFFICE    FTP ADDRESS                 DIRECTORY
+ ----------------   -------------------------   --------------------
+ Albany             ftp.fo-albany.med.va.gov    [anonymous.software]
+ Hines              ftp.fo-hines.med.va.gov     [anonymous.software]
+ Salt Lake City     ftp.fo-slc.med.va.gov       [anonymous.software]
+  
+  
+ The following are the routines included in this patch. The second line of
+ of these routines now looks like: 
+   
+      ;;5.0;Radiology/Nuclear Medicine;**[patch list]**;Mar 16, 1998
+  
+                        CHECK^XTSUMBLD results
+  
+ Routine         Before Patch     After Patch    Patch List 
+ -------         ------------     -----------    ----------
+ RA75PST         New              2463278        **75**
+ RABUL           1960113          2263220        **2,15,75**
+ RAHLR           23409852         23171365       **2,12,10,25,71,82,75**
+ RAO7NEW         16988951         19108244       **5,10,18,41,75**
+ RAO7PC1         4988201          4988201        **1,16,18,26,36,45,75**
+ RAO7PC2         13303812         13670400       **1,11,14,16,22,27,45,75**
+ RAO7RO          10952365         11405279       **1,2,13,15,75**
+ RAO7RO1         3611894          3720896        **2,75**
+ RAO7RON         5154108          5160294        **41,75**                 
+ RAO7RON1        5720758          8329024        **69,75**
+ RAO7VLD         740114           754304         **75**
+ RAORD1          17530701         17915862       **10,45,41,75**
+ RAORD2          16592047         16672293       **5,10,51,45,75**
+ RAORD3          14271828         14497398       **5,15,21,27,45,41,75**
+ RAORD5          14010598         13867889       **8,10,15,31,45,75**
+ RAORD6          16834702         17240800       **5,10,15,18,27,45,41,75**
+ RAORDU1         23931023         24194569       **10,41,75**
+ RART3           9929650          10353508       **8,10,18,27,35,45,75**
+ RARTR           16252459         16269683       **5,13,16,27,43,55,75**  
+ RARTR3          8374182          10360544       **8,10,19,27,35,45,75**
+ RAUTL12         3677659          3850814        **75**
+ RAUTL5          9589104          11916425       **8,26,75**
+  
+ TEST SITES
+ ==========
+ Puget Sound Health Care System
+ Northern California Health Care System 
+ Asheville VAMC
+ Bay Pines VAMC
+ Maryland Health Care System
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+ Since input templates are being re-compiled, it is best if this patch
+ is installed outside of normal working hours. Radiology users should be
+ off the system and users should not place radiology orders through CPRS
+ while this patch is being installed. The install time for this patch
+ should be under five minutes.
+  
+ NOTE: MailMan and Kernel patches must be current on the target system to
+       avoid problems loading and installing this patch.
+  
+  1.  Use the 'Delete Routines' [XTRDEL] option to delete the following
+      compiled routines for the RAD/NUC MED ORDERS file (#75.1)'s input
+      templates RA ORDER EXAM and RA QUICK EXAM ORDER:
+                  RACTOE*
+                  RACTQE*
+  
+      We suggest that this step be taken so that re-compilation of the RA
+      ORDER EXAM and RA QUICK EXAM ORDER input templates guarantee a new
+      set of compiled input template routines. Failure to delete the
+      compiled input template routines for the RA ORDER EXAM and RA QUICK
+      EXAM ORDER input templates will not prevent installation of this
+      patch.
+      
+      Please note that the RA ORDER EXAM and RA QUICK EXAM ORDER input 
+      templates can be recompiled by accessing the the 'IRM Menu' [RA
+      SITEMANAGER] and executing the option: 'Template Compilation' [RA
+      COMPILE TEMPLATES].
+  
+  2.  Use the 'INSTALL/CHECK MESSAGE' option of your PackMan menu to load
+      the KIDS distribution onto your system. 
+  
+  3.  From the Kernel Installation & Distribution System menu, select 
+      the 'Installation' menu.
+  
+      From this menu you may select the following options prior to 
+      installing the patch:
+  
+    a.  Backup a Transport Global - this option will create a backup
+        message of any routines exported with the patch.
+    
+    b.  Compare Transport Global to Current System - this option will
+        allow you to view all changes that will be made when the patch
+        is installed.
+    
+    c.  Verify Checksums in Transport Global - this option will ensure
+        the integrity of the routines that are in the transport global.
+  
+  4.  Use the 'Install Package(s)' option under the 'Installation' menu.
+      When prompted for INSTALL NAME, enter: RA*5.0*75
+   
+       When prompted "Want KIDS to INHIBIT LOGONs during the install?
+       YES//", respond NO.
+   
+       When prompted "Want to DISABLE Scheduled Options and Menu Options?
+       YES//", respond YES
+  
+         When prompted "Enter options you wish to mark as 'Out of Order':",
+         enter the following to disable all Rad/Nuc Med options:
+      
+         RA*
+   
+         When prompted "Enter protocols you wish to mark as 'Out of 
+         Order':", enter the following to disable all Rad/Nuc Med
+         protocols:
+   
+         RA*
+   
+  5.  Verify that the patch installation completed correctly by using the
+      KIDS 'Utilities...' [XPD UTILITY] option 'Install File Print' [XPD
+      PRINT INSTALL FILE] and selecting this patch (RA*5.0*75).
+  
+  6.  The post-installation routine, RA75PST, can be deleted.
+  
+  7.  All radiology, and those users utilizing CPRS to place radiology 
+      orders, can resume their normal activities.
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: RA75PST
+    Before:       n/a  After:  B5639049  **75**
+Routine Name: RABUL
+    Before:  B4837424  After:  B5625174  **2,15,75**
+Routine Name: RAHLR
+    Before: B49413163  After: B47516973  **2,12,10,25,71,82,75**
+Routine Name: RAO7NEW
+    Before: B34874778  After: B43134846  **5,10,18,41,75**
+Routine Name: RAO7PC1
+    Before: B25997110  After: B26248522  **1,16,18,26,36,45,75**
+Routine Name: RAO7PC2
+    Before: B43565991  After: B44787869  **1,11,14,16,22,27,45,75**
+Routine Name: RAO7RO
+    Before: B37491814  After: B38944723  **1,2,13,15,75**
+Routine Name: RAO7RO1
+    Before:  B7615493  After:  B7990676  **2,75**
+Routine Name: RAO7RON
+    Before: B14133845  After: B14011011  **41,75**
+Routine Name: RAO7RON1
+    Before: B16218705  After: B28343551  **69,75**
+Routine Name: RAO7VLD
+    Before:  B2349255  After:  B2388912  **75**
+Routine Name: RAORD1
+    Before: B47171265  After: B48840656  **10,45,41,75**
+Routine Name: RAORD2
+    Before: B43792586  After: B44295727  **5,10,51,45,75**
+Routine Name: RAORD3
+    Before: B24179273  After: B24685743  **5,15,21,27,45,41,75**
+Routine Name: RAORD5
+    Before: B27398038  After: B27804066  **8,10,15,31,45,75**
+Routine Name: RAORD6
+    Before: B44913351  After: B47839640  **5,10,15,18,27,45,41,75**
+Routine Name: RAORDU1
+    Before: B30958799  After: B32546485  **10,41,75**
+Routine Name: RART3
+    Before: B21497929  After: B23818641  **8,10,18,27,35,45,75**
+Routine Name: RARTR
+    Before: B56272140  After: B56338116  **5,13,16,27,43,55,75**
+Routine Name: RARTR3
+    Before: B17132620  After: B24116267  **8,10,19,27,35,45,75**
+Routine Name: RAUTL12
+    Before: B13350139  After: B13921156  **75**
+Routine Name: RAUTL5
+    Before: B25572659  After: B39178869  **8,26,75**
+
+=============================================================================
+User Information:
+Entered By  : CEBELINSKI,GREGORY            Date Entered  : MAY 25, 2006
+Completed By: MARTINI,SUE                   Date Completed: MAY 31, 2007
+Released By : COWNIE,KEVIN                  Date Released : JUN 04, 2007
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

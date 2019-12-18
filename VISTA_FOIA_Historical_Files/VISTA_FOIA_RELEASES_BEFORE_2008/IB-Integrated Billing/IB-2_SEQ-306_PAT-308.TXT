@@ -1,0 +1,287 @@
+$TXT Created by ZEIGLER,EDWARD L at DEVVII.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 02/27/06 at 10:41
+=============================================================================
+Run Date: MAY 19, 2006                     Designation: IB*2*308
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #306                      Status: Released
+                  Compliance Date: JUN 19, 2006
+=============================================================================
+
+Associated patches: (v)IB*2*237    <<= must be installed BEFORE `IB*2*308'
+
+Subject: INTER-FACILITY COPAY FOR PFSS
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ This patch is part of the Patient Financial Services System (PFSS) 
+ project.  PFSS patches are being released on various schedules.  Some 
+ patch functionality will not be active until a new PFSS switch is 
+ activated during final implementation. PFSS will initially be implemented 
+ at select pilot sites ONLY.
+  
+ The purpose of the PFSS project is to prepare the Veterans Health 
+ Information Systems and Technology Architecture (VistA) environment for 
+ the implementation of a commercial off-the-shelf (COTS) billing 
+ replacement system.  The project consists of the implementation of the 
+ billing replacement system, business process improvements, and 
+ enhancements to VistA to support integration with the COTS billing 
+ replacement system.  Significant changes to VistA legacy systems and 
+ ancillary packages are necessary.
+  
+ These PFSS software components are not operational until the PFSS On/Off 
+ Switch, distributed with patch IB*2*260, is set to "ON".  The ability for 
+ the local site to set the switch to "ON" will be provided at the 
+ appropriate time with the release of a subsequent Integrated Billing 
+ patch.
+  
+ For more information about the PFSS project, review the documentation 
+ accompanying this patch and refer to the following website: 
+    
+       http://vista.med.va.gov/billreplace/
+  
+ Functional Description
+ ======================
+ IB*2*308 provides an enhancement for all VA sites regardless of the status
+ of the PFSS switch.  Currently when a pharmacist releases a prescription
+ and the patient is potentially receiving his first copayment at the
+ facility but he has received care at other VA facilities, an on the fly
+ query is done to remote facilities to obtain present year copayment 
+ information, placing the pharmacist on hold while the query is 
+ accomplished.  With the installation of this patch the Integrated Billing
+ (IB) software will attempt to accomplish the query in the background via a
+ tasked job right after the pharmacist finishes the prescription prior to
+ release.  Assuming the query was successful; at time of release the local
+ VistA system will have the data already and not need to place the 
+ pharmacist on hold.
+  
+ Additionally a new option is included in this patch to allow sites to 
+ extract Reasonable Charges (RC) data from the Charge Master module of
+ Integrated Billing.  The option can be found under the Charge Master Menu
+ [IBCR CHARGE MASTER MENU], is called Extract Charge Master RC Rates [IBCR
+ RC EXTRACT] and is locked with the IB SUPERVISOR security key.  This
+ option is used to extract rates in a format that can be imported to
+ Excel.  The extract will allow you to create a text file that is
+ delimitated by the circumflex/caret (^) character. When importing to Excel
+ specify that delimiter.  This can be used for any version of RC from 2.0
+ or above.  The output device selected should be a Host File Server (HFS)
+ or the Current Terminal (for screen capture).
+  
+  
+ The remaining changes below will not be active until the site's PFSS 
+ On/Off Switch is changed to an "ON" status.
+  
+ Currently the IB software keeps track of a veteran's Outpatient 
+ Medication Copayment cap status across all VA facilities in an automated 
+ process.  This process is being enhanced to allow for a site to become a 
+ PFSS active site.  The IB software will be utilized as a "broker" of the 
+ data between the PFSS COTS billing replacement system and other VA sites 
+ of record for patients.  The IB software will no longer do the 
+ calculation of copayment cap information once a site is active for PFSS, 
+ but it will store the data and share it between the COTS system and sites 
+ not active for PFSS.  All the processing will continue to take place in 
+ the background with minimal user intervention.
+  
+ IB will receive Outpatient Medication Copayment charge information from 
+ the COTS system and continue to store the data in the IB COPAY 
+ TRANSACTIONS (#354.71) file.  To support remote queries for Means Test 
+ charge data and Long Term Care charge data, IB will also receive updates 
+ from the COTS system and store the data in the INTEGRATED BILLING ACTION 
+ (#350) file, MEANS TEST BILLING CLOCK (#351) file, and LTC COPAY CLOCK 
+ (#351.81) file.  The computation for the charge data will be transferred 
+ to the COTS billing replacement system and will be sent via HL7 messages 
+ to the local VistA system.
+  
+  
+ Technical Description
+ =====================
+ IBARX is being modified to trigger remote queries on new patients at time 
+ of finish.  During the finish process the pharmacy package makes a call 
+ to XTYPE^IBARX to determine a patient's copayment status.  At that time 
+ IB will queue off a tasked job to accomplish the query in the background 
+ before the pharmacy releases the medication to the patient.
+  
+ IBARXMI is the processing receiver routine for all HL7 inbound messages to
+ the IB package from the COTS billing replacement package.  The routine 
+ will verify data received, transform as necessary and file.  If the data 
+ received is not correct, the variable HLERR will be set with a message to 
+ indicate the error.
+  
+ IBARXMN is the current processing routine for processing entries in the 
+ IB COPAY TRANSACTIONS (#354.71) file.  This routine is being updated to 
+ also call the VistA Data Extraction Framework (VDEF) package to also 
+ share the copayment information with the COTS billing replacement system.
+  
+ IBARXMR is being updated to call VDEF if a back billing message is 
+ received from a remote VA site that needs to be back billed on the COTS 
+ billing replacement system.
+  
+ IBARXPFS is a new routine being used as the main entry point for HL7 
+ parsing and distribution and the initial remote query for patients that 
+ are receiving their first Outpatient Medication Copayment at the local 
+ facility.
+  
+ IBCROE is a new routine that is utilized for the new RC extract option,
+ the format is such that can be imported to Excel.
+  
+  
+ Test Sites:
+ ===========
+ Boston HCS, MA
+ Dayton, OH
+ Tuscaloosa, AL
+  
+  
+  
+         ================ INSTALLATION INSTRUCTIONS =================
+                            
+ This patch should be installed during off hours to avoid any interruption
+ of normal business processes in the pharmacy.
+                     
+                     
+  Install Time - less than 5 minutes 
+                
+                   
+    1.   LOAD TRANSPORT GLOBAL 
+         ---------------------
+         Choose the PackMan message containing this patch and invoke the 
+         INSTALL/CHECK MESSAGE PackMan option.  
+                
+                  
+    2.   COMPONENTS SENT WITH PATCH
+         --------------------------
+         The following is a list of the routines included in this patch.  
+         The second line of each of these routines now looks like: 
+                  
+          <tab>;;2.0;INTEGRATED BILLING;**[patch list]**;21-MAR-94
+            
+                            CHECK^XTSUMBLD results
+    
+     Routine name   Before Patch    After Patch      Patch List
+     ============   ============    ===========      ==========
+     IBARX            15107737        15362579       101,150,156,168,186,237,
+                                                     308
+     IBARXMI            n/a           25706466       308
+     IBARXMN          11252806        12457213       150,158,156,186,308
+     IBARXMR            917332         1710795       150,158,156,308
+     IBARXPFS           n/a            9331485       308
+     IBCROE             n/a           15562191       308
+  
+         Total number of routines: 6
+    
+    
+         The following is a list of files included in this patch:
+     
+                                          UP    SEND  DATA                USER
+                                          DATE  SEC.  COMES  SITE   RSLV  OVER
+ FILE #      NAME                         DD    CODE  W/FILE DATA   PTS   RIDE
+ ------------------------------------------------------------------------------
+  
+ 350         INTEGRATED BILLING ACTION    YES   NO    NO                  NO
+ Partial DD: subDD: 350        fld: .22
+   DATA SCREEN: 
+  
+ 354.71      IB COPAY TRANSACTIONS        YES   NO    NO                  NO
+ Partial DD: subDD: 354.71     fld: .11
+                               fld: .12
+                               fld: .2
+   DATA SCREEN:
+  
+  
+  
+ OPTION:
+    IBCR CHARGE MASTER MENU 
+    IBCR RC EXTRACT                                
+               
+ PROTOCOL:
+    IB PFSS DFT-P03 CLIENT                     
+    IB PFSS DFT-P03 SERVER                        
+  
+ HL7 APPLICATION PARAMETER:
+    IB PFSS RECV                                  
+    IB PFSS SENDING                              
+  
+  
+  
+    3.   START UP KIDS 
+         -------------
+         Start up the Kernel Installation and Distribution System Menu 
+         [XPD MAIN]: 
+                     
+              Edits and Distribution ...  
+              Utilities ...  
+              Installation ...  
+                      
+       Select Kernel Installation & Distribution System Option: INStallation
+                                                                ---
+              Load a Distribution 
+              Print Transport Global 
+              Compare Transport Global to Current System 
+              Verify Checksums in Transport Global 
+              Install Package(s) 
+              Restart Install of Package(s) 
+              Unload a Distribution 
+              Backup a Transport Global 
+         
+       Select Installation Option: 
+        
+    4.   Select Installation Option: 
+         ---------------------------
+         NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+                NAME, enter IB*2.0*308):
+                     
+         a.  Backup a Transport Global - This option will create a backup
+             message of any routines exported with this patch. It will not
+             backup any other changes such as DD's or templates.
+         b.  Compare Transport Global to Current System - This option will
+             allow you to view all changes that will be made when this patch
+             is installed.  It compares all components of this patch
+             (routines, DD's, templates, etc.).
+         c.  Verify Checksums in Transport Global - This option will allow
+             you to ensure the integrity of the routines that are in the
+             transport global.
+                      
+    5.   Select Installation Option: Install Package(s) 
+                                     ----------------
+         **This is the step to start the installation of this KIDS patch: 
+              
+         a. Choose the Install Package(s) option to start the patch install.
+         b. When prompted 'Want KIDS to INHIBIT LOGONs during the 
+            install? YES//' answer NO 
+         c. When prompted 'Want to DISABLE Scheduled Options, Menu 
+            Options, and Protocols? YES//' answer NO 
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: IBARX
+    Before: B50649768  After: B51922608  **101,150,156,168,186,237,308**
+Routine Name: IBARXMI
+    Before:       n/a  After: B78946098  **308**
+Routine Name: IBARXMN
+    Before: B32880126  After: B37752322  **150,158,156,186,308**
+Routine Name: IBARXMR
+    Before:  B1920980  After:  B3221986  **150,158,156,308**
+Routine Name: IBARXPFS
+    Before:       n/a  After: B33725607  **308**
+Routine Name: IBCROE
+    Before:       n/a  After: B37147577  **308**
+
+=============================================================================
+User Information:
+Entered By  : ZEIGLER,EDWARD L              Date Entered  : MAY 19, 2005
+Completed By: LYNCH,MARY F.                 Date Completed: MAY 17, 2006
+Released By : BOTTINI,STEVE                 Date Released : MAY 19, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

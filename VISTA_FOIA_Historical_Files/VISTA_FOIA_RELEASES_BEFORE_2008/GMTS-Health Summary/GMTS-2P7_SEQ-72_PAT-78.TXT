@@ -1,0 +1,315 @@
+$TXT Created by PHELPS,TY at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Friday, 01/20/06 at 13:49
+=============================================================================
+Run Date: APR 24, 2006                     Designation: GMTS*2.7*78
+Package : GMTS - HEALTH SUMMARY               Priority: Mandatory
+Version : 2.7        SEQ #72                    Status: Released
+                  Compliance Date: JUN 09, 2006
+=============================================================================
+
+Associated patches: (v)GMTS*2.7*56 <<= must be installed BEFORE `GMTS*2.7*78'
+                    (v)GMTS*2.7*58 <<= must be installed BEFORE `GMTS*2.7*78'
+                    (v)GMRV*5*3    <<= must be installed BEFORE `GMTS*2.7*78'
+
+Subject: NEW VITALS API AND OUTPATIENT PHARMACY API
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch adds a new Vitals API call to several Vital Signs Health
+ Summary Components and corrects a couple of these components to display
+ data as intended. 
+  
+ ASSOCIATED E3R(s):
+ ==================
+ N/A
+  
+ ASSOCIATED REMEDY:
+ ==================
+ 1. HD0000000099379     Vitals package API is changing
+ 2. HD0000000068449     PUG-1104-51635  TIU-HS object for circumf--label
+                        is incomplete
+    Duplicate:
+       HD0000000068454     ISL-1104-51669  Entry of Circumference/Girth
+                           multiples
+ 3. HD0000000116157     Health Summary Components VSO and SVSO not behaving
+                        as expected
+ 4. HD0000000126708     Change (S) to (A/S or Active/Suspend)
+ 5. HD0000000067861     MAD-0104-42050  PULSE OX DISPLAY
+    
+ PARTICIPATING TEST SITES:
+ =========================
+ CHARLESTON, SC
+ DAYTON, OH
+ LOMA LINDA, CA
+ PUGET SOUND HCS, WA
+ CLEVELAND,OH
+ BOSTON HCS
+ LOMA LINDA,CA
+ MADISON,WI
+ PALO ALTO,CA
+ PUGET SOUND,WA
+ TAMPA,FL
+  
+ REMEDY OVERVIEW:
+ ================
+ 1. HD0000000099379      Vitals package API is changing
+  
+    Problem:
+    --------
+    The Vitals package API is changing to correct current behavior in the
+    Health Summary Ad Hoc Reports in response to several Clear Quest
+    tickets, which have been listed in this Remedy ticket.  The current
+    Vitals package API used in the Vital Signs Health Summary components
+    only returns numeric data back to Health Summary for some of the vital
+    types (e.g., Blood Pressure, Pulse) and for some fields the value of
+    zero is not returned as well.  The Health Summary package also needs to
+    make some modifications to be compatible with and to use the new Vitals
+    API that is being created.  The five Health Summary Components affected
+    by this change are:
+  
+       VITAL SIGNS (VS)
+       VITAL SIGNS DETAILED DISPLAY (VSD)
+       VITAL SIGNS OUTPATIENT (VSO)
+       VITAL SIGNS SELECTED (SVS)
+       VITAL SIGNS SELECTED OUTPAT. (SVSO)
+  
+    Resolution:
+    -----------
+    This patch modified three routines (GMTSVS, GMTSVSD, GMTSVSS) to use
+    the new Vitals package API call of EN1^GMVHS.  Some minor report
+    formatting changes were also made to handle the new data being
+    returned and to correct some spacing issues.  The EXTERNAL/EXTRACT
+    ROUTINE (#1.1) field is being updated to display "EN1;GMVHS" for the
+    five Health Summary Components mentioned above in the HEALTH SUMMARY
+    COMPONENT (#142.1) file as well.
+  
+ 2. HD0000000068449     PUG-1104-51635  TIU-HS object for circumf--label
+                        is incomplete
+  
+    Problem:
+    --------
+    When displaying the Circumference/Girth with the VITAL SIGNS SELECTED
+    (SVS) and VITAL SIGNS SELECTED OUTPAT. (SVSO) Health Summary Components
+    on the Ad Hoc Health Summary [GMTS HS ADHOC] report option, the
+    qualifiers only display the first five characters.  This is fine if
+    the qualifiers are "ABDOMINAL" or "HEAD", but if a "LEFT" or "RIGHT"
+    qualifier is used as well to identify which "ANKLE" or other body
+    part, then only "LEFT;" and "RIGHT" are displayed as seen below:
+  
+ ------------------------ SVS - SVS-CIRCUM/GIRTH ------------------------
+ Measurement DT    CG  
+                   IN(CM)  
+   
+ 11/23/2004 16:21  14.7(37.34)[RIGHT] 
+ 11/23/2004 16:21  22(55.88)[HEAD]  
+ 11/23/2004 16:20  19.9(50.55)[LEFT;] 
+ 11/23/2004 16:19  54(137.16)[ABDOM]  
+ 11/23/2004 16:15  18.5(46.99)[RIGHT]
+  
+    Resolution:
+    -----------
+    To correct this issue, the VITAL SIGNS SELECTED (SVS) and VITAL SIGNS
+    SELECTED OUTPAT. (SVSO) Health Summary Components will be modified
+    to display the first 15 characters of the qualifier.  The width of
+    the Circumference/Girth field was also changed from 24 to 34
+    characters to allow for the longer qualifiers.  The new display
+    will look like:
+  
+ ------------------------ SVS - SVS-CIRCUM/GIRTH ------------------------
+ Measurement DT    CG
+                   IN(CM)
+   
+ 11/23/2004 16:21  14.7(37.34)[RIGHT;LOWER ARM]
+ 11/23/2004 16:21  22(55.88)[HEAD]
+ 11/23/2004 16:20  19.9(50.55)[LEFT;ANKLE]
+ 11/23/2004 16:19  54(137.16)[ABDOMINAL]
+ 11/23/2004 16:15  18.5(46.99)[RIGHT;CALF]
+  
+  
+ 3. HD0000000116157     Health Summary Components VSO and SVSO not behaving
+                        as expected
+  
+    Problem:
+    --------
+    The Health Summary Components, VITAL SIGNS OUTPATIENT (VSO) and VITAL
+    SIGNS SELECTED OUTPAT. (SVSO), are not behaving as expected.  The
+    component descriptions state:
+  
+    "If there are no outpatient measurements, a message will be displayed
+     and the last non-outpatient measurements will be shown."
+  
+    In reality, only a message stating "*** No Outpatient measurements ***"
+    is displayed.  The last non-outpatient measurements are not shown.
+    This is caused by variable GMRVSTR("LT") not being reset after the
+    initial call to the vitals package api.  This resulted in two separate
+    searches for outpatient data instead of one for outpatient and a
+    second for non-outpatient data.
+  
+    Resolution:
+    -----------
+    Routines GMTSVS and GMTSVSS were modified to kill the GMRVSTR("LT")
+    variable after not finding any outpatient data, so the subsequent
+    search will return the last non-outpatient measurements as it was
+    designed to.
+  
+ 4. HD0000000126708     Change (S) to (A/S or Active/Suspend)
+  
+    Problem:
+    --------
+    It was determined that patient safety issue PSI-03-033 (MWV-0703-22069 -
+    'SUSPENDED' causing problems) affected Health Summary reports as well.
+    The display of the prescription status SUSPENDED has caused some
+    confusion and misinterpretation amongst providers and patients.
+    Outpatient Pharmacy is creating a new API (ACS^PSOHCSUM) to return
+    ACTIVE/SUSP as the status of SUSPENDED prescriptions as suggested in the
+    interim solution for PSI-03-033.  This new API is being released with
+    Outpatient Pharmacy patch PSO*7*214.  DBIA #330 is also being modified
+    to include the new API entry point.  The Health Summary PHARMACY
+    OUTPATIENT component currently only displays the abbreviations of the
+    prescription status.  Thus, when the status of a prescription was
+    SUSPENDED, only "S" was displayed.  It was felt this was even more
+    ambiguous than displaying SUSPENDED and should be corrected.
+  
+    Resolution:
+    -----------
+    The Health Summary PHARMACY OUTPATIENT component will be modified to
+    display the entire prescription status name instead of just the
+    abbreviation for the status.  The prescription status of ACTIVE/SUSP
+    will be displayed instead of SUSPENSE.
+  
+ 5. HD0000000067861     MAD-0104-42050  PULSE OX DISPLAY
+  
+    Problem:
+    --------
+    The display of the Pulse Oximetry as PO2 on several Health Summary
+    reports can be confusing.  Several other packages are changing their
+    displays to use POx instead.  To be consistent throughout the CPRS
+    displays, Health Summary needs to make this change as well.
+  
+    Resolution:
+    -----------
+    Routines GMTSVS, GMTSVSD, and GMTSVSS are being modified to display
+    POx instead of PO2 to represent Pulse Oximetry.
+  
+  
+ ROUTINE SUMMARY: 
+ ===============
+ The following is a list of the routines included in this patch.  
+ The second line of each of these routines now looks like: 
+  
+   <tab>;;2.7;Health Summary;**[PATCH LIST]**;Oct 20, 1995
+  
+                        CHECK^XTSUMBLD results
+ Routine name      Before Patch        After Patch       Patch List
+ ============      ============        ===========       ===========
+  GMTSP78                 N/A            6106663         78
+  GMTSPSO             5324661            6314021         15,28,37,56,78
+  GMTSPSO7            4578739            5092281         15,28,37,56,78
+  GMTSVS             13010922           16010712         8,20,28,35,49,78
+  GMTSVSD            19132332           19521706         35,49,58,78
+  GMTSVSS            12686469           14163585         8,20,28,35,49,78
+  
+                        CHECK1^XTSUMBLD results
+ Routine name      Before Patch        After Patch       Patch List
+ ============      ============        ===========       ===========
+  GMTSP78                 N/A            9240012         78
+  GMTSPSO            10468590           11904487         15,28,37,56,78
+  GMTSPSO7            8701124            9519932         15,28,37,56,78
+  GMTSVS             32837615           40018918         8,20,28,35,49,78
+  GMTSVSD            57231397           58460028         35,49,58,78
+  GMTSVSS            40551410           43514605         8,20,28,35,49,78
+  
+ INSTALLATION INSTRUCTIONS:
+ =========================
+ This patch can be loaded with users in the system.  Installation time
+ will be less than 5 minutes.
+  
+  1.  Choose the PackMan message containing this patch and invoke the 
+      INSTALL/CHECK MESSAGE PackMan option.  
+  
+  2.  Start up the Kernel Installation and Distribution System Menu
+      [XPD MAIN]: 
+  
+           Edits and Distribution ...  
+           Utilities ...  
+           Installation ...  
+  
+      Select Kernel Installation & Distribution System Option: Installation
+                                                               ---
+           1      Load a Distribution
+           2      Verify Checksums in Transport Global
+           3      Print Transport Global
+           4      Compare Transport Global to Current System
+           5      Backup a Transport Global
+           6      Install Package(s)
+                  Restart Install of Package(s)
+                  Unload a Distribution
+  
+  3.  From this menu, you may elect to use the following options
+      (When prompted for the INSTALL NAME, enter GMTS*2.7*78):
+      
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will
+          not backup any other changes such as DD's or templates.
+      b.  Compare Transport Global to Current System - This option
+          will allow you to view all changes that will be made when
+          this patch is installed.  It compares all components of this
+          patch (routines, DD's, templates, etc.).
+      c.  Verify Checksums in Transport Global - This option will
+          allow you to ensure the integrity of the routines that are
+          in the transport global.
+  
+  4.  Use the Install Package(s) option and select the package
+      GMTS*2.7*78.
+  
+      a.  When prompted "Want KIDS to INHIBIT LOGONs during the
+          install? YES//", answer NO.
+      b.  When prompted "Want to DISABLE Scheduled Options and Menu 
+          Options and Protocols? YES//", answer YES.
+      c.  When prompted "Enter options you wish to mark as 'Out Of Order':",
+          enter the following options:
+  
+             Ad Hoc Health Summary [GMTS HS ADHOC]
+  
+      d.  When prompted "Enter protocols you wish to mark as 'Out Of Order':",
+          press <return>.
+  
+      e.  When prompted "Delay Install (Minutes):  (0-60): 0//", press
+          <return>.
+  
+  5.  The post-installation routine, GMTSP78, may be deleted after a
+      successful installation.
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: GMTSP78
+    Before:       n/a  After:  B9240012  **78**
+Routine Name: GMTSPSO
+    Before: B10468590  After: B11904487  **15,28,37,56,78**
+Routine Name: GMTSPSO7
+    Before:  B8701124  After:  B9519932  **15,28,37,56,78**
+Routine Name: GMTSVS
+    Before: B32837615  After: B40018918  **8,20,28,35,49,78**
+Routine Name: GMTSVSD
+    Before: B57231397  After: B58460028  **35,49,58,78**
+Routine Name: GMTSVSS
+    Before: B40551410  After: B43514605  **8,20,28,35,49,78**
+
+=============================================================================
+User Information:
+Entered By  : PHELPS,TY                     Date Entered  : AUG 22, 2005
+Completed By: ILUSTRISIMO,LUCY              Date Completed: APR 21, 2006
+Released By : GIVENS,DALE S                 Date Released : APR 24, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

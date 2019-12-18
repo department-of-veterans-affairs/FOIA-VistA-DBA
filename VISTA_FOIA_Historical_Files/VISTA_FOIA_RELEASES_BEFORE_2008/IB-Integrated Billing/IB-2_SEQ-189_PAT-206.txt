@@ -1,0 +1,252 @@
+$TXT Created by TUSEYEV,ANDREY at DEVFEY.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 03/18/03 at 20:29
+=============================================================================
+Run Date: MAR 28, 2003                     Designation: IB*2*206
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #189                       Status: Released
+                  Compliance Date: APR 28, 2003
+=============================================================================
+
+Associated patches: (v)IB*2*51     <<= must be installed BEFORE `IB*2*206'
+                    (v)IB*2*190    <<= must be installed BEFORE `IB*2*206'
+                    (v)DG*5.3*489  <<= must be installed BEFORE `IB*2*206'
+
+Subject: HIPAA Confidential Communications
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+ Overview
+ --------
+  
+ Patch IB*2.0*206 represents the Integrated Billing portion of the HIPAA
+ Confidential Communications project. It makes necessary changes to the IB
+ functionality to ensure that all IB-related patient correspondence will be
+ sent to confidential mailing address, when applicable.
+  
+  
+ Functional Description
+ ----------------------
+  
+ The patch IB*2.0*206 provides the following modifications, related to the 
+ HIPAA Confidential Communications requirements.
+  
+ 1) RX Copay Exemption Test Reminders will be printed, indicating the 
+ patient's confidential mailing address, if applicable.
+  
+ 2) The patient's UB Forms will use the confidential address for mailing, 
+ if applicable. UB Forms are being sent to the bill mailing address, which
+ is determined at the time the bill is created. With this patch, IB will
+ populate the bill's mailing address with patient's Confidential Address,
+ when applicable: if the patient is responsible for the bill and has an
+ address for Confidential Communications active for billing-related
+ correspondence at the time the bill was created.
+  
+ 3) The patient's HCFA 1500 Forms will use the confidential address for 
+ mailing, if applicable. In the IB package, HCFA 1500 Forms are being sent
+ to the bill mailing address, which is determined at the time the bill is
+ created. With this patch, IB will populate the bill's mailing address with
+ patient's Confidential Address, when applicable: if the patient is
+ responsible for the bill and has an address for Confidential
+ Communications active for billing-related correspondence at the time the
+ bill was created.
+  
+ 4) The mailing address for the third party bills is determined at the time
+ the bill is created. The bill mailing address is stored with the bill and
+ may be changed for every bill individually, using menu option [IB EDIT
+ BILLING INFO], SCREEN #3 "PAYER INFORMATION". The changes will affect only
+ this particular bill. The SCREEN #1 "DEMOGRAPHIC INFORMATION" does not
+ show the patient's Confidential Address, because the Confidential Address
+ cannot be edited within the IB package.
+  
+ Technical Description
+ ---------------------
+  
+ The IB package uses the ADD^VADPT call to determine the patient's mailing
+ address. This call is external to the IB package. With the HIPAA
+ Confidential Communications project this API call will be modified to
+ return the patient's confidential address (if applicable) in addition to 
+ the patient's permanent address.
+  
+ This patch will analyze the output of ADD^VADPT as follows:
+  
+ a. If the API returns the node VAPA(12) as NULL, or zero - the
+ confidential address will NOT be used, because it either does not exist,
+ or is not active for the current date.
+  
+ b. If the local array VAPA returned by the API does not have the node 
+ VAPA(22,3) defined, or if the node is defined, but the third piece of the 
+ string is not equal to "Y" - the confidential address will NOT be used,
+ because the confidential address is not applicable to the billing-related
+ correspondence.
+  
+ c. For all other cases the patients Confidential Address will be used for
+ billing-related correspondence.
+  
+ The following routines were modified by this patch:
+  
+ 1. IBARXEL - this routine was modified to use the zip code from the 
+ confidential address, when applicable, to sort reminding letters.
+  
+ 2. IBARXEPL - this routine was modified to print the patient's 
+ confidential address, when applicable, on RX Copay Exemption Test
+ Reminders.
+  
+ 3. IBCU5 - this routine contains the procedure EN^IBCU5, which is being 
+ called by the compiled data dictionary of file #399 "BILL/CLAIMS". This
+ procedure will be triggered when a record of file #399 is created/modified
+ to populate the bill's mailing address fields (fields 104-109,121). With
+ this patch, the procedure will populate the bill's mailing address with
+ the patient's confidential address, if applicable. This mailing address 
+ will be used when printing UB or HCFA forms.
+  
+ Developer Initiated Issue
+ -------------------------
+  
+ During the development of this patch, an existing minor problem was
+ discovered. Because the problem affected the functionality of this patch,
+ it was identified and completely resolved. The essence of the above
+ problem was as follows: When editing a bill (file #399 BILL/CLAIMS), for
+ example, using menu option [IB EDIT BILLING INFO], MCCR SCREEN 3, when
+ changing the Party Responsible for the Bill from INSURANCE to PATIENT
+ these cross-references were triggered if the following sequence: 
+ - "AML1" was triggered and populated the Mailing Address with patient's
+ address (that's correct). That happened because the field #.11 ("WHO'S
+ RESPONSIBLE FOR BILL?")  was changed to "p" - Patient. 
+ - "AML2" was triggered after that and filled the Mailing Address with the
+ address of the Insurance Company back again (that was incorrect). That
+ happened because the field #135 ("BILL PAYER CARRIER") is not empty.
+  
+ The issue was resolved by modifying the code for the "AML2" 
+ cross-reference (subroutine MAILA^IBCU5) to avoid populating the Mailing
+ Address of the bill with the address of the Insurance Company in cases,
+ when the party, responsible for the is "p" - Patient, or "o" - Other
+ Party. 
+  
+ Install Time - less than 5 minutes.
+  
+  
+ ================ INSTALLATION INSTRUCTIONS =================
+  
+   1.   LOAD TRANSPORT GLOBAL
+        ---------------------
+        Choose the PackMan message containing this patch and invoke the
+        INSTALL/CHECK MESSAGE PackMan option.
+  
+   2.   DISABLE ROUTINE MAPPING   (DSM for Open VMS sites only)
+        -----------------------
+        Disable routine mapping on all systems for the routines listed
+        in step 3 below.
+        NOTE:  If the routines included in this patch are not currently
+        in your mapped routine set, please skip this step.
+  
+   3.   ROUTINES SENT WITH PATCH
+        ------------------------
+        The following is a list of the routines included in this patch.
+        The second line of each of these routines now looks like:
+  
+        ;;2.0;INTEGRATED BILLING;**[patch list]**;21-MAR-94
+  
+                  CHECK^XTSUMBLD results
+  
+   Routine     Before Patch   After Patch    Patch List
+   -------     ------------   -----------    ----------
+   IBARXEL       4829604         5496758     34,139,206
+   IBARXEPL     10831458        11951790     34,54,190,206
+   IBCU5         5544110         6717342     8,52,80,117,51,206
+  
+        Total number of routines - 3
+  
+  
+   4.   START UP KIDS
+        -------------
+        Start up the Kernel Installation and Distribution System Menu
+        [XPD MAIN]:
+  
+             Edits and Distribution ...
+             Utilities ...
+             Installation ...
+  
+       Select Kernel Installation & Distribution System Option:INStallation
+                                                               ---
+             Load a Distribution
+             Print Transport Global
+             Compare Transport Global to Current System
+             Verify Checksums in Transport Global
+             Install Package(s)
+             Restart Install of Package(s)
+             Unload a Distribution
+             Backup a Transport Global
+  
+        Select Installation Option:
+  
+   5.   Select Installation Option:
+        --------------------------
+        NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+               NAME, enter IB*2.0*206):
+  
+        a.  Backup a Transport Global - This option will create a backup
+            message of any routines exported with this patch. It will not
+            backup any other changes such as DD's or templates.
+        b.  Compare Transport Global to Current System - This option will
+            allow you to view all changes that will be made when this patch
+            is installed.  It compares all components of this patch
+            (routines, DD's, templates, etc.).
+        c.  Verify Checksums in Transport Global - This option will allow
+            you to ensure the integrity of the routines that are in the
+            transport global.
+  
+    6.   Select Installation Option: Install Package(s)
+         ----------------------------------------------
+        **This is the step to start the installation of this KIDS patch:
+  
+       a.Choose the Install Package(s) option to start the patch install.
+       b.When prompted 
+         "Want KIDS to INHIBIT LOGONs during the install? YES//"
+         answer NO 
+       c.When prompted "Want to DISABLE Scheduled Options, Menu
+         Options, and Protocols? YES//" answer NO
+  
+    7.   REBUILD MAPPED ROUTINE(S)  (DSM for Open VMS sites only)
+        -------------------------
+        Optional - Include the routines distributed with this patch in the
+        mapped routine set.
+  
+        NOTE: This step is only necessary if you performed step 2 or if
+        you wish to include the routines in your mapped set.
+
+Routine Information:
+====================
+
+Routine Name:
+  - IBCU5
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBARXEL
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBARXEPL
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : TUSEYEV,ANDREY                 Date Entered : DEC 12, 2002
+Completed By: MOHSENE,DIANA                 Date Completed: MAR 25, 2003
+Released By : DUGARD,ROBERT                 Date Released : MAR 28, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

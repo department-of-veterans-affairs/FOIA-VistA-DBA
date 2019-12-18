@@ -1,0 +1,253 @@
+$TXT Created by FORT,WALLY at NXT.KERNEL.FO-OAKLAND.MED.VA.GOV  (KIDS) on MONDAY, 12/02/02 at 13:48
+=============================================================================
+Run Date: JAN 07, 2003                     Designation: XU*8*189
+Package : XU - KERNEL                          Priority: Mandatory
+Version : 8       SEQ #227                       Status: Released
+                  Compliance Date: FEB 07, 2003
+=============================================================================
+
+Associated patches: (v)XU*8*179    <<= must be installed BEFORE `XU*8*189'
+
+Subject: XLFDT Midnight conversion
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+ Patch Tracking # 34609735
+ Test Sites: Salt Lake OIFO
+ Blood Bank Clearance: 4/12/2002
+  
+ NOIS: ISL-1000-51695
+ During the investigation for patch XU*8*168 it was found that many of the 
+ date functions did not handle midnight correctly. This patch makes the 
+ treatment of midnight consistent across all functions in XLFDT. Midnight is 
+ represented as 58882,0 in M $H and as 3020319.24 in FM. Both of these are 
+ in keeping with the ISO 8601 standard that delineates how it will be 
+ represented.
+  
+ NOIS: SFC-0701-62153
+ Problem: A call of W $$FMADD^XLFDT(3010723,-3,0,0,0) returns 3010720 But 
+ a call of W $$FMADD^XLFDT(3010723,0,-72,0,0) returns 3010719.  These 
+ should return the same value.
+ Fix: The code corrected to handle negative hours that are a multiple of days.
+  
+ NOIS: ISW-0102-23209
+ Problem: 
+ 1. If the call to extrinsic function 
+  $$HL7TFM^XLFDT(HL7date/time[,Local/Uct]) is made with the second 
+ parameter "L" but the value of the first parameter did not have an 
+ offset, the call will abend with an undefined error on variable %TZ at 
+ HL7TFM+10^XLFDT.  
+ Fix: The code was changed to see that %TZ always has a value.
+ 2. A second issue that this raises is how to classify the date/time when 
+ there isn't a timezone.  From the HL7 doc's it should be considered to 
+ be a local time.
+ Fix: If the HL7 date/time doesn't have a timezone, see that it is 
+ considered as a local time.
+  
+ NOIS: ISD-0802-71410
+ Problem: If the call to HL7TFM^XLFDT was made with just a YYYY or YYYYMM it 
+ would get treated as a time and not a date.
+ Fix: To fix this a new third parameter has been added to the call to 
+ indicate that the value to be converted is just a time value. This 
+ allows the full range of HL7 dates to be converted.
+  
+ Range checks were added to many of the calls.  It is assumed that input dates
+ have been validated by the creating application.
+  The range of accepted $H dates: "2,0" to "99999,86399".
+  The range of accepted FM dates: 1410102 to 4141015.
+  The range of accepted HL7 dates: 18410102 to 21141015.
+  
+ From ISO 8601:
+ 5.3.2 Midnight
+ The complete and extended representations for midnight, in accordance with 
+ 5.3.1, shall he expressed in either of the two following ways:
+  
+        Basic format    Extended format
+        a) 000000       00:00:00 (the beginning of a day);
+        b) 240000       24:00:00 (the end of a day).
+  
+ The representations may be reduced in accordance with 5.3.1.4.
+ NOTES
+ 1. Midnight will normally be represented as (0000) or (2400)
+ 2. The choice of representation a) or b) will depend upon any association 
+    with a date, or  time period.
+ 3. The end of one day (2400) coincides with (0000) at the start of the next 
+    day, e.g. 2400 on 12 April 1985 is the same as 0000 on 13 April 1985. If 
+    there is no association with a date or time period both a) and b) represent 
+    the same clock time in the 24-hour timekeeping system.
+  
+ The functions changed are HTFM, FMTH, HDIFF, FMDIFF, HADD and FMADD.
+ The biggest change is in HADD and FMADD
+ and their rollover from one day to the next.  
+  
+ Time zone values
+ EST -0500
+ CST -0600
+ MST -0700
+ PST -0800
+  
+ Time zone offset example.
+ UTC GMT    EDT    EST CDT  CST MDT  MST PDT  PST       
+ 1000      6 AM     5 AM     4 AM     3 AM    2 AM      
+ 1100      7 AM     6 AM     5 AM     4 AM    3 AM      
+ 1200      8 AM     7 AM     6 AM     5 AM    4 AM      
+ 1300      9 AM     8 AM     7 AM     6 AM    5 AM      
+        
+ These examples of the problem and fixed responses, assume a computer in the 
+ PST time zone.
+ Before examples:
+ Check $$HTFM, 58412 is 3001204
+ Call with 58411,86399 result 3001203.235959
+ Call with 58412,0 result 3001204                 <<Lost time
+ Call with 58412,60 result 3001204.0001
+ Check $$FMTH, 3001204 is 58412
+ Call with 3001203.2359 result 58411,86340
+ Call with 3001203.24 result 58411,86400          <<Invalid result
+ Call with 3001204.000001 result 58412,1
+ Check $$FMADD, adding minutes
+ Call with 3001204.2359 plus 1 result 3001204.24
+ Call with 3001204.24 plus 1 result 3001205.0001
+ Call with 3001205.0001 plus 1 result 3001205.0002
+ Check $$FMADD, subtracting minutes
+ Call with 3001205.0001 minus 1 result 3001205    <<Lost time
+ Call with 3001205 minus 1 result 3001204.2359
+ Call with 3001204.2359 minus 1 result 3001204.2358
+ Check $$HADD, adding minutes
+ Call with 58412,86280 plus 1 result 58412,86340
+ Call with 58412,86280 plus 2 result 58412,86400  <<Invalid result
+ Call with 58412,86280 plus 3 result 58413,60
+ Check $$HADD, subtracting minutes
+ Call with 58413,120 minus 3 result 58412,86340
+ Call with 58413,120 minus 2 result 58413,0
+ Call with 58413,120 minus 1 result 58413,60
+  
+ After Examples:
+ Check $$HTFM, 58412 is 3001204
+ Call with 58411,86399 result 3001203.235959
+ Call with 58412,0 result 3001203.24              <<Correct
+ Call with 58412,60 result 3001204.0001
+ Check $$FMTH, 3001204 is 58412
+ Call with 3001203.2359 result 58411,86340
+ Call with 3001203.24 result 58412,0              <<Correct
+ Call with 3001204.000001 result 58412,1
+ Check $$FMADD, adding minutes
+ Call with 3001204.2359 plus 1 result 3001204.24
+ Call with 3001204.24 plus 1 result 3001205.0001
+ Call with 3001205.0001 plus 1 result 3001205.0002
+ Check $$FMADD, subtracting minutes
+ Call with 3001205.0001 minus 1 result 3001204.24  <<Correct
+ Call with 3001204.24 minus 1 result 3001204.2359
+ Call with 3001204.2359 minus 1 result 3001204.2358
+ Check $$HADD, adding minutes
+ Call with 58412,86280 plus 1 result 58412,86340
+ Call with 58412,86280 plus 2 result 58413,0       <<Correct
+ Call with 58412,86280 plus 3 result 58413,60
+ Check $$HADD, subtracting minutes
+ Call with 58413,120 minus 3 result 58412,86340
+ Call with 58413,120 minus 2 result 58413,0
+ Call with 58413,120 minus 1 result 58413,60
+ Check $$FMTHL7
+ Call with 3001204.123 result 200012041230-0800
+ Call with 3001204.2334 result 200012042334-0800
+ Call with 3001204.24 result 200012050000-0800
+ Check $$HL7TFM
+ Call with 20001205000000-0800 result 3001204.24
+ Call with 200012050000-0800 result 3001204.24
+ Call with 20001204123000 result 3001204.123
+ Call with 200012042334-0800 result 3001204.2334
+ Call with 20020124120138 result 3020124.120138
+ Check $$HL7TFM UCT time
+ Call with 20001205000000-0800 result 3001205.08
+ Call with 20001204123000-0600 result 3001204.183
+ Call with 200012042334-0800 result 3001205.0734
+ Call with 20020124120138 result 3020124.200138    
+ Check $$HL7TFM to local time
+ Call with 20001205000000-0800 result 3001204.24
+ Call with 20001204123000-0600 result 3001204.103
+ Call with 200012042334-0500 result 3001204.2034
+ Call with 20020124120138 result 3020124.120138
+  
+  
+ Routine Summary
+ The following routines are included in this patch.  The second line of each
+ of these routines now looks like:
+  ;;8.0;KERNEL;**[Patch List]**;Jul 10, 1995
+  
+                  Checksum
+ Routine         Old       New      Patch List
+ XLFDT         4357199   5184502    **71,120,166,168,179,189**
+ XLFDT1        2415851   3255286    **71,189**
+  
+ List of preceding patches: 179
+ Sites should use CHECK^XTSUMBLD to verify checksums.
+  
+ =========================================================================
+ Installation:
+  
+ >>>Users may remain on the system.
+ >>>TaskMan does not need to be stopped.
+  
+   1.  DSM sites - This routine is usually mapped,
+       so you will need to disable mapping for the affected routine.
+  
+   2.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This
+       option will load the KIDS package onto your system.
+  
+   3.  The patch has now been loaded into a Transport global on your
+       system. You now need to use KIDS to install the Transport global.
+       On the KIDS menu, under the 'Installation' menu, use the following
+       options:
+  
+          Verify Checksums in Transport Global
+          Print Transport Global
+          Compare Transport Global to Current System
+          Backup a Transport Global
+  
+   4.  Users can remain on the system.
+       This patch can be queued for install at non-peak hours.
+       TaskMan can remain running.
+  
+   5.  On the KIDS menu, under the 'Installation' menu, use the following
+       option:
+         Install Package(s)  'XU*8.0*189'
+                              ==========
+  
+       Want KIDS to INHIBIT LOGONs during the install? YES// NO
+  
+       Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// NO
+       
+   6.  DSM Sites, after patch has installed, rebuild your map set.
+  
+ =========================================================================
+
+Routine Information:
+====================
+
+Routine Name:
+  - XLFDT
+
+
+Routine Checksum:
+
+Routine Name:
+  - XLFDT1
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : FORT,WALLY                     Date Entered : JAN 12, 2001
+Completed By: SINGH,GURBIR                  Date Completed: JAN 06, 2003
+Released By : TILLIS,LEWIS                  Date Released : JAN 07, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

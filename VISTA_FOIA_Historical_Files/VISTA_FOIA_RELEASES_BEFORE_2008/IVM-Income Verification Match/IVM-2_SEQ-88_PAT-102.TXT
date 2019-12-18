@@ -1,0 +1,493 @@
+
+=============================================================================
+Run Date: JAN 26, 2005                     Designation: IVM*2*102
+Package : IVM - INCOME VERIFICATION MATCH     Priority: Mandatory
+Version : 2        SEQ #88                      Status: Released
+                  Compliance Date: FEB 26, 2005
+=============================================================================
+
+Associated patches: (v)IVM*2*56    <<= must be installed BEFORE `IVM*2*102'
+
+Subject: DATE OF DEATH ENHANCEMENTS
+
+Category: 
+  - Routine
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+  
+ This Date of Death (DOD) Enhancements Project is implementing software
+ modifications for the Health Eligibility Center (HEC) and VistA
+ applications.  The implementation is made to provide a higher
+ confidence level for death dates received by the Veterans Benefits
+ Administration (VBA), the HEC, and VA sites.
+  
+ These software modifications will allow for the synchronization of the
+ Date of Death information between the HEC and VistA Systems as well as
+ reduce the user (manual) workload for handling Date of Death
+ information.
+  
+  
+ OVERVIEW
+ ========
+  
+ The Date of Death Enhancements Project contains modifications to both 
+ VistA and HEC Legacy applications.  This patch (IVM*2.0*102) addresses 
+ the following issues:
+  
+ Issue I    Update Option: Demographics Upload [IVM UPLOAD DEM]
+       II   Update ORU~Z05 Receiver for Automatic Upload of DOD Updates
+       III  Update ORU~Z05 Receiver for Automatic Upload of DOD Deletion
+       IV   Correct Non-Numeric Date of Death Field Entries 
+       V    Synchronize Auto-Upload of Z05 Messages with the Demographics 
+            Upload 
+       VI   Synchronize Date of Death fields between VistA and HEC Legacy 
+            Systems.
+  
+  
+ Issue I - Update Option: Demographics Upload [IVM UPLOAD DEM]
+ ======================================================================
+  
+ Patches DG*5.3*545 and IVM*2.0*85 (Date of Death Modifications to ZPD 
+ Segment) released on March 4, 2004 added the two following fields to the 
+ ZPD segments of the ORU (Unsolicited) and ORF (Solicited) Z07 (Full 
+ Data/DCD Transmission) HL7 Transmission Builder:
+  
+     Field Name                   ZPD Segment    FILE/FIELD
+     ----------                   -----------    ----------
+     SOURCE OF NOTIFICATION        ZPD31          #2/#.353
+     DATE OF DEATH LAST UPDATED    ZPD32          #2/#.354 
+  
+ The SOURCE OF NOTIFICATION field (#.353) and DATE OF DEATH LAST UPDATED 
+ field (#.354)were added to the PATIENT file (#2), but they did not 
+ display in the Demographics Upload [IVM UPLOAD DEM] menu option.
+  
+ This patch IVM*2.0*102 is adding the fields to the IVM DEMOGRAPHIC UPLOAD 
+ FIELDS file (#301.92) which allows them to be viewed in the Demographics 
+ Upload [IVM UPLOAD DEM] menu option for review.  When an ORU~Z05 
+ (Demographic Data) HL7 transmission is received for adding or updating a 
+ Date of Death, the option will now display the following three fields:
+  
+     Field Name              Field Number
+     ----------              ------------
+     DATE OF DEATH                 #.351
+     SOURCE OF NOTIFICATION        #.353
+     DATE OF DEATH LAST UPDATED    #.354 
+  
+ Selecting any one of the Date of Death fields will result in the upload 
+ of all three fields into the PATIENT file (#2).
+  
+ The LAST EDITED BY field (#.355) will be updated with "POSTMASTER" 
+ indicating that the data was received via an ORU~Z05 HL7 message.
+  
+ The DEATH ENTERED BY field (#.352) will be updated with the user who 
+ approved the upload of the ORU~Z05 HL7 message.
+  
+  
+ Issue II - Update ORU~Z05 Receiver for Automatic Upload of DOD Updates
+ ======================================================================
+  
+ When the Date of Death contained in the ORU~Z05 (Demographic Data) 
+ Transmission matches the date value in the PATIENT file (#2), it 
+ qualifies for an automatic upload.  The Date of Death information will be 
+ updated using the data values either contained in or calculated from the 
+ ORU~Z05 HL7 message as follows:
+  
+     o  The DATE OF DEATH field (#.351) will be updated from the message.
+  
+     o  If the date and time of the DATE OF DEATH LAST UPDATED field (#.354)
+        in the message does not match the date and time in the PATIENT 
+        file (#2),the DEATH ENTERED BY field (#.352) will be updated to 
+        POSTMASTER.
+  
+     o  If the date and time of the DATE OF DEATH LAST UPDATED field (#.354)
+        in the message matches the date and time in the PATIENT file (#2),
+        the DEATH ENTERED BY field (#.352) will not be updated, and the 
+        current USER ID will not be over-written.
+  
+     o  The SOURCE OF NOTIFICATION field (#.353) will be updated from the 
+        message.
+  
+     o  The DATE OF DEATH LAST UPDATED field (#.354) will be updated from 
+        the message.
+  
+     o  The LAST EDITED BY field (#.355) will be updated with
+        "POSTMASTER", indicating that the updated data was received via 
+        an ORU~Z05 HL7 message.
+  
+  
+ Issue III - Update ORU~Z05 Receiver for Automatic Upload of DOD Deletion
+ ========================================================================
+  
+ When the ORU~Z05 (Demographic Data) Transmission contains a Date of Death 
+ deletion, it qualifies for an automatic upload.  The message will be 
+ processed into the PATIENT file (#2) record fields as follows:
+  
+     o  The DATE OF DEATH field (#.351) will be deleted.
+  
+     o  The DEATH ENTERED BY field (#.352) will be deleted.
+  
+     o  The SOURCE OF NOTIFICATION field (#.353) will be deleted.
+  
+     o  The DATE OF DEATH LAST UPDATED field (#.354) will be updated with
+        the date and time the HL7 transmission was received. 
+  
+     o  The LAST EDITED BY field (#.355) will be updated with "POSTMASTER",
+        indicating that the deletion data was received via an ORU~Z05 HL7
+        message.
+  
+  
+ Issue IV - Correct Non-Numeric Date of Death Field Entries
+ ========================================================================
+  
+ The INPUT TRANSFORM on the DATE OF DEATH field (#.351) in the PATIENT 
+ file (#2) was modified by a prior patch to correctly store the date of 
+ the veteran's death in FileMan format. During data entry, the only 
+ acceptable dates are:
+  
+     o  Year only
+  
+     o  Month and Year
+  
+     o  Month, Day, and Year
+  
+ There are some Date of Death entries containing invalid (non-FileMan 
+ formatted) dates that were entered prior to the installation of the INPUT 
+ TRANSFORM on the Date of Death field.  All invalid non-numeric Date of 
+ Death entries will be deleted.
+  
+ The records in the VETERANS ID & VERIFICATION ACCESS (VIVA) File 
+ (#300.11) in HEC Legacy were checked for invalid or non-numeric Date of 
+ Death entries.  The sites were contacted and all the records containing 
+ invalid entries were corrected.
+  
+  
+ Issue V - Synchronize Auto-Upload of Z05 Messages with the Demographics 
+           Upload
+ ========================================================================
+  
+ When the ORU~Z05 (Demographic Data) Transmission qualifies for an 
+ automatic upload, it is possible for previous messages to have been 
+ received and entered into the Demographics Upload [IVM UPLOAD DEM] 
+ menu option.
+  
+ This is a list of all the possible PATIENT file (#2) fields that can 
+ cause an ORU~Z05 (Demographic Data) Transmission to be entered into the 
+ Demographics Upload [IVM UPLOAD DEM] menu option:
+  
+           Field Name                     Field Number
+           -----------------------------  ------------
+           ADDRESS CHANGE DT/TM            (#.118)
+           ADDRESS CHANGE SITE             (#.12)
+           ADDRESS CHANGE SOURCE           (#.119)
+           CITY                            (#.114)
+           CITY (VA)                       (#.2916)
+           CLAIM FOLDER LOCATION           (#.314)
+           CLAIM FOLDER NUMBER             (#.313)
+           COUNTY                          (#.117)
+           DATE MEDICAID LAST ASKED?       (#.382)
+           DATE OF BIRTH                   (#.03)
+         * DATE OF DEATH                   (#.351)
+         * DATE OF DEATH LAST UPDATED      (#.354)
+           DATE RULED INCOMPETENT (VA)     (#.291)
+           ELIGIBILITY STATUS              (#.3611)
+           ELIGIBILITY STATUS DATE         (#.3612)
+           ELIGIBILITY VERIF. METHOD       (#.3615)
+           ELIGIBLE FOR MEDICAID?          (#.381)
+           GUARDIAN (VA)                   (#.2912)
+           INSTITUTION (VA)                (#.2911)
+           PHONE (VA)                      (#.2919)
+           PHONE NUMBER [RESIDENCE]        (#.131)
+           PRIMARY ELIGIBILITY CODE        (#.361)
+           RATED INCOMPETENT?              (#.293)
+           RELATIONSHIP (VA)               (#.2913)
+           SEX                             (#.02)
+         * SOURCE OF NOTIFICATION          (#.353)
+           STATE                           (#.115)
+           STATE (VA)                      (#.115)
+           STREET ADDRESS [LINE 1]         (#.111)
+           STREET ADDRESS [LINE 1] (VA)    (#.2914)
+           STREET ADDRESS [LINE 2]         (#.112)
+           STREET ADDRESS [LINE 2] (VA)    (#.2915)
+           ZIP (VA)                        (#.2918)
+           ZIP+4                           (#.1112)
+  
+ Note: * These are Date of Death related fields
+  
+ When any message qualifies for an automatic upload, the process will 
+ search the Demographics Upload [IVM UPLOAD DEM] menu option for 
+ any date of death entries.  The following business rules will be applied 
+ to all records found in the Demographics Upload option for each veteran, 
+ where an ORU~Z05 is automatically uploaded:
+  
+     o If the record contains Date of Death related field data only, the
+       data will be deleted and the record will be removed from the 
+       Demographics Upload [IVM UPLOAD DEM] menu option.
+  
+     o  If the record contains a combination of Date of Death related field
+        data and any other field data, only the Date of Death related 
+        field data will be removed, and the record will remain in the 
+        Demographics Upload [IVM UPLOAD DEM] menu option.
+  
+     o  When the record contains NO Date of Death data, no action will be 
+        taken.
+  
+  
+ Issue VI - Synchronize Date of Death fields between VistA and HEC Legacy 
+            Systems
+ ========================================================================
+  
+ The SOURCE OF NOTIFICATION field (#.353) is not a required field, and 
+ although it has been added to the ORU~Z07 (Full Data/DCD Transmission) 
+ HL7 Transmissions to HEC Legacy, it has not been able to be uploaded.
+  
+ The HEC Legacy patch IVMB*2.0*800 synchronized the set of codes in the 
+ VETERANS ID & VERIFICATION ACCESS (VIVA) file (#300.11) records for the 
+ SOURCE OF NOTIFICATION field (#.353).  The PATIENT file (#2) records 
+ containing a DATE OF DEATH field (#.351)and a SOURCE OF NOTIFICATION 
+ field (#.353) will be queued to send an ORU~Z07 to update the HEC 
+ records. 
+  
+ The distribution/cleanup will be restricted to only queue five thousand 
+ records daily until all records have been processed.  The limitation will 
+ protect against overloading both the inbound and outbound queues in VistA 
+ and at the HEC.  Another limitation on the distribution is that only 
+ seven of the nine values for the SOURCE OF NOTIFICATION field (#.353)
+ will be queued to update the records at the HEC.  Records containing SSA 
+ (Code #6) and NCA (Code #7) will not be queued.
+  
+ An ORU~Z07 (Full Data/DCD Transmission) HL7 Transmission will be queued 
+ for PATIENT file (#2) records containing a DATE OF DEATH field (#.351) 
+ and a SOURCE OF NOTIFICATION field (#.353) with one of the following
+ values:
+  
+     o  Inpatient at VAMC (Code #1)
+  
+     o  Non-VA Medical Facility (Code #2)
+  
+     o  Death Certificate on File (Code #3)
+  
+     o  VBA (Code #4)
+  
+     o  VA Insurance (Code #5)
+  
+     o  Next of Kin/Family/Friend (Code #8)
+  
+     o  Other (Code #9)
+  
+  
+ When the DATE OF DEATH field (#.351) is blank (NULL), the fields 
+ associated with the Date of Death must also be blank (NULL).  If any of 
+ the following fields are not blank (NULL), the values will be deleted 
+ with this post-install cleanup:
+  
+     o  DEATH ENTERED BY (field #.352)
+  
+     o  SOURCE OF NOTIFICATION (field #.353)
+  
+  
+ NOTE: The Date of Death Modifications to ZPD segment patch DG*5.3*545 was 
+ released on March 4, 2004.  It added the following fields to the PATIENT 
+ File (#2):
+            SOURCE OF NOTIFICATION     field #.353
+            DATE OF DEATH LAST UPDATED field #.354
+  
+ The PATIENT file (#2) records containing a Date of Death that was entered 
+ before this patch was released will not contain field data for the two 
+ fields.  If the record is edited after installing patch DG*5.3*545, the 
+ software will populate the fields.
+  
+  
+ SOFTWARE RETRIEVAL
+ ==================
+  
+ The software for this patch is not being distributed through the National 
+ Patch Module. This patch is being distributed as a host file. The host 
+ file will contain the following two KIDS builds:
+  
+             Host file name:  DG_53_P563.KID
+  
+                     Builds:  DG*5.3*563
+                              IVM*2.0*102
+   
+ Sites may retrieve the software directly using FTP from the
+ ANONYMOUS.SOFTWARE directory at the following OI Field Offices:
+  
+                     Albany   : ftp.fo-albany.med.va.gov
+                     Hines    : ftp.fo-hines.med.va.gov
+               Salt Lake City : ftp.fo-slc.med.va.gov
+       First Available Server : download.vista.med.va.gov
+  
+ The following file will be available:
+  
+     File Name           Description
+     ---------           -----------
+     DG_53_P563.KID      Host File containing KIDS software distribution
+  
+ Note:  Use ASCII mode when transferring the .KID file.
+  
+  
+ DOCUMENTATION RETRIEVAL
+ =======================
+  
+ The following documentation file is being released with the Date of 
+ Death Enhancement Project:
+  
+ Patch Number File Name              Description
+ ------------ ---------------------- -------------------------------------
+ DG*5.3*563   DG_5_3_P563_REG_UM.PDF Updates to PIMS V. 5.3 Registration
+                                     User Manual
+  
+ IVM*2*102     IVM_2_P102_TM.PDF     Updates to IVM V. 2.0 Technical Manual
+  
+ IVM*2*102     IVM_2_P102_UM.PDF     Updates to IVM V. 2.0 User Manual
+  
+ Sites may retrieve the documentation directly using FTP from the
+ ANONYMOUS.SOFTWARE directory at the following OI Field Offices:
+  
+                     Albany   : ftp.fo-albany.med.va.gov
+                     Hines    : ftp.fo-hines.med.va.gov
+               Salt Lake City : ftp.fo-slc.med.va.gov
+       First Available Server : download.vista.med.va.gov
+  
+ NOTE: The document is in binary format so it must be transferred in
+       binary, not ASCII, mode.
+  
+  
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+  
+ There is no NSR associated with this patch.
+  
+  
+ This patch addresses the following NOIS/Remedy Ticket(s):
+ ---------------------------------------------------------
+  
+ IST-0904-32208 - Exceptions with Date of Death as "OO" from IVM UPLOAD
+  
+  
+ Overview of NOIS/Remedy Ticket(s):
+ ----------------------------------
+  
+       NOIS: IST-0904-32208 (Exceptions with Date of Death as "OO" from 
+             IVM UPLOAD)
+  
+    Problem: The MPI/DQ Team is receiving exceptions where the Date of 
+             Death is transmitted with an invalid date.
+  
+ Resolution: Fix non-numeric Date of Death entries, and correctly validate 
+             incoming Date of Death date formats.
+  
+  
+ Test Sites:
+ -----------
+  
+ Madison
+ Milwaukee
+ Manchester
+ West LA
+  
+  
+     ================INSTALLATION INSTRUCTIONS =================
+  
+ If installed during the normal workday, it is recommended that the
+ menu options (File #19) and all of their descendants listed in the patch 
+ description for patch DG*5.3*563, be disabled to prevent possible 
+ conflicts while running the KIDS Install. Other VISTA users will not be 
+ affected.
+  
+ The patch should be installed during non-peak hours.
+  
+ Install Time - 45 minutes
+  
+ The components sent with this patch IVM*2.0*102 have been included in the 
+ HOST File DG_53_P563.KID.  Please follow the instructions listed in 
+ the INSTALLATION INSTRUCTIONS for patch DG*5.3*563.
+  
+  
+        COMPONENTS SENT WITH PATCH
+        ------------------------
+        The following is a list of the routines included in this patch.
+        The second line of each of these routines now looks like:
+  
+            ;;2.0;INCOME VERIFICATION MATCH;**[patch list]**;21-OCT-94
+  
+                            CHECK^XTSUMBLD results
+  
+        Routine         Before Patch     After Patch    Patch List
+        -------         ------------     -----------    ----------
+        IVM2A102        N/A              1790293        102
+        IVM2B102        N/A              6017322        102
+        IVMLDEM4        7882673          8740007        5,10,56,102
+        IVMLDEMC        4669490          4704748        79,102
+        IVMLDEMD        N/A              12239740       102
+        IVMPREC6        7804883          7991798        3,4,12,17,34
+                                                        58,79,102
+        IVMPREC8        7454076          7789185        5,6,12,58,73
+                                                        79,102
+  
+             Total number of routines - 7
+   
+       Total number of routines modified: 4
+       Total number of new routines:      3
+       Total number of deleted routines:  0
+
+Routine Information:
+====================
+
+Routine Name:
+  - IVM2A102
+
+
+Routine Checksum:
+
+Routine Name:
+  - IVMLDEM4
+
+
+Routine Checksum:
+
+Routine Name:
+  - IVMLDEMC
+
+
+Routine Checksum:
+
+Routine Name:
+  - IVMLDEMD
+
+
+Routine Checksum:
+
+Routine Name:
+  - IVMPREC8
+
+
+Routine Checksum:
+
+Routine Name:
+  - IVM2B102
+
+
+Routine Checksum:
+
+Routine Name:
+  - IVMPREC6
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : ROWNY,PAUL                    Date Entered  : AUG 05, 2004
+Completed By: MULLER,RICHARD                Date Completed: JAN 20, 2005
+Released By : GANUS,MAUNETTE                Date Released : JAN 26, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

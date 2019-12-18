@@ -1,0 +1,311 @@
+$TXT Created by WHITE,ELAINE at LAWVAA.FO-BIRM.MED.VA.GOV  (KIDS) on Wednesday, 04/02/03 at 11:31
+=============================================================================
+Run Date: APR 09, 2003                     Designation: PSO*7*137
+Package : PSO - OUTPATIENT PHARMACY           Priority: EMERGENCY
+Version : 7       SEQ #122                       Status: Released
+                  Compliance Date: APR 11, 2003
+=============================================================================
+
+Associated patches: (v)PSO*7*85    <<= must be installed BEFORE `PSO*7*137'
+
+Subject: COPAY SERVICE CONNECTED CORRECTION;TALLY OF BILLABLE FILLS
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+ 1. One site has reported an excessive number of prescriptions getting
+ automatically (incorrectly) changed at release from Copay to No Copay 
+ with a reason of "Service Connected". It was determined that this is
+ happening because the Service Connected question does not apply for the
+ patient anymore, but the Computerized Patient Record System V. 1.0(CPRS)
+ passes the Service Connected question's answer from the renewed from or
+ copied from prescription to Outpatient Pharmacy V. 7.0.
+  
+ Solution:
+  
+ This patch corrects the problem but will not do any back-billing. 
+ Information gathered from the results of this patch will be used by the 
+ VHA Central Office to determine whether back-billing will be done for 
+ these fills. A subsequent patch may be released to perform this 
+ back-billing.
+  
+   a. At release of a fill, if the Service Connected flag has a "Yes"
+ answer, a call will be made to Integrated Billing to see if the Service
+ Connected question even applies for this patient anymore. If not, the
+ answer will be set to null in Outpatient Pharmacy and an update
+ transaction will be sent to CPRS to change their copy of the answer to 
+ null.
+  
+   b. A post-install job will loop through all released prescriptions
+ starting from 02/04/2002 (the date that the $7 copay amount went into
+ effect) and will tally the number of fills that could have been billed. 
+ The results of this patch will be maintained in a temporary location for 
+ a limited time in order to speed the processing of any eventual 
+ back-billing.
+  
+  
+ A MailMan message with a subject of "Subj: Outpatient Pharmacy Copay 
+ Tally" will be sent to the patch installer and holders of the PSO COPAY
+ key indicating the number of fills that have a potential for being
+ back-billed.
+  
+ A second MailMan message will be sent to developers of the patch on FORUM 
+ with a subject of "Subj: 'institution' - COUNTS". This message will 
+ contain formatted tallies of fills eligible to be back-billed for 2002 
+ and 2003.
+  
+ The MailMan messages will not contain any patient information. 
+  
+ 2. A problem was encountered when a patient who had previously reached
+ his annual copay cap had activity that brought his copay amount below the
+ annual cap. When that happens, Integrated Billing (IB) will look for any
+ previous fills that weren't billed because of the cap and will attempt to
+ bill for those. The problem occurred when the previous unbilled fill had
+ been returned to stock, Outpatient Pharmacy had an error in the process
+ that should have sent a cancel for those "potential bills" (fills that
+ would have been billed if the patient had not already reached his annual
+ copay cap), so IB attempted to initiate a charge for those. On returned to
+ stock refills, the refill level is removed from the prescription file, so
+ filing the IB-initiated charge caused undefined errors.
+  
+ Solution:
+ The canceling portion of the return to stock processing was corrected to
+ handle "potential charges".
+  
+  
+  
+  Associated NOISs:
+  =================
+  CLE-0103-40262
+  PUG-1202-52049
+  MOU-1202-30780
+  
+  
+  
+   
+  Test Sites:
+  ===========
+  DAYTON, OH                   
+  EL PASO, TX     
+  SPOKANE, WA
+  TUSCALOOSA, AL 
+  
+  
+  Routine Summary:
+  ================
+  
+  The second line now reads as follows:
+  
+     <TAB>;;7.0;OUTPATIENT PHARMACY;**[patch list]**;DEC 1997
+  
+  
+  CHECK^XTSUMBLD results:
+  
+  
+   
+  Routine      Before Patch     After Patch     Patch List
+  =============================================================
+  PSOCP        19706132         19725930        20,46,71,85,137
+  PSOCP1        N/A             1406109         137
+  PSOCPA       14446921         13674694        9,71,85,137
+  PSOCPBA2      N/A             6473889         137
+  PSOCPBAK      N/A             16743148        137
+  PSOCPIB      4779844          4784065         71,137
+  
+  
+  Installation Instructions:
+  ==========================
+  Before installing this patch, use List Tasks [XUTM INQ] option on the
+  Taskman Management [XUTM MGR] menu to list currently running
+  tasks. Do not install this patch while Outpatient Pharmacy users are
+  using the software. 
+   
+  Installation should take no longer than 5 minutes. Please do not queue
+  the job of installing this patch. There is a post-install background
+  job that will prompt for a date@time to run. You MUST respond with a date
+  and time or NOW to queue the post-install job. You will not be able to
+  see what you are answering for the prompt, but will be given an
+  opportunity to see what was entered before the job queues.
+  
+  It is recommended that the post-install be queued to run at a time when
+  Outpatient Pharmacy package usage is at a minimum. This job may run for 
+  several hours.
+   
+  If the post-install job needs to be queued manually (e.g. the patch 
+  install itself was accidentally queued), then it can be queued by     
+  entering D ^PSOCPBAK from programmer mode.
+  
+  Upon completion of the post-install job, a MailMan message with a subject
+  of "Subj: Outpatient Pharmacy Copay Tally" will be sent to the patch
+  installer and holders of the PSO COPAY key with the number of fills that
+  were found to be potentially billable. 
+  
+  An example of the install process is included here under the title
+  "Example Installation".
+  
+  
+   1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+  
+   2. Review your mapped set. If the routines are mapped, they should
+      be removed from the mapped set at this time.
+  
+   3. From the Kernel Installation & Distribution System menu, select
+      the Installation menu.
+  
+   4. From this menu, you may select to use the following options:
+      (when prompted for INSTALL NAME, enter PSO*7.0*137)
+  
+     a. Backup a Transport Global - this option will create a backup
+        message of any routines exported with the patch. It will NOT
+        backup any other changes such as DDs or templates.
+           
+     b. Compare Transport Global to Current System - this option will
+        allow you to view all changes that will be made when the patch
+        is installed. It compares all components of the patch (routines,
+        DDs, templates, etc.).
+  
+     c. Verify Checksums in Transport Global - this option will ensure
+        the integrity of the routines that are in the transport global.
+  
+   5. Use the Install Package(s) option and select the package PSO*7.0*137.
+  
+   6. When Prompted "Want KIDS to INHIBIT LOGONs during the install? 
+      YES//" respond NO.
+  
+   7. When Prompted "Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols? YES//" respond NO.
+  
+   8. The environment check routine will now prompt the installer of the 
+      patch for a date@time to run the post-install job. If no start date 
+      and time is entered when prompted, the job will be queued to run NOW.
+  
+   9. If Routines were unmapped as part of step 2, they should be returned
+      to completion.
+  
+ EXAMPLE INSTALLATION:
+ =====================
+  
+ Select Installation Option: 6  Install Package(s)
+ Select INSTALL NAME: PSO*7.0*137       Loaded from Distribution  
+ 3/16/03@22:43:27 
+      => PSO*7*137
+  
+ This Distribution was loaded on Mar 16, 2003@22:43:27 with header of
+    PSO*7*137
+    It consisted of the following Install(s):
+     PSO*7.0*137
+ Checking Install for Package PSO*7.0*137
+  
+ Install Questions for PSO*7.0*137
+  
+  
+  
+ Want KIDS to INHIBIT LOGONs during the install? YES// NO
+ Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// NO
+  
+  
+  Install Started for PSO*7.0*137 :
+                Mar 16, 2003@22:44:01
+  
+ Build Distribution Date: Mar 16, 2003
+  
+  Installing Routines:
+                Mar 16, 2003@22:44:01
+  
+  Running Post-Install Routine: ^PSOCPBAK
+  
+ Tally for unbilled, released NON-SERVICE CONNECTED prescription fills.
+  
+ If no start date/time is entered when prompted, the background job will be
+ queued to run NOW.
+  
+ At the following prompt, enter a starting date@time
+ or enter NOW to queue the job immediately.
+  
+ If this prompting is during patch installation, you will not see what you 
+ type.
+                                   PSO*7.0*137
+ --------------------------------------------------------------------------
+ ------
+  
+ Queue copay tally Job to run Date@Time: Task will be queued to run NOW
+  
+ Task will be queued to run NOW. Is that correct?  :
+  
+ Queuing background job to tally unbilled NON-SERVICE CONNECTED 
+ fills...
+  
+ Task Queued !
+  
+  
+  Updating Routine file...
+  
+  Updating KIDS files...
+  
+  PSO*7.0*137 Installed.
+                Mar 16, 2003@22:44:09
+  
+  Install Message sent #169628
+ --------------------------------------------------------------------------
+ ------
+           [------------------------------------------------------------]
+   100%    |             25             50             75               |
+ Complete  [------------------------------------------------------------]
+  
+  
+ Install Completed
+
+Routine Information:
+====================
+
+Routine Name:
+  - PSOCP
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOCP1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOCPBAK
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOCPBA2
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOCPA
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOCPIB
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : WHITE,ELAINE                   Date Entered : MAR 28, 2003
+Completed By: DAVIS,DOUG                    Date Completed: APR 09, 2003
+Released By : KIMBLE,BRUCE                  Date Released : APR 09, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

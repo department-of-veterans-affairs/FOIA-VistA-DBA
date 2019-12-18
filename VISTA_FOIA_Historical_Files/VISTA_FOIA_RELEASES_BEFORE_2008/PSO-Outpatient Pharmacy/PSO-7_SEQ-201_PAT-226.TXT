@@ -1,0 +1,502 @@
+$TXT Created by ELLZEY,LINDA at DEVFEX.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 12/01/05 at 09:33
+=============================================================================
+Run Date: JAN 10, 2006                     Designation: PSO*7*226
+Package : PSO - OUTPATIENT PHARMACY           Priority: Mandatory
+Version : 7       SEQ #201                      Status: Released
+                  Compliance Date: FEB 10, 2006
+=============================================================================
+
+Associated patches: (v)PSO*7*219       install with patch       `PSO*7*226'
+
+Subject: CIDC FOLLOW-UP PATCH 2
+
+Category: 
+  - Routine
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ This is the second follow up patch for Outpatient Pharmacy Clinical
+ Indicator Data Capture (CIDC) patch PSO*7*143.  The first follow-up patch
+ was PSO*7*219, and the follow-up patches were split into two patches in
+ order to quickly get the issues resolved by patch PSO*7*219 into the field
+ immediately.
+  
+ Functional Description:
+ =======================
+ This patch PSO*7*226 corrects the following:
+  
+ 1.  For only edited prescriptions ordered prior to patch PSO*7*143 being 
+ installed, the routine that passes information from Outpatient Pharmacy to
+ CPRS was passing an extra value and was not passing the Combat Veteran
+ indicator.  An edit to days supply, quantity, etc. on a prescription 
+ results in a background transmission of data to CPRS.  This type of data
+ was passed and updated in CPRS correctly.  Because CPRS does not 
+ currently update SC/EI's for edited prescriptions, there were no adverse
+ affects.  However, Outpatient Pharmacy sends all data for consistency, and
+ this was corrected.  There are no associated remedy tickets for this
+ change.
+  
+ 2.  A dollar sign ($) was being displayed for exempt from copay
+ prescriptions, and it was being displayed up until the prescription was
+ released.  Also, 'COPAY' was being printed on the label for this type 
+ of prescription.
+  
+ 3.  Copays were erroneously being charged for non-service connected (NSC)
+ prescriptions fills that had an environmental indicator flagged as
+ "Yes".   And, copays were charged for some service connected (SC) <50%
+ prescriptions, and this was due to a "RX COPAY STATUS REVIEW NEEDED"
+ Mailman message being sent instead of prompting the user for the SC/EI
+ information.  Patch PSO*7*219 corrected this issue, but PSO*7*226 cancels
+ the erroneously billed copay(s) as well as restores the copay related
+ fields in PRESCRIPTION file (#52).
+  
+ When installing this patch, the 'copay correction' portion of this patch
+ is optional.  Each site can determine if they would be better suited to
+ run this automated process or correct them manually.  If you answer N (No)
+ to running the copay correction process and change your mind later, then
+ have your IRM run ^PSOCIDC1 from the programmers prompt.  Please keep in 
+ mind that by not running the copay correction process that those
+ prescriptions where the IBQ node was not stored correctly will continue to
+ generate a copay until the fill is copied or renewed.
+  
+  
+ Technical Description:
+ ======================
+ The following correlates to each sequence in the Functional Description:
+  
+ 1.  In background processing, the PSOHLSN2 routine passes information from
+ Outpatient Pharmacy to CPRS when orders are created, edited, copied or
+ renewed from backdoor order entry.  Even though CPRS does not 
+ currently update SC/EI information for edited prescriptions, Outpatient
+ Pharmacy passes them for consistency.  The code that handles pre-CIDC
+ edited prescriptions passed an extra value and did not pass the Combat
+ Veteran indicator.  Because CPRS does not update SC/EI's for edited
+ prescriptions, there were no adverse affects.  A change was made to pass
+ the Combat Veteran indicator and not pass the extra value.
+  
+ 2.  Because a value denoting copay was allowed to remain in the COPAY 
+ TRANSACTION TYPE field (#105) for exempt from copay prescriptions, the
+ $ sign was incorrectly being displayed and "COPAY was being printed on 
+ the prescription label.  Modifications were made to eliminate the display
+ of the $ sign for exempt from copay fills which in turn eliminates the
+ printing of 'COPAY' on the label.  Also, modifications were made to
+ eliminate this value for NSC and SC<50% prescriptions for all affected
+ fills finished between the installation date of patch PSO*7*143 until
+ present. This patch re-examines the PRESCRIPTION file (#52) for any NSC
+ and SC<50% prescription that has an ICD node and does not have an IBQ
+ node.  Using the SC/EI answers stored on the ICD node, the IBQ node is
+ defined and the COPAY TRANSACTION TYPE field (#105) is defined
+ appropriately.
+  
+ 3.  For those prescriptions that were erroneously billed a copay from 
+ the installation of PSO*7*143 until present, this patch evaluates any
+ prescription that was billed, that has an ICD node, but does not have an
+ IBQ node.  Using the SC/EI answers stored on the ICD node, the IBQ node is
+ defined.  Then, if a yes answer is defined for any SC or EI, IB is
+ notified to cancel copay for the fill.
+  
+ This patch prompts the user during installation when to run the copay
+ correction process.  The job name for this process is 'CANCEL COPAY'.  It
+ provides summary Mailman messages, and a detailed Results Report by
+ Veteran that can be run from Programmer mode.  Also, a Query Status of Job
+ function as well as a Stop Job Command function is provided.  See the
+ reports and samples section below for details and images of these
+ features.
+  
+  
+ Reports Section:
+ ================
+  
+ * See the sample section below for images of these features.
+  
+ 1.  The CANCEL COPAY process will produce a summary mail message of its 
+ findings and display instructions on how to print a detailed report by 
+ Veteran.  This MailMan message will be sent to all users that hold the 
+ 'PSO COPAY' security key and the installer of the patch.  This message 
+ contains results by year and 30, 60, and 90 day fills for total 
+ released, total un-released, and total cancelled copays.
+  
+ 2.  A summary Mailman message will be sent to Management for their 
+ review.  It can be cut and pasted into a .TXT file.
+  
+ 3.  A detailed report by Veteran and fill number can be produced on 
+ demand by entering D RPT^PSOCIDC3 at the programmers prompt. 
+  
+ 4.  To check the status of the COPAY CANCEL background job while it is
+ running,  type from the direct programmers prompt the command 
+ D STATUS^PSOCIDC1.
+  
+ 5.  If you need to stop the COPAY CANCEL background job for any reason,
+ then from the direct programmers prompt, type the command D STOP^PSOCIDC1.
+  
+  
+ Samples Section:
+ ================
+  
+ 1.  Summary Mail Message 1  (Overall patch findings)
+  
+ Subj: Outpatient Pharmacy PSO*7*226 CANCEL COPAY  [#41896011]
+ 17 Nov 2005 19:16:09 -0400 (EDT)  58 lines
+ From: <"PSO*7*226 CANCEL COPAY"@DEVFEX.FO-ALBANY.MED.VA.GOV>  In 'IN' 
+ basket.
+ Page 1  *New*
+ --------------------------------------------------------------------------
+ The Rx CANCEL COPAY job for the Outpatient Pharmacy patch (PSO*7*226)
+ started NOV 17, 2005@19:16:08 and completed NOV 17, 2005@19:16:09.
+  
+ Erroneously billed prescriptions and copay related fields have been 
+ corrected.
+ There were 11 released fills successfully updated for 3 veterans.
+  
+ Released fills corrected by year:
+ 2004  30-DAY EQUIVALENT FILLS:      0     $        0
+ 2004  60-DAY EQUIVALENT FILLS:      0     $        0
+ 2004  90-DAY EQUIVALENT FILLS:      0     $        0
+  
+ 2005  30-DAY EQUIVALENT FILLS:      7     $       49
+ 2005  60-DAY EQUIVALENT FILLS:      3     $       42
+ 2005  90-DAY EQUIVALENT FILLS:      1     $       21
+  
+ 2006  30-DAY EQUIVALENT FILLS:      0     $        0
+ 2006  60-DAY EQUIVALENT FILLS:      0     $        0
+ 2006  90-DAY EQUIVALENT FILLS:      0     $        0
+                                           ==========
+                                     TOTAL $      112
+  
+ Out of the above total, there were 7 cancelled copays for 3 veterans.
+  
+ COPAY cancelled fills by year:
+ 2004  30-DAY EQUIVALENT FILLS:      0     $        0
+ 2004  60-DAY EQUIVALENT FILLS:      0     $        0
+ 2004  90-DAY EQUIVALENT FILLS:      0     $        0
+  
+ 2005  30-DAY EQUIVALENT FILLS:      5     $       35
+ 2005  60-DAY EQUIVALENT FILLS:      2     $       28
+ 2005  90-DAY EQUIVALENT FILLS:      0     $        0
+  
+ 2006  30-DAY EQUIVALENT FILLS:      0     $        0
+ 2006  60-DAY EQUIVALENT FILLS:      0     $        0
+ 2006  90-DAY EQUIVALENT FILLS:      0     $        0
+                                           ==========
+                                     TOTAL $       63
+  
+ There were 7 unreleased fills successfully updated for 3 veterans.
+  
+ Unreleased fills corrected by year:
+ 2004  30-DAY EQUIVALENT FILLS:      0     $        0
+ 2004  60-DAY EQUIVALENT FILLS:      0     $        0
+ 2004  90-DAY EQUIVALENT FILLS:      0     $        0
+  
+ 2005  30-DAY EQUIVALENT FILLS:      3     $       21
+ 2005  60-DAY EQUIVALENT FILLS:      1     $       14
+ 2005  90-DAY EQUIVALENT FILLS:      1     $       21
+  
+ 2006  30-DAY EQUIVALENT FILLS:      1     $        8
+ 2006  60-DAY EQUIVALENT FILLS:      1     $       16
+ 2006  90-DAY EQUIVALENT FILLS:      0     $        0
+                                           ==========
+                                     TOTAL $       80
+  
+ To get a report of patients/prescriptions that were affected as
+ part of this process, contact your IRM to enter D RPT^PSOCIDC3 at
+ the programmer's prompt.
+  
+ Enter message action (in IN basket): Ignore//
+  
+  
+ 2.  Summary Mail Message 2  
+  
+ Subj: STATION 500 (Test) Summary of updates FOR PRESCRIPTION FILLS  
+ [#41896012]
+ 17 Nov 2005 19:16:09 -0400 (EDT)  20 lines
+ From: <"PSO*7*226 CANCEL COPAY"@DEVFEX.FO-ALBANY.MED.VA.GOV>  In 'IN' 
+ basket.
+ Page 1  *New*
+ --------------------------------------------------------------------------
+                Start time: Nov 17, 2005 7:16:08 pm
+            Completed time: Nov 17, 2005 7:16:09 pm
+              Elapsed Time: :01
+  
+                Total RX's processed:      265
+             Total Refills processed:       30
+      Total released fills corrected:       11
+             Total cancelled refills:        7
+    Total unreleased fills corrected:        7
+                Total number of vets:        3
+  
+  
+ Excel comma delimited data below, Two heading, three data line
+  
+ Type of,Station,Station,,2004,,,2005,,,2006
+ Rx,Name,#,30 days,60 days,90 days,30 days,60 days,90 days,30 days,60 
+ days,90 days
+ Released,ALBANY.VA.GOV,500,0,0,0,7,3,1,0,0,0                              
+ Cancelled Copays,ALBANY.VA.GOV,500,0,0,0,5,2,0,0,0,0
+ Un-released,ALBANY.VA.GOV,500,0,0,0,3,1,1,1,1,0                           
+  
+ Enter message action (in IN basket): Ignore// 
+  
+  
+ 3.  Detailed Report
+  
+ Patch PSO*7*226 -Corrected Released Prescriptions Tally
+  
+ Note that prescriptions where copay was cancelled are denoted with
+ an asterisk (*) in front of the patient name.  Otherwise, only  the
+ the IBQ node was updated.
+  
+ Date printed: NOV 18,2005                                             
+ Page: 1
+ ==========================================================================
+                                                                 INS ON DTE
+ PATIENT NAME     (SSN)       DIV     RX# (FILL)   RELEASE DATE  
+ REL   BILL
+ ---------------  -------  ---------  ------------ -------------  ---- ----
+ *TEST,ROBERT     (S3980)  TROY, NY   200156 (0)     NOV 17,2005   NO    NO
+  TEST,ROBERT     (S3980)  TROY, NY   200157 (0)     NOV 17,2005   NO    NO
+ *TEST,ANOTHER    (T4655)  ALBANY     100001053 (0)  NOV 17,2005   NO    NO
+  TEST,ANOTHER    (T4655)  ALBANY     100001054 (0)  NOV 17,2005   NO    NO
+  TEST,ANOTHER    (T4655)  TROY, NY   200144A (0)    NOV 17,2005   NO    NO
+ *TEST,ANOTHER    (T4655)  TROY, NY   200154 (0)     NOV 17,2005   NO    NO
+ *TEST,ANOTHER    (T4655)  TROY, NY   200154 (1)     NOV 17,2005   NO    NO
+  
+ Enter RETURN to continue or '^' to exit: 
+  
+  
+ Patch PSO*7*226 -Corrected Released Prescriptions Tally
+  
+ Note that prescriptions where copay was cancelled are denoted with
+ an asterisk (*) in front of the patient name.  Otherwise, only  the
+ the IBQ node was updated.
+  
+ Date printed: NOV 18,2005                                             
+ Page: 2
+ ==========================================================================
+                                                                 INS ON DTE
+ PATIENT NAME     (SSN)       DIV     RX# (FILL)   RELEASE DATE  REL   BILL
+ ---------------  -------  ---------  ------------ -------------  ---- ----
+ *TEST,ANOTHER    (T4655)  TROY, NY   200154 (2)     NOV 17,2005   NO    NO
+ *TEST,CIDC       (T9654)  ALBANY     100001039B (0) NOV 17,2005   NO    NO
+  TEST,CIDC       (T9654)  ALBANY     100001050 (0)  NOV 17,2005   NO    NO
+ *TEST,CIDC       (T9654)  TROY, NY   200155 (0)     NOV 17,2005   NO    NO
+  
+ Total number of released prescriptions modified: 11
+ Total number of Cancelled Copay prescriptions: 7
+  
+ Enter RETURN to continue or '^' to exit: 
+  
+  
+ Patch PSO*7*226 -Corrected Unreleased Prescriptions Tally
+ Date printed: NOV 18,2005                                             
+ Page: 3
+ ==========================================================================
+                                                                 INS ON DTE
+ PATIENT NAME     (SSN)       DIV      RX# (FILL)  FILL DATE     REL   BILL
+ --------------  -------  ----------- ------------ ------------  ----  ----
+ TEST,ROBERT      (S3980)  TROY, NY   200158 (0)    NOV 17,2005   NO    NO
+ TEST,ROBERT      (S3980)  TROY, NY   200159 (0)    NOV 17,2005   NO    NO
+ TEST,ANOTHER     (T4655)  TROY, NY   200153 (0)    NOV 17,2005   NO    NO
+ TEST,ANOTHER     (T4655)  TROY, NY   200154 (3)    FEB 5,2006    NO    NO
+ TEST,CIDC        (T9654)  ALBANY     100001051 (0) NOV 17,2005   NO    NO
+ TEST,CIDC        (T9654)  ALBANY     100001052 (0) NOV 17,2005   NO    NO
+ TEST,CIDC        (T9654)  TROY, NY   200155 (1)    JAN 6,2006    NO    NO
+  
+ Total number of un-released prescriptions modified: 7
+  
+ ** End of Report **
+  
+ 4.  Status Query:
+  
+      >D STATUS^PSOCIDC1
+     
+       Currently processing:
+             Released Date > 3051105.152716
+                      RX # > 1375666
+                TOTAL RX's > 272906
+  
+ 5.  Stop Command:
+  
+      >D STOP^PSOCIDC1
+  
+       Outpatient RX Copay Correction Job - set to STOP Soon
+  
+       Check Status to be sure it has stopped and is not running...
+         
+                    (D STATUS^PSOCIDC1)
+  
+  
+ Associated New Service Request (NSR):
+ =====================================
+ N/A 
+  
+  
+ Associated Remedy Ticket(s):
+ ============================
+ HD0000000120898
+  
+  
+ Associated E3Rs:
+ ===============
+ N/A
+  
+  
+ Test Sites:
+ ==========
+ PALO ALTO, CA
+ OKLAHOMA CITY, OK
+ MEMPHIS, TN
+  
+ Routine Summary:
+ ================                    
+ The second line now reads as follows:
+  
+    <TAB>;;7.0;OUTPATIENT PHARMACY;**[patch list]**;DEC 1997
+  
+ CHECK^XTSUMBLD results:
+  
+ Routine     Before Patch  After Patch   Patch List
+ ==========================================================================
+ PSOCIDC1             N/A     12291202   226
+ PSOCIDC2             N/A     22909570   226
+ PSOCIDC3             N/A     12207365   226
+ PSOCIDC4             N/A     20977117   226
+ PSOHLSN2         2427990      2827037   143,226 
+ PSONEW2         12525042     13198519   32,37,46,71,94,124,139,157,143,226
+ PSONEWF         24667753     25455623   71,157,143,219,226
+ PSONEWG         13204704     13945471   71,157,143,219,226
+  
+ Total number of routines: 8
+  
+  
+ File Summary:
+ =============
+ N/A
+  
+  
+ Field Summary:
+ ==============
+ N/A
+  
+  
+ Installation Instructions:
+ ==========================
+ ** Warning, please do not queue this patch to be installed.  It has
+ ** install questions that need to be answered.
+  
+ It is recommended that this patch not be installed while Outpatient
+ Pharmacy users are on the system or when Outpatient Pharmacy orders are
+ being entered and signed through CPRS. Installation will take no longer
+ than 5 minutes, but the copay correction process may take several hours.
+  
+ Suggested time to install: During non-peak.
+  
+ Once the copay correction process is completed, you will receive Mailman 
+ messages defined in the above technical description, reports section, and 
+ sample section.
+  
+ Please run the routine RPT^PSOCIDC4 from programmers mode to generate a
+ detailed report for retention by your facility's billing office. See
+ an example of report in above sample section.  Please produce this report
+ so that your billing office will have it as a reference to use if patients
+ should call with  questions regarding the back-billing. The information
+ needed to generate this report will remain on your system for 90 days
+ after the patch is installed, and then will automatically be deleted.
+  
+ A stop command has been provided in case the system needs to be shutdown 
+ for an emergency or other reasons.  Then when the system is back up and
+ you are ready you may restart the job and it will resume where it left
+ off.  You may restart by entering D ^PSOCIDC1 at the programmer's prompt.
+  
+ 1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+  
+ 2.  Review your mapped set. If the routines are mapped, they should be
+     removed from the mapped set at this time.
+  
+ 3.  From the Kernel Installation & Distribution System menu, select the
+     Installation menu.  
+  
+ 4.  From this menu, you may select to use the following options: 
+     (when prompted for INSTALL NAME, enter PSO*7.0*226)
+    
+     a.  Backup a Transport Global - this option will create a backup
+         message of any routines exported with the patch.  It will
+         NOT backup any other changes such as DDs or templates.
+     b.  Compare Transport Global to Current System  - this option
+         will allow you to view all changes that will be made when
+         the patch is installed.  It compares all components of the
+         patch (routines, DDs, templates, etc.).
+     c.  Verify Checksums in Transport Global - this option will
+         allow you to ensure the integrity of the routines that are
+         in the transport global.
+     d.  Print Transport Global - this option will allow you to view
+         the components of the KIDS build.
+     
+ 5.  Use the Install Package(s) option and select the package
+     PSO*7.0*226.
+     
+ 6.  When prompted "Do you want to run the Copay Correction process? Y 
+     or N//", enter Y for YES to correct all erroneously billed copays
+     since patch PSO*7*143 was installed or enter N for NO to not run the
+     correction process.  If this prompt is allowed to time out,
+     the Copay Correction process job will not run.  The length of time
+     until the prompt times out is dependent on the time out length defined
+     for your system.
+  
+ 7.  Note that the following prompt will not be displayed if 'NO' was 
+     answered for the previous question.  When prompted "Enter when to
+     Queue the CANCEL COPAY job to run in date@time format :  NOW//", press
+     enter to start the process now or enter a future time to start this
+     job in date@time format.  If this prompt is allowed to time out, the 
+     job will run for the current time.  The length of time until the
+     prompt times out is dependent on the time out length defined for your
+     system.
+  
+ 8.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+     YES//', respond NO
+  
+ 9.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+     Protocols? YES//', respond NO.
+  
+ 10. When prompted,"Device:Home//" respond with the correct device and DO 
+     NOT queue this to P-Message.
+  
+ 11. If routines were unmapped as part of step 2 (DSM for Open VMS sites
+     only), they should be returned to the mapped set once the installation
+     has run to completion.
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PSOCIDC1
+    Before:            After: B43781391  **226**
+Routine Name: PSOCIDC2
+    Before:            After: B70634486  **226**
+Routine Name: PSOCIDC3
+    Before:            After: B43379204  **226**
+Routine Name: PSOCIDC4
+    Before:            After: B67222951  **226**
+Routine Name: PSOHLSN2
+    Before:  B4070101  After:  B4326292  **143,226**
+Routine Name: PSONEW2
+    Before: B28589674  After: B29428491  **32,37,46,71,94,124,139,157,143,226**
+Routine Name: PSONEWF
+    Before: B44037297  After: B45034725  **71,157,143,219,226**
+Routine Name: PSONEWG
+    Before: B21775279  After: B22698688  **71,157,143,219,226**
+
+=============================================================================
+User Information:
+Entered By  : ELLZEY,LINDA                  Date Entered  : NOV 07, 2005
+Completed By: LYNCH,MARY F.                 Date Completed: JAN 10, 2006
+Released By : CONSENTINO,ALBERT             Date Released : JAN 10, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

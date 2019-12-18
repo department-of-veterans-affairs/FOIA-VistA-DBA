@@ -1,0 +1,273 @@
+$TXT Created by MERRILL,JEREMY at DAYT17.FO-BAYPINES.MED.VA.GOV  (KIDS) on Wednesday, 06/07/06 at 18:31
+=============================================================================
+Run Date: SEP 07, 2006                     Designation: OR*3*253
+Package : OR - ORDER ENTRY/RESULTS REPORTING  Priority: Mandatory
+Version : 3       SEQ #230                      Status: Released
+                  Compliance Date: OCT 08, 2006
+=============================================================================
+
+Associated patches: (v)OR*3*220    <<= must be installed BEFORE `OR*3*253'
+
+Subject: UNSIGNED ORDERS ALERT AND MISC
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ The primary purpose of this patch is to correct the problem where unsigned
+ orders sometimes do not generate an unsigned order alert.  It also
+ provides more useful error messages when invalid input is entered into a
+ generic order dialog's numeric prompt, and it corrects a problem where
+ users limited to a restricted patient list cannot scroll past the first
+ 44 patients.
+  
+  
+ This patch addresses the following Patient Safety Issue (PSI):
+ ==============================================================
+ PSI 05-097 - Alerts not generated for unsigned orders
+  
+  
+ Associated Remedy Tickets:
+ ==========================
+ HD110361 - No Alert for Unsigned Orders
+     Duplicate: HD96637
+ HD069505 - SAG-0901-41159  CAN'T CREATE NUMERIC PROMPT
+ HD135593 - CPRS
+  
+  
+ Test Sites:
+ ===========
+ Little Rock, AR
+ Madison, WI
+ Cheyenne, WY
+ Sheridan, WY
+ Upstate New York HCS
+ Northern California HCS
+  
+  
+ Overview of Remedy Tickets:
+ ===========================
+ 1. HD0000000110361 - No Alert for Unsigned Orders
+    PSI 05-097 - Alerts not generated for unsigned orders
+  
+    Problem:
+    --------
+    Unsigned orders were sometimes getting lost in the system.  No unsigned
+    order alerts were being generated for these orders, resulting in orders not
+    being signed or acted upon for patients.  The known cause of this problem
+    is when CPRS crashes after an order is entered, but before the Review/Sign
+    Changes or Sign Orders dialog displays and is resolved.  Typically these
+    CPRS crashes are the results of network connectivity issues, but other
+    situations exist that will make CPRS crash.  It is unknown if there are
+    other causes of unsigned orders being created without an associated alert.
+  
+    Resolution:
+    -----------
+    The ORMTIME tasked job has been modified to search for orders that have not
+    been signed for over an hour.  If no alert has been sent to these order's
+    requesting clinician, or the clinician's surrogate, an appropriate unsigned
+    order alert will be generated.  Unsigned orders that are older than 90 days
+    old will not generate an alert.
+  
+ 2. HD0000000069505 - SAG-0901-41159  CAN'T CREATE NUMERIC PROMPT
+  
+    Problem:
+    --------
+    In a generic order dialog, when you enter an invalid value into a numeric
+    prompt, the displayed error messages do not indicate what values are valid.
+  
+    Resolution:
+    -----------
+    When an "Out of Range" error is generated, the error message will now
+    indicate what low and high inclusive values are valid.  When a "Too many
+    decimal places" error is generated, the error message will now indicate how
+    many decimal places are allowed.
+  
+ 3. HD0000000135593   CPRS
+  
+    Problem:
+    --------
+    When a user is restricted to a specific list of patients that is longer
+    than 44 patients long, the user is not able to scroll beyond the top 44
+    patients.  The display will usually start over with the first patient in
+    the list, when the 44th patient is reached.  The exception is when the 44th
+    patient has an alias.  This will continue to cycle through the list over
+    and over again.  When manually dragging the scroll bar down the side of the
+    list box, the list will start at the appropriate place in the alphabet,
+    allowing access to other patients, but scrolling from that point will cause
+    the patient list to start over at the top of the patient list.  When
+    manually moving the scroll bar down, it is impossible to scroll up the
+    patient list.
+  
+    Resolution:
+    -----------
+    The problem has been fixed.  Scrolling up and down the patient list works
+    correctly.
+  
+  
+ Routine Overview:
+ =================
+ ORB3 - Added an entry point to be used in generating alerts.
+  
+ ORMTIM02   New routine that searches for unsigned orders, determines if an
+   order meets specific criteria, and calls ORB3 to create an alert as needed.
+  
+ ORMTIME - Modified to call the new ORMTIM02 routine.
+  
+ ORMTIMST   New routine with an API that determines if ORMTIME is currently
+   running, and an API that determines the next time that ORMTIME is scheduled
+   to run.  It also includes environmental check and pre-install check APIs for
+   use by any patch that wishes to update ORMTIME.  It is intended to remain on
+   the system for use by future patches.
+  
+ ORQPTQ11   Fixed bug in subroutine that returns subset of patients when
+   scrolling through restricted patient list.
+  
+ ORWDOR   Changed error messages sent when invalid input is entered into a
+   numeric prompt.  New messages show what input is valid.
+  
+  
+ Environment Check and Pre-Installation Check Overview
+ -----------------------------------------------------
+ The ORMTIMST environment check routine does not take any action when the
+ OR*3.0*253 global is loaded, only when the installation is about to take
+ place.  The environment check determines if ORMTIME is currently running on
+ the system.  If it is running, it waits up to 30 seconds for ORMTIME to finish
+ running before allowing the install.  If ORMTIME is still running after 30
+ seconds, the installation is aborted.  If ORMTIME is not running at the time
+ of installation, but is scheduled to begin running within 5 minutes, the
+ installation is also aborted.  Since user interaction is required between the
+ time of the environment check, and the time the install begins, the
+ pre-install check, PRECHECK^ORMTIMST determines if ORMTIME is running, and
+ waits until ORMTIME completes before allowing the install to continue.  It is
+ assumed that the user will take less than 5 minutes to answer the installation
+ questions and complete the install, from the time of the environmental check,
+ so that this delay should never be needed.  It has been added, however, to
+ prevent ORMTIME from crashing while this patch is being installed.
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ This patch may be installed with users on the system; however, it should
+ be installed at a non-peak time to minimize disruption to the users.
+ Installation of this patch will take less than 2 minutes.
+      
+ 1.  LOAD TRANSPORT GLOBAL 
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the 
+     INSTALL/CHECK MESSAGE PackMan option.  
+              
+ 2.  START UP KIDS 
+     -------------
+     Start up the Kernel Installation and Distribution System Menu 
+     [XPD MAIN]: 
+    
+          Edits and Distribution ...  
+          Utilities ...  
+          Installation ...  
+    
+ Select Kernel Installation & Distribution System Option: INStallation 
+                                                          ---
+          Load a Distribution 
+          Print Transport Global 
+          Compare Transport Global to Current System 
+          Verify Checksums in Transport Global 
+          Install Package(s) 
+          Restart Install of Package(s) 
+          Unload a Distribution 
+          Backup a Transport Global 
+    
+ Select Installation Option: 
+    
+ 3.  Select Installation Option: 
+     ---------------------------
+     NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+            NAME, enter OR*3.0*253):
+       
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when this patch
+         is installed.  It compares all components of this patch
+         (routines, DD's, templates, etc.).
+     c.  Verify Checksums in Transport Global - This option will allow
+         you to ensure the integrity of the routines that are in the
+         transport global.
+      
+ 4.  Select Installation Option: Install Package(s) 
+                                 ------------------
+     **This is the step to start the installation of this KIDS patch: 
+    
+     a.  Choose the Install Package(s) option to start the patch
+         install.
+  
+     b.  When prompted  Want KIDS to INHIBIT LOGONs during the install? 
+         YES//  answer NO
+  
+     c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+         Options, and Protocols? YES//' answer NO
+  
+  
+ POST-INSTALLATION INSTRUCTIONS:
+ ===============================
+  
+ This patch will not create alerts for unsigned orders that are more than 90
+ days old.  After installing this patch, sites should use the Unsigned
+ orders search [OR UNSIGNED ORDERS] option to identify orders that are more
+ than 90 days old.
+  
+  
+ Routine Information:
+ ====================
+ The following is a list of the routines included in this patch.  
+ The second line of each of these routines now looks like: 
+  
+    ;;3.0;ORDER ENTRY/RESULTS REPORTING;**[Patch List]**;Dec 17, 1997
+  
+                        CHECK^XTSUMBLD results
+  
+ Routine       Before Patch     After Patch     Patch List 
+ -------       ------------     -----------     ----------
+ ORB3            18581821         18599342      31,74,91,105,139,190,220,253
+ ORMTIM02             N/A          7826168      253
+ ORMTIME          3696164          3705753      40,253
+ ORMTIMST             N/A          5307677      253
+ ORQPTQ11        17682805         17747702      82,85,109,132,173,253
+ ORWDOR           3099282          3683827      10,164,253
+  
+ Total number of routines modified: 4
+ Total number of new routines:      2
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: ORB3
+    Before: B87608247  After: B88202399  **31,74,91,105,139,190,220,253**
+Routine Name: ORMTIM02
+    Before:       n/a  After: B16808061  **253**
+Routine Name: ORMTIME
+    Before:  B9053145  After:  B9171622  **40,253**
+Routine Name: ORMTIMST
+    Before:       n/a  After: B17732442  **253**
+Routine Name: ORQPTQ11
+    Before: B56149817  After: B56815266  **82,85,109,132,173,253**
+Routine Name: ORWDOR
+    Before:  B7232254  After:  B8459671  **10,164,253**
+
+=============================================================================
+User Information:
+Entered By  : MERRILL,JEREMY                Date Entered  : MAY 02, 2006
+Completed By: CROSSMAN,PAM                  Date Completed: SEP 07, 2006
+Released By : HINES,RICK                    Date Released : SEP 07, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

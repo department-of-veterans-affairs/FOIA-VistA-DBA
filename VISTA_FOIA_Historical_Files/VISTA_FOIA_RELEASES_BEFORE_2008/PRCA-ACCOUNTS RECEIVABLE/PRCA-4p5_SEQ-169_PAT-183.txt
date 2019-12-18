@@ -1,0 +1,252 @@
+$TXT Created by TUSEYEV,ANDREY at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 06/12/03 at 15:44
+=============================================================================
+Run Date: JUN 13, 2003                     Designation: PRCA*4.5*183
+Package : PRCA - ACCOUNTS RECEIVABLE          Priority: Mandatory
+Version : 4.5       SEQ #169                     Status: Released
+                  Compliance Date: JUL 14, 2003
+=============================================================================
+
+Associated patches: (v)PRCA*4.5*170<<= must be installed BEFORE `PRCA*4.5*183'
+
+Subject: API for My HealtheVet
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+ This patch provides API calls, required for My HeatheVet.
+  
+ Functional Description
+ ----------------------
+ The patch contains three API calls (functions) for the following purposes:
+ - To define current balance for the given patient
+ - To define details for all opened/active bills for the given patient
+ - To define transaction details for the given bill.
+  
+ These API calls can be used in M environment, and also can be easily 
+ wrapped for using as Remote Procedure Calls. All functions return
+ success/error code, requested data will be returned by parameter by
+ reference.
+ Input parameter form for Patient - Integration Control Number (ICN).
+ Input parameter form for Bill - Bill No (free text).
+  
+ All functions provide internal error trapping.
+  
+  
+ Technical Description
+ ---------------------
+ The patch contains one routine - PRCAHV.
+  
+ Three entry points are suggested to be used as API entry calls.
+  
+ Function BALANCE
+ =================
+ The function calculates Balance Amount for the patient, and returns 
+ success/error code.
+  
+ $$BALANCE^PRCAHV(.RESULT,PRCAICN,[PRCATY])
+  
+ INPUT:
+         PRCAICN - Patient's ICN (required)
+         PRCATY (not required) - Account Receivable Transaction Types, 
+            possible values (case insensitive):
+           "OPEN" (default) - bills with open/active status only.
+              These bills may have "CURRENT STATUS" field pointing to bill
+              statuses in file 430.3 with the following numbers: 113, 112,
+              102, 107. 
+              Same as "113,112,102,107". 
+           "ALL", all bill statuses,
+            <list of bill Status Numbers, comma delimited>.
+ OUTPUT:
+         Function returns: 1-success, 0-no data, '-1'-error, '-2'-patient 
+         doesn't exist, '-3'-program error
+         RESULT (by reference)=<balance value> or zero if error/no data
+  
+ EXAMPLE OF USAGE:
+  
+         S STAT=$$BALANCE^PRCAHV(.BALANCE,"5000000809")
+         I STAT=1 W !,"Balance is ",BALANCE
+         E  I STAT=0 W !,"No data for the patient"
+         E  I STAT<0 W !,"Error code ",STAT
+  
+ The second input parameter is a list of AR Transaction Types Numbers,
+ delimited by comma. If the parameter is omitted, the balance will be
+ calculated by all bills with opened/active type.
+  
+  
+ Function DETAIL
+ ================
+  
+ The function calculates details for bills for the given patient.
+  
+ $$DETAIL^PRCAHV(.RESULT,PRCAICN,[PRCATY])
+  
+ INPUT:
+         PRCAICN - Patient's ICN (required)
+         PRCATY (not required) - Account Receivable Transaction Types, 
+           Possible values (case insensitive):
+           "OPEN" (default) - bills with open/active status only.
+              These bills may have "CURRENT STATUS" field pointing to bill
+              statuses in file 430.3 with the following numbers: 113, 112,
+              102, 107.
+              Same as "113,112,102,107".
+           "ALL", all bill statuses,
+            <list of bill Status Numbers, comma delimited>.
+ OUTPUT:
+         Function returns: 1-success, 0-no data, '-1'-error, '-2'-patient 
+           doesn't exist, '-3'-program error
+         RESULT(1..n)=<Bill No>^<Date Bill Prepared(FM)>^<Descr>^<Balance>^
+ <Status Number>
+         RESULT may be undefined if error or no data.
+  
+ EXAMPLE OF USAGE:
+  
+         S STAT=$$DETAIL^PRCAHV(.BL,"5000000809")
+         I STAT=1 W !,"Details: " F RCI=1:1 Q:'$D(BL(RCI)) W !,BL(RCI)
+         E  I STAT=0 W !,"No data for the patient"
+         E  I STAT<0 W !,"Error code ",STAT
+  
+ The second input parameter is a list of AR Transaction Types Numbers,
+ delimited by comma. If the parameter is omitted, the balance will be
+ calculated by all bills with opened/active status.
+  
+ Function TRANS
+ ================
+  
+ The function calculates transaction details for the given bill.
+ This function may be used in conjunction with DETAIL function to receive 
+ all trasactions for the Patient.
+  
+ INPUT:
+         PRCABILL - Bill No (Free text)
+ OUTPUT:
+         Function returns: 1-success, 0-no data, '-1'-no parameter, 
+            '-2'-the bill doesn't exist, '-3'-program error
+         RESULT(1..n)=<Trans.No>^<Date>^<Trans.Number>^<reserved>^<Total
+ amount>^<Dscr1>^<Dscr2>^<Dscr3>^<DescrN>.
+         RESULT may be undefined if error or no data.
+         RESULT(1..n) cannot be longer than 255 characters, long 
+ descriptions may be truncated.
+  
+   Where:
+     Trans.No - internal transaction number (IEN)
+     Date - date of transaction, internal FM format
+     Descr1, Descr2, Descr3, ..., DescrN - lines of test description 
+     Amt.Int - Amount of Interest
+     Amt.adm - Administrative Amount
+     Total Amount -Total Amount, including Amt.int and Amt.adm, if any.
+  
+ EXAMPLE OF USAGE:
+  
+         S STAT=$$TRANS^PRCAHV(.TR,"500-K90037T")
+         I STAT=1 W !,"Transactions: " F RCI=1:1 Q:'$D(TR(RCI)) W !,TR(RCI)
+         E  I STAT=0 W !,"No data for the patient"
+         E  I STAT<0 W !,"Error code ",STAT
+  
+  
+  
+ Install Time - less than 1 minute.
+  
+  
+ ================ INSTALLATION INSTRUCTIONS =================
+  
+  1.   LOAD TRANSPORT GLOBAL
+       ---------------------
+       Choose the PackMan message containing this patch and invoke the
+       INSTALL/CHECK MESSAGE PackMan option.
+  
+  2.   DISABLE ROUTINE MAPPING   (DSM for Open VMS sites only)
+       -----------------------
+       Disable routine mapping is not required for this patch
+  
+  3.   ROUTINES SENT WITH PATCH
+       ------------------------
+       The following is a list of the routines included in this patch.
+       The second line of each of these routines now looks like:
+  
+       ;;4.5;Accounts Receivable;**[patch list]**;Mar 20, 1995
+  
+                  CHECK^XTSUMBLD results
+  
+   Routine          Before Patch   After Patch    Patch List
+   -------          ------------   -----------    ----------
+   PRCAHV                 n/a          9734211      183
+  
+   Total number of routines - 1
+  
+  
+  4.   START UP KIDS
+       -------------
+       Start up the Kernel Installation and Distribution System Menu [XPD 
+ MAIN]:
+  
+            Edits and Distribution ...
+            Utilities ...
+            Installation ...
+  
+       Select Kernel Installation & Distribution System Option:INStallation
+                                                               ---
+            Load a Distribution
+            Print Transport Global
+            Compare Transport Global to Current System
+            Verify Checksums in Transport Global
+            Install Package(s)
+            Restart Install of Package(s)
+            Unload a Distribution
+            Backup a Transport Global
+  
+       Select Installation Option:
+  
+  5.   Select Installation Option:
+       ---------------------------
+       NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+              NAME, enter PRCA*4.5*183):
+       a.  Backup a Transport Global - This option will create a backup
+           message of any routines exported with this patch. It will not
+           backup any other changes such as DD's or templates.
+       b.  Compare Transport Global to Current System - This option will
+           allow you to view all changes that will be made when this patch
+           is installed.  It compares all components of this patch
+           (routines, DD's, templates, etc.).
+       c.  Verify Checksums in Transport Global - This option will allow
+           you to ensure the integrity of the routines that are in the
+           transport global.
+  
+  6.   Select Installation Option: Install Package(s)
+       ----------------------------------------------
+       **This is the step to start the installation of this KIDS patch:
+  
+       a.  Choose the Install Package(s) option to start the patch
+           install.
+       b.  When prompted "Want KIDS to INHIBIT LOGONs during the install? 
+ YES//" answer NO
+       c.  When prompted "Want to DISABLE Scheduled Options, Menu
+           Options, and Protocols? YES//" answer NO
+  
+  7.   REBUILD MAPPED ROUTINE(S)  (DSM for Open VMS sites only)
+       ------------------------- 
+       This step is necessary for this patch.
+
+Routine Information:
+====================
+
+Routine Name:
+  - PRCAHV
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : TUSEYEV,ANDREY                 Date Entered : JUN 17, 2002
+Completed By: MOHSENE,DIANA                 Date Completed: JUN 12, 2003
+Released By : BARRICK,DENISE                Date Released : JUN 13, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,343 @@
+$TXT Created by ROCHA,MARCELO at LAWVAA.FO-BIRM.MED.VA.GOV  (KIDS) on Wednesday, 12/31/03 at 08:57
+=============================================================================
+Run Date: JAN 07, 2004                     Designation: PSO*7*160
+Package : PSO - OUTPATIENT PHARMACY           Priority: Mandatory
+Version : 7       SEQ #142                      Status: Released
+                  Compliance Date: JAN 12, 2004
+=============================================================================
+
+Associated patches: (v)PSO*7*145   <<= must be installed BEFORE `PSO*7*160'
+
+Subject: TPB RX FLAG CLEANUP/PATIENT INACTIVATION/NEW REPORT
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Other
+
+Description:
+============
+
+ This is the Outpatient Pharmacy patch for the Transitional Pharmacy Benefit
+ (TPB) project. This patch consists of automated processes and additional
+ tools designed to assist the sites for which Transitional Pharmacy Benefit
+ data have not been accurately reported.
+   
+ Two of the most common events that have contributed to the discrepancies
+ in the TPB data are:
+   
+    a) TPB prescriptions have been entered for TPB eligible patients via the
+       wrong Outpatient Pharmacy prescription processing options, such as
+       the Patient Prescription Processing [PSO LM BACKDOOR] option and Complete
+       Orders from OERR [PSO LMOE FINISH] option.
+   
+    b) Patients who did not wish to take advantage of the TPB benefit or who are
+       not prescribed medication after a VA appointment are still active for
+       the TPB benefit in the system.  The inactivation of the TPB benefit is 
+       automatic when the last active TPB prescription is discontinued either 
+       through an Outpatient Pharmacy package action or through an action taken
+       in CPRS. The entry of a prescription/order will not inactivate the 
+       benefit unless the result is that the last active TPB prescription is
+       discontinued as a result of the new entry. 
+    
+ This patch is comprised of four components that will help the sites identify
+ and fix the data discrepancies described above. It will also provide them 
+ with new tools to monitor events that could have an impact on patient's TPB
+ eligibility. In some cases the patient's TPB eligibility will be updated
+ automatically.
+   
+ Below is a detailed description of each component:
+  
+    1) MARKING TPB PATIENT Rx's AS TPB (ONE-TIME PROCESS - POST INSTALL)
+       -----------------------------------------------------------------
+       Problem: Because some prescriptions have been entered through the
+                wrong menu options (see item a) above), these Rx's have not 
+                been correctly identified as TPB prescriptions. In other 
+                words, they have a different patient status than "NON-VA" AND
+                do not contain a TPB flag in PRESCRIPTION file (#52), and 
+                therefore, are not identifiable as prescriptions filled
+                under the TPB program.
+  
+       Solution: A Post-Install process will search for prescriptions filled
+                 under the TPB program which are not marked as such and
+                 will mark these prescriptions as TPB. The two requisites 
+                 that must be fulfilled for a prescription to be marked as 
+                 TPB, are:
+     
+                   a) The prescription was entered during the period that
+                      the patient's TPB benefit was active.
+  
+                                       AND
+  
+                   b) The provider for the prescription is a "NON-VA"
+                      provider.
+                    
+                 If the requisites above are fulfilled, the following 
+                 updates will be done for the prescription:
+  
+                   a) Patient status will be changed to "NON-VA".
+                   b) If an UNIQUE TPB clinic is identified (STOP CODE
+                      equals 161) for the site, clinic will be changed to
+                      this clinic.
+                   c) The TPB flag will be set in PRESCRIPTION file (#52).
+      
+       Report: At the end of this process, a Mailman message will be sent
+               to the newly created mail group called PSO TPB GROUP. The 
+               patients reported on this message had at least one Prescription
+               edited by the Post-Install process. The sites will have the
+               ability to enter the coordinator of this new mail group at time
+               of installation of this patch. Even if the coordinator is not
+               entered, this patch assures that at least the installer of the
+               patch is a member of the mail group. The fields reported on this
+               Mailman message are: PATIENT NAME(LAST4SSN), Rx#, DRUG NAME, 
+               PROVIDER NAME, CLINIC (Old and New) and the Rx PATIENT STATUS
+               (Old and New).
+    
+       Important: If the site identifies prescriptions on this report that
+                  have been wrongly flagged as TPB, it is possible to manually
+                  remove the TPB flag from such prescriptions through FileMan.
+                  Just repeat the steps below for each prescription you wish
+                  to remove the TPB flag (as in this example):
+  
+                  VA FileMan 22.0
+     
+                  Select OPTION: ENTER OR EDIT FILE ENTRIES  
+     
+                  INPUT TO WHAT FILE: PRESCRIPTION
+                  EDIT WHICH FIELD: ALL// TPB RX  
+                  THEN EDIT FIELD:
+       
+                  Select PRESCRIPTION RX #: 123457690A  TYLENOL 250MG
+                  TPB RX: YES// @
+                     SURE YOU WANT TO DELETE? Y  (Yes)
+     
+   
+    
+    2) INACTIVATING PATIENT'S TPB BENEFIT (ONE-TIME PROCESS - POST INSTALL)
+       --------------------------------------------------------------------
+       Problem: Since not all patients eligible for the TPB program chose to
+                take advantage of the TPB benefit or, after seeing the VA 
+                provider the patient was not prescribed any medication, his/her
+                TPB eligibility remained active, when in reality it should have 
+                been inactivated.
+   
+       Solution: A Post-Install process will search for TPB eligible patients 
+                 and automatically inactivate the TPB eligibility of the 
+                 patients that fulfill both of the following
+                 requisites:
+                    
+                    
+                   a) Patient does not have any "active" TPB prescription(s) on
+                      file. The prescription statuses considered as "active"
+                      are the following:
+                      ACTIVE, NON-VERIFIED, HOLD, DRUG INTERACTIONS, SUSPENDED
+                      and PROVIDER HOLD.
+     
+                                           AND
+     
+                   b) Patient has had an appointment at a designated TPB Clinic
+                      (determined through a set of clinic stop codes) since the
+                      date his/her TPB benefit began.
+      
+       Report: At the end of this process, a Mailman message will be sent to
+               the new mail group PSO TPB GROUP. The patients reported on this 
+               message were inactivated as TPB patients by the Post-Install
+               process. The fields reported on this message are: PATIENT NAME,
+               LAST 4 DIGITS OF SSN, APPOINTMENT DATE/TIME, VA CLINIC NAME.
+    
+    3) PATIENT'S TPB BENEFIT INACTIVATION (ENHANCEMENT - CONTINUOUS PROCESS)
+       ---------------------------------------------------------------------
+       Outpatient Pharmacy software will be notified by the Scheduling software
+       every time a patient has an appointment at a VA clinic. If the patient
+       is eligible for the TPB benefit, the appointment was at a clinic defined
+       as primary care for the TPB program (determined through a set of clinic 
+       stop codes) AND the patient does not have any "active" (see list of 
+       statuses on item #2a above) TPB prescription(s) on file, this patient
+       will have the TPB eligibility automatically inactivated. 
+     
+       The TPB primary care clinics are identified by the stop code pairs
+       listed below:
+   
+              322000    322185    322186    322187  
+              323000    323185    323186    323187  
+              350000    350185    350186    350187 
+   
+       A Mailman message will be sent to the PSO TPB GROUP mail group with the 
+       following information:
+        
+           The following patient had the TPB (Transitional Pharmacy Benefit)
+           Benefit automatically inactivated because the following appointment
+           was found: 
+    
+                      Patient         : LAST,FIRST(9999)
+                      VA Clinic       : EAST MIDWAY CLINIC
+                      Appointment Date: DEC 02, 2003@11:15
+   
+    4) REPORT OF PATIENTS WITH TPB AND NON-TPB Rx's (NEW REPORT)
+       [PSO TPB PATIENT RX REPORT]
+       ---------------------------------------------------------
+       This new report is being released as a stand-alone option. It will 
+       print a list of TPB eligible patients that have "active" TPB and
+       Non-TPB prescriptions on file. The report can be printed for ALL or
+       selected institutions, as well as for ALL or selected TPB patients. It
+       will be sorted by the INSTITUTION NAME first, then by the PATIENT NAME. 
+       There will be a page-break for each individual institution. The column
+       headings on the report are: PATIENT NAME (LAST4SSN), VA Rx#, TPB Rx#, 
+       DRUG NAME. This option should be assigned to the site TPB Coordinator,
+       Pharmacy ADPAC and any other individual deemed appropriate by the site.
+       
+ In order to allow the unflagging of TPB prescriptions as described in 1) 
+ above, the TPB RX (#201) field in the PRESCRIPTION (#52) file is being 
+ changed from "UNEDITABLE" to "EDITABLE". 
+   
+   
+ Associated NOISs: 
+ =================
+ SPO-1203-50765
+    
+    
+ Test Sites: 
+ ===========
+ PITTSBURGH HCS, PA 
+ WHITE RIVER JUNCTION, VT
+ FAYETTEVILLE, NC
+ SPOKANE, WA 
+ MINNEAPOLIS, MN
+   
+   
+ Routine Summary: 
+ ================
+ The second line now reads as follows: 
+   
+   <TAB>;;7.0;OUTPATIENT PHARMACY;**[patch list]**;DEC 1997 
+    
+ CHECK^XTSUMBLD results: 
+  
+ Routine   Before Patch After Patch List 
+ =================================================================
+ PSO160DR  N/A          3995690     160
+ PSO160EN  N/A          5087988     160
+ PSO160P1  N/A          11476050    160
+ PSO160P2  N/A          4782108     160
+ PSOTPCUL  76885        1239082     145,160
+ PSOTPINA  N/A          2992949     160
+ PSOTPRP1  N/A          7084493     160
+   
+     
+ Installation Instructions:
+ ==========================
+ Users can be on the system at the time of installation but it is recommended
+ to perform this installation after normal business hours.
+  
+ Installation will take about 15 minutes.  
+  
+   1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu.  
+  
+   2. Review your mapped set. If the routines are mapped, they should 
+      be removed from the mapped set at this time.  
+  
+   3. From the Kernel Installation & Distribution System menu, select 
+      the Installation menu.  
+  
+   4. From this menu, you may select to use the following options: 
+      (when prompted for INSTALL NAME, enter PSO*7.0*160) 
+  
+     a. Backup a Transport Global - this option will create a backup 
+        message of any routines exported with the patch. It will NOT 
+        backup any other changes such as DDs or templates.  
+  
+     b. Compare Transport Global to Current System - this option will 
+        allow you to view all changes that will be made when the patch 
+        is installed. It compares all components of the patch (routines, 
+        DDs, templates, etc.).  
+  
+     c. Verify Checksums in Transport Global - this option will ensure 
+        the integrity of the routines that are in the transport global.  
+  
+   5. Use the Install Package(s) option and select the package PSO*7.0*160.
+   
+   6. When prompted, "Queue the Post-Install to run at what Date@Time:" 
+      respond with the appropriate date and time.
+  
+   7. When prompted "Enter the Coordinator for Mail Group 'PSO TPB 
+      GROUP'", enter the name of the Transitional Pharmacy Benefit (TPB)
+      coordinator at your site. Once the patch is installed, the
+      coordinator should add as new members of this mail group the
+      appropriate users.
+  
+   8. When prompted "Want KIDS to Rebuild Menu Trees Upon Completion of 
+      Install? YES//" respond NO.
+  
+   9. When Prompted "Want KIDS to INHIBIT LOGONs during the install? 
+      YES//" respond NO.  
+  
+  10. When Prompted "Want to DISABLE Scheduled Options, Menu Options, and 
+      Protocols? YES//" respond NO.  
+  
+  11. When prompted,"Device:HOME//" respond with the correct device and DO 
+      NOT queue this to P-Message.
+  
+  12. If Routines were unmapped as part of step 2, they should be returned
+      to the mapped set once the installation has run to completion.
+  
+  13. Assign stand alone option [PSO TPB PATIENT RX REPORT] to site TPB 
+      Coordinator, Pharmacy ADPAC and any other individual designated to
+      review eligibility of patients for the TPB program.
+
+Routine Information:
+====================
+
+Routine Name:
+  - PSO160EN
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSO160DR
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSO160P1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSO160P2
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOTPCUL
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOTPINA
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOTPRP1
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : ROCHA,MARCELO                 Date Entered  : NOV 24, 2003
+Completed By: NEVEU,MIKE                    Date Completed: JAN 06, 2004
+Released By : BARRON,LUANNE                 Date Released : JAN 07, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

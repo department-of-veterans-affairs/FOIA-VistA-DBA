@@ -1,0 +1,404 @@
+$TXT Created by PHELPS,TY at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 01/11/07 at 13:58
+=============================================================================
+Run Date: FEB 28, 2007                     Designation: GMRC*3*53
+Package : GMRC - CONSULT/REQUEST TRACKING     Priority: Mandatory
+Version : 3        SEQ #47                      Status: Released
+                  Compliance Date: MAR 31, 2007
+=============================================================================
+
+Associated patches: (v)GMRC*3*27   <<= must be installed BEFORE `GMRC*3*53'
+                    (v)GMRC*3*40   <<= must be installed BEFORE `GMRC*3*53'
+                    (v)GMRC*3*45   <<= must be installed BEFORE `GMRC*3*53'
+
+Subject: CORRECT SEVERAL ISSUES IN CONSULT/REQUEST TRACKING (GMRC)
+
+Category: 
+  - Other
+  - Data Dictionary
+  - Routine
+
+Description:
+============
+
+ This patch corrects a couple of printing issues, a consult forwarding
+ issue, an administrative completion issue, and duplicate service names.
+ It also adds an additional warning when creating Consult Services and
+ additional information in the Consult documentation of the Inter-facility 
+ Consults Implementation Guide.
+  
+  
+ ASSOCIATED REMEDY:
+ ==================
+ 1. HD0000000105403: Can't print an UNCOSIGNED consult report from the
+                     Consults tab immediately after 1st signature
+ 2. HD0000000068032: Can do 'admin complete' in GUI w/o any text
+ 3. HD0000000067611: IFC request forwarded to a hidden 'tracking' svc
+ 4. HD0000000103284: Deleting duplicate services
+ 5. HD0000000067813: Runaway jobs
+    Duplicate:       HD147273
+ 6. HD0000000133446: Unable to Edit/Resubmit IFC
+ 7. HD0000000067397: System didn't prevent duplicate cons service names
+  
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Portland VAMC
+ Augusta VAMC
+ Puget Sound HCS
+ Detroit VAMC
+  
+  
+ REMEDY OVERVIEW:
+ ================
+ 1. HD0000000105403   Can't print an UNCOSIGNED consult report from the
+                      Consults tab immediately after 1st signature 
+  
+    Problem:
+    --------
+    Site reported they were unable to print an UNCOSIGNED consult report 
+    from the Consults tab immediately after 1st signature.  The print action
+    does not have the TIU results text or any of the consult actions, it
+    just prints as 'CHART COPY - No Consultation Results available".  The 
+    same TIU document can be printed just fine on the NOTES tab if the site
+    has Authorization Subscription Utility (ASU) rules permitting this. 
+  
+    Resolution:
+    -----------
+    This problem was due to the fact that the consult code to fetch a TIU
+    document was only made if the status of the consult was complete.
+    Routine GMRCP5A was modified to fetch the TIU document and allow
+    the ASU rules to determine if the TIU document may be viewed.
+  
+  
+ 2. HD0000000068032   Can do 'admin complete' in GUI w/o any text
+  
+    Problem:
+    --------
+    An Administrative Complete can be executed on a Consult without entering
+    a comment.  In CPRS gui, a response in the comment field is required, but
+    can be tricked by entering a blank space or a blank line by pressing
+    <return>.  In VistA, a comment is not needed at all to administratively
+    complete a consult.
+  
+    Resolution:
+    -----------
+    A new check in routines GMRCAAC, GMRCGUIB and GMRCP will be made to
+    insure some sort of text is included in the comment field when a user 
+    Administratively Completes a Consult.
+  
+  
+ 3. HD0000000067611   IFC request forwarded to a hidden 'tracking' svc
+  
+    Problem:
+    --------
+    A consult can be Forwarded to a 'Tracking Only' consult service in
+    VistA.  The CPRS software (not GUI) and the Consult Service Tracking
+    [GMRC SERVICE TRACKING] option both allow this to occur.  'Tracking
+    Only' consults appear to be not selectable when you type a "?" at
+    the prompt, but if you partially type the name they are returned by
+    the lookup and are selectable.
+  
+    Resolution:
+    -----------
+    Routine GMRCASV will be modified to include an edit to filter out
+    'Disabled' and 'Tracking Only' Consult services where the user is not
+    an update user when forwarding a consult.
+  
+  
+ 4. HD0000000103284   Deleting duplicate services
+  
+    Problem:
+    --------
+    Currently, a consult service may appear as part of the Consult service
+    hierarchy in more than one place (i.e. a sub-service of more than one
+    parent).  This situation has the potential to skew the results of the
+    Consult Performance Monitor Report [GMRC RPT PERF MONITOR] which was
+    released in patch GMRC*3.0*41.
+  
+    Resolution:
+    -----------
+    When adding a consult service as a new sub-service, a check will be made
+    to determine if this will create a duplicate sub-service situation.  If
+    so, a new warning message will be displayed to warn the user that the
+    consult service already exists as a sub-service and provide them the
+    opportunity to not create the new sub-service entry.  As part of the
+    new warning message, a listing of current locations where the Service
+    is already a sub-service is displayed.  The input routine, GMRCSRVS,
+    will be modified to accomplish this task.  The warning message will
+    look like the following:
+  
+    Service MENTAL HEALTH URGENT CARE is already a sub-service of:
+    CARDIOLOGY CLINIC
+    MENTAL HEALTH (G)
+    PSYCHIATRY OUTPATIENT CLINICS (G)
+  
+ A consult service appearing as part of the Consult service
+ hierarchy in more than one place (i.e. a sub-service of more
+ than one parent) has the potential to skew the results of the
+ Consult Performance Monitor Report [GMRC RPT PERF MONITOR].
+  
+ Do you wish to continue adding MENTAL HEALTH URGENT CARE as a new sub-service? NO//
+  
+  
+ 5. HD0000000067813   Runaway jobs
+  
+    Problem:
+    --------
+    It was discovered that if a device/printer was missing the right margin
+    setting (IOM), a print job could go into an indefinite loop while
+    printing an SF513.
+  
+    Resolution:
+    -----------
+    Routine GMRCP5A will be modified to set the IOM variable to 80 whenever
+    a device is selected that does not already have a right margin setting.
+  
+  
+ 6. HD0000000133446   Unable to Edit/Resubmit IFC
+  
+    Problem:
+    --------
+    A site indicated the information contained in the INTER-FACILITY
+    CONSULTS IMPLEMENTATION GUIDE of the VistA Documentation Library was
+    misleading in regard to the Edit/Resubmit action.  On page 20, the
+    guide indicates that all actions normally available to the user in the
+    Consult Service Tracking option are usable via the IFC Requests By
+    Patient [GMRC IFC RPT CONSULTS BY PT] option.  This is basically true,
+    but some of the actions are only available at the Consulting 
+    (Receiving) site while the Edit/Resubmit action is only available at
+    the Requesting (Sending) site.
+  
+    Resolution:
+    -----------
+    The wording on page 20 of the INTER-FACILITY CONSULTS IMPLEMENTATION
+    GUIDE will be modified to more accurately describe the actions
+    available while using the IFC Requests By Patient [GMRC IFC RPT
+    CONSULTS BY PT] option.  The new text will read:
+  
+       The IFC Requests by Patient (IP) report is the same as the Consult
+       Service Tracking (CS) option, except that it only displays inter-
+       facility consults. As such, once it has been invoked, all actions
+       normally available to you in the Consult Service Tracking option
+       are potentially usable.  Some actions are only available to the
+       Consulting (Receiving) site, as they relate to the processing of
+       the Consult.  The Edit/Resubmit action is only available at the
+       Requesting (Sending) site, as that is the location responsible for
+       submitting the Consult in the first place.
+  
+  
+ 7. HD0000000067397   System didn't prevent duplicate cons service names
+  
+    Problem:
+    --------
+    A site discovered that a user is able to edit a Consult Service name,
+    using the Set up Consult Services [GMRC SETUP REQUEST SERVICES]
+    option, to create multiple Consult Services with the same name.  This
+    is also possible when working with Procedure names via the Setup
+    Procedures [GMRC PROCEDURE SETUP] option.
+  
+    Resolution:
+    -----------
+    The input templates for the NAME (#.01) and the SERVICE NAME (#.01)
+    fields, in the GMRC PROCEDURE (#123.3) and REQUEST SERVICES (#123.5)
+    files respectively, will be modified to check for the existence of a
+    duplicate name when editing the existing name of a service/procedure.
+    The help prompt text will also be modified to indicate a unique name
+    must be entered.
+  
+    Before DD change:
+    -----------------
+    DATA          NAME                  GLOBAL        DATA
+    ELEMENT       TITLE                 LOCATION      TYPE
+    ------------------------------------------------------------------------
+    123.3,.01     NAME                   0;1 FREE TEXT (Required)
+  
+    INPUT TRANSFORM:  K:$L(X)>63!($L(X)<3)!'(X'?1P.E) X
+  
+    HELP-PROMPT:      Answer must be 3-63 characters in length.
+  
+  
+    DATA          NAME                  GLOBAL        DATA
+    ELEMENT       TITLE                 LOCATION      TYPE
+    ------------------------------------------------------------------------
+    123.5,.01     SERVICE NAME           0;1 FREE TEXT (Required)
+  
+    INPUT TRANSFORM:  K:$L(X)>63!($L(X)<2)!'(X'?1P.E) X
+  
+    HELP-PROMPT:      Type the name of a service or specialty that can
+                      receive consults.
+  
+  
+    After DD change:
+    ----------------
+    DATA          NAME                  GLOBAL        DATA
+    ELEMENT       TITLE                 LOCATION      TYPE
+    ----------------------------------------------------------------------
+    123.3,.01     NAME                   0;1 FREE TEXT (Required)
+  
+    INPUT TRANSFORM:  K:$L(X)>63!($L(X)<3)!'(X'?1P.E)!($O(^GMR(123.3,
+                      "B",X,0))'="") X
+  
+    HELP-PROMPT:      Answer must be a unique name between 3-63 characters
+                      in length.
+  
+  
+    DATA          NAME                  GLOBAL        DATA
+    ELEMENT       TITLE                 LOCATION      TYPE
+    -----------------------------------------------------------------------
+    123.5,.01     SERVICE NAME           0;1 FREE TEXT (Required)
+  
+    INPUT TRANSFORM:  K:$L(X)>63!($L(X)<2)!'(X'?1P.E)!($O(^GMR(123.5,
+                      "B",X,0))'="") X
+  
+    HELP-PROMPT:      Type a unique name of a service or specialty that can
+                      receive consults.
+  
+  
+ Documentation Retrieval:
+ ========================
+ INTER-FACILITY CONSULTS IMPLEMENTATION GUIDE has been modified to more
+ accurately describe the actions available while using the IFC Requests By
+ Patient [GMRC IFC RPT CONSULTS BY PT] option.
+  
+ The revised INTER-FACILITY CONSULTS IMPLEMENTATION GUIDE is available on
+ the ANONYMOUS.SOFTWARE directory at one of the following Office of
+ Information (OI) Field Offices. This file needs to be retrieved in binary
+ format.
+   
+ Sites may retrieve documentation in one of the following ways:
+   
+  (1) The preferred method is to FTP the files from
+      download.vista.med.va.gov, which will transmit the files from the
+      first available FTP server.
+    
+  (2) Sites may also elect to retrieve documentation directly from a
+      specific server as follows:
+    
+      Albany          ftp.fo-albany.med.va.gov
+      Hines           ftp.fo-hines.med.va.gov
+      Salt Lake City  ftp.fo-slc.med.va.gov
+    
+      The documentation distribution includes:
+     
+      FILE NAME      DESCRIPTION                                    FORMAT
+      =========      ===========                                    ======
+      consifc.pdf    Inter-Facility Consults Implementation Guide   Binary
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ This patch can be loaded with users on the system, but, it is recommended
+ it be installed when user activity is low.  Installation time will be less
+ than 2 minutes.
+  
+ 1.  Choose the PackMan message containing this patch and invoke the 
+     INSTALL/CHECK MESSAGE PackMan option.  
+  
+ 2.  Start up the Kernel Installation and Distribution System Menu
+     [XPD MAIN]: 
+  
+          Edits and Distribution ...  
+          Utilities ...  
+          Installation ...  
+  
+     Select Kernel Installation & Distribution System Option: Installation
+                                                              ---
+          1      Load a Distribution
+          2      Verify Checksums in Transport Global
+          3      Print Transport Global
+          4      Compare Transport Global to Current System
+          5      Backup a Transport Global
+          6      Install Package(s)
+                 Restart Install of Package(s)
+                 Unload a Distribution
+  
+ 3.  From this menu, you may elect to use the following options
+     (When prompted for the INSTALL NAME, enter GMRC*3.0*53):
+     
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will
+         not backup any other changes such as DD's or templates.
+     b.  Compare Transport Global to Current System - This option
+         will allow you to view all changes that will be made when
+         this patch is installed.  It compares all components of this
+         patch (routines, DD's, templates, etc.).
+     c.  Verify Checksums in Transport Global - This option will
+         allow you to ensure the integrity of the routines that are
+         in the transport global.
+  
+ 4.  Use the Install Package(s) option and select the package
+     GMRC*3.0*53.
+  
+     a.  When prompted "Want KIDS to INHIBIT LOGONs during the
+         install? YES//", answer NO.
+     b.  When prompted "Want to DISABLE Scheduled Options and Menu 
+         Options and Protocols? YES//", answer YES.
+     c.  When prompted "Enter options you wish to mark as 'Out Of Order':",
+         enter the following options:
+  
+             Set up Consult Services [GMRC SETUP REQUEST SERVICES]
+             Setup procedures [GMRC PROCEDURE SETUP]
+  
+     d.  When prompted "Enter protocols you wish to mark as 'Out Of Order':",
+         enter the following protocols:
+  
+             Forward [GMRCACT FORWARD]
+             Forward [ORC FORWARD CONSULT]
+             Print Form 513 [GMRCACT PRINT CONSULT FORM]
+             Print Form 513 [ORC PRINT CONSULT]
+             Complete/Update [GMRCACT COMPLETE]
+             Complete/Update [ORC COMPLETE CONSULT]
+  
+     e.  When prompted "Delay Install (Minutes):  (0-60): 0//", press
+         <return>.
+  
+ ROUTINE SUMMARY:
+ ================
+ The following is a list of the routines included in this patch.  
+ The second line of each of these routines now looks like: 
+  
+   <tab>;;3.0;CONSULT/REQUEST TRACKING;**[patch list]**;DEC 27, 1997
+  
+  
+                        CHECK^XTSUMBLD results
+  
+ Routine name      Before Patch       After Patch      Patch List
+ ============      ============       ===========      ===========
+ GMRCAAC           3651363            3944734          4,12,53
+ GMRCASV           20640410           21022944         1,12,18,22,53
+ GMRCGUIB          11448352           12128721         4,12,18,20,17,22,29,
+                                                       30,35,45,53
+ GMRCP             6261586            8531505          1,4,17,22,27,53
+ GMRCP5A           17445176           17519716         4,13,12,15,21,22,53
+ GMRCSRVS          13926518           17575661         1,16,40,53
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: GMRCAAC
+    Before:  B7153655  After:  B7900333  **4,12,53**
+Routine Name: GMRCASV
+    Before: B64890269  After: B66332685  **1,12,18,22,53**
+Routine Name: GMRCGUIB
+    Before: B40017497  After: B43541445  **4,12,18,20,17,22,29,30,35,45,53**
+Routine Name: GMRCP
+    Before: B12723526  After: B19313009  **1,4,17,22,27,53**
+Routine Name: GMRCP5A
+    Before: B74868100  After: B75809712  **4,13,12,15,21,22,53**
+Routine Name: GMRCSRVS
+    Before: B43864564  After: B67385586  **1,16,40,53**
+
+=============================================================================
+User Information:
+Entered By  : PHELPS,TY                     Date Entered  : JUN 12, 2006
+Completed By: WERNER,GARY                   Date Completed: FEB 28, 2007
+Released By : STRONG,NICK                   Date Released : FEB 28, 2007
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

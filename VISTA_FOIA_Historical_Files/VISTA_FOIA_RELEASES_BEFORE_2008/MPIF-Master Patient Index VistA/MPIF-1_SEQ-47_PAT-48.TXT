@@ -1,0 +1,225 @@
+$TXT Created by DAVIS,PAULETTE T at DEVCRN.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 08/21/07 at 10:36
+=============================================================================
+Run Date: SEP 06, 2007                     Designation: MPIF*1*48
+Package : MPIF - MASTER PATIENT INDEX VISTA   Priority: Mandatory
+Version : 1        SEQ #47                      Status: Released
+                  Compliance Date: OCT 07, 2007
+=============================================================================
+
+Associated patches: (v)MPIF*1*39   <<= must be installed BEFORE `MPIF*1*48'
+                    (v)MPIF*1*45   <<= must be installed BEFORE `MPIF*1*48'
+                    (v)MPIF*1*46   <<= must be installed BEFORE `MPIF*1*48'
+                    (v)RG*1*48     <<= must be installed BEFORE `MPIF*1*48'
+
+Subject: CAPTURE DATE/TIME AND WHO MARKED EXCEPTION PROCESSED
+
+Category: 
+  - Enhancement (Mandatory)
+  - Routine
+
+Description:
+============
+
+  NOTE:  RG* and MPIF* patches should NOT be installed on legacy
+  systems to avoid issues with the legacy systems ending up as
+  Treating Facilities.
+   
+  MPIF*1.0*39, MPIF*1.0*45, MPIF*1.0*46, and RG*1.0*48 are required
+  builds for patch MPIF*1*48.
+  
+  Issue #1: 
+  In the MPI/PD Exception Handling [RG EXCEPTION HANDLING] option,
+  the person that resolves an exception and the date/time the
+  resolution occurred will be retained.  Patch RG*1*48 created two
+  new fields in the CIRN HL7 EXCEPTION LOG (#991.1) file to store this
+  information.  See patch RG*1*48 for more details.  Routines MPIFDUP 
+  and MPIFD1 have been modified to capture this data.
+    
+  Issue #2:
+  The LAST NUMBER USED (#1) and the NEXT NUMBER TO USE (#3) fields in
+  the MASTER PATIENT INDEX (LOCAL NUMBERS) (#984.1) file had a maximum
+  length of 9 digits in the data dictionary (DD).  However, an Integration
+  Control Number (ICN) is 10 digits in length.  Some, but not all, sites
+  have the correct values in these fields.  In post-init routine, MPIFP48,
+  the DD is being corrected as well as the values placed in these fields.
+   
+  Issue #3:
+  It is possible to have a Primary View Reject exception in the MPI/PD
+  Exception Handling [RG EXCEPTION HANDLING] option that returns no data
+  when the PVR View PV Rej Detail action is selected.  This can occur if
+  the Integration Control Number (ICN) has changed to another ICN after
+  the Primary View Reject exception occurred.  Because the ICN is
+  different, the request finds no data for that ICN, so no information
+  is displayed for the exception.  The ICN could change as a result of
+  the resolution of a Potential Matches Returned exception using the PMR
+  Potential Match Rev action.  It is also possible for the Identity
+  Management Data Quality (IMDQ) staff to use an option on the MPI
+  to cause the same situation.  The IMDQ staff can also make a Potential
+  Matches Returned exception 'obsolete' as they address a potential
+  duplicate on the MPI.  Code has been changed in routines MPIFA24,
+  MPIFD1, and MPIFDUP to clear an 'obsolete' Primary View Reject
+  exception and/or a Potential Matches Returned exception (if the
+  IMDQ team triggers the ICN change process) from the MPI/PD Exception
+  Handling [RG EXCEPTION HANDLING] option, as they are no longer viable
+  exceptions.
+  
+  Issue #4:
+  The Replacement Scheduling Application (RSA) requested a code change
+  to ensure that the CheckSum for an Integration Control Number (ICN)
+  is never returned as a null value.  The previous code in the GETICN
+  Application Programmer Interface (API) in routine MPIF001 used the
+  value from piece 2 of ^DPT(DFN,"MPI").  But in some cases that was
+  null for RSA.  The API now uses the $$CHECKDG^MPIFSPC code to
+  generate the CheckSum to ensure that the value is not null.
+     
+  Issue #5:
+  Enrollment VistA Changes (EVC) requested the following changes.
+  - If a patient had a Pseudo-Social Security Number (SSN) when DG*5.3*653
+  (EVC R1) was installed (and therefore had no PSEUDO SSN REASON (#.0906)
+  in the PATIENT (#2) file), then the code that checks for identity fields
+  at the beginning of the Register a Patient [DG REGISTER PATIENT] or
+  Load/Edit Patient Data [DG LOAD PATIENT DATA] options prompted for SOCIAL
+  SECURITY NUMBER (#.09) and PSEUDO SSN REASON (#.0906).  This occurred even
+  if the user edited the SOCIAL SECURITY NUMBER (#.09) to a real Social
+  Security Number in that session.  The PSEUDO SSN REASON (#.0906) should
+  have been the only field prompted for if the SSN was a Pseudo and no value
+  existed for the PSEUDO SSN REASON (#.0906).
+  - If the SSN was a Pseudo and the PSEUDO SSN REASON (#.0906) was SSN
+  UNKNOWN/FOLLOW-UP REQUIRED, then only the SOCIAL SECURITY NUMBER (#.09)
+  should be prompted.  If the user enters a valid (non-Pseudo) SSN, then the
+  PSEUDO SSN REASON (#.0906) is automatically deleted.  If the SSN remains
+  a Pseudo SSN, then the PSEUDO SSN REASON (#.0906) remains.
+  Code changes have been made in routine MPIFAPI to correct these issues.
+   
+  Data Dictionary Changes:
+  ========================
+  Two fields have been edited in the MASTER PATIENT INDEX (LOCAL NUMBERS)
+  (#984.1) file.
+      1     LAST NUMBER USED
+      3     NEXT NUMBER TO USE
+   
+  Documentation Update:
+  =====================
+  Refer to the Documentation Update section for patch RG*1*48.
+   
+  Associated Remedy Ticket(s):
+  ============================
+  There are no associated Remedy Tickets.
+   
+  Associated New Service Request (NSR):
+  =====================================
+  There is no associated NSR with the patch.
+    
+  Test Sites:
+  ===========
+  Bay Pines HCS
+  Charleston, SC
+  Connecticut HCS
+   
+  Routine Summary:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+   
+  <TAB>;;1.0;MASTER PATIENT INDEX VISTA;**[Patch List]**;30 Apr 99
+   
+  Using old logic: CHECK^XTSUMBLD results
+  Routine       Before Patch       After Patch       Patch List
+  --------      ------------       ------------      ----------
+  MPIF001          9653270            9736213        1,3,9,16,18,21,
+                                                     27,33,35,41,45,48
+  MPIFA24          7722136            7836340        22,24,27,31,25,
+                                                     41,39,48
+  MPIFAPI         12693087           13296015        1,3,14,16,17,21,
+                                                     27,28,33,35,37,
+                                                     43,45,44,46,48
+  MPIFD1          18056105           18701196        43,48
+  MPIFDUP         16377687           18537024        43,46,48
+  MPIFP48            N/A                N/A          48
+  MPIFSPC           716257             730084        48
+   
+  Note: Routine MPIFP48 is automatically deleted by the installation.
+  The checksum prior to deletion is 1109718.
+     
+  FYI - if you run ^XINDEX on routine MPIFA24, a reference to OMGPIDMI
+  is displayed as a routine that is not available on your system and
+  that is correct.  This relates only to the Federal Health Information
+  Exchange (FHIE) Framework system.  This reference was introduced in an
+  earlier patch - MPIF*1.0*25.
+   
+  Installation Instructions:
+  ==========================
+  This patch may be loaded with users on the system.  It should be
+  installed during non-peak hours to minimize disruption to the
+  users.  Installation will take less than 2 minutes.
+   
+  1.  Users are allowed on the system during patch installation.
+     
+  2.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+      Note:  TEXT PRINT/DISPLAY option in the PackMan menu will
+      display the patch text only.
+     
+  3.  From the Kernel Installation and Distribution System Menu, select
+      the Installation menu.
+   
+  4.  From this menu, you may elect to use the following options:
+      (a)  Backup a Transport Global.
+      (b)  Compare Transport Global to Current System.
+      (c)  Verify Checksums in Transport Global.
+      (d)  Print Transport Global.
+   
+  5.  Use the Install Package(s) option and select the package MPIF*1.0*48.
+   
+  6.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+      YES//', respond NO.
+   
+  7.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols? YES//', respond YES.  The following OPTION should be
+      disabled during the installation.
+      Register a Patient              [DG REGISTER PATIENT]
+      Load/Edit Patient Data          [DG LOAD PATIENT DATA]
+      UPDATE BATCH JOB FOR HL7 v2.3   [VAFC BATCH UPDATE]
+      MPI/PD Exception Handling       [RG EXCEPTION HANDLING]
+      Local/Missing ICN Resolution Background Job [MPIF LOC/MIS ICN RES]
+   
+  8.  Routine MPIFP48 is automatically deleted from your system after
+      successful installation.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;1.0; MASTER PATIENT INDEX VISTA ;**[Patch List]**;30 Apr 99;Build 6
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: MPIF001
+    Before: B53646904   After: B53763903  **1,3,9,16,18,21,27,33,35,41,45,48**
+Routine Name: MPIFA24
+    Before: B21542595   After: B21971494  **22,24,27,31,25,41,39,48**
+Routine Name: MPIFAPI
+    Before: B47315880   After: B49088587  **1,3,14,16,17,21,27,28,33,35,
+                                           37,43,45,44,46,48**
+Routine Name: MPIFD1
+    Before: B49972281   After: B52740520  **43,48**
+Routine Name: MPIFDUP
+    Before: B52134006   After: B64880592  **43,46,48**
+Routine Name: MPIFP48
+    Before:       n/a   After:  B1808998  **48**
+Routine Name: MPIFSPC
+    Before:  B1359691   After:  B1433923  **48**
+ 
+Routine list of preceding patches: 39, 46
+
+=============================================================================
+User Information:
+Entered By  : CHESNEY,CHRISTINE M           Date Entered  : MAY 03, 2007
+Completed By: ALDERMAN,MATT S               Date Completed: SEP 05, 2007
+Released By : FITCH,DONNA                   Date Released : SEP 06, 2007
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

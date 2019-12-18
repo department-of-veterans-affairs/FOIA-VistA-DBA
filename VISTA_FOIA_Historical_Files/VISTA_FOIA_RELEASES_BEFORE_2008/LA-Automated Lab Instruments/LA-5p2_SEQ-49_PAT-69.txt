@@ -1,0 +1,637 @@
+$TXT Created by HICKS,BRENT at DEV.DEV.FO-HINES.MED.VA.GOV  (KIDS) on Monday, 02/02/04 at 11:50
+=============================================================================
+Run Date: FEB 17, 2004                     Designation: LA*5.2*69
+Package : LA - AUTOMATED LAB INSTRUMENTS      Priority: Mandatory
+Version : 5.2        SEQ #49                    Status: Released
+                  Compliance Date: MAR 19, 2004
+=============================================================================
+
+
+Subject: Lab Utility API's
+
+Category: 
+  - Routine
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ Blood Bank Clearance
+ ====================
+  
+ EFFECT ON BLOOD BANK FUNCTIONAL REQUIREMENTS: Patch LA*5.2*69 does not 
+ contain any changes to the VISTA BLOOD BANK Software as defined by VHA 
+ DIRECTIVE 99-053 titled VISTA BLOOD BANK SOFTWARE.
+  
+ EFFECT ON BLOOD BANK FUNCTIONAL REQUIREMENTS: Patch LA*5.2*69 does not 
+ alter or modify any software design safeguards or safety critical 
+ elements functions.
+  
+ RISK ANALYSIS: Changes made by patch LA*5.2*69 have no effect on Blood 
+ Bank software functionality, therefore RISK is none.
+  
+ VALIDATION REQUIREMENTS BY OPTION:  Because of the nature of the changes 
+ made, no specific validation requirements exist as a result of 
+ installation of this patch.
+  
+  
+  
+ NOIS references addressed in this patch
+ =======================================
+ None.
+  
+  
+ E3R reference addressed in this patch
+ ======================================
+ None.
+  
+  
+ Test Sites
+ ==========
+ Coatesville - VMS/DSM
+ Fargo       - Alpha NT/Cache
+ Palo Alto   - VMS/DSM
+ Fresno      - VMS/Cache 
+  
+ Required Builds
+ ===============
+  
+ LA*5.2*46
+  
+  
+ This patch is being released to provide the Clinical Case Registries 
+ package with API s to extract specific  lab data.  The Clinical Case 
+ Registries patch ROR*1.0*5 is dependant on this patch (LA*5.2*69) being 
+ installed.
+  
+  
+ This patch contains the following enhancements and problem resolutions:
+  
+ 1) Creates a lab API that returns Microbiology data for a given patient 
+ over a specified date range.
+ =======================================================================
+  
+ The following routines have been created:
+  
+ Summary
+ -------
+  
+ LA7UTL1A - This routine loops through any Microbiology records for the 
+ patient during the passed in date range either by collection date or 
+ completion date.  For each record found routine LA7UTL1C is called to 
+ create a temporary global containing specific microbiology data.  After 
+ this call another call is made to LA7UTL1B to rearrange the temporary
+ global (for clarity) and set it to the user specified temporary global
+ that is passed into the API.
+  
+ LA7UTL1B - When Organism data is being processed in LA7UTL1C, this routine
+ passes the field number for any Antibiotics associated with the Organism
+ data getting saved to the temporary global.  If the field number is a
+ predefined field value and not site specific LA7UTL1B passes back the
+ Organism Antibiotic field name.  When Mycobacterium data is being 
+ processed in LA7UTL1C, this routine passes the field number for any 
+ Antibiotics associated with the Mycobacterium data getting saved to the 
+ temporary global.  If the field number is a predefined field value and 
+ not site specific LA7UTL1B passes back the Mycobacterium Antibiotic field 
+ name.
+ There is a sub routine within this routine that is called from LA7UTL1A 
+ that for each patient rearranges the result global containing patient data
+ and sets it to the user specified temporary global that is passed into the
+ API.
+  
+ LA7UTL1C - This routine is called for a specific IEN of a microbiology
+ entry, it then loops through any of the following data sets (if they
+ exist) and sets specific data into a temporary global; Bact RPT, Gram
+ Stain, Organism, Parasite with Stage Codes, Parasite Remarks, Fungus
+ Yeast, Mycobacterium, Virus, Parasitology Smear/Prep, Bacteriology
+ Smear/Prep, Mycology Smear/Prep and Virology RPT. For Organism and
+ Mycobacterium routine LA7UTL1B is called to get the Antibiotic field name.
+  
+ Detail
+ ------
+  
+ The API can be called in the following way;
+  
+ S RES=$$GETDATA^LA7UTL1A(LRDFN,LASDT,LAEDT,LASEARCH,RESULTS)
+  
+   Input:
+  
+   LRDFN    - Lab DFN
+   LASDT    - Search Start Date
+   LAEDT    - Search End Date
+   LASEARCH - Set to CD (collection date) or RAD (completion date).
+   RESULTS  - Closed root destination array reference
+         
+   Output:
+  
+   If an error is found with the input variables one for the strings will
+   be returned.
+         
+   -1^Start date is after end date
+   -2^No return array global
+   -3^Global array only
+   -4^No Patient lab DFN
+   -5^No Start Date Range
+   -6^No End Date Range
+         
+   If there are no errors with the input variables the processing will
+   return '1'.  If there is no data in the passed in global there was no
+   data available for the patient.
+         
+   If there is data available for the patient the routine will pass back
+   the following data (the example assumes the passed in closed root global
+   was "^TMP($J)"):
+        
+  
+   Fields #.01 (Accession date), #.05 (Site Specimen), #.055 (Sample
+   Type),  # .06 (Accession #), #11.51 (Sterility Control), # 11.57 
+   (Urine Screen), # 11.58 (Sputum Screen), # 22 (TB RPT Date Approved),
+   #23 (TB RPT Status), # 24 (ACID Fast Stain), # 25 (Quantity) and # .99 
+   (Specimen Comment) from  the top node in the following format;
+             
+   ^TMP($J,LRDFN,Record_IEN,"0",Field #,"E" or "I")=Field Data
+   
+       
+   Field #.01 of sub file #63.29 - Gram Stain - in the following format;
+         
+   ^TMP($J,LRDFN,Record_IEN,"2",Sub File IEN,"0",Field #,"E" or "I")=Data
+         
+  
+   Field #.01 (Organism) and #1 (Quantity) of sub file #63.3 in the 
+   following format;
+         
+   ^TMP($J,LRDFN,Record_IEN,"3",Sub File IEN,"0",Field #,"E" or "I")=Data
+         
+  
+   Within the Organism data there is an antibiotic multiple. The routine
+   returns the Antibiotic #.01 along with the Mic (field #1) and Mbc (field
+   #2) from the sub file #63.32 in the following format;
+         
+   ^TMP($J,LRDFN,Record_IEN,"3",Sub File IEN,"3",Sub-Sub File IEN,"0"
+   ,Field #,"E" or "I")=Data
+   
+   Organisms can potentially have specific antibiotics associated with
+   them. This API pulls any of the Antibiotics (along with their 
+   interpretation and screen) that have been entered in the antibiotic 
+   fields that exist within the standard Lab DD.  Within this sub file
+   these fields are numbered between 5 and 160.2 and have node numbers that
+   begin with the numbers 2.00.   It is also possible for sites to enter
+   their own specific named antibiotics within this multiple using a lab
+   option.  This option creates a new node number for the new antibiotic
+   entry that is comprised in the following way "2.00"_site #_n (where n is
+   an incremented number).  This node number also becomes the field number
+   for this antibiotic. The interpretation and screen values of these
+   antibiotics should follow a pattern where interpretation field number is
+   comprised as follows "2.00"_site #_n_1 and the screen is "2.00"_site
+   #_n_2.
+         
+   However only antibiotics that have been entered in the standard Organism
+   DD will get extracted.  Any antibiotics entered into the site specified
+   fields will not get extracted. 
+  
+   ^TMP($J,LRDFN,Record_IEN,"3",Sub File IEN,"0",Field #,"I")=data
+   ^TMP($J,LRDFN,Record_IEN,"3",Sub File IEN,"0",Field #,"E")=field 
+   name^data
+         
+   Note the "E" node contains the field name and it's related data.
+         
+   Within the Organism data there is a comment multiple which the routine
+   also returns.  
+   Field #.01 Comment of sub file #63.31 in the following format;
+         
+   ^TMP($J,LRDFN,Record_IEN,"3",Sub File IEN,"1",Sub-Sub File IEN,"0",Field
+   #,"E" or "I")=Data
+   
+       
+   Field #.01 Bact RPT Remark of sub file #63.33 in the following format;
+       
+   ^TMP($J,LRDFN,Record_IEN,"4",Sub File IEN,"0",Field #,"E" or "I")=Data
+         
+  
+   Field .01 Parasite of sub file 63.34 in the following format;
+         
+   ^TMP($J,LRDFN,Record_IEN,"6",Sub File IEN,"0",Field #,"E" or "I")=Data
+  
+   Within Parasite data there is a stage code multiple that the routine
+   also returns.
+   Fields #.01 Stage code and #1 Quantity of sub file #63.35 in the 
+   following format;
+         
+   ^TMP($J,LRDFN,Record_IEN,"6",Sub File IEN,"1",Sub-Sub File IEN,"0",Field
+   #,"E" or "I")=Data
+         
+   Within the Stage Code multiple there can be a Stage Code Comment 
+   multiple that this routine also returns;
+   Field #.01 of the Stage Code Comment Multiple #63.351 in the following
+   format;
+   ^TMP($J,LRDFN,Record_IEN,"6",Sub File IEN,"1",Sub-Sub File IEN,"1",Sub 
+   Sub Sub File IEN,"0",Field #,"E" or "I")=Data)
+      
+    
+   Field .01 Parasite RPT Remark 63.36 in the following format;
+         
+   ^TMP($J,LRDFN,Record_IEN,"7",Sub File IEN,"0",Field #,"E" or "I")=Data
+         
+  
+   Field #.01 Fungus/Yeast and field #1 Quantity of sub file #63.37 in the
+   following format;
+         
+   ^TMP($J,LRDFN,Record_IEN,"9",Sub File IEN,"0",Field #,"E" or "I")=Data
+         
+   Within the Fungus/Yeast data there is a comment multiple which the
+   routine also returns.  
+   Field #.01 Comment of sub file #63.372 in the following format;
+         
+   ^TMP($J,LRDFN,Record_IEN,"9",Sub File IEN,"1",Sub-Sub File IEN,"0",Field
+   #,"E" or "I")=Data
+       
+   
+   Field #.01 Mycobacterium and field #1 Quantity of sub file #63.39 in 
+   the following format;
+         
+   ^TMP($J,LRDFN,Record_IEN,"12",Sub File IEN,"0",Field #,"E" or "I")=Data
+  
+   Mycobacterium can potentially have Antibiotics associated with them.
+   This API pulls any of the Antibiotics that have been entered in the
+   Antibiotic fields that exist within the standard Lab DD.  Within this 
+   sub file these fields are numbered between 5 and 55).
+   It is also possible for sites to enter their own Antibiotics within this
+   multiple using a lab option.  This option creates a new node number for
+   the new Antibiotic entry that is comprised in the following way
+   "2.00"_site #_n (where n is an incremented number).
+   This node number also becomes the field number for this Antibiotic.
+         
+   However only Antibiotics that have been entered in the standard
+   Mycobacterium Antibiotic DD will get extracted.  Any Antibiotics entered
+   into the site specified fields will not get extracted.
+  
+   ^TMP($J,LRDFN,Record_IEN,"12",Sub File IEN,"0",Field #,"I")=data
+   ^TMP($J,LRDFN,Record_IEN,"12",Sub File IEN,"0",Field #,"E")=field 
+   name^data
+         
+   Note the "E" node contains the field name and it's related data.
+         
+   Within the Mycobacterium data there is a comment multiple which the
+   routine also returns.  
+   Field #.01 Comment of sub file #63.4 in the following format;
+         
+   ^TMP($J,LRDFN,Record_IEN,"12",Sub File IEN,"1",Sub-Sub File
+   IEN,"0",Field #,"E" or "I")=Data
+         
+  
+   Field #.01 BACT Smear/Prep of sub file #63.291 in the following format;
+         
+   ^TMP($J,LRDFN,Record_IEN,"25",Sub File IEN,"0",Field #,"E" or "I")=Data
+      
+    
+   Field #.01 PARA Smear/Prep of sub file #63.341 in the following format;
+         
+   ^TMP($J,LRDFN,Record_IEN,"24",Sub File IEN,"0",Field #,"E" or "I")=Data
+   
+       
+   Field #.01 VIRUS of sub file #63.43 in the following format;
+         
+   ^TMP($J,LRDFN,Record_IEN,"17",Sub File IEN,"0",Field #,"E" or "I")=Data
+  
+  
+ 2) Creates a lab API that returns Surgical Pathology data for a given 
+ patient over a specified date range.
+ =====================================================================
+  
+ The following routine has been created:
+  
+ Summary
+ -------
+  
+ LA7UTL03 - This report checks the IEN of a Surgical Pathology node 
+ of the Lab global (#63) to see if any data exists for the selected 
+ patient.  If any Specimen, Clinical History, Pre Operative Diagnosis, 
+ Operative Diagnosis, Post Operative Diagnosis, Gross Description,  
+ Microscopic Description, Surgical Pathology and ICD data exists it will 
+ get written to the passed in global reference.  If any errors are 
+ found they are written to the global reference if it was passed in.
+  
+ Detail
+ ------
+  
+ The API can be called in the following way;
+  
+ S RES=$$SPATH^LA7UTL01(LRDFN,IEN,RET,ERR)
+             
+   Input:
+         
+   LRDFN - Patient Lab DFN                        (Required)
+   IEN   - IEN of Surgical Pathology entry        (Required)
+   RET   - Array reference for passing back data  (Required)
+   ERR   - Error array to pass back               (Not required)
+         
+   Output:
+         
+   '0' - If the API encountered an Error along with @ERR array.
+         
+   '1' - if the API ran successfully and the following data if it exists.
+         
+   Specimen field .01 of file 63.812.
+   @RET("SPEC",ien of Specimen entry)=Specimen Data
+           
+   Clinical History field .01 of sub file 63.813.
+   @RET("CHIS",ien of the Clinical History entry)=Clinical His.
+           
+   Pre Operative Diagnosis field .01 of sub file 63.814.
+   @RET@("PREDX",ien of the Pre. Op. Diagnosis entry)=Pre Op Diag.
+         
+   Operative Diagnosis field .01 of sub file 63.815.
+   @RET@("OPERDX",ien of the Op. Diagnosis entry)=Op Diag.
+         
+   Post Operative Diagnosis field .01 of sub file 63.816.
+   @RET@("POSTDX,ien of the Post. Op Diagnosis entry)=Pst. Op Diag.
+         
+   Gross Description field .01 of sub file 63.81.
+   @RET@("GROSSD",ien of the Gross Description entry)=Gross Desc.
+         
+   Microscopic Description field .01 of sub file 63.811.
+   @RET@("MICROD",ien of the Microspc. Description entry)=Micro Desc.
+         
+   Surgical Pathology field .01 of sub file 63.802.
+   @RET@("SURGP",ien of the Surgical Path. entry)=Surgical Path.
+         
+   ICD field .01 of sub file 63.88.
+   @RET@("ICD9",ien of the ICD9 entry)=ICD9
+  
+  
+ 3) Creates a lab API that returns Cytopathology data for a given patient 
+ over a specified date range.
+ =========================================================================
+  
+ The following routine has been created:
+  
+ Summary
+ -------
+  
+ LA7UTL02 - This report checks the IEN of a Cytopathology node of 
+ the Lab global (#63) to see if any data exists for the specified 
+ patient.  If any Specimen, Clinical History , Pre Operative Diagnosis, 
+ Operative Diagnosis, Postoperative Diagnosis, Cytopathology, Microscopic 
+ Description or ICD data exists it will get written to the passed in 
+ global reference.  If any errors are found they are written to the 
+ global reference if it was passed in.
+  
+ Detail
+ ------
+  
+ The API can be called in the following way;
+  
+ S RES=$$CYPATH^LA7UTL02(LRDFN,IEN,RET,ERR)        
+  
+   Input:
+         
+   LRDFN - Patient Lab DFN                        (Required)
+   IEN   - IEN of Cytopathology entry             (Required)
+   RET   - Array reference for passing back data  (Required)
+   ERR   - Error array to pass back               (Not required)
+         
+   Output:
+         
+   '0' - If the API encountered an Error along with information in the @ERR
+         array.
+         
+   '1' - if the API ran successfully and the following data if it exists.
+   
+       
+   Visit Date field #.01 and Accession Number field #.06 of file #63.09.
+   @RET("DEMO",ien of visit)=Visit Date^Accession Number
+         
+   Specimen field #.01 of sub file #63.902.
+   @RET("SPEC",ien of Specimen entry)=Specimen Data
+         
+   Clinical History field #.01 of sub file #63.913.
+   @RET("CHIS",ien of the Clinical History entry)=Clinical His.
+         
+   Pre Operative Diagnosis field #.01 of sub file #63.914.
+   RET@("PREDX",ien of the Pre. Op. Diagnosis entry)=Pre Op Diag.
+         
+   Operative Diagnosis field #.01 of sub file #63.905. 
+   @RET@("OPERDX",ien of the Op. Diagnosis entry)=Op Diag.
+         
+   Post Opertive Diagnosis field #.01 of sub file #63.906.
+   @RET@("POSTDX,ien of the Post. Op Diagnosis entry)=Pst. Op Diag.
+         
+   Cytopathology Diagnosis field #.01 of sub file #63.903. 
+   @RET@("CYTODX",ien of the Cytopathology Diagnosis entry)=Cyto Dx
+         
+   Microscopic Examination field #.01 of sub file #63.911.
+   @RET@("MICRO",ien of the Microscopic Examination entry)=Micro. Exam
+         
+   ICD field #.01 of sub file #63.901.
+   @RET@("ICD9",ien of Cyto ien entry)=ICD9 (external)
+  
+  
+ 4) Call GCPR^LA7QRY for Specific Lab Data
+ =========================================
+  
+ Summary
+ -------
+  
+ LA7QRY and LA7QRY2 - A new acceptable format of the LA7SC parameter of
+ the GCPR^LA7QRY function has been defined. A string containing a list of
+ subscripts (CH, MI, or SP) separated by commas can be passed as a value of
+ this parameter after the patch LA*5.2*69 is installed. If the list is
+ provided then only the corresponding data (chemistry, microbiology, or
+ surgical pathology) is extracted. Otherwise, the API works in the same way
+ as it did before. 
+  
+  
+ Detail
+ ------
+  
+ The API can be called in the following way;
+  
+ S RES=$$GCPR^LA7QRY(LPID,SDT,EDT,SC,SPEC,ERR,DEST,HL7)
+  
+   Input:
+  
+   PTID - Patient identifier, either SSN or MPI/ICN if MPI/ICN then should
+          be full ICN (10 digit number followed by "V" and six digit
+          checksum.
+          For example: 1000720100V271387 
+                    
+   SDT  - Start date of query (FileMan D/T,time optional)
+  
+   EDT  - End date of query (FileMan D/T, time optional). Both start and
+          end date values can pass a parameter in the second piece to
+          indicate that the date values are for specimen collection
+          date/time (CD) or results available date (RAD)
+          Example: SDT="2991001.1239^CD"
+                   EDT="2991002.0331^CD"
+                   SDT="3010201^RAD"
+                   EDT="3010201^RAD"
+         
+   SC  - Array of search codes, either NLT or LOINC;
+         i.e. code^coding system ("NLT" or "LN");
+         Example: SC(1)="89628.0000^NLT"
+                  SC(2)="84330.0000^NLT"
+                  SC(3)="84295.0000^NLT"
+                  SC(4)="14749-6^LN"
+         
+         The "*" character acts as a wildcard for any code;
+         Example: LA7SC="*"
+         
+         Or a list of subscripts separated by commas from where the results
+         will be extracted ("CH","MI" or "SP").
+         Example: LA7SC="CH,MI" (CH and MI results only).
+         
+   SPEC - array of specimen types using HL7 source table 0070 or "*"
+         (for wildcard) for any code Currently specimen type only supported
+         for CH and MI subscripted tests. Example: LA7SPEC="*" or
+         SPEC(1)="UR"
+         SPEC(2)="SER"
+         SPEC(3)="PLAS"
+         
+   DEST - Closed root global reference to return search results (optional).
+          If this parameter is omitted or equals an empty string, then node
+          ^TMP("HLS",$J) is used.
+          Example: LA7DEST=$NA(^TMP("ZZTMP",$J))
+         
+   HL7  - HL7 field separator and encoding characters (4) to use to encode
+          results (optional). If undefined or incomplete (length<5) then
+          field separator = "|" and encoding characters = "^\~&"
+         
+   Output:    
+  
+   DEST - Contains global reference of search results in HL7 message
+          structure, usually ^TMP("HLS",$J).
+         
+   ERR = array (by reference) containing any errors.
+  
+  
+  
+  
+ The following routines has been amended:       
+  
+ ROUTINE SUMMARY
+ ===============
+  
+ The second line of all listed routines will look like:
+  
+          ;;5.2;AUTOMATED LAB INSTRUMENTS;[Patch List];Sep 27, 1994
+  
+ CHECK^XTSUMBLD results:
+  
+ Routines      Before Patch 1   After Patch   Patch List
+ ===========   ==============   ===========   ==========
+ LA7QRY        1084520          1298272       **46,69**
+ LA7QRY2       4552927          5185968       **46,69**
+ LA7UTL1A      N/A              2168688       **69**
+ LA7UTL1B      N/A              13083907      **69**
+ LA7UTL1C      N/A              14113422      **69**
+ LA7UTL02      N/A              6607680       **69**
+ LA7UTL03      N/A              6910794       **69**
+  
+  
+ Software
+ ======
+  
+ This patch will be distributed in a PackMan message through the National
+ Patch Module and should be obtained from there.  The KIDS build for this
+ patch is LA*5.2*69.
+  
+ Installation Instructions:
+ =========================
+  
+ This Patch was created with Kernel V8 KIDS.  Follow these instructions:
+  
+ 1) This patch should be installed during off peak hours when the 
+ Laboratory users are off the system.  The estimated installation time is 
+ fifteen (15) minutes.
+  
+ 2) If any of the routines listed in the ROUTINE SUMMARY section are mapped
+ at your site, remember to disable mapping before installing the patch and
+ to re-enable mapping when you are finished.
+  
+ 3) Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu to load the
+ KIDS patch onto your system.
+  
+ 4) Using the Kernel Installation and Distribution System menu (KIDS), you 
+ may choose the following options prior to installing this patch:
+  
+   a)  Backup a Transport Global - this option will create a backup message
+       of any routines exported with the patch.  It will NOT backup any
+       other changes such as data dictionaries or templates.
+  
+   b)  Compare Transport Global to Current System - this option will allow
+       you to view all changes that will be made when the patch is
+       installed.  It compares all components of the patch (routines, DDs,
+       templates, etc.)
+  
+   c)  Verify Checksums in Transport Global - this option will allow you to
+       ensure the integrity of the routines that are in the transport
+       global.
+  
+   d)  Print Transport Global - this option will allow you to view the
+       components of the KIDS build.
+  
+ 5) Use the 'Install Package(s)' option under the 'Installation' menu.
+  
+ 7) When prompted 'Want KIDS to INHIBIT LOGONs during the install? YES//'
+ respond "NO".
+  
+ 8) When prompted 'Want to DISABLE Scheduled Options, Menu Option and
+ Protocols ?' respond "NO".
+
+Routine Information:
+====================
+
+Routine Name:
+  - LA7UTL1A
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7UTL1B
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7UTL1C
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7UTL02
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7UTL03
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7QRY
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7QRY2
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : HICKS,BRENT                   Date Entered  : AUG 06, 2003
+Completed By: HESS,JAMES                    Date Completed: FEB 12, 2004
+Released By : BELSCHWINDER,MICHAEL          Date Released : FEB 17, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

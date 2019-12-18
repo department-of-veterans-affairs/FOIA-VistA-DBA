@@ -1,0 +1,1033 @@
+$TXT Created by GAVRILOV,SERGEY at DEV.DEV.FO-HINES.MED.VA.GOV  (KIDS) on Wednesday, 09/11/02 at 14:54
+=============================================================================
+Run Date: OCT 07, 2002                     Designation: ROR*1*2
+Package : ROR - CLINICAL CASE REGISTRIES     Priority: Mandatory
+Version : 1         SEQ #2                     Status: Released
+=============================================================================
+
+Associated patches: (v)DG*5.3*471  <<= must be installed BEFORE `ROR*1*2'
+
+Subject: Various updates and fixes to new release.
+
+Category: 
+  - Data Dictionary
+  - Print Template
+  - Sort Template
+  - Enhancement (Mandatory)
+  - Routine
+
+Description: 
+============
+
+ PLEASE, READ AND FOLLOW THE INSTALLATION INSTRUCTIONS.
+  
+ This patch will allow accurate reporting of complex care Hepatitis C
+ patients for VISN/facility reimbursement. 
+  
+ A new version of the GUI is released along with this patch. The software
+ and updated documentation must be downloaded from one of the anonymous FTP
+ directories and installed on all workstations that currently have it
+ installed.
+  
+    OIFO              FTP Address                Directory
+    ---------------   ------------------------   ------------------
+    Albany            ftp.fo-albany.med.va.gov   anonymous.software
+    Hines             ftp.fo-hines.med.va.gov    anonymous.software
+    Salt Lake City    ftp.fo-slc.med.va.gov      anonymous.software
+  
+    File Name         Contents                   Retrieval Format
+    ---------------   ------------------------   ------------------
+    ROR1_0IG.PDF      Installation Guide         BINARY
+    ROR1_0P2GUI.ZIP   Hep C GUI (files below)    BINARY
+       _INST32I.EX_
+       _ISDEL.EXE
+       _SETUP.1
+       _SETUP.2
+       _SETUP.3
+       _SETUP.DLL
+       _SETUP.LIB
+       DISK1.ID
+       DISK2.ID
+       DISK3.ID
+       SETUP.EXE      Setup Executable
+       SETUP.INI
+       SETUP.INS
+       SETUP.PKG
+       vssver.scc
+    ROR1_0TM.PDF      Technical Manual           BINARY
+    ROR1_0UM.PDF      User Manual                BINARY
+  
+ This patch contains the following problem resolutions and enhancements:
+  
+ [01] Get station number not IEN from $$SITE^VASITE 
+      ---------------------------------------------
+  
+ The $$SITE^VASITE API returns a three piece string, the first piece 
+ contains the IEN of the Institution file #4 entry for the site, the middle
+ piece is the station name and the third piece is the station number.  The
+ HL7 message building process within the Clinical Registries system
+ includes the station number within the PID and MSH segment.  Currently the
+ station number is being obtained from the first piece returned from the
+ $$SITE^VASITE call.  
+  
+ In many cases the value in piece one (the IEN of the Institution file #4)
+ and three (the station number) of the string returned from the
+ $$SITE^VASITE call is the same.  However, this is not the case for a small
+ number of sites. This patch includes a fix to get the station number from
+ the third piece.
+  
+ The RORHDT02 and RORUTL03 routines have been amended.
+  
+ The NOIS reference for this problem is ISH-0802-40597.
+  
+ [02] Lab results are missed by the Registry Update
+      --------------------------------------------- 
+  
+ Due to an error in the $$ADD^RORUPP02 function some Hep C positive Lab
+ results are not checked by the nightly task. Because of this some
+ patients were either not added to the registry at all or added much later 
+ than required (because of ICD-9 codes).
+  
+ The $$ADD^RORUPP02 function has been fixed.
+  
+ During the patch post-install the $$UPDPRMS^RORPOS02 function replaces the
+ current value of the REGISTRY UPDATED UNTIL field (#1) of the ROR REGISTRY
+ PARAMETERS file (#798.1) with the date of when the first patient was added
+ to the registry. This will force the nightly task to rescan the data
+ during the next run and add any missed patients to the registry.
+  
+ The NOIS reference for this problem is MAC-0502-62631.
+  
+ [03] Don't send empty RXE's 
+      ----------------------
+  
+ A flaw in the logic of the HL7 builder is sometimes resulting in blank RXE
+ segments being sent to the AAC.  The AAC simply ignores these records, 
+ which does not cause any major problems but a fix is still necessary.
+  
+ The RORHL03 routine has been amended.
+  
+ The NOIS reference for this problem is ISH-0802-40595.
+  
+ [04] Indefinite wait for registry update subtask(s)
+      ----------------------------------------------
+  
+ If some of the registry update subtasks are not started by Taskman, this 
+ causes the $$MONITOR^RORUPD05 function to wait for them indefinitely. This
+ is quite an unlikely situation but it has happened at Philadelphia. One of
+ the subtasks vanished by an unknown reason and the main task waited for it
+ for about a week (until it was stopped manually).
+  
+ A timeout for subtasks was introduced to fix the problem. If any of the
+ subtasks do not start, the main task aborts after a 10 hour wait. The
+ timer is ticking only if no subtasks are running.
+  
+ The RORHDT05 routine has been amended.
+  
+ The NOIS reference for this problem is PHI-0802-20329.
+  
+ [05] Indefinite cycle in the ESCAPE^RORHL7 function
+      ----------------------------------------------
+  
+ If less than 4 encoding characters (^~\&) are defined in the ROR AAC or
+ ROR SITE records of the HL7 APPLICATION PARAMETER file (#771), the
+ $$ESCAPE^RORHL7 function gets into infinite loop.
+  
+ The function has been fixed to translate only defined escape characters.
+ Moreover, the $$INIT^RORHL7 and $$CREATE^RORHL7 functions have been
+ modified to check if all 4 encoding characters are defined and report a
+ "Not all four HL7 encoding characters are defined" error if they are not.
+  
+ The RORHL7 routine has been amended.
+  
+ The NOIS reference for this problem is DET-0702-41580.
+  
+ [06] '%DSM-E-STRLEN' error during Data Extraction
+      --------------------------------------------
+  
+ The HL7 segment builders (the routines that generates HL7 segments) store
+ records that are too long (more than 255 characters) into the temporary
+ HL7 buffer ^TMP("HLS",$J). This caused a '%DSM-E-STRLEN, string too long'
+ runtime error. The problem was temporarily fixed by increasing the maximum
+ string length for the DSM database volumes.
+  
+ However, according to the VistA HL7 documentation, the maximum length of 
+ those records cannot exceed 245 characters. All data over this limit must 
+ be stored in the sub-node(s) of the main entry.
+  
+ Therefore, a new utility has been developed. The SEGS^RORHL7 procedure 
+ splits a long segment into pieces no more than 245 characters in length
+ and stores them into the temporary HL7 buffer (^TMP("HLS",$J) by default).
+ All segment builders have been modified to use this procedure instead of
+ a direct SET command.
+  
+ The RORHL01, RORHL02, RORHL03, RORHL04, RORHL05, RORHL06, RORHL07 and
+ RORHL7 routines have been amended.
+  
+ The NOIS references for this problem are AMA-0602-72430 and 
+ LEX-0602-43143.
+  
+ [07] Patient IENs are not recorded in the Log
+      ----------------------------------------
+  
+ Some of the error messages recorded in the logs were not associated with 
+ the corresponding patients due to an error in the $$PROCESS^ROREXT01 
+ function.
+  
+ The ROREXT01 routine has been amended.
+  
+ [08] Aborting Patient Report Log's Error
+      ------------------------------------
+  
+ An error is logged on the error trap within VistA when the Patient Report 
+ option within the ROR GUI is aborted.  The error was only logged if the 
+ user tried to abort the job before it had finished being created (within 
+ 2 or 3 seconds).   A fix has been made to the software to prevent this.
+  
+ The RORRP9 routine has been amended.
+  
+ The NOIS reference for this problem is SBY-0702-30545.
+  
+ [09] GUI Gets Caught In A Loop When Entering Dates
+      ---------------------------------------------
+  
+ The Activity Log GUI option goes into a loop when editing the start date 
+ when an end date is entered that falls before the start date.   The 
+ Activity Log form has a method to check that the end date isn't before 
+ the start date. This method event was being run every time the date was 
+ changed, causing an infinite loop. To avoid the loop, the code has been 
+ changed to only check when the user leaves the start date or end date 
+ drop down box.
+  
+ The NOIS reference for this problem is ATG-0702-30306.
+  
+ [10] Relaxed error processing for non-mapped drugs
+      ---------------------------------------------
+  
+ The data extraction routine recorded an error and stopped processing the
+ patient data if a drug referenced by the patient data was not mapped to
+ the VA Product (the file #50.68).
+  
+ The error processing has been relaxed. Now if the PSNDF VA PRODUCT
+ NAME ENTRY field (22) of the DRUG file (#50) is empty, the data extraction
+ routine leaves the second component of the RXE-2 field and the whole RXE-5
+ field empty and continues extraction of the patient data.
+  
+ The RORHL03 and RORHL07 routines have been amended.
+  
+ [11] Historical Data Extraction ignores DON'T SEND flag
+      -------------------------------------------------- 
+  
+ The nightly data extraction process does not send the data for the
+ patients whose registry records (in file #798) have the DON'T SEND field
+ (#11) set to 'Yes'. However, the Historical Data Extraction ignored this
+ flag. The $$PROCREC^RORHDT04 function has been amended to take the flag
+ into account.
+  
+ [12] Re-send demographic data 
+      ------------------------
+  
+ It has taken much longer than it was anticipated to load the historical
+ data files into the AAC database. Therefore, the demographic data resent
+ three weeks after package installation (to update the database with
+ current information) is being overwritten by the historical data.
+  
+ The $$UPDPRMS^RORPOS02 function clears the LOCAL DATA RESENT field 
+ (#21.04) of the registry parameters in the ROR REGISTRY PARAMETERS file
+ (#798.1) during the package post-install. This will force the nightly task
+ (the [ROR TASK] option) to resend the demographic and local registry data
+ to the AAC.
+  
+ The NOIS reference for this problem is ISH-0802-40592.
+  
+ [13] Remove employees from local and national registries
+      ---------------------------------------------------
+  
+ The $$DELEMPLS^RORPOS03 function removes patients from the Hep C registry
+ (during the patch post-install) if they are employees at the local
+ facility. It also creates a list of all removed patients.  
+  
+ This report containing the DFN's of removed patients will be automatically
+ sent via MailMan to Dr. Sophia Chang (CHANG,SOPHIA@FORUM.MED.VA.GOV) and
+ the person who installs the patch (just in case). Dr. Chang will
+ coordinate the removal of these patients from the national registry.
+  
+ The EXCLUDE EMPLOYES field (#26) has been added to the ROR REGISTRY 
+ PARAMETERS file (#798.1). No employees will ever get added to the
+ registries that have this field set to 'Yes' (neither via the automatic
+ update process nor via the GUI). The $$UPDPRMS^RORPOS02 function assigns
+ 'Yes' to this field for Hep C registry during the patch post-install.
+  
+ The RORUPD01, RORUPR, RORUPR1 and RORRP5 routines have been amended.
+  
+ The NOIS reference for this problem is PHI-0602-23170. 
+  
+ [14] Empty VA Alert when Historical Data Extraction is complete
+      ----------------------------------------------------------
+  
+ Due to the '^' character in the text of the message, an "invisible" alert 
+ (it was impossible to review it) was sent after successful completion of a
+ historical data extraction task. The TASK^RORHDT03 entry point has been
+ modified to fix this problem.
+  
+ The NOIS reference for this problem is NOP-0602-11449.
+  
+ [15] Update the Drug List for the RX GUI Report 
+      ------------------------------------------
+  
+ The RX GUI report looks for any patients that have been prescribed any 
+ drugs from a predefined list held on the DRUG THERAPY LIST multiple (17) 
+ of the ROR REGISTRY PARAMETERS file (#798.1). New drugs are introduced
+ often so this list needs to be periodically updated.  This patch contains
+ updates to this list. 
+  
+ The following National Drug Codes:
+  
+   000085132704, 000085135105, 000085119403, 000085124201,
+   000085123501, 000085125401, 055513092601, 055513092606,
+   055513092701, 055513092706, 000004201709, 000004201707,
+   000004201509, 000004201507, 000004201609, 000004201607,
+   000085136801, 000085129101, 000085130401, 000085127901,
+   000085124201, 000085123501, 000085125401, 055513092601,
+   055513092606, 055513092701, 055513092706, 000085118402,
+   000004199309, 000004201009
+   
+ are added to the DRUG THERAPY LIST multiple (17) of the ROR REGISTRY 
+ PARAMETERS file (#798.1) by the $$UPDRUGS^RORPOS02 function during the
+ patch post-install.
+  
+ [16] Update LOINC List 
+      -----------------
+  
+ The $$UPDLOINC^RORPOS02 function updates the EXTRACTED RESULT multiple 
+ (#12) of the ROR REGISTRY PARAMETERS file (#798.1) during the patch
+ post-install.
+  
+ LOINC codes deleted: 
+  
+   26499, 22297, 12190,  1970, 29615, 17009,  5119,  2339,
+   21009, 28942, 10832,  2349, 12651.
+  
+ LOINC codes added:
+  
+    1743,  1744,  6769, 19176, 19177, 22324, 22325, 22326,
+   16128, 23870,  9608,  9609, 11076, 20416, 20571, 29609,
+    5047,  9423, 27200, 14631, 14629, 29760, 14682, 14723,
+   24360,  5181,  5182, 22315,  5183,  5184, 20575, 22312,
+    5185, 22319, 13919,  5187,  5188,  5194,  5197,  5221,
+   22356, 14126,  5223, 22357,  5895,   752,   753, 26499,
+   23761,   769,  5964,  1547, 14749,  1642, 14297, 14999,
+   27975,   804,  5907, 13951, 13954, 26505
+  
+ The NOIS reference for this problem is WWW-0702-52004.
+  
+ [17] Access to the registry files via FileMan
+      ----------------------------------------
+  
+ Security of the ROR LOCAL REGISTRY (#798) and ROR PATIENT (#798.4) files 
+ has been enhanced. These files contain patient information and access to 
+ them must be restricted.
+  
+ Now only users having the appropriate security keys can access these files
+ via FileMan. This is enforced by the screening logic (the "SCR" node). A 
+ user can access records only of those registries that he/she has the keys 
+ for (for example, the ROR VA HEPC USER or ROR VA HEPC ADMIN keys are 
+ required to access the Hep C registry). Users with the programmer FileMan
+ access code (@) can access all records of the files.
+  
+ This enhancement will be especially important after the addition of other 
+ registries (currently under development) to the existing framework.
+  
+ The ROR, RORACK01, RORDD, RORUPD50, RORUPD51 and RORUTL05 routines have
+ been amended.
+  
+ [18] Maximum size of HL7 messages
+      ----------------------------
+  
+ Due to software limitations, the AAC server has timeout problems with 
+ large HL7 messages. To alleviate this, the ROR software has been enhanced.
+ Now it allows a limitation for the maximum size of HL7 messages.
+  
+ When large amounts of data are to be sent to the AAC, the ROR software
+ tries to throttle the data flow and redistribute the spike over the
+ following days. For example, if there are 20 megabytes of data that should
+ be sent to the AAC, the ROR software will not send all the data tonight.
+ It will send 5 Mb today, the next 5 megabytes - tomorrow and so on until
+ the data flow returns to its sustained level. The level depends on the
+ size and activity of the site (usually, the size of the nightly message is
+ less than 1 megabyte).
+  
+ The LAST IEN EXTRACTED (#2.4) and MAXIMUM MESSAGE SIZE (#13.1) fields of
+ the ROR REGISTRY PARAMETERS file (#798.1) control this throttling. The
+ post-install routine populates the MAXIMUM MESSAGE SIZE field with value
+ of 5 (5 megabytes).
+  
+ The ROREXPR, ROREXT, ROREXT01 and RORHL7 routines have been amended.
+  
+ [19] Redundant file access mode
+      --------------------------
+  
+ If the output file already exists when a user tries to start a historical
+ data extraction task, the software issues a prompt regarding further
+ actions. It is possible to overwrite (O) the file, create a new file with
+ a different name (N) or append the data to the existing file (A).
+  
+ The last option, Append, caused some confusion at the sites because it was
+ not fully implemented and, as a matter of fact, it was redundant.
+ Therefore, it has been removed from the list of possible options.
+  
+ The RORHDTAC routine has been amended.
+  
+ [20] Namespace of the HL7 messages
+      -----------------------------
+  
+ The HLP("NAMESPACE") parameter has been added to the GENERATE^HLMA
+ procedure call (as recommended by the HL7 patch HL*1.6*91).
+  
+ The RORHL7 routine has been amended.
+  
+ [21] New menu options
+      ----------------
+  
+ The Pending Patients [RORMNT PENDING PATIENTS] menu containing the List of
+ Pending Errors [RORMNT PENDING ERRORS LIST] option has been added to the
+ [RORMNT MAIN] menu.
+  
+ This new option prints a report containing a list of patients (referenced
+ by the ERROR multiples of the ROR PENDING PATIENT file) having erroneous
+ data. The list is sorted by the value of the COUNTER field (number of
+ times that an error was recorded for the patient).
+  
+ [22] Empty station number component of the OBX-15
+      --------------------------------------------
+  
+ The $$GCPR^LA7QRY does not return the station number in the OBX-15 when a
+ Lab result references a locally defined testing facility. This causes
+ problems at the AAC because station numbers are used to join the records
+ of the database tables. Code has been developed which populates the OBX-15
+ with the default station number and name (if the original value has no
+ station number).
+  
+ The ROREXT02 routine has been amended.
+  
+ [23] Status of cancelled HL7 message
+      -------------------------------
+  
+ If the application acknowledgement for a message sent to the AAC is not
+ received during the time frame defined by the DAYS TO WAIT FOR ACK field
+ of the ROR REGISTRY PARAMETERS file, the software cancels the message and 
+ records the "Expired 'Awaiting Acknowledgement' flag has been cleared."
+ message in the log generated by a nightly task.
+  
+ To simplify troubleshooting of the HL7 transmission problems, code that
+ records status of the cancelled message has been developed. It records the
+ message ID, its latest status, the date of the latest status update, the
+ error message, the numbers of failed attempts to connect, retries and
+ timeouts.
+  
+ The RORUTL05 routine has been amended.
+  
+  
+ Associated NOIS:
+ ===============
+ AMA-0602-72430
+ ATG-0702-30306
+ DET-0702-41580
+ ISH-0802-40592
+ ISH-0802-40595
+ ISH-0802-40597
+ LEX-0602-43143
+ MAC-0502-62631
+ MUS-0702-73027
+ NOP-0602-11449
+ PHI-0802-20329
+ PHI-0602-23170
+ POR-0802-52298
+ SBY-0702-30545
+ WWW-0702-52004
+  
+  
+ Thanks to Test Sites:
+ ====================
+ Martinez
+ Oklahoma City
+ Palo Alto
+  
+  
+ Routine Summary:
+ ===============
+  
+ The following routines are included in this patch.  The second line of 
+ each of these routines now looks like:
+  
+   <tab>;;1.0;CLINICAL CASE REGISTRIES;<patchlist>;May 14, 2002
+  
+                  Checksum
+   Routine    Before     After   Patch List
+   --------  --------  --------  ---------------------------
+   ROR        2602553   2626117  2
+   RORACK01   6003542   6012225  2
+   RORDD      3052752   3338213  2
+   RORENV02     n/a     2052764  2
+   RORERR20   9184360  10009159  2
+   ROREXPR    2628241   2824404  2
+   ROREXT     3425862   3425862  2
+   ROREXT01   2546090   3458673  2
+   ROREXT02   4989515   5473418  2
+   ROREXTUT   4029089   4083073  2
+   RORHDT02   1373692   1419145  2
+   RORHDT03   4452836   4467017  2
+   RORHDT04   7363755   7554610  2
+   RORHDTAC   3499153   3457583  2
+   RORHL01    3279393   3080072  2
+   RORHL02    8157445   7855453  2
+   RORHL03    9558685   9723450  2
+   RORHL04    4173457   4151190  2
+   RORHL05    2497117   2472330  2
+   RORHL06    5442182   5392256  2
+   RORHL07    3631549   3672391  2
+   RORHL7     3159952   4726634  2
+   RORKIDS    2814003   4837991  2
+   RORNTEG    3505967   3534202
+   RORPOS02     n/a     8457305  2
+   RORPOS03     n/a     4325295  2
+   RORRP5     1673654   1933187  2
+   RORRP9     7828261   7962639  2
+   RORUPD     3639699   3639699  2
+   RORUPD01   7724802   8324705  2
+   RORUPD05   6719693   7604750  2
+   RORUPD50   3750312   3759178  2
+   RORUPD51   9684486   9694351  2
+   RORUPP02   2060193   2478392  2
+   RORUPR     5615794   5856761  2
+   RORUPR1   11381037  11398836  2
+   RORUTL02   5300006   6381475  2
+   RORUTL03   7542123   7598103  2
+   RORUTL05   6503220   8206633  2
+  
+  
+ Data Dictionary Summary:
+ =======================
+  
+     File     Field     Comments
+   --------  -------  ---------------------------------------------
+  
+   798                A permanent screen (the "SCR" node) has been
+                      added; the file description has been updated.
+  
+   798       .01      The field description has been updated to
+                      reflect introduction of the screen.
+  
+   798.1     2.4      The LAST IEN EXTRACTED, MAXIMUM MESSAGE SIZE
+             13.1     SIZE and EXCLUDE EMPLOYEES fields have been
+             26       defined.
+  
+   798.1     18       The SECURITY KEY multiple has been defined.
+  
+   798.3              The ROR PENDING ERRORS sort template and
+                      the print template of the same name have
+                      been defined.
+  
+   798.4              A permanent screen (the "SCR" node) has been
+                      added; the file description has been updated.
+  
+   798.4     .01      The field description has been updated to
+                      reflect introduction of the screen.
+  
+   798.4     .351     Definition of the DATE OF DEATH field has
+                      been changed to allow seconds.
+  
+  
+ Installation Instructions:
+ =========================
+  
+ Installation of the patch will not take more than 20 minutes.
+  
+ This patch can be installed with VistA users online.
+  
+ NOTE: The nightly task (the [ROR TASK] option) must not be running
+       during the installation.
+  
+ This patch will force the nightly task to rescan about two months worth of
+ data during the next nightly run (see the descriptions of the problem [02]
+ for more details). Therefore, it will take more time than a regular
+ nightly task.
+  
+ The nightly task may not finish before the next time at which it is
+ scheduled to run. Therefore, "Cannot lock the registries" error messages
+ will get filled in the logs until this one-time rescan finishes. You may
+ ignore these messages.
+  
+ Taskman does not need to be STOPPED or placed in a WAIT state.
+  
+   1. Check the optional parameters of the scheduled [ROR TASK] option.
+  
+ Some sites have understood the example in the Installation Guide as a
+ requirement. If you have entered an "E" for the value of the RORFLCLR
+ variable, delete both the value and the parameter (by entering the "@"
+ into the VARIABLE NAME field).
+  
+ If you have not entered a value for the RORSUSP variable, it is
+ recommended to do so. This will ensure that the nightly task will not
+ interfere with daily activities if it does not finish until morning. Enter
+ an appropriate time frame as a value of the parameter (please, do not
+ forget to enclose it in the double quotes).
+  
+ You can provide a value for the RORMNTSK parameter as well but this is not
+ required. Please refer to the Installation guide for additional 
+ information on this parameter.
+  
+             Schedule/Unschedule Options
+             One-time Option Queue
+             Taskman Management Utilities ...
+             List Tasks
+             Dequeue Tasks
+             Requeue Tasks
+             Delete Tasks
+             Print Options that are Scheduled to run
+             Cleanup Task List
+             Print Options Recommended for Queueing
+  
+   Select Taskman Management Option: Schedule/Unschedule Options
+                                     ===
+   Select OPTION to schedule or reschedule: ROR TASK
+                                            ========
+            ...OK? Yes// <RET>
+  
+                             Edit Option Schedule
+       Option Name: ROR TASK                      
+       Menu Text: Registry Update & Data Extractio    TASK ID: 367854 
+     ________________________________________________________________
+  
+     QUEUED TO RUN AT WHAT TIME: AUG 9,2002@01:00              
+  
+   DEVICE FOR QUEUED JOB OUTPUT:
+  
+    QUEUED TO RUN ON VOLUME SET:
+  
+         RESCHEDULING FREQUENCY:
+  
+                TASK PARAMETERS: VA HEPC
+  
+               SPECIAL QUEUEING:
+  
+   ____________________________________________________________________
+   Exit     Save     Next Page     Refresh
+    
+  
+   COMMAND: NEXT                        Press <PF1>H for help    Insert
+            ====
+  
+                            Edit Option Schedule
+       Option Name: ROR TASK                      
+       _______________________________________________________________
+  
+       VARIABLE NAME: RORSUSP                  VALUE: "07:00-19:00"
+       VARIABLE NAME:                          VALUE:
+       VARIABLE NAME:                          VALUE:
+       VARIABLE NAME:                          VALUE:
+       VARIABLE NAME:                          VALUE:
+  
+   ___________________________________________________________________
+   Exit     Save     Refresh
+  
+   COMMAND: EXIT                       Press <PF1>H for help    Insert
+            ====
+  
+   Save changes before leaving form (Y/N)? YES
+                                           ===
+  
+ See the page 41 of the package Installation Guide for more information
+ regarding these parameters.
+  
+   2. Check the AUTOSTART field for Enabled in the ROR SEND logical link.
+ If it is not, enable it:
+  
+ Select Option: HL7 main MENU  HL MAIN MENU     HL7 Main Menu
+  
+           Systems Link Monitor
+           Filer and Link Management Options ...
+           Message Management Options ...
+           Interface Developer Options ...
+           Site Parameter Edit
+  
+   Select HL7 Main Menu Option: Filer and Link Management Options
+                                ===
+      SM     Systems Link Monitor
+      FM     Monitor, Start, Stop Filers
+      LM     TCP Link Manager Start/Stop
+      SA     Stop All Messaging Background Processes
+      RA     Restart/Start All Links and Filers
+      DF     Default Filers Startup
+      SL     Start/Stop Links
+      PI     Ping (TCP Only)
+      ED     Link Edit
+      ER     Link Errors ...
+  
+   Select Filer and Link Management Options Option: ED  Link Edit
+                                                    ==
+   Select HL LOGICAL LINK NODE: ROR SEND  
+                                ========
+  
+                             HL7 LOGICAL LINK
+   --------------------------------------------------------------------
+  
+             NODE: ROR SEND  
+  
+      INSTITUTION:
+  
+           DOMAIN:
+  
+        AUTOSTART: Enabled 
+                   =======
+       QUEUE SIZE: 10    
+  
+         LLP TYPE: TCP                           
+  
+   ____________________________________________________________________
+  
+   COMMAND:                             Press <PF1>H for help    Insert
+  
+   3. AXP/DSM sites: Review your mapped routine set. If any of the 
+ routine(s) listed in the ROUTINE SUMMARY section are mapped, they should
+ be removed from the mapped set at this time.
+  
+   4. Use the "INSTALL/CHECK MESSAGE" option on the Packman menu. This 
+ option loads the patch into a Transport Global on your system.
+  
+   5. On the KIDS menu, select the "Installation" menu, and use the 
+ following options to install the Transport Global:
+  
+    Verify Checksums in Transport Global
+    Print Transport Global
+    Compare Transport Global to Current System
+    Backup a Transport Global
+    Install Package(s)
+  
+    Select INSTALL NAME: ROR*1.0*2
+                         =========
+    Want KIDS to Rebuild Menu Trees Upon Completion of Install? NO
+                                                                ==
+    Want KIDS to INHIBIT LOGONs during the install? NO
+                                                    ==
+    Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES
+                                                                    ===
+    Enter options you wish to mark as 'Out Of Order': ROR TASK
+                                                      ========
+    Enter options you wish to mark as 'Out Of Order': <RET>
+  
+    Enter protocols you wish to mark as 'Out Of Order': ROR*
+                                                        ====
+    Enter protocols you wish to mark as 'Out Of Order': <RET>
+  
+    Delay Install (Minutes):  (0-60): 0// <RET>
+  
+   6. AXP/DSM sites: After the patch has been installed, if any routines 
+ were removed from the mapped set in Step 3 above, rebuild your map set.
+  
+   7. After the installation is complete, make sure that the ROR TASK
+ option and the protocols, which have names starting with ROR (ROR EVENT
+ LAB, ROR EVENT PTF, ROR EVENT VISIT, ROR-SITE-DRIVER and
+ ROR-SITE-SUBSCRIBER) are not marked Out-Of-Order.
+  
+  
+ GUI Installation
+ ================
+  
+ You should have administrative privileges to the workstation on which the
+ Hep C GUI is going to be installed.
+  
+   1. Create an empty temporary directory.
+  
+   2. Retrieve the latest version of the GUI (ROR1_0P2GUI.ZIP) from
+      one of the anonymous directories (in bynary mode):
+  
+      OIFO             FTP Address                Directory
+      --------------   ------------------------   ------------------
+      Albany           ftp.fo-albany.med.va.gov   anonymous.software
+      Hines            ftp.fo-hines.med.va.gov    anonymous.software
+      Salt Lake City   ftp.fo-slc.med.va.gov      anonymous.software
+  
+      Save the file into the directory created on step 1.
+  
+   3. Using the Add/Remove program's Windows option (within Control
+      Panel) UNINSTALL the Hepatitis C Local registry GUI.
+  
+   4. Unzip the ROR1_0P2GUI.ZIP file into the temporary directory
+      using WinZip (or a similar archiver).
+  
+   5. Run the SETUP.EXE application from the temporary directory.
+      It will present the following dialog boxes:
+  
+      - The Welcome Screen: Installer may click next at this screen.
+  
+      - Software Licence Agreement: Installer may click next at this
+        screen.
+  
+      - User Information: The fields Name and Company should be
+        defined for you. Installer may click next at this screen.
+  
+      - Choose Destination Location:  The location C:\Program
+        Files\Vista\ROR should be defined. Installer may click next
+        at this screen.
+  
+      - Select Program Folder: The HepC Local Registry folder should
+        be highlighted. Installer may click next at this screen.
+  
+      - Next the Hepc Files will be copied onto the PC. 
+  
+      - Set up Complete: Installer may click finish at this screen,
+        and the GUI instalation is complete.
+  
+   6. Delete all files from the temporary directory and the directory
+      itself.
+
+Routine Information:
+====================
+
+Routine Name:
+  - ROR
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORACK01
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORDD
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORENV02
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORERR20
+
+
+Routine Checksum:
+
+Routine Name:
+  - ROREXPR
+
+
+Routine Checksum:
+
+Routine Name:
+  - ROREXT
+
+
+Routine Checksum:
+
+Routine Name:
+  - ROREXT01
+
+
+Routine Checksum:
+
+Routine Name:
+  - ROREXTUT
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORHDT02
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORHDT03
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORHDT04
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORHDTAC
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORHL01
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORHL02
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORHL03
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORHL04
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORHL05
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORHL06
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORHL07
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORHL7
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORKIDS
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORPOS02
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORPOS03
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORRP5
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORUPD
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORUPD01
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORUPD05
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORUPD50
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORUPD51
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORUPR
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORUPR1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORUTL02
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORUTL03
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORUTL05
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORUPP02
+
+
+Routine Checksum:
+
+Routine Name:
+  - ROREXT02
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORRP9
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORNTEG
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : HICKS,BRENT                    Date Entered : JUL 03, 2002
+Completed By: ATKINSON,DEVEN                Date Completed: OCT 01, 2002
+Released By : BELSCHWINDER,MICHAEL          Date Released : OCT 07, 2002
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

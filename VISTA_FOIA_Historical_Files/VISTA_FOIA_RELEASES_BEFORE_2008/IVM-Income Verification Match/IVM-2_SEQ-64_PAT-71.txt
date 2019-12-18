@@ -1,0 +1,408 @@
+$TXT Created by MULLER,RICHARD at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 05/15/03 at 08:14
+=============================================================================
+Run Date: MAY 15, 2003                     Designation: IVM*2*71
+Package : IVM - INCOME VERIFICATION MATCH    Priority: Mandatory
+Version : 2        SEQ #64                      Status: Released
+                  Compliance Date: JUN 15, 2003
+=============================================================================
+
+Associated patches: (v)IVM*2*49    <<= must be installed BEFORE `IVM*2*71'
+                    (v)IVM*2*64    <<= must be installed BEFORE `IVM*2*71'
+
+Subject: MT UPLOAD PROBLEMS
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+ The patch addresses the following NOIS issues:
+       UNY-1002-10104:    Bulletins-IVM*2*64
+       CMS-1102-31110:    Means Test not in DHCP
+       MAD-0103-41215:    MT signature not filed on future test
+  
+ Patch Description:
+ ==================
+  
+ ISSUE #1: 
+ Future Dated Means Tests are not uploading from the HEC when the test 
+ contains data that does not pass the consistency checks.
+  
+ This issue also affects Income Tests that are not future dated.  The 
+ sites are allowed to enter Income Tests with known data inconsistencies, 
+ and transmit them to the HEC.  The HEC then transmits the test to all 
+ sites visited.  If any inconsistent data is found, the Income Test is not 
+ uploaded.  A Transmission Error message is then sent to the HEC.  NO 
+ message is received at the site informing them of the upload failure.
+  
+ The Means Test Signature (ORF~Z06) Transmission is failing to match the 
+ Effective Date of the test between its occurrence in the incoming Income 
+ Test Data (Z10) Transmission and its occurrence in the ANNUAL MEANS TEST 
+ (#408.31) file when the HEC has adjusted the Income Test's Effective Date 
+ and Effective Date/Time Completed.
+  
+ The upload failure of either an ORU~Z10 or an ORF~Z10 transmission for 
+ any reason (on Future Dated Tests only) will cause the ORF~Z06 upload to 
+ fail.
+  
+ RESOLUTION:
+ Allow the shared site completed Income Test to upload regardless of 
+ existing data inconsistencies.  Using the current consistency checks, 
+ update the COMMENT sub-file (#408.311) in the ANNUAL MEANS TEST (#408.31) 
+ file with the message that there were data inconsistencies in the upload 
+ and list the inconsistencies.
+  
+ All existing comments not relating to data inconsistencies will be 
+ maintained in the COMMENT sub-file (#408.311) in the ANNUAL MEANS TEST 
+ (#408.31) file each time the Income Test is uploaded.
+  
+ This would effectively upload every Z10 transmission (with error comments 
+ if any) at all sites the veteran has visited.  
+  
+ This change will eliminate the majority of transmissions of the newly 
+ redesigned MT Signature bulletin (below in Issue #2).
+  
+ This does not make any changes the in way income tests are currently 
+ entered in VistA.  The user will still receive exactly the same warnings, 
+ and they can still choose to continue.  This will increase the number of 
+ Income Tests that will be uploaded at the sites.  The more tests that are 
+ uploaded, the lower the possibility of duplicate Income Tests being 
+ entered.
+  
+ ISSUE #2:
+ The "IVM - MEANS TEST UPLOAD" Bulletin is not accurately reflecting the 
+ reason for the rejection of the MT Signature (ORF~Z06) Transmission.  
+ Both the subject line and the content of the bulletin are incorrect and 
+ need to be revised.
+  
+ RESOLUTION:
+ The error bulletin for the ORF~Z06 transmission will be redesigned to 
+ correctly display the reason for the rejection of the ORF~Z06 
+ transmission.  The reason will appear under "ERROR", as follows:
+  
+ From:
+     Subj: IVM - MEANS TEST UPLOAD  [#395834] 12/26/02@12:32  6 lines
+     From: IVM PACKAGE  In 'IN' basket.   Page 1  *New*
+     ----------------------------------------------------------------------
+     The following error occured when an Income Verification Match
+     verified Means Test was being uploaded for the following patient:
+  
+         NAME:     Gxxxx,Dxxx
+         ID:       XXX-XX-1234
+         ERROR:    Means Test of (Date) not in DHCP.
+  
+ To:
+     Subj: MT SIGNATURE UPLOAD G1234  [#394658] 12/12/02@12:19  6 lines
+     From: IVM PACKAGE  In 'IN' basket.   Page 1  *New*
+     -------------------------------------------------------------------
+     Unable to upload a MT Signature.  A Means Test was not found that
+     matches the Centralized Anniversary Date (CAD) on file at the HEC.
+  
+         NAME:     Gxxxx,Dxxx
+         ID:       XXX-XX-1234
+         ERROR:    Means Test of (Date) not found in VistA.
+  
+ The changes to the bulletin will include adding the first initial of the 
+ veteran's last name and the last four digits of the veteran's SSN at the 
+ end of the bulletin's subject.
+  
+  
+ ISSUE #3: 
+ The Application Error (AE) returned to the HEC when a MT Signature 
+ (ORF~Z06) Transmission upload has been rejected at a site is inconsistent 
+ with current naming conventions.  According to these conventions, the 
+ name used in the text of the AE message, "DHCP", has been replaced by 
+ "VistA."
+  
+ RESOLUTION:
+ The text in the AE message will be changed to use the same error message 
+ that will be included in the MT SIGNATURE UPLOAD Bulletin at the site.  
+ The text will be changed as follows:
+  
+     From:    "Means test not in DHCP"
+  
+     To:      "Means Test of (Date) not found in VistA."
+  
+  
+ ISSUE #4: 
+ The Income Tests that were entered early and were not an improvement for 
+ the veteran were adjusted to become effective on the veteran's CAD.  If 
+ the test contained any data inconsistencies, it was rejected at all sites 
+ the veteran had visited as well as at the site that had performed the 
+ test.
+  
+ When an Income Test is rejected at the originating site, the Effective 
+ Date of Test is not updated and is inconsistent with the adjusted 
+ effective date from the HEC.
+  
+ RESOLUTION:
+ A post-install distribution/cleanup will be performed to send an IVM 
+ FINANCIAL QUERY for each veteran who meets the following criteria:
+  
+  > There must be a current Primary Test (no earlier than income 
+       year 2001).
+  > The test must have been entered early (before the CAD).
+  > There must have been a similar test in the previous income year.
+       Each test must have been either a Means Test or a Copay Test, or 
+       the previous year's was a Copay Test and this year's is a Means 
+       Test.
+  > The test's status must not be an improvement over the prior income
+       year's test.
+  
+ The distribution/cleanup will check every veteran for a current Income 
+ Test.  An IVM FINANCIAL QUERY will be transmitted to the HEC for each 
+ record that meets the above criteria.
+  
+ A MailMan message will be sent containing a recap of the number of 
+ records that were processed and the number of queries that were 
+ transmitted to the HEC.  Here is an example of the MailMan message:
+  
+     Subj: Future Dated MT Distribution/Cleanup  [#395109] 12/17/02@12:43
+     From: IVM*2.0*71 DISTRIBUTION/CLEANUP  In 'IN' basket.   Page 1
+     --------------------------------------------------------------------
+     Income Test Data (Z10) transmissions may not have
+     been successfully received/uploaded for Income Tests
+     where the effective date of the test has been updated
+     at the HEC.
+  
+     An IVM FINANCIAL QUERY has been transmitted to the HEC
+     for each of these records.
+     ==================================================
+     Number of records processed:         132456
+     Number of queries transmitted:          815
+     ==================================================
+  
+ There may be a significant increase in the number of HEC INCOME TEST 
+ UPLOAD bulletins sent to the DGMT MT/CT UPLOAD ALERTS Mail Group as a 
+ result of the distribution/cleanup performed in the post install of this 
+ patch (IVM*2.0*71).  The number of bulletins received will depend on the 
+ number of Income Tests that have been rejected (not uploaded) and meet 
+ the above criteria for an IVM FINANCIAL QUERY to have been transmitted to 
+ the HEC.
+  
+  
+  
+ ROUTINE SUMMARY:
+ ================
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+  
+     <tab>;;2.0;INCOME VERIFICATION MATCH;**[patch list]**;21-OCT-94
+  
+                            CHECK^XTSUMBLD results
+ Routine name      Before Patch          After Patch         Patch List
+ ============      ============          ===========         ==========
+ IVM2071A                   N/A              7715475             71
+ IVM2071M                   N/A              2491361             71
+ IVMCM1                 6386950              6432532          17,49,71
+ IVMCMF                     N/A              2691607             71
+ IVMCMF1                    N/A             19293421             71
+ IVMCMF2                    N/A             16824645             71
+ IVMCMF3                    N/A             14013555             71
+ IVMCMFB                    N/A              4100642             71
+ IVMPRECZ               8263465              8401976          34,64,71
+                                                    
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+  
+ This patch can be loaded with users on the system. Installation will 
+ take approximately 20 minutes.
+  
+                * * * * * * * * * * * *
+                   A T T E N T I O N
+                * * * * * * * * * * * *
+  
+ You may wish to stop the HL7 filers prior to the install to prevent
+ possible 'No Source Errors' from occurring. No transmissions will be lost
+ if the filers are not stopped first, they will be picked up once the
+ filers are restarted.
+  
+ The patch should be installed during non-peak hours.
+  
+  
+ 1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu. [Note:
+    TEXT PRINT/DISPLAY option in the PackMan menu will display the
+    patch text only].
+  
+ 2. Review your mapped set.  If any of the routines listed in the
+    ROUTINE SUMMARY section are mapped, they should be removed from
+    the mapped set at this time.
+  
+ 3. From the Kernel Installation and Distribution System (KIDS)
+    menu, select the Installation menu.
+  
+ 4. From this menu, you may elect to use the following options:
+    (when prompted for INSTALL NAME, enter IVM*2.0*71)
+  
+    a.  Backup a Transport Global - this option will create a backup
+        message of any routines exported with the patch.  It will
+        NOT backup any other changes such as DDs or templates.
+    b.  Compare Transport Global to Current System  - this option
+        will allow you to view all changes that will be made when
+        the patch is installed.  It compares all components of the
+        patch (routines, DDs, templates, etc.).
+    c.  Verify Checksums in Transport Global - this option will
+        allow you to ensure the integrity of the routines that are
+        in the transport global.
+    d.  Print Transport Global - this option will allow you to view
+        the components of the KIDS build.
+    
+ 5. Use the Install Package(s) option and select the package IVM*2.0*71
+  
+ 6. When prompted 'Want KIDS to INHIBIT LOGONs during the install? YES//',
+    respond NO.
+  
+ 7. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+    Protocols? YES//', respond NO. 
+  
+ 8. If routines were unmapped as part of step 2, they should be
+    returned to the mapped set once the installation has run to
+    completion.
+  
+ 9. When the installation is complete, be sure to re-start the filers if 
+    you chose to stop them.
+
+Routine Information:
+====================
+
+Routine Name:
+  - IVM2071A
+
+ This is a new routine to check for Income Tests that were entered early, 
+ were possibly adjusted by the HEC, and where the system failed to upload 
+ the Future Dated Income Test from the HEC at the site that originally 
+ performed the test.
+
+Routine Checksum:
+
+Routine Name:
+  - IVM2071M
+
+ This is a new routine to send a MailMan message containing a recap of the 
+ number of records processed and the number of queries generated by this 
+ distribution/cleanup.
+
+Routine Checksum:
+
+Routine Name:
+  - IVMPRECZ
+
+ Before:
+   S XMSUB="IVM - MEANS TEST UPLOAD"
+   S IVMTEXT(1)="The following error occured when an Income Verification 
+ Match"
+   S IVMTEXT(2)="verified Means Test was being uploaded for the following 
+ patient:"
+   S IVMTEXT(3)=" "
+  
+ After:
+   S XMSUB="MT SIGNATURE UPLOAD "_$E($P(IVMPAT,"^"),1)_$P(IVMPAT,"^",3)
+   S IVMTEXT(1)="Unable to upload a MT Signature.  A Means Test was not 
+ found that"
+   S IVMTEXT(2)="matches the Centralized Anniversary Date (CAD) on file at 
+ the HEC."
+   S IVMTEXT(3)=" "
+  
+ Before:
+   ..S IVMTEXT(6)="Means Test of "_Y_" not in DHCP."
+   ..D ERRBULL,MAIL^IVMUFNC()
+  
+ After:
+   ..S IVMTEXT(6)="Means Test of "_Y_" not found in VistA."
+   ..D ERRBULL,MAIL^IVMUFNC()
+  
+ Before:
+   ..S HLERR="Means test not in DHCP" D ACK
+   ..Q
+  
+ After:
+   ..S HLERR="Means test not in VistA" D ACK
+   ..Q
+
+Routine Checksum:
+
+Routine Name:
+  - IVMCM1
+
+ Before:
+   ; subscript of array IVMAR is 408.12 ien transmitted by IVM Center
+   ; or created by upload.
+   K IVMAR
+   ;
+   ; edit checks
+   S IVMX=$$EN^IVMCME() I IVMX]"" D PROB^IVMCMC(IVMX) K IVMX Q
+   ;
+  
+ After:
+   ; subscript of array IVMAR is 408.12 ien transmitted by IVM Center
+   ; or created by upload. IVMAR2 is the array used to check for dup SSNs
+   K IVMAR,IVMAR2
+   ;
+   ; New Edit Checks
+   N IVMERR S IVMERR=""
+   D EN^IVMCMF(.IVMERR),PROB^IVMCMFB(,.IVMERR,0)
+   ;
+
+Routine Checksum:
+
+Routine Name:
+  - IVMCMF
+
+ This is a new routine to allow the upload of Income Tests with known data 
+ inconsistencies.  It uses/applies the same business rules used in the 
+ consistency checks for rejecting ORU~Z10 and ORF~Z10 messages.
+
+Routine Checksum:
+
+Routine Name:
+  - IVMCMF1
+
+ This is a new routine used to apply the consistency checks for the ZIC 
+ and ZIR Segments in the ORU~Z10 and ORF~Z10 messages.
+
+Routine Checksum:
+
+Routine Name:
+  - IVMCMF2
+
+ This is a new routine used to apply the consistency checks for the ZMT 
+ and ZDP Segments in the ORU~Z10 and ORF~Z10 messages.
+
+Routine Checksum:
+
+Routine Name:
+  - IVMCMF3
+
+ This is a new routine used to calculate Income Test values and apply the 
+ consistency checks for the ZMT Segment in the ORU~Z10 and ORF~Z10 
+ messages.
+
+Routine Checksum:
+
+Routine Name:
+  - IVMCMFB
+
+ This is a new routine used to populate the COMMENT (#408.311) field in 
+ the ANNUAL MEANS TEST (#408.31) File with the list of data 
+ inconsistencies found during the upload of the ORU~Z10 or ORF~Z10 
+ message.  
+  
+ The code for the new MT INCONSISTENCIES Bulletin that will be implemented 
+ in patch DG*5.3*463, is included in this routine.
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : MULLER,RICHARD                 Date Entered : DEC 10, 2002
+Completed By: HUA,PATRICK                   Date Completed: MAY 15, 2003
+Released By : GANUS,MAUNETTE                Date Released : MAY 15, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

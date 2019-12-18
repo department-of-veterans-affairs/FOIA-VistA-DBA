@@ -1,0 +1,270 @@
+
+=============================================================================
+Run Date: DEC 07, 2004                     Designation: GMRV*5*6
+Package : GMRV - GEN. MED. REC. - VITALS      Priority: Mandatory
+Version : 5         SEQ #2                      Status: Released
+                  Compliance Date: JAN 07, 2005
+=============================================================================
+
+Associated patches: (v)GMRV*5*1    <<= must be installed BEFORE `GMRV*5*6'
+
+Subject: ADDING ACR INDEX TO FILE 120.5
+
+Category: 
+  - Routine
+  - Enhancement (Mandatory)
+  - Data Dictionary
+  - Informational
+
+Description:
+============
+
+  Associated NOIS: <None>
+  Associated E3R: 17464
+  
+ Test Sites:
+ ===========
+  Anchorage
+  Bronx
+  Northern California
+  Puget Sound
+  Tampa
+  Washington D.C.
+  West Palm Beach
+  White River Junction
+  
+  
+       This patch is included with Clinical Reminders patch PXRM*1.5*12.
+       Please see the patch description for PXRM*1.5*12 for information on
+       loading and installing this patch.
+  
+       The Technical Integration approval has been received for the data 
+       dictionary change.
+  
+ This patch does the following: 
+  
+ 1) Adds the new ACR Index to the GMRV VITAL MEASUREMENT (#120.5) file.
+ This index was requested by the Clinical Reminders package development
+ team. The ACR Index creates cross-reference nodes in a Clinical Reminders
+ global (^PXRMINDX). Specifically, those nodes are:
+  
+  ^PXRMINDX(120.5,"PI",DFN,VT,DATE/TIME,DA) 
+  ^PXRMINDX(120.5,"IP",VT,DFN,DATE/TIME,DA)
+  
+ Where:
+   DATE/TIME = DATE/TIME VITALS TAKEN (#.01)
+         DFN = PATIENT (#.02)
+          VT = VITAL TYPE (#.03)
+          DA = Record internal entry number
+  
+ The index definition is:
+   FILE: 120.5
+   NAME: ACR
+   SHORT DESCRIPTION: Clinical Reminders cross-reference.
+   TYPE: MUMPS
+   EXECUTION: RECORD
+   ACTIVITY: IR   
+   ROOT TYPE: INDEX FILE
+   ROOT FILE: 120.5    
+   USE: ACTION
+   DESCRIPTION:   This cross-reference builds two indexes, one for finding 
+   all patients with a particular vital measurement and one for finding all
+   the vital measurements a patient has.  The index is stored in the
+   Clinical Reminders index global as:
+   ^PXRMINDX(120.5,"IP",MEASUREMENT,DFN,DATE/TIME TAKEN,DAS) 
+   ^PXRMINDX(120.5,"PI",DFN,MEASUREMENT,DATE/TIME TAKEN,DAS)
+   Entries that are marked as entered-in-error are not indexed.  Permission
+   to use the PXRM namespace is documented in IAs 3736 and 4114.  For all
+   the details, see the Clinical Reminders Index Technical
+   Guide/Programmer's Manual.  
+   SET LOGIC: D SVITAL^GMVPXRM(.X,.DA)
+   KILL LOGIC: D KVITAL^GMVPXRM(.X,.DA)
+   KILL ENTIRE INDEX CODE: K ^PXRMINDX(120.5)
+   ORDER NUMBER: 1 
+   TYPE OF VALUE: FIELD
+   FILE: 120.5 
+   FIELD: .01
+   SUBSCRIPT NUMBER: 1 
+   COLLATION: forwards
+   ORDER NUMBER: 2    
+   TYPE OF VALUE: FIELD
+   FILE: 120.5  
+   FIELD: .02
+   SUBSCRIPT NUMBER: 2     
+   COLLATION: forwards
+   ORDER NUMBER: 3   
+   TYPE OF VALUE: FIELD
+   FILE: 120.5     
+   FIELD: .03
+   SUBSCRIPT NUMBER: 3 
+   COLLATION: forwards
+   ORDER NUMBER: 4          
+   TYPE OF VALUE: FIELD
+   FILE: 120.5  
+   FIELD: 2
+  
+ Records that are marked as entered-in-error are not included in the 
+ Index. An entered-in-error record is one that has a value in the ENTERED 
+ IN ERROR (#2) field of FILE 120.5.
+  
+ Option(s) affected: 
+  "Enter Vitals" option (Vitals GUI main window Menu Bar, File menu)
+  "Entered in Error" option (Vitals GUI main window Menu Bar, File menu)
+  "Enter Vitals" button (Vitals GUI main window)
+  
+ 2) Creates Application Programming Interface (API) for use by the Clinical
+ Reminders package. This API allows the Clinical Reminders package to 
+ re-index the ACR cross-reference created in #1. This API (VITALS^GMVPXRM)
+ is documented in Integration Agreement 3647 and below.
+  
+    COMPONENT:  VITALS
+                This entry point is for use by the Clinical Reminders 
+                package to re-index the ACR cross-reference nodes for FILE
+                120.5.  
+                 a) This entry point kills the ACR cross-reference nodes 
+                    for FILE 120.5 i.e., ^PXRMINDX(120.5).
+                 b) Re-builds the ACR cross-reference nodes.  
+                 c) Calls the Clinical Reminders package to generate a mail
+                    message summarizing the rebuilding of the ACR
+                    cross-reference.  
+                 
+                There are no input or output variables for this entry 
+                point.
+  
+  
+ 3) Creates an Application Programming Interface (API) for use by the
+ Clinical Reminders package to retrieve data for a FILE 120.5 entry. This
+ API (EN^GMVPXRM) is documented in Integration Agreement 3647 and below.
+  
+    COMPONENT:  EN(.GMVDATA,GMVIEN,GMVIB)
+                This entry point returns either the internal or both the
+                internal and external values (pieces 1 and 2 respectively) 
+                for the following fields of the FILE 120.5 entry selected:
+                 
+                 GMVDATA(1)=.01 (DATE/TIME VITALS TAKEN) 
+                 GMVDATA(2)=.02 (PATIENT) 
+                 GMVDATA(3)=.03 (VITAL TYPE) 
+                 GMVDATA(4)=.04 (DATE/TIME VITALS ENTERED) 
+                 GMVDATA(5)=.05 (HOSPITAL LOCATION) 
+                 GMVDATA(6)=.06 (ENTERED BY) 
+                 GMVDATA(7)=1.2 (RATE) 
+                 GMVDATA(8)=1.4 (SUPPLEMENTAL O2) 
+                 GMVDATA(9)=2   (ENTERED IN ERROR) 
+                 GMVDATA(10)=3  (ERROR ENTERED BY) 
+                 GMVDATA(11,n)=4 (REASON ENTERED IN ERROR)  <--multiple 
+                 GMVDATA(12,n)=5 (QUALIFIER)                <--multiple 
+                 
+                If the lookup failed then: GMVDATA(1)=-1^error text.  
+                 
+                This is an example of returning internal values only. The
+                array name is GMVDATA which is passed by reference. The 
+                record number is 394.
+                 
+                 > D EN^GMRVPXRM(.GMVDATA,394,"I") 
+                 > ZW GMVDATA 
+                 > GMVDATA(1)=3020805.2324 
+                 > GMVDATA(2)=67 
+                 > GMVDATA(3)=2 
+                 > GMVDATA(4)=3020805.232531 
+                 > GMVDATA(5)=1 
+                 > GMVDATA(6)=547 
+                 > GMVDATA(7)=100.1 
+                 > GMVDATA(8)= 
+                 > GMVDATA(9)=1 
+                 > GMVDATA(10)=547 
+                 > GMVDATA(11,1)=4 
+                 > GMVDATA(12,1)=6 
+                 
+                This is an example of returning internal and external 
+                values. The array name is GMVDATA which is passed by
+                reference. The record number is 394.
+                 
+                 > D EN^GMRVPXRM(.GMVDATA,394,"B") 
+                 > GMVDATA(1)=3020805.2324^AUG 05, 2002@23:24 
+                 > GMVDATA(2)=67^SMITH,GEORGE 
+                 > GMVDATA(3)=2^TEMPERATURE 
+                 > GMVDATA(4)=3020805.232531^AUG 05, 2002@23:25:31 
+                 > GMVDATA(5)=1^2AS 
+                 > GMVDATA(6)=547^TAYLOR,FRANK 
+                 > GMVDATA(7)=100.1^100.1 
+                 > GMVDATA(8)=^ 
+                 > GMVDATA(9)=1^YES 
+                 > GMVDATA(10)=547^TAYLOR,FRANK 
+                 > GMVDATA(11,1)=4^INVALID RECORD 
+                 > GMVDATA(12,1)=6^ORAL 
+  
+    VARIABLES:  Both      .GMVDATA
+                            The first variable in the parameter list. It
+                            specifies the name of the array to return the
+                            information in and is passed by reference. This
+                            variable is required.  
+    VARIABLES:  Input     GMVIEN
+                            The second variable in the parameter list. It 
+                            is the internal entry number of the FILE 120.5
+                            entry. It is required.
+    VARIABLES:  Input     GMVIB
+                            The third variable in the parameter list. It is
+                            optional. 
+                             
+                            Use an uppercase letter I (i.e., "I") to return
+                            only the internal values of the entry.  
+                             
+                            Use an uppercase letter B (i.e., "B") to return
+                            both the internal and external values of the
+                            entry. "B" is the default. If GMVIB is not "I" 
+                            or "B", then "B" is used.
+  
+  
+ Documentation:
+ ==============
+ There are no documentation changes for this patch.
+  
+  
+ Routine Version Line:
+ =====================
+ Below is a list of the routines included in this patch. The second line of
+ each of these routines now looks like:
+  
+ ;;5.0;GEN. MED. REC. - VITALS;**[Patch History]**;Oct 31, 2002 
+  
+ Checksum Results:
+ =================
+  
+ Routine Name   Before Patch    After Patch     Patch History
+ ============   ============    ===========     =============
+  GMV6PST       new             3675369         6
+  GMVPXRM       new             6421361         6
+  
+  
+ Installation Instructions:
+ ==========================
+  
+  See PXRM*1.5*12 for instructions to load and install this patch. 
+
+Routine Information:
+====================
+
+Routine Name:
+  - GMV6PST
+
+
+Routine Checksum:
+
+Routine Name:
+  - GMVPXRM
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : TRAXLER,FRANK                 Date Entered  : OCT 14, 2004
+Completed By: REZNIK,CHARMAINE              Date Completed: NOV 19, 2004
+Released By : BELSCHWINDER,MICHAEL          Date Released : DEC 07, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

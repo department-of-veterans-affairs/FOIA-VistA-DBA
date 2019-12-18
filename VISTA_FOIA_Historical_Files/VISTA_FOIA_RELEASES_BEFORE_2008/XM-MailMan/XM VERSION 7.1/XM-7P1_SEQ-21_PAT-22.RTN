@@ -1,0 +1,132 @@
+Released XM*7.1*22 SEQ #21
+Extracted from mail message
+XMS3
+XMS3 ;(WASH ISC)/THM-SERVER LOGIC / TASKER ;11/29/95  09:34
+ ;;7.1;MailMan;**22**;Jun 02, 1994
+ Q
+REC ;READ A LINE FROM THE MESSAGE
+ S:'$D(XMPOS) XMPOS=.99 S:XMPOS<.99 XMPOS=.99
+ S XMPOS=$O(^XMB(3.9,XMZ,2,XMPOS)) I +XMPOS'=XMPOS!(XMPOS="") S XMER=-1,XMRG="" Q
+ S XMRG=^XMB(3.9,XMZ,2,XMPOS,0),XMER=0 Q
+ ;
+SEN ;SEND A LINE TO THE RETURN MESSAGE
+ S XMSLINE=XMSLINE+1,^XMB(3.9,XMZ,2,XMSLINE,0)=XMSG
+ Q
+OPEN ;OPEN THE REVERSE MESSAGE PATH
+ Q
+CLOSE ;CLOSE THE REVERSE MESSAGE
+ S ^XMB(3.9,XMZ,2,0)="^3.92A^"_XMSLINE_U_XMSLINE_U_DT
+ Q
+ECHO ;
+ K XMY,XMY0,^TMP("XMY",$J),^TMP("XMY0",$J)
+ S XMSUB=$E("Server echo of '"_XMSUB_"'",1,65)
+ S ^TMP("XMY",$J,XMFROM)="",XMTEXT="^XMB(3.9,"_XMZ_",2,"
+ G ENX^XMD
+DX ;SERVER DIAGNOSTICS
+ W !,"NOT YET AVAILABLE" Q
+SEND ;DUMP TO ANOTHER UCI
+ S XMCHAN="TASKER",XMLINE=0,XMVA=99
+ W *7,!!,"******* I M P O R T A N T *******",!!
+ W "This option will only work from UCI to UCI."
+ W !,"The user must FIRST invoke this SENDER and then invoke the RECEIVER."
+ W !,"Each UCI must be christened with a domain name.",!,"These domain names control the transmission."
+ W !!,"THE SENDER CANNOT DETERMINE IF YOU HAVE CHOSEN THE CORRECT DOMAIN.",!!
+ W "It will send to any domain you chose regardless if you have a UCI christened",!,"with that name or not or even if there is no way for the domain to receive it."
+ W !!,"Messages 'DUMPED' are removed from the queue for the domain requested",!,"and are put into ^%ZISL.  The %ZISL global must be translated to be"
+ W !,"accessable from both the SEND UCI and the RECEIVE UCI."
+ W !!,"There is a CHECK ON THE DOMAIN to be used on the receive side.",!,"The RECEIVER will receive only those transmissions sent to it."
+ W !,"It will then cancel the transmission by killing off",!,"the entry in ^%ZISL (NO OTHER RECEIVER WILL BE ABLE TO RECEIVE IT).",!
+BGO S XMBT=1,XMTURN=1 D OPEN^XML G QQ:$G(ER)=1!$G(POP) U IO(0) S:'$D(XM) XM="" D ENT1^XMR0:'$D(XMR0)
+B1 S DIC(0)="AEQMZ",DIC=4.2,DIC("A")="Dump messages to domain: "
+ D ^DIC K DIC I Y<1 X XMCLOSE G QQ
+ S XMINST=+Y,XMZ=0 I '$D(XMDUZ) S XMDUZ=.5
+ S X=$P(Y,U,2),XMTASK(0)=^XMB("NETNAME")_U_X
+ I '$D(^%ZISL(4.281,0)) W !!,"File 4.281 is not set up properly.",*7 S I=0 G Q
+ D NEXT^XMS0 I XMZ'>0 W !,"No messages in queue for this domain",!! G B1
+ S %=^%ZISL(4.281,0),Y=$P(%,U,4),XMZ=0 L +^%ZISL(4.281)
+B2 S Y=Y+1 G B2:$D(^%ZISL(4.281,Y)) S ^(0)=$P(%,U,1,2)_U_($P(%,U,3)+1)_U_Y,^(Y,0)=$P(XMTASK(0),U),^%ZISL(4.281,"B",$P(XMTASK(0),U),Y)="",XMTASK=Y
+ L -^%ZISL(4.281) W !,"Dumping messages now" U IO D ^XMS U IO(0) I $P(^DIC(3.4,XMCHAN,0),U)="TASKER" S $P(^%ZISL(4.281,XMTASK,0),U,2)=$P(XMTASK(0),U,2),^%ZISL(4.281,"C",$P(XMTASK(0),U,2),XMTASK)=""
+ I $D(XMCNT("S")) W *7,"...   ",XMCNT("S")," Message",$S(XMCNT("S")'=1:"s",1:"")," dumped."
+ S XMSG="QUIT" U IO X XMSEN,XMCLOSE K XMDUZ S:$D(XMS3) XMDUZ=XMS3
+ D QQ G KL^XMC
+RECV ;RECEIVE IN UCI
+ S:'$D(XM) XM=$S($D(ZTQUEUED):"",1:"D") K XMTASK N XMDUZ S XMDUZ=.5,XMA=^XMB("NETNAME")
+ I XM["D" D ENT1^XMR0 S XMTRAN="Trying to receive messages for "_XMA D TRAN^XMC1 S DIR(0)="E" D ^DIR K DIR,DIRUT I $D(DUOUT)!$D(DTOUT) S I=0 G Q
+ S (XMS3LOAD,I)=0
+I S I=$O(^%ZISL(4.281,"C",XMA,I)) I 'I G Q:'$D(XMTASK),QQ
+ G I:'$D(^%ZISL(4.281,I,0)) S %=$S($D(^(0)):^(0),1:"") I $P(%,U,2)'=XMA G I:XM'["D" S XMTRAN="Entry # "_I_" for "_XMA_" is not completed yet." D TRAN^XMC1 G I
+ G I:$S('$D(^%ZISL(4.281,I,"T",1,0)):1,^(0)'?1"HELO ".E:1,1:0)
+ S XMSITE=$P(%,U),XMS3LOAD=XMS3LOAD+1 I XM["D" S XMTRAN="LOADING Entry # "_I_" from "_XMSITE_"." D TRAN^XMC1
+ S XMTASK=I,ER=0,XMLINE=.999,(XMBT,XMTURN,XMQUIET)=1,XMCHAN="TASK-IN" D GO
+ S DA=XMTASK,DIK="^%ZISL(4.281," D ^DIK S I=1
+Q I XM["D" S XMTRAN="<< DONE !!  "_$S($G(XMS3LOAD):"<<< DONE !!! >>>",I=1:"SUCCESSFULLY RECEIVED",I="":"No entries found in ^%ZISL for "_XMA,1:"No messages sent")_". >>" D TRAN^XMC1
+ G I:I
+QQ K DTOUT,DUOUT,XMA,XMCHAN,XMD,XMS3,XMSITE,XMTASK,XMTASK Q
+GO N XMDUZ S XMDUZ=.5 D OPEN^XML,INT^XMR Q
+
+XMUT4C
+XMUT4C ;(WASH ISC)/CAP-INTEGRITY CHECKER ;12/05/95  08:50
+ ;;7.1;MailMan;**10,22**;Jun 02, 1994
+L W !!!,"3.9 FILE",!!!
+ S A=0,%1=0
+L1 S A=$O(^XMB(3.9,A)) I +A'=A Q
+ I %1#100=0 S L=%1_"." D W
+ S %1=%1+1 I $G(^XMB(3.9,A,0))="" D:$D(^(1)) 9 G N
+ S X=^XMB(3.9,A,0),Y=$P(X,U)
+ D 20:Y="",21:$L(Y)<3&(Y'=""),9:$E(X)=U
+ I $E(X)'=U S I=$E($P(X,U),1,30) D 9:'$L(I) I $L(I),'$D(^XMB(3.9,"B",I,A)) S ^XMB(3.9,"B",I,A)=""
+ D 22:$P(X,U,2)="",23:$P(X,U,2)'["@"&'$P(X,U,3),RES:X?1"R"1N.N
+ I $D(^XMB(3.9,A,3)) S J=$P(X,U,2) I J,'$D(^(1,"C",J)) D 24
+N F I=0:0 S I=$O(^XMB(3.9,A,1,I)) Q:'I  D 12:$G(^(I,0))=""
+ S I=0 F K=0:0 S I=$O(^XMB(3.9,A,1,"C",I)) Q:I=""  F J=0:0 S J=$O(^XMB(3.9,A,1,"C",I,J)) Q:'J  S X=$S('$D(^XMB(3.9,A,1,J,0)):0,1:$P(^(0),U)) D 13:X=0,12:X=""
+ G L1
+RES S Y=$E($P(X,U),2,99)
+ I '$D(^XMB(3.9,Y,0))#10 G 25
+ S I=0 F X=1:1 Q:'$D(^XMB(3.9,Y,3,X,0))  I ^(0)=XMB S I=1 Q
+ Q:I  G 27
+W I '$D(ZTQUEUED) W:$S($X>70:1,'$D(E):0,$L(E):1,1:0) ! W L
+ S E="" Q
+1 S F=1,E="RSP "_J_" for Undefined MESSAGE "_A G ER
+2 S F=2,E="BSKT SEQ #,NO 'C' XREF" G ER
+3 S F=3,E="'M' XREF,NOT MLBX-FIXED" G ER
+4 N %,XMK,XMDUZ,XMKS,Y S XMDUZ=B,XMK=C,F=4,E="MSG,NO SEQ #-FIXED" D RES^XMUT4A G ER
+5 S F=5,E="NOT NEW, BUT IN 'N0'" G ER
+6 S F=6,E="BSKT ENTRY,NO MSG-FIXED" G ER
+7 ;
+8 ;
+9 S F=9,E=" - BAD/NO 0 NODE" G ER1
+10 ;
+11 ;
+12 F %=0:0 S %=$O(^XMB(3.9,A,1,"C",%)) Q:+%<1  I $O(^(%,0))=I S ^XMB(3.9,A,1,I,0)=% G Q
+ S F=12 D F,ENT12^XMUT4A
+13 S F=13 D F
+ D ENT13^XMUT4A
+ Q
+14 S F=14,E="NO BSKT ZERO NODE-FIXED",(%9,%8,%7)=""
+A14 S %9=$O(^XMB(3.7,B,2,"B",%9)) G:'$D(^XMB(3.7,B,2,"B",%9,C)) A14
+ F %7=1:1 S %8=$O(^XMB(3.7,B,"N0",C,%8)) Q:%8=""
+ S %7=$S(%7=1:"",1:%7-1),%8=$S(%7="":"",1:1),^XMB(3.7,B,2,C,0)=%9_"^"_%7_"^"_%8_"^0^0"
+ K %9,%8,%7 G ER
+15 ;
+16 ;
+17 S F=17,E="NOT IN 'M' XREF-FIXED" G ER
+18 S F=18,E="NEW,NOT IN BASKET" G ER
+19 S F=19,E="NEW,NO MSG TXT-FIXED" G ER
+20 S F=20,E=" - NO SUBJECT" G ER1
+21 S F=21,E=" - BAD SUBJECT: "_Y G ER1
+22 S F=22,E=" - NO SENDER" G ER1
+23 S F=23,E=" - NO DATE & TIME" G ER1
+24 S F=24,E="SENDER NOT RECIPIENT" G ER1
+25 S F=25,E="No Message "_Y_" for response "_X G ER1
+26 F J=1:1:$P(X,U,3)-1 I '$D(^XMB(3.7,B,2,C,1,"C",J)) S $P(X,U,3)=J Q
+Q Q
+27 I 'Y S F=27,E="NOT IN RESPONSE CHAIN OF "_Y G ER1
+F S I(F)=I(F)+1 Q
+ER D F Q:$D(ZTQUEUED)
+ W !,"TYPE: ",F,": <<< ",E," >>> **" W:$X>45 !
+ W ?45,"XMDUZ=",B,", BASKET=",C I A W " XMZ=",A
+ Q
+ER1 D F W !,"TYPE: ",F,": MESSAGE ",A,E Q
+
+
+

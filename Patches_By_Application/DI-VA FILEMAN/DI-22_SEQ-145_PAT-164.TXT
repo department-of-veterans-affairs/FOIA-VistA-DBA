@@ -1,0 +1,363 @@
+$TXT Created by BEUSCHEL,GARY at FM22-PATCH.FO-OAKLAND.MED.VA.GOV  (KIDS) on Tuesday, 03/30/10 at 07:18
+=============================================================================
+Run Date: AUG 24, 2010                     Designation: DI*22*164
+Package : DI - VA FILEMAN                     Priority: Mandatory
+Version : 22       SEQ #145                     Status: Released
+                  Compliance Date: SEP 24, 2010
+=============================================================================
+
+Associated patches: (v)DI*22*30    <<= must be installed BEFORE `DI*22*164'
+                    (v)DI*22*67    <<= must be installed BEFORE `DI*22*164'
+                    (v)DI*22*78    <<= must be installed BEFORE `DI*22*164'
+                    (v)DI*22*117   <<= must be installed BEFORE `DI*22*164'
+                    (v)DI*22*159   <<= must be installed BEFORE `DI*22*164'
+
+Subject: LOOK IT UP
+
+Category: 
+  - Routine
+
+Description:
+============
+
+                           ** Notice: **
+ ** See "Installation Instructions" section for Installation Warning **
+   
+ This patch addresses the following items:
+  
+ 1) Remedy Ticket 225755:
+ The SCHEDULED ADMISSION (#41.1) file points to the PATIENT (#2) file via
+ its .01 pointer field. Under FileMan Utilities:Edit File, "ASK 'OK' WHEN
+ LOOKING UP AN ENTRY:" is set to "YES". If you try to add a nonexistent
+ patient to the SCHEDULED ADMISSION (#41.1) file, that patient won't be
+ added to the PATIENT (#2) file, but it will be added to the SCHEDULED
+ ADMISSION (#41.1) file, and not as a pointer, but as TEXT. There will be
+ text in a pointer field! This patch fixes that. (Routine ^DIC)
+  
+ Schedule admission for patient:  DI
+ 1   DIPATIENT1,ONE        7-26-37    666059635     NO NSC VETERAN
+ 2   DIPATIENT2,TWO        7-11-46    666124195     YES     SC VETERAN
+ 3   DIPATIENT3,THREE        *SENSITIVE*    *SENSITIVE*     NO EMPLOYEE
+ 4   DIPATIENT4,FOUR        7-5-52    666061521     NO     NSC VETERAN
+ 5   DIPATIENT5,FIVE        11-7-59    666066198     NO     NSC VETERAN
+  ENTER '^' TO STOP, OR CHOOSE 1-5: ^
+ Are you adding 'DI' as a new SCHEDULED ADMISSION (the 5TH)? No// Y  (Yes)
+     SCHEDULED ADMISSION RESERVATION DATE/TIME: N  (JUN 12, 2009@11:27)
+ RESERVATION DATE/TIME: JUN 12,2009@11:27//
+  
+ ACT>D ^%G
+  
+ Global ^DGS(41.1,5    ***.01 pointer field below contains text.
+ ^DGS(41.1,5,0)=DI^3090612.1127
+  
+ 2) Remedy Ticket 317456:
+ A ^DIR call which asks for a list of numbers within a specific range
+ accepts a range whose lower bounds fall below the minimum. (Routine ^DIR3)
+  
+ >S DIR(0)="LAO^3:5",DIR("A")="SELECT (3-5):" D ^DIR
+  
+ SELECT (3-5):3-6               <-- FM correctly marks this as an error.
+  
+ Response should be no less than 3 and no greater than 5.
+  
+ SELECT (3-5):2-4               <-- FM neglects to mark this as an error.
+  
+ >ZW Y
+ Y="3,4,"
+ Y(0)="3,4,"
+  
+ 3) Remedy Ticket 387442:
+ If you modify the DD of a word processing field in screen mode, and insert
+ an up-arrow (^) into the field's name, and then save the field, the field
+ is changed to a computed field. (Routine ^DINIT0)
+  
+ 4) Remedy Ticket 326085:
+ If you use a FileMan API to find an exact match on a file with a regular
+ B cross-reference defined to be longer than 100 characters, it will fail
+ if the entry in .01 field is longer than 30 characters.
+ (Routines ^DICUIX, ^DIC3)
+  
+ To show the problem, let's create a file:
+ STANDARD DATA DICTIONARY #518950.9 -- ZZG FAMOUS QUOTES FILE   
+ STORED IN ^DIZ(518950.9,  (4 ENTRIES)   
+ DATA          NAME                  GLOBAL        DATA
+ ELEMENT       TITLE                 LOCATION      TYPE
+ ---------------------------------------------------------------------------
+ CROSS REFERENCED BY: NAME(B)
+  
+ 518950.9,.01  NAME                   0;1 FREE TEXT (Required)
+               INPUT TRANSFORM:  K:$L(X)>110!($L(X)<3)!'(X'?1P.E) X
+               HELP-PROMPT:      Answer must be 3-110 characters in length. 
+               CROSS-REFERENCE:  518950.9^B 
+                                 1)= S ^DIZ(518950.9,"B",$E(X,1,30),DA)=""
+                                 2)= K ^DIZ(518950.9,"B",$E(X,1,30),DA)
+  
+ 518950.9,1    WHO SAID IT            0;2 FREE TEXT
+               INPUT TRANSFORM:  K:$L(X)>30!($L(X)<3) X
+               HELP-PROMPT:      Answer must be 3-30 characters in length.
+  
+ You can see that the NAME field is longer than 100 characters, and the
+ B xref is 30. Here's the DD for the NAME field:
+ ^DD(518950.9,.01,0)=NAME^RF^^0;1^K:$L(X)>110!($L(X)<3)!'(X'?1P.E) X
+ ^DD(518950.9,.01,1,0)=^.1
+ ^DD(518950.9,.01,1,1,0)=518950.9^B
+                      1)=S ^DIZ(518950.9,"B",$E(X,1,30),DA)=""
+                      2)=K ^DIZ(518950.9,"B",$E(X,1,30),DA)
+ ^DD(518950.9,.01,3)=Answer must be 3-110 characters in length.
+               "DT")=3090903
+  
+ Here is the global itself. I've put 4 quotes in there:
+ Global ^DIZ(518950.9
+ ^DIZ(518950.9,0)=ZZG FAMOUS QUOTES^518950.9^4^4
+ ^DIZ(518950.9,1,0)=Hey Hey Boo Boo!^Yogi Bear
+ ^DIZ(518950.9,2,0)=We're lost, but we're making good time.^Yogi Berra
+ ^DIZ(518950.9,3,0)=Anything that can go wrong will go wrong.^Murphy
+ ^DIZ(518950.9,4,0)=Wilmaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!^Fred Flintstone
+ ^DIZ(518950.9,"B","Anything that can go wrong wil",3)=
+ ^DIZ(518950.9,"B","Hey Hey Boo Boo!",1)=
+ ^DIZ(518950.9,"B","We're lost, but we're making g",2)=
+ ^DIZ(518950.9,"B","Wilmaaaaaaaaaaaaaaaaaaaaaaaaaa",4)=
+  
+ We have no problem locating Yogi Berra's quote:
+ ACT>W $$FIND1^DIC(518950.9,"","MX"," We're lost, but we're making good 
+ time.")2
+  
+ Now, let's change the B xref from 30 characters to 110 characters:
+ ACT>S ^DD(518950.9,.01,1,1,1)="S ^DIZ(518950.9,""B"",$E(X,1,110),DA)="""""
+ ACT>S ^DD(518950.9,.01,1,1,2)="K ^DIZ(518950.9,""B"",$E(X,1,110),DA)"
+  
+ Now let's reindex the file:
+ Select UTILITY OPTION: 4  RE-INDEX FILE
+ MODIFY WHAT FILE: ZZG FAMOUS QUOTES// 
+ OK, ARE YOU SURE YOU WANT TO KILL OFF THE EXISTING NAME INDEX? No// Y  (Yes)
+ DO YOU THEN WANT TO 'RE-CROSS-REFERENCE'? Yes//   (Yes)
+ ...HMMM, JUST A MOMENT PLEASE...
+ FILE WILL NOW BE 'RE-CROSS-REFERENCED'....
+  
+ Here's the global again. This time the B xref contains the full quotes:
+ Global ^DIZ(518950.9
+ ^DIZ(518950.9,0)=ZZG FAMOUS QUOTES^518950.9^4^4
+ ^DIZ(518950.9,1,0)=Hey Hey Boo Boo!^Yogi Bear
+ ^DIZ(518950.9,2,0)=We're lost, but we're making good time.^Yogi Berra
+ ^DIZ(518950.9,3,0)=Anything that can go wrong will go wrong.^Murphy
+ ^DIZ(518950.9,4,0)=Wilmaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!^Fred Flintstone
+ ^DIZ(518950.9,"B","Anything that can go wrong will go wrong.",3)=
+ ^DIZ(518950.9,"B","Hey Hey Boo Boo!",1)=
+ ^DIZ(518950.9,"B","We're lost, but we're making good time.",2)=
+ ^DIZ(518950.9,"B","Wilmaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!",4)=
+  
+ Now we can't find Yogi Berra's quote, because it's longer than 30 characters:
+ ACT>W $$FIND1^DIC(518950.9,"","MX"," We're lost, but we're making good 
+ time.")0
+  
+ But we can find Yogi Bear's, because it's not longer than 30 characters:
+ ACT>W $$FIND1^DIC(518950.9,"","MX","Hey Hey Boo Boo!")                        
+  
+ 1
+  
+ This patch will enable you to find quotes from both Yogis.
+  
+ 5) Remedy Tickets 333156 and 336531:
+ When patch DI*22*157 re-enabled auditing of a triggered field, it made a
+ lurking problem reveal itself. The API YMD^%DTC kills %D. It shouldn't.
+ (Instead of killing variables, so they don't stay around after the call,
+ YMD^%DTC, C^%DTC, and ^%DTC now NEW the variables to achieve the same
+ effect.) This problem became apparent because some sites have turned on
+ auditing for the DATE VERIFY CODE LAST CHANGED (#11.2) field of the NEW
+ PERSON (#200) file. This field is triggered when a user's VERIFY CODE
+ (#11) field is edited. This problem results in an abort with %D undefined.
+ (Routines ^DIDTC, ^%DTC)
+  
+ This is what you'll see if the DATE VERIFY CODE LAST CHANGED (#11.2) field
+ has auditing turned on and you edit a user's VERIFY CODE (#11) field:
+ OK, Verify code has been changed!
+  S ^DIA(%F,"B",DIEDA_DA,%D)="",X=DIEX S:$D(DPS) DP(1)=DPS
+  ^
+ <UNDEFINED>2+5^DIET *%D
+  
+ (Trivia: did you notice that the two Remedy ticket numbers are made up of
+ the same individual numbers, but rearranged?)
+  
+ Documentation
+ =============
+ No documentation changes were necessary for this patch.
+ The most up-to-date VA FileMan end-user documentation is available on the
+ VHA Software Document Library (VDL) at the following Internet Website:
+     http://www.va.gov/vdl/application.asp?appid=5
+  
+ NOTE: VistA documentation is made available online in Microsoft Word 
+ format (.DOC) and Adobe Acrobat Portable Document Format (.PDF).
+  
+ The VA FileMan documentation is also available in HTML format at the 
+ following Intranet Websites:
+  
+   * Getting Started Manual:
+     http://vaww.vista.med.va.gov/fileman/docs/u1/index.shtml
+  
+   * Advanced User Manual:
+     http://vaww.vista.med.va.gov/fileman/docs/u2/index.shtml
+  
+   * APIs/Programmer Manual:
+     http://vaww.vista.med.va.gov/fileman/docs/pm/index.shtml
+  
+   * ScreenMan Tutorial:
+     http://vaww.vista.med.va.gov/fileman/docs/scrnman/index.shtml
+  
+ Blood Bank Clearance
+ ====================
+ Clearance - 3/23/2010
+ EFFECT ON BLOOD BANK FUNCTIONAL REQUIREMENTS: Patch DI*22*164 contains
+ changes to a package referenced in VHA OI SEPG SOP 192-023 Review of
+ VISTA Patches for Effects on VISTA Blood Bank Software. This patch 
+ does not alter or modify any VistA Blood Bank software design 
+ safeguards or safety critical elements functions.
+  
+ RISK ANALYSIS: Changes made by patch DI*22*164 have no effect on Blood
+ Bank software functionality, therefore RISK is none.
+  
+ Remedy Tickets
+ ==============
+ 225755
+ 317456
+ 326085
+ 333156
+ 336531
+ 387442
+  
+ Thanks to Test Sites 
+ ====================
+ Alexandria VAMC
+ Upstate NY HCS
+ Northern California HCS
+  
+ Routine Summary: 
+ ================
+ Please see the "Routine Information" section. 
+ *Note: Routine: DIPR164 issues a warning during the installation of 
+ this patch if it appears that TaskMan is still running and/or logons 
+ have not been inhibited.
+  
+ Installation Instructions:
+ =========================
+ ** Although queuing of this patch is allowed, it is HIGHLY RECOMMENDED
+ that ALL Users be off the system and VISTA Background jobs be STOPPED
+ before this patch is installed. TaskMan should be stopped or placed in
+ a wait state. Failure to do so may result in 'source routine edited'
+ errors during a database update. Edits may be lost and records may be
+ left in an inconsistent state. An error that occurs before a cross-
+ reference is executed, for example, may lead to corrupted data or hard
+ errors in the future. **
+  
+ Also, please make sure that no other patches are installed until
+ Installation for this patch has completed.
+  
+ The following installation instructions are based upon the premise 
+ that the installer has heeded the above warning.
+  
+ Installation should take less than a minute.
+  
+      1.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. 
+ This option will load the KIDS package onto your system.
+  
+      2.  The patch has now been loaded into a transport global on your 
+ system. You now need to use KIDS to install the transport global.
+  
+      3.  On the KIDS menu, under the 'Installation' menu, use the 
+ following options:
+  
+            Print Transport Global
+            Compare Transport Global to Current System
+            Verify Checksums in Transport Global
+            Backup a Transport Global
+  
+      4.  In accordance with the warning at the beginning of the 
+ installation instructions, make sure ALL interactive processes, and 
+ ALL non-interactive background jobs are stopped following your site 
+ specific procedures. TaskMan should be stopped or placed in a wait state.
+ All users should be off the system. NOT performing this step could result
+ in 'source routine edited' error during database updates, and records may
+ be left in an inconsistent state.
+  
+      5.  On the KIDS menu, under the 'Installation' menu, use the 
+ following option:
+  
+            Select Installation Option: Install Package(s)
+            Select INSTALL NAME: DI*22.0*164
+                                 ===========
+  
+ The Environment Check Routine DIPR164 runs automatically during this
+ step. DIPR164 issues a warning if it appears that TaskMan is still 
+ running or logons have not been inhibited. 
+  
+            Answer 'YES' to 'Want KIDS to INHIBIT LOGONs during the 
+ install?'
+            Answer 'NO' to 'Want to DISABLE Scheduled Options, Menu 
+ Options, and Protocols?'
+  
+ During the Post-Install process, you will see:
+  Beginning Post-Installation...
+      I am changing piece 2 of ^DD(0,.01,0) from 'R' to 'RF' to prevent ^
+ in LABELs.
+      I am saving routine DIDTC as %DTC.
+ Finished Post-Installation.
+  
+      6.  Re-enable all processes stopped in step 4 above.
+  
+ Post Installation
+ =================
+ Upon successful installation of this patch, routine DIPR164 may be 
+ deleted.
+  
+   Example
+   =======
+ >D ^ZTRDEL
+  
+ ROUTINE DELETE
+  
+ All Routines? No => No
+  
+ Routine: DIPR164
+ Routine: 
+ 1 routine
+  
+ 1 routines to DELETE, OK: NO// Y
+ DIPR164  
+ Done.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;22.0;VA FileMan;**[Patch List]**;Mar 30, 1999;Build 20
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: DIC
+    Before: B23568848   After: B24056590  **4,17,20,78,164**
+Routine Name: DIC3
+    Before: B31837904   After: B33944165  **1,16,4,17,20,28,40,86,70,159,164**
+Routine Name: DICUIX
+    Before: B19533081   After: B19550178  **20,28,67,164**
+Routine Name: DIDTC
+    Before: B26314499   After: B31975807  **14,36,71,117,164**
+Routine Name: DINIT0
+    Before:  B7954410   After:  B7958527  **164**
+Routine Name: DIPR164
+    Before:       n/a   After:  B6989166  **164**
+Routine Name: DIR3
+    Before: B11470158   After: B11438385  **30,164**
+ 
+Routine list of preceding patches: 30, 67, 78, 117, 159
+
+=============================================================================
+User Information:
+Entered By  : BEUSCHEL,GARY                 Date Entered  : MAR 10, 2010
+Completed By: SINGH,GURBIR                  Date Completed: AUG 18, 2010
+Released By : HARROD,PAUL                   Date Released : AUG 24, 2010
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,477 @@
+$TXT Created by DESMOND,LINDA at DEVVOO.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 10/23/03 at 14:35
+=============================================================================
+Run Date: NOV 18, 2003                     Designation: EAS*1*40
+Package : EAS - ENROLLMENT APPLICATION SYSTEM Priority: Mandatory
+Version : 1        SEQ #35                      Status: Released
+                  Compliance Date: DEC 19, 2003
+=============================================================================
+
+Associated patches: (v)EAS*1*16    <<= must be installed BEFORE `EAS*1*40'
+                    (v)EAS*1*39    <<= must be installed BEFORE `EAS*1*40'
+
+Subject: LTC COPAYMENT PHASE IV
+
+Category: 
+  - Enhancement (Mandatory)
+  - Routine
+  - Input Template
+  - Data Dictionary
+  - Other
+
+Description:
+============
+
+ Developed in DEV,VOO
+  
+ OVERVIEW
+ ========
+  
+ This patch introduces enhancements to the VistA Enrollment Application 
+ System, needed to support the Millennium Healthcare and Benefit Act, 
+ Public Law 106-117 Section 101.  This law defines the application of 
+ copayments for veterans receiving Long Term Care (LTC) services.  This 
+ patch represents Phase IV of the Long Term Care Copayments project and 
+ will address the following requirements:
+  
+ 1. The financial data screens in the Add, Edit and View a LTC Copayment 
+ Test options will be modified to reflect the format changes made to the 
+ Application for Extended Care (10-10EC) paper form.
+  
+ 2. The system will support the display and printing of the LTC Copayment 
+ Tests in either the old or new 10-10EC format, depending on which one was 
+ used to complete the test.
+  
+ 3. A new menu option will be added to print a choice of two reports:  one 
+ is of veterans whose LTC copayment test (10-10EC) has already expired, 
+ the other is of veterans whose LTC copayment test (10-10EC)  is due to 
+ expire within a user-specified period of time.  The user will be prompted 
+ to select which report they wish to print and either a date range (for 
+ expired tests) or a number of days (for tests pending expiration).
+  
+ 4. The user will be able to indicate if a veteran is legally separated 
+ and if so the copayments will be calculated using the rules for an 
+ unmarried veteran.
+  
+ 5. The options to Add or Edit a LTC Copayment test will be modified to 
+ enable the user to indicate that the veteran is exempt from LTC 
+ copayments (for a reason other than low income) and complete the LTC 
+ Copay Test without having to go through all of the financial screens.  
+  
+ 6. The Eligibility Status Data (Screen 2) in the Add, Edit and View a LTC 
+ Copayment Test options will be replaced by the Insurance Data (Screen 5) 
+ from the Registration options.
+  
+ 7. The format of the Calculated LTC Copayments report will be modified.  
+ The user will be prompted to choose to print the copayments for either 
+ inpatient or outpatient services, then enter the patient's LTC admission 
+ date (for the inpatient report) and report start date.
+  
+  
+ NOIS CALLS
+ ==========
+ This patch will resolve the following NOIS calls:
+  
+ TUA-0803-31858     LTC CO-PAY - CHANGING REASON FOR EXEMPTION
+ ASH-0303-30561     LTC AND A&A AND VA PEN ELIG
+  
+  
+ TECHNICAL DESCRIPTION
+ =====================
+ The following is a summary of the changes included in this patch. 
+  
+ DATA DICTIONARY CHANGES:
+ ========================
+  
+ INCOME RELATION FILE (#408.22) - The following new field has been added:
+  
+   .17    LEGALLY SEPARATED      0;17 SET
+                 '1' FOR YES; 
+                 '0' FOR NO; 
+   DESCRIPTION:      Enter 'YES' in this field if the veteran and
+                     spouse are legally separated.  
+   TECHNICAL DESCR:  This field will be used to determine how the
+                     veteran's LTC copayment is calculated. If
+                     LEGALLY SEPARATED = "YES", then the
+                     calculation used will be the same as an
+                     unmarried veteran.
+                     This question will be asked if the field
+                     MARRIED THIS YEAR (#.14) = "YES".  
+   NOTES:            TRIGGERED by the MARRIED THIS YEAR field of
+                     the INCOME RELATION File 
+   CROSS-REFERENCE:  ^^TRIGGER^408.22^.16 
+                      CREATE CONDITION)= #.17="YES"
+                      CREATE VALUE)= @
+                      DELETE CONDITION)= #.17="YES"
+                      DELETE VALUE)= @
+                      FIELD)= #.16
+                      This trigger cross-reference will update the
+                      Residing in the Community field (#.16).  If
+                      Legally Separated="YES", the Residing in the
+                      Community field will be deleted.  
+  
+   The following new cross-reference has been added:
+  
+   TRIGGER
+             Field:  MARRIED THIS YEAR  (408.22,.14)
+   Triggered Field:  LEGALLY SEPARATED  (408.22,.17)
+       Description:  This trigger cross-reference will update the Legally
+                     Separated field (#.17).  If Married This Year="NO", 
+                     the Legally Separated field will be deleted.  
+                     CREATE CONDITION)= #.14="NO"
+                     CREATE VALUE)= @
+                     DELETE CONDITION)= #.14=""
+                     DELETE VALUE)= @
+                     FIELD)= #.17
+  
+  
+ ANNUAL MEANS TEST FILE (#408.31) - The following new field has been added:
+  
+   2.1    1010EC FORM            2;10 SET
+                 '1' FOR DEC 2002; 
+   DESCRIPTION:      This field indicates which version of the
+                     10-10EC form was used to complete the LTC copay
+                     test.
+  
+  
+ INDIVIDUAL ANNUAL INCOME FILE (#408.21) - The Description of the 
+ following fields has been modified:
+  
+   2.07   OTHER RESIDENCES/LAND/FARM 2;7 NUMBER
+   DESCRIPTION:      Enter in this field the current market value,
+                     minus any outstanding mortgages or liens, of
+                     the veteran's other residence(s), land, farm or 
+                     ranch.  Exclude the value of burial plots.  
+  
+   2.08   VEHICLE(S)             2;8 NUMBER
+   DESCRIPTION:      Enter in this field the current value, minus
+                     any outstanding liens, of any vehicle(s) owned
+                     by the veteran.  Exclude the value of one
+                     vehicle if the veteran is receiving only
+                     non-institutional care, or there is a spouse or
+                     dependent residing in the community.  
+  
+   2.09   OTHER LIQUID ASSETS    2;9 NUMBER
+   DESCRIPTION:      Enter in this field the current value of such
+                     items as stamp or coin collections, art work,
+                     and collectibles minus any amount owed. 
+                     Exclude from this amount the value of household
+                     furniture and other household goods, clothing,
+                     jewelry, and personal items if the veteran is
+                     receiving only non-institutional care, or there
+                     is a spouse or dependent residing in the community.
+  
+  
+ INPUT TEMPLATE CHANGES:
+ =======================
+ The following new templates will be added:
+  
+ EASEC ENTER/EDIT ASSETS NEW (File #408.21) - This template was added to 
+ edit the assets fields for the new 10-10EC format. The new format skips 
+ the STOCKS AND BONDS field #2.02.
+  
+ EASEC ENTER/EDIT INCOME NEW (File #408.21) - This template was added to 
+ edit the income fields for the new 10-10EC format. The new format has 
+ only 3 income fields: 
+    TOTAL INCOME FROM EMPLOYMENT (#.14)
+    INTEREST, DIVIDEND, OR ANNUITY (#.15)
+    OTHER INCOME (#.17)
+  
+ The following template will be modified:
+  
+ EASEC EDIT MARITAL STATUS (File #408.22) - The template logic was 
+ modified to add a new prompt for "Legally Separated" and remove the 
+ prompt "Are you living with your spouse":
+    IS YOUR MARITAL STATUS EITHER MARRIED OR SEPARATED: YES// 
+    ARE YOU LEGALLY SEPARATED: YES//
+ Display the next prompt only if "Legally Separated" is answered "No":
+    IS YOUR SPOUSE RESIDING IN THE COMMUNITY: YES// 
+  
+  
+ OPTION CHANGES:
+ ===============
+ The following new option will be added:
+  
+ Expiring or Expired LTC Copayment Tests [EASEC LTC COPAY TEST EXPIRE] - 
+ This option will print a choice of two reports:  one is a list of 
+ veterans whose LTC copayment test (10-10EC) is about to be a year old 
+ within a user-specified time frame (up to 60 days), the other is a list 
+ of veterans whose LTC copayment test (10-10EC) is more than a year old 
+ since a user-specified date. The user will be prompted to select which 
+ report to produce. These reports will not include deceased veterans, 
+ veterans who were exempt from LTC copayments due to a compensable 
+ service-connected disability, or veterans whose LTC episode began before 
+ 11/30/99.
+  
+ The following option will be modified:
+  
+ LTC Copayments Menu [EASEC LTC COPAY MENU] - The new option, Expiring or 
+ Expired LTC Copayment Tests, was added to this menu.
+  
+  
+ ROUTINE SUMMARY:
+ ================
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+  
+   <tab>;;1.0;ENROLLMENT APPLICATION SYSTEM;**[patch list]**;Mar 15, 2001
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  EASEC100              13958032             14813325          5,7,16,40
+  EASEC101               7982246              8588407            5,40
+  EASEC103              11923179             12427624           5,7,40
+  EASEC10E               4502587              4965438            5,40
+  EASEC10R                   N/A             34216114             40
+  EASECA                 5819485              7389299          5,7,34,40
+  EASECCAL               3948225              3328449        5,7,19,34,39
+                                                                  40
+  EASECDD               13990181             16741946          5,7,34,40
+  EASECDP3               4064247              4876909            5,40
+  EASECE                 6347897              6789390          5,7,34,40
+  EASECEXP                   N/A              9514860             40
+  EASECPC               13307404              4743840        5,7,19,24,34
+                                                                  40
+  EASECPC1               2459140             12637945           7,24,40
+  EASECSC2              10264733              4487312            5,40
+  EASECSC4               3978580              4654832            5,40
+  EASECSC5               5212071              5944536           5,7,40
+  EASECSCC              10828685             11038388          5,7,34,40
+  EASECSCR               7408977              7733616            5,40
+  EASECSCU               3837036              3891887           5,7,40
+  EASECSU3               2956713              3189826           5,7,40
+  EASECU                 3227925              3280276          5,7,34,40
+  
+  
+ DOCUMENTATION RETRIEVAL
+ =======================  
+ The following documentation will be available:
+   
+     File Name                 Description
+     ---------                 -----------
+     EAS_1_P40_RN.PDF          LTC Copayments Phase 4 Release Notes
+     EAS_1_P40_IG.PDF          LTC Copayments Phase 4 Installation Guide
+     EAS_1_P40_UM.PDF          Updated LTC Copayments User Manual
+     EAS_1_P40_TM.PDF          Updated LTC Copayments Technical Manual
+         
+ Sites may retrieve the documentation directly using FTP from  the 
+ ANONYMOUS.SOFTWARE directory at the following OI Field Offices:
+  
+                 Albany:  ftp.fo-albany.med.va.gov
+                  Hines:  ftp.fo-hines.med.va.gov
+         Salt Lake City:  ftp.fo-slc.med.va.gov
+ First available server:  download.vista.med.va.gov
+  
+ NOTE: Use Binary mode when transferring the .PDF file.  The .PDF 
+       files can be read on a PC using the Adobe Acrobat Reader 
+       program.
+  
+ The VistA Documentation Library [VDL] web site contains all 
+ end-user manuals.  The address is http://www.va.gov/vdl/
+   
+  
+ INSTALLATION INSTRUCTIONS
+ =========================  
+ It is recommended this patch be installed outside of normal business 
+ hours to avoid any complications resulting from users on the system.
+ Installation will take less than 5 minutes.
+  
+   Installation Steps:
+   ==================
+   
+   1. Review your mapped set.  If any of the routines listed in the 
+      ROUTINE SUMMARY section are mapped, they should be removed from the
+      mapped set at this time.
+     
+   2. Choose the PackMan message containing this patch and select the
+      INSTALL/CHECK MESSAGE option on the PackMan menu.
+   
+   3. From the 'Kernel Installation & Distribution System' menu [XPD
+      MAIN], select the Installation menu.
+   
+   4. From this menu, you may elect to use the following options (when
+      prompted for INSTALL NAME, enter EAS*1.0*40).
+   
+      a. Backup a Transport Global - This option will create a backup
+         message of any routines exported with the patch.  It will NOT 
+         backup any other changes such as DDs or templates.
+   
+      b. Compare Transport Global to Current System - This option will 
+         allow you to view all changes that will be made when the patch 
+         is installed.  It compares all components of the patch 
+         (routines, DDs, templates, etc.).
+   
+      c. Verify Checksums in Transport Global - This option will allow 
+         you to ensure the integrity of the routines that are in the 
+         transport global.
+   
+      d. Print Transport Global - This option will allow you to view the
+         components of the KIDS build.
+         
+   5. Use the Install Package(s) option and select EAS*1.0*40.
+   
+   6. The install will ask if you wish to rebuild menu trees.  It is
+      recommended that you answer NO to this prompt.  The trees will be
+      rebuilt the next time the system does this task.
+   
+   7. When prompted 'Want KIDS to INHIBIT Logon's during the install? 
+      YES//', it is recommended you answer NO.
+   
+   8. When prompted 'Want to DISABLE Scheduled Options, Menu Options, 
+      and Protocols? YES//', respond YES.  When prompted to select 
+      the options you would like to place out of order, enter the
+      following:
+  
+      EASEC LTC COPAY MENU          LTC Copayments Menu
+      EASEC LTC COPAY PRINT         Calculated LTC Copayments Print
+      EASEC LTC COPAY TEST ADD      Add a New LTC Copayment Test
+      EASEC LTC COPAY TEST EDIT     Edit an Existing LTC Copayment Test
+      EASEC LTC COPAY TEST PRINT    Print Application for Extended Care
+                                      (10-10EC)
+      EASEC LTC COPAY TEST VIEW     View a LTC Copayment Test
+  
+   9. If routines were unmapped as part of Step 1, they should be 
+      returned to the mapped set once the installation has run to 
+      completion.
+
+Routine Information:
+====================
+
+Routine Name:
+  - EASEC100
+
+
+Routine Checksum:
+
+Routine Name:
+  - EASEC101
+
+
+Routine Checksum:
+
+Routine Name:
+  - EASEC103
+
+
+Routine Checksum:
+
+Routine Name:
+  - EASEC10E
+
+
+Routine Checksum:
+
+Routine Name:
+  - EASEC10R
+
+
+Routine Checksum:
+
+Routine Name:
+  - EASECA
+
+
+Routine Checksum:
+
+Routine Name:
+  - EASECCAL
+
+
+Routine Checksum:
+
+Routine Name:
+  - EASECDD
+
+
+Routine Checksum:
+
+Routine Name:
+  - EASECDP3
+
+
+Routine Checksum:
+
+Routine Name:
+  - EASECE
+
+
+Routine Checksum:
+
+Routine Name:
+  - EASECEXP
+
+
+Routine Checksum:
+
+Routine Name:
+  - EASECPC
+
+
+Routine Checksum:
+
+Routine Name:
+  - EASECPC1
+
+
+Routine Checksum:
+
+Routine Name:
+  - EASECSC2
+
+
+Routine Checksum:
+
+Routine Name:
+  - EASECSC4
+
+
+Routine Checksum:
+
+Routine Name:
+  - EASECSC5
+
+
+Routine Checksum:
+
+Routine Name:
+  - EASECSCC
+
+
+Routine Checksum:
+
+Routine Name:
+  - EASECSCR
+
+
+Routine Checksum:
+
+Routine Name:
+  - EASECSCU
+
+
+Routine Checksum:
+
+Routine Name:
+  - EASECSU3
+
+
+Routine Checksum:
+
+Routine Name:
+  - EASECU
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : DESMOND,LINDA                 Date Entered  : AUG 12, 2003
+Completed By: MORGAN,BRIAN                  Date Completed: NOV 18, 2003
+Released By : KOVACH,STUART                 Date Released : NOV 18, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

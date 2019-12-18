@@ -1,0 +1,330 @@
+$TXT Created by UYIHUEDAA,FLUIYHU DDD III at DAYT17.FO-BAYPINES.MED.VA.GOV  (KIDS) on Wednesday, 04/25/07 at 11:23
+=============================================================================
+Run Date: MAY 18, 2007                     Designation: LR*5.2*362
+Package : LR - LAB SERVICE                    Priority: Mandatory
+Version : 5.2       SEQ #284                    Status: Released
+                  Compliance Date: JUN 18, 2007
+=============================================================================
+
+Associated patches: (v)LR*5.2*200  <<= must be installed BEFORE `LR*5.2*362'
+                    (v)LR*5.2*268  <<= must be installed BEFORE `LR*5.2*362'
+                    (v)LR*5.2*274  <<= must be installed BEFORE `LR*5.2*362'
+                    (v)LR*5.2*322  <<= must be installed BEFORE `LR*5.2*362'
+                    (v)LR*5.2*355  <<= must be installed BEFORE `LR*5.2*362'
+                    (v)LR*5.2*359  <<= must be installed BEFORE `LR*5.2*362'
+
+Subject: RESOLVES VARIOUS LAB PACKAGE ISSUES
+
+Category: 
+  - Routine
+  - PATCH FOR A PATCH
+
+Description:
+============
+
+ EFFECT ON BLOOD BANK FUNCTIONAL REQUIREMENTS: Patch LR*5.2*362 does not 
+ contain any changes to the VISTA BLOOD BANK Software as defined by VHA 
+ DIRECTIVE 2004-053 titled VISTA BLOOD BANK SOFTWARE VERSION 5.2.
+  
+ EFFECT ON BLOOD BANK FUNCTIONAL REQUIREMENTS: Patch LR*5.2*362 does not 
+ alter or modify any software design safeguards or safety critical 
+ elements functions.
+  
+ RISK ANALYSIS: Changes made by patch LR*5.2*362 have no effect on Blood 
+ Bank software functionality, therefore RISK is none.
+  
+ VALIDATION REQUIREMENTS BY OPTION: Because of the nature of the changes 
+ made, no specific validation requirements exist as a result of 
+ installation of this patch.
+  
+ ***********************************************************************
+  
+ This patch addresses 5 Remedy tickets in the LAB package.
+  
+ ASSOCIATED REMEDY TICKET(S):
+ ============================
+ 1. HD0000000069024 - TIME OUT IN LREXECU
+ 2. HD0000000069065 - Editing WKLD file entries
+ 3. HD0000000071145 - Error created when trying to print incomplete
+                      accession list
+ 4. HD0000000135191 - ACCESSION PRINTING ERROR
+ 5. HD0000000154724 - Morphology code search option [LRAPSM] does not
+                      display all codes.
+  
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Central Texas HCS
+ Puget Sound HCS
+ Salem VAMC
+ Salt Lake City VAMC
+  
+  
+ REMEDY TICKET OVERVIEW:
+ =======================
+  
+ Problem (1): HD0000000069024
+ ------------
+ While using option LRQUICK, Multipurpose accessioning, the user could be
+ asked to enter when the sample will be drawn.  This option calls routine 
+ LREXECU to ask the user for this information.  If a lab order is for drug
+ monitoring this routine prompts the user to decide if the sample for the
+ order is to be drawn at Peak, Trough, Mid, or Unknown times. It will only
+ accept P, T, M, or U and will loop back to the prompt until the user 
+ enters one of those letters. It will not timeout and it will not allow
+ the user to enter a null (just hitting the enter key).  Nor will it allow
+ the user to enter a "^" to exit. This violates the SAC standard 2.3.10.3.
+  
+ Solution:
+ ---------
+ Modify routine LREXECU to allow a timeout, the entry of a null, or the
+ entry of "^" to exit. A timeout and the entry of "^" will cancel the lab
+ order. The entry of a null will default to U for Unknown.  This
+ modification will require a change to the routine LRORDST to test the
+ variable LRKIL for a  value of '1'.  A value of '1' indicates either a
+ timeout or the user input of "^", canceling the order and quitting the
+ accession process, returning the user to the "Select Patient" prompt.
+  
+  
+ Problem (2.1): HD0000000069065
+ --------------
+ Using option LR WKLD CODE EDIT PRINT to edit activated workload codes can
+ trap the user into an endless loop when trying to use a "^" to exit from
+ a word processing field. When the edit functionality for this option is
+ selected, a list of fields that can be edited is presented to the user.
+ The user can select any one or all of these fields to edit. If one of the
+ fields selected by the user is a word processing field, the user can not
+ enter a "^" at the word processing field to quit the editing loop. Once
+ the user is presented with a non-wording field entering a "^" will quit
+ the editing loop. If the user selected only the word processing field to
+ edit, then the user is trapped in the editing loop until 1) All the
+ activated workload codes have been run through, or 2) The user uses
+ Control-C to force an exit. The Control-C will crash the user out of the
+ system.
+  
+ Solution:
+ ---------
+ Modify routine LRCAPFDS, used by option LR WKLD CODE EDIT PRINT, to test 
+ for the entering of a "^" by the user.  The routine currently test only
+ for $D(Y) being true.  When a user enters a "^" at the prompt of a word
+ processing field, the $D(Y) is not set and the user gets trapped.  By
+ adding a test for X="^" (X being the VA FileMan work variable), the
+ routine will know the user has decided not to edit the word processing
+ field and wants to quit.
+  
+  
+ Problem (2.2):  HD0000000069065
+ --------------
+ In addition to the problem above, while testing this patch, an additional
+ problem related to option LR WKLD CODE EDIT PRINT was found.  During the
+ editing loop, the routine LRCAPFDS calls routine LRDIQ to display
+ information about the test being edited.  When the display is near the end
+ of the screen it will display this message to the user:
+  
+   ' Enter RETURN to continue or '^' to exit:'
+  
+ When the '^' is entered to the message above, a variable DIRUT is set to 1
+ which indicates the user wants to exit the routine. The variable DIRUT is
+ passed back to LRCAPFDS. However, the routine LRCAPFDS does not check for
+ the variable DIRUT or its value to determine if the user has entered a '^'
+ and does not exit the editing loop.
+  
+ Solution:
+ ---------
+ Modify routine LRCAPFDS to test for the variable DIRUT and its value to
+ determine if a '^' has been entered by an user who wants to exit the edit 
+ loop.
+  
+  
+ Problem (3.1): HD0000000071145
+ --------------
+ When using option LRVR - Enter/verify data (auto instrument), the user may
+ decide to print a list of the incomplete accessions.  Queuing the
+ incomplete accessions list report will cause an <UNDEFINED> system error
+ in the VA FileMan input reader ^DIR. The variable %T becomes undefined.
+  
+ Solution:
+ ---------
+ Both the ^%ZTLOAD (the queuing routines) and the ^DIR (VA FileMan input
+ reader) routines use the variable %T.  The ^%ZTLOAD routines set, use, and
+ kill this variable.  The ^DIR routines new, set, and use this variable.
+ The queuing of the incomplete accessions list report is done when the
+ ^DIR is processing the help call stored in DIR("?") and is set to "^D
+ LW^LRVR".  %T is killed during the queuing of the report and when
+ execution control is returned to ^DIR, %T is undefined and causes ^DIR to
+ crash.  The solution is to modify routine ^LRWRKLST to new the variable %T
+ if the user selects to queue the incomplete accession list report.
+  
+  
+ Problem (3.2): HD0000000071145
+ --------------
+ This problem was found during the research into problem 3.1.  When
+ selecting a date for an incomplete accession list report, if the day
+ selected does not have any data for that day, it will cause an <UNDEFINED>
+ system error in the VA FileMan input reader ^DIR.  The DIR array variable
+ was undefined.
+  
+ Solution:
+ ---------
+ The ^DIR is set up and called in routine ^LRVR.  Entering a question mark
+ at the "Accession NUMBER:" prompt calls executable code that, in turn,
+ calls routine LRWRKLST.  Routine LRWRKLST calls ^DIR which can be called
+ recursively here but the array variable DIR must be newed.  The quit
+ condition of no data for the selected day occurred before the DIR array
+ variable was newed.  The solution is to modify routine ^LRWRKLST at tag
+ W+1 to immediately new the DIR array variable.
+  
+  
+ Problem (4): HD0000000135191
+ ------------
+ During the printing of reports from Anatomic pathology options LRAPSPSGL 
+ - Print surgical pathology for a patient and LRAP PRINT SINGLE - Print
+ single report only, an <UNDEFINED> error can occur and cause these reports
+ to error out. Print routines LRUPS and LRAPPF1 step through the Lab data
+ records of a patient to print these reports. In a very narrow 
+ circumstance, it is possible for these routines to set a work variable to
+ a global node that does not exist and try to take part of that work
+ variable for other processing.
+  
+ Solution:
+ ---------
+ Modify routines LRUPS and LRAPPF1 to use the $G function when setting the
+ work variable to a global node and then test the value of the work
+ variable.  If the work variable has a null value, stop the current loop
+ and move to the next record to be processed.
+  
+  
+ Problem (5.1): HD0000000154724
+ --------------
+ The LRAPSM - MORPHOLOGY code search option does not display all of the
+ morphology codes if the results of an anatomic pathology accession 
+ includes more than one morphology code. This appears to have been
+ introduced by patch LR*5.2*355.  That patch was designed to resolve an
+ issue with the Morphology code search crashing when it encountered a
+ morphology code with a null SNOMED code.
+  
+ Solution:
+ ---------
+ Modify routine LRAPSM to again find and print all of the morphology codes
+ for an anatomic pathology accession and still prevent the crash in the
+ event of a morphology code with a null SNOMED code.
+  
+  
+ Problem (5.2): HD0000000154724
+ --------------
+ The LRAPSP - PROCEDURE code search option does not display all the of 
+ procedure codes if the results of an anatomic pathology accession includes
+ more that one procedure code. 
+  
+ Solution:
+ ---------
+ Modify routine LRAPSM to again find and print all of the morphology codes
+ for an anatomic pathology accession when there are multiple procedure 
+ codes and still prevent the crash in the event of a morphology code with a
+ null SNOMED code.
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ This patch can be loaded with users in the system, but it should be
+ installed during non-peak hours.  Installation time will be less than
+ two minutes.
+  
+ 1.  Choose the PackMan message containing this patch and invoke the
+     INTALL/CHECK MESSAGE Packman option.
+  
+ 2.  Start up the Kernel Installation and Distribution System Menu [XPD
+     MAIN]:
+  
+            Edits and Distribution ...
+            Utilities ...
+            Installation ...
+  
+    Select Kernel Installation & Distribution System Option:
+    Installation
+  
+            1      Load a Distribution
+            2      Verify Checksums in Transport Global
+            3      Print Transport Global
+            4      Compare Transport Global to Current System
+            5      Backup a Transport Global
+            6      Install Package(s)
+                   Restart Install of Package(s)
+                   Unload a Distribution
+  
+ 3.  From this menu, it is highly recommended that you use the following
+     options (When prompted for the INSTALL NAME, enter LR*5.2*362):
+  
+     a.  Verify Checksums in Transport Global - This option will verify 
+         the checksums of routines included in this patch.
+     b.  Print Transport Global - This option will print out a list of all
+         the components exported in this patch.
+     c.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when this patch 
+         is installed.  It compares all components of this patch
+         (routines, DD's, templates, etc.).
+     d.  Backup a Transport Global - This option will back up the current
+         versions of the routines in this patch before it is installed.
+  
+ 4.  Use the Install Package(s) option and select the package LR*5.2*362.
+  
+     a.  When prompted "Want KIDS to INHIBIT LOGONs during the install?
+         YES//", answer NO.
+     b.  When prompted "Want to DISABLE Scheduled Options and Menu Options
+         and Protocols? YES//", answer NO.
+  
+  
+ ROUTINE SUMMARY:
+ ================
+ The following routines are included in this patch. The second line of
+ each of these routines now looks like:
+  
+            ;;5.2;LAB SERVICES;**[patchlist]**;Sep 27, 1994
+  
+  
+                         CHECK^XTSUMBLD
+  
+   Routine     Before Patch   After Patch    Patch List
+   --------    ------------   ------------   -----------
+   LRAPPF1     5288921        5338318        72,173,201,259,362
+   LRAPSM      9109983        9075397        72,253,355,362
+   LRCAPFDS    9744247        9913521        105,119,127,163,274,362
+   LREXECU     3077295        3385758        121,200,362
+   LRORDST     12811630       12961967       100,107,121,153,202,
+                                             290,291,359,362
+   LRUPS       4733165        4771562        72,248,259,322,362
+   LRWRKLST    6742016        6770715        17,38,153,185,221,268,362
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: LRAPPF1
+    Before: B17831632  After: B17910180  **72,173,201,259,362**
+Routine Name: LRAPSM
+    Before: B14446711  After: B14074767  **72,253,355,362**
+Routine Name: LRCAPFDS
+    Before: B18005315  After: B18264991  **105,119,127,163,274,362**
+Routine Name: LREXECU
+    Before:  B4005910  After:  B6083878  **121,200,362**
+Routine Name: LRORDST
+    Before: B30181718  After: B30766466  **100,107,121,153,202,290,291,
+                                          359,362**
+Routine Name: LRUPS
+    Before:  B8370560  After:  B8420333  **72,248,259,322,362**
+Routine Name: LRWRKLST
+    Before: B41200786  After: B41281168  **1,17,38,153,185,221,268,362**
+
+=============================================================================
+User Information:
+Entered By  : UNDERHILL,GARDNER D           Date Entered  : JUN 15, 2006
+Completed By: WERNER,GARY                   Date Completed: MAY 16, 2007
+Released By : BELSCHWINDER,MICHAEL          Date Released : MAY 18, 2007
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,300 @@
+$TXT Created by RANDALL,SHERRY at DAYT17.FO-BAYPINES.MED.VA.GOV  (KIDS) on Thursday, 03/01/07 at 11:25
+=============================================================================
+Run Date: APR 27, 2007                     Designation: OR*3*265
+Package : OR - ORDER ENTRY/RESULTS REPORTING  Priority: Mandatory
+Version : 3       SEQ #247                      Status: Released
+                  Compliance Date: MAY 28, 2007
+=============================================================================
+
+Associated patches: (v)OR*3*149    <<= must be installed BEFORE `OR*3*265'
+                    (v)OR*3*215    <<= must be installed BEFORE `OR*3*265'
+                    (v)OR*3*251    <<= must be installed BEFORE `OR*3*265'
+                    (v)OR*3*253    <<= must be installed BEFORE `OR*3*265'
+
+Subject: AW XREF, DUPL PROVIDER COMMENTS, LAB THRESHOLD
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch address several issues:
+ 1. Corrects a problem where the Nightly 24h Summary report missing data
+ 2. Lab threshold not handling results with "<" symbol
+ 3. <UNDEFIDED>QUIT+4^ORB3 error
+ 4. DNR alerts not going away
+ 5. Query for Scheduled Due Activty
+ 6. Duplicate provider comments in order text
+ 7. Hyperal IV types not displaying the additive search
+ 8. VistA discontinue not requiring signature 
+  
+ ASSOCIATED REMEDY:
+ ===================
+ HD124374  "AW" Cross Reference on TO field of file 100
+     Duplicate: HD123842 Nightly 24hr summary reports  
+ HD71168   Lab Threshold Exceeded Not Working with <
+ HD120991  QUIT+4^ORB3
+ HD157022  ORB OI expiring did not fire and other alert questions
+ HD70714   Query For Scheduled Due Activity
+ HD160390  Complex Order Displays Provider Comments Twice
+ HD168942  Hyperal type of IV does not show the additive search
+ HD171036  Vista discontinue not requiring signature 
+  
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ West Palm Beach, FL
+ Durham, NC
+ Heartland West, KS
+  
+ REMEDY OVERVIEW:
+ ===============
+  
+ 1. HD124374 - "AW" Cross Reference on TO field of file 100
+     Duplicate: HD123842 Nightly 24hr summary reports  
+  
+ PROBLEM:
+ --------
+ The search on Orders by Display Group not working. Site reports "AW" 
+ cross reference not built since CPRS V24. Other site reports 24hr summary 
+ not printing all reports. 
+  
+ SOLUTION:
+ ---------
+ The fault is with STARTDT^ORCSAVE2.  If there is no START time, the
+ routine stops processing before it builds the "AW" cross reference, and
+ never gets to WS^ORDD100, that adds the "AW" x-ref. WS^ORDD100 has code to
+ add a start time of 9999999 if no start time is entered. So this patch
+ changed STARTDT^ORCSAVE2 to call WS^ORDD100 even when there is no start
+ time, to correctly build the "AW" cross reference.
+  
+ 2. HD71168  Lab Threshold Exceeded Not Working with <
+  
+ PROBLEM:
+ --------
+ The Lab Threshold Exceeded alert is not working with numeric results 
+ that contain the "<"symbol.
+  
+ SOLUTION:
+ ---------
+ A post init routine ORY26508, included with this patch, will update the 
+ ORDER CHECK COMPILER FUNCTION, for  the LAB THRESHOLD EXCEEDED BOOLEAN, 
+ adding code that will allow the greater than, less than and equal symbols 
+ (>,<,=) to be used in checking lab results, to have exceeded the assigned 
+ threshold.
+  
+ 3. HD120991  QUIT+4^ORB3
+  
+ PROBLEM:
+ --------
+ $ZE= <UNDEFINED>QUIT+4^ORB3
+  
+ SOLUTION:
+ ---------
+ The routine is checking if the variable is there by testing it for 
+ $Length but if it is not there at all then we get the error. This patch 
+ changes this test to a $Get which accomplish the same test with out error 
+ if the variable is not defined. 
+  
+ 4. HD157022  ORB OI expiring did not fire and other alert questions
+  
+ PROBLEM:
+ --------
+ DNR alerts not going away when expired, and resolved.
+  
+ SOLUTION:
+ ---------
+ Update the routine ORB3TIM2 to work the alert even when not passed in 
+ ORBLST (expired). 
+  
+ 5. HD70714  Query For Scheduled Due Activity
+  
+ PROBLEM:
+ --------
+ In the query tool in Care Management. When using the "Scheduled Due 
+ Activity" query, the default for 'where service category (display group) 
+ Imaging.  When you click the link it takes you to the selected 
+ services, it displays nursing.  
+  
+ SOLUTION:
+ ---------
+ It was found that the CPRS QUERY DEFINITION file #102.21/ NAME: RPT
+ SCHEDULED/DUE ACTIVITY in sequence 7, displays IMAGING as the
+ caption, but a Value=13 which is a pointer to Nursing, of the   
+ DISPLAY GROUP file. The correct IEN for pointer for Imaging is
+ checked and update if needed by the post init routine ORY26508.
+  
+  
+ 6. HD160390 - Duplicate provider comments in CPRS order text
+  
+ Problem:
+ --------
+ CPRS adds the SIG and provider comments together to create the order text 
+ prior to sending to Outpatient Pharmacy.  Upon "FN" finishing the order 
+ in Outpatient Pharmacy, CPRS adds the provider comments again to the 
+ order text when the user says "yes" to copy the provider comments to the 
+ patient instructions.
+  
+ Solution:
+ ---------
+ Modify OUT2^ORMPS1 to check the original comment stored in 
+ ^OR(100,+ORIFN,4.5, against the new comment that is stored in the 
+ ^TMP("ORWORD" array.  If they comment is the same, set the ORDIALOG flag 
+ "FORMAT" to "@" to prevent the duplication of the comment in CPRS.
+  
+ 7. HD168942  Hyperal type of IV does not show the additive search
+  
+ Problem:
+ --------
+ Hyperal type of IV does not show the additive search.  PSB*3*17 added the 
+ solution and additive search to the Medication History, but CPRS will not
+ show the additive searches when the IV type is "Hyperal".
+   
+ Solution:
+ ---------
+ Modify MEDHIST^ORWPS to set ORPHMID regardless if the flag CKPKG for 
+ PSB*2.0*19 is set.  Use ORPHMID in the call to HISTORY^PSBMLHS instead
+ of ORPSID.
+  
+ 8. HD171036  Vista discontinue not requiring signature
+  
+ PROBLEM:
+ --------
+ Users in Vista are not being prompted/required to sign when they 
+ discontinue orders if they use a dc reason of Duplicate or Obsolete Order 
+ or Entered in Error.  They are required to sign if in CPRS. 
+  
+ SOLUTION:
+ ---------
+ The Vista CPRS/LM code has been changed to match CPRS GUI and always
+ require a signature when discontinuing orders.
+  
+  
+ INSTALLATION NOTES:
+ ==================
+ This patch may be installed with users on the system.  However, it should
+ be installed at a non-peak time to minimize disruption to the 
+ users.  Installation of this patch should take less than 5 minute.  
+  
+ NOTICE: This patch includes a Post Init routine ORY26508 to address 
+ issues with Problem 2 and 5.
+  
+   
+ 1. Use the INSTALL/CHECK MESSAGE option on the Packman Menu
+   
+ 2. From the Kernel Installation and Distribution System (KIDS) Menu, 
+    select the Installation menu.
+   
+ 3. Use the Install Package(s) option and select the package OR*3.0*265.
+   
+ 4. When prompted 'Want KIDS to INHIBIT LOGONs during the install? YES//', 
+    respond NO.
+   
+ 5. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and 
+    Protocols? YES//', respond NO
+  
+ 6. After the patch is installed! The CPRS Expert System rules will need to
+    be re-compiled. This is to put into play the new Lab Threshold checks 
+    allowing "<" ">" and "=". 
+    
+    Following is an example of this procedure:
+  
+    >D ^XUP
+  
+    Setting up programmer environment
+    This is a TEST account.
+  
+    Terminal Type set to: C-VT100
+  
+    You have 12 new messages.
+    Select OPTION NAME: OR PARAM IRM MENU     CPRS Configuration (IRM)
+  
+      OC     Order Check Expert System Main Menu ...
+      TI     ORMTIME Main Menu ...
+      UT     CPRS Clean-up Utilities ...
+      XX     General Parameter Tools ...
+      HD     HealtheVet Desktop Configuration ...
+  
+  
+   Select CPRS Configuration (IRM) Option: OC  Order Check Expert System  
+   Main Menu
+  
+   ORDER CHECK EXPERT version 1.01 released OCT 29,1998
+  
+  
+      1      Compile Rules
+      2      Expert System Rule Activate/Inactivate
+      3      Edit Site Local Terms
+      4      Expert System Inquire
+  
+  
+   Select Order Check Expert System Main Menu Option: 1  Compile Rules
+   Do you want to queue the compiler to run ? NO// 
+   Want to enable Compiled Routine Execution Display ? NO// 
+   Want to enable Logging of incoming raw data ? NO// 
+   Are you sure you want to recompile the Expert System routines ? NO//YES
+  
+  
+ 7. Please delete routine ORY26508 if install and updates successful. 
+  
+  
+ ROUTINE SUMMARY:
+ ===============
+ The second line of each of these routine(s) will look like:
+  
+ <tab>;;3.0;ORDER ENTRY/RESULTS REPORTING;**[Patch List]**;Dec 17, 1997
+                      
+                      CHECK^XTSUMBLD results
+ Routine name  Before Patch    After Patch    Patch List
+ ============  ============    ===========    ==========
+ ORB3          18599342        18811020       31,74,91,105,139,190,220,253,
+                                              265
+ ORB3TIM2      11326279        11817311       102,215,251,265
+ ORCACT2       20356550        20941745       7,48,79,92,108,94,141,149,265
+ ORCSAVE2      12627210        13548232       4,27,56,70,94,116,190,157,
+                                              215,265
+ ORMPS1        18461273        19942892       86,92,94,116,134,152,158,149,
+                                              190,195,215,265
+ ORMPS2        11470807        12110159       4,116,129,134,186,190,195
+                                              215,265
+ ORWPS         10322520        10614924       10,85,116,132,141,173,203,190
+                                              195,265
+ ORY26508      N/A             8911140        265
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: ORB3
+    Before: B88202399  After: B89017690  **31,74,91,105,139,190,220,253,265**
+Routine Name: ORB3TIM2
+    Before: B38807562  After: B40286221  **102,215,251,265**
+Routine Name: ORCACT2
+    Before: B60946711  After: B62329288  **7,48,79,92,108,94,141,149,265**
+Routine Name: ORCSAVE2
+    Before: B45774520  After: B47694215  **4,27,56,70,94,116,190,157,215,265**
+Routine Name: ORMPS1
+    Before: B63542078  After: B67707538  **86,92,94,116,134,152,158,149,
+                                          190,195,215,265**
+Routine Name: ORMPS2
+    Before: B37957594  After: B41616166  **94,116,129,134,186,190,195,215,265**
+Routine Name: ORWPS
+    Before: B45940660  After: B46786086  **10,85,116,132,141,173,203,190,
+                                          195,265**
+Routine Name: ORY26508
+    Before:       n/a  After: B24415418  **265**
+
+=============================================================================
+User Information:
+Entered By  : HARTIN,JAMES                  Date Entered  : AUG 02, 2006
+Completed By: CROSSMAN,PAM                  Date Completed: APR 27, 2007
+Released By : GIVENS,DALE S                 Date Released : APR 27, 2007
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

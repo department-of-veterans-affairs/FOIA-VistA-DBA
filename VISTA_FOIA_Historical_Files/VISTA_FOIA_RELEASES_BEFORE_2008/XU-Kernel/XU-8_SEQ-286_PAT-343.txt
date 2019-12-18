@@ -1,0 +1,345 @@
+$TXT Created by WANG,DANDAN at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Friday, 07/16/04 at 10:39
+=============================================================================
+Run Date: AUG 23, 2004                     Designation: XU*8*343
+Package : XU - KERNEL                         Priority: Mandatory
+Version : 8       SEQ #286                      Status: Released
+                  Compliance Date: SEP 23, 2004
+=============================================================================
+
+Associated patches: (v)XU*8*251    <<= must be installed BEFORE `XU*8*343'
+                    (v)XU*8*301    <<= must be installed BEFORE `XU*8*343'
+                    (v)XU*8*309    <<= must be installed BEFORE `XU*8*343'
+
+Subject: NEW PERSON FILE NAME STANDARDIZATION
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Other
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ HSD&D Common Services Person Service has been tasked with standing up a 
+ central person repository. Each person will be enumerated with a unique 
+ identifier called a VPID (VA Person ID). The first Person data to be 
+ enumerated - prior to migrating the data to the central repository will 
+ be entries in the NEW PERSON file (#200).
+  
+ Before enumeration takes place, each Person must be uniquely identified. 
+ This patch will standardize the Name field of the NEW PERSON file with 
+ the same rules that standardize the Name field of the PATIENT file (#2), 
+ so that the same person recorded in both files could be better 
+ identified. 
+  
+   
+ FUNCTIONAL DESCRIPTION
+ ======================
+ As part of the patch installation, the patch will automatically run a 
+ post-installation routine to convert the Name field (#.01) of the NEW 
+ PERSON file, update the corresponding entries in the NAME COMPONENTS file 
+ (#20), update the .01 field input transform and the "B" cross-reference of
+ the NEW PERSON file, and recompile triggered fields and templates.
+  
+ When the conversion process is stopped or finished, an email notification
+ will be sent to the user who has initialized the process, as well as a
+ mail group in Forum. When the conversion process is stopped or finished,
+ two reports will be also sent to the same user via Mailman. One report
+ will list the before and after values of the names that are changed, and
+ the other report will list the names that cannot be converted, including 
+ the entry POSTMASTER which should not be converted.
+  
+ The conversion process can be stopped and restarted. To restart and 
+ continue the conversion, run CONVERT^XU8343S (in programmer mode, 
+ D CONVERT^XU8343S).
+  
+ The conversion process creates a ^XTMP("XUNAME") global to record any 
+ name that is converted and any name that cannot be converted by the 
+ conversion process. 
+  
+ The ^XTMP("XUNAME") global will be retained for 90 days after the latest 
+ conversion. The two reports mentioned above reflect the information 
+ stored in the ^XTM("XUANME") global as long as the global is not deleted
+ or modified.
+  
+  
+ Name Standardization Rules:
+ ===========================
+ Once standardized, name fields will utilize the format 
+ FAMILY_NAME<comma>GIVEN_NAME(S)<space>MIDDLE_NAME(S)<space>SUFFIX(ES).  
+ Name values will be uppercase alpha characters and contain no other 
+ characters except spaces, hyphens, apostrophes and a single comma.  
+ Specific formatting rules are as follows (a number of rules are already 
+ enforced by the existing software):
+   
+    o  All lowercase alpha characters transformed to uppercase
+    o  Embedded accent grave characters (`) will be transformed to 
+       apostrophes
+    o  Parenthetical text will be removed (text captioned by parenthesis, 
+       bracket or brace characters)
+    o  All characters other than uppercase alpha, comma, hyphen, 
+       apostrophe, numeric and space transformed to a space
+    o  All double spaces transformed to a single space
+    o  All double hyphens transformed to a single hyphen
+    o  All double apostrophes transformed to a single apostrophe
+    o  All comma_(space, hyphen or apostrophe) and (space, hyphen, or 
+       apostrophe)_comma combinations transformed to a comma
+    o  All space_(hyphen or apostrophe) and (hyphen or apostrophe)_space 
+       combinations transformed to a space
+    o  All hyphen_apostrophe or apostrophe_hyphen combinations transformed 
+       to a hyphen
+    o  All numeric characters will be removed except for the combinations 
+       "1ST", "2ND", "3RD" and "4TH" through "10TH" which must have a
+       space, comma or null value preceding and following to be considered
+       valid 
+    o  Numeric birth position identifiers ("1ST", "2ND", "3RD", etc.) will
+       be transformed to corresponding roman numeral values, I, II, III,
+       etc. 
+    o  All characters other than uppercase alpha will be removed from the
+       beginning and end of the family name
+    o  All characters other than uppercase alpha will be removed from the 
+       beginning and end of the given_middle_suffix name value   
+    o  Suffixes moved from the immediate left of the comma to the end of
+       the name 
+    o  "DR" moved to the end of the name if it is found at the immediate
+       right of the comma
+    o  Any suffixes between commas following the family name will be moved 
+       to the end of the name
+    o  "NMI" or "NMN" will be removed if either is used as the middle name
+   
+ If the length of the name value reconstructed from name components is 
+ greater than the length allowed for the name field, the following actions 
+ will be taken sequentially until the resulting value falls within length 
+ restrictions:
+    o  Truncate the middle name from the right-most position until only 
+       the initial character remains
+    o  Drop the suffix
+    o  Truncate the given name from the right-most position until only the 
+       initial character remains
+    o  Truncate the family name from the right-most position
+  
+ Additional rules relative to name formatting:
+    o  If there are multiple family, given, middle or suffix values they 
+       will be separated by spaces
+    o  The user's input value must contain at least one comma in order to 
+       add or edit a name value
+  
+   
+ TECHNICAL DESCRIPTION
+ =====================
+ The following is a summary of the components included in this patch.
+   
+ Data Dictionary Change
+ ======================
+ The input transform of the Name field (#.01) of the NEW PERSON file will 
+ call FORMAT^XLFNAME7. The help text of the Name field is updated.
+  
+ The new-style "B" cross-reference of the NEW PERSON file will call 
+ FORMAT^XLFNAME7 to assist lookup.
+   
+ Form Change
+ ===========
+ These forms are updated with new rules to process the NAME field:
+ XUEXISTING USER (FILE #200)
+ XUNEW USER (FILE #200)
+ XUREACT USER (FILE #200)
+  
+ Routine Summary
+ ===============
+  The following routines are included in this patch.  The second
+  line of each of these routines now looks like:
+   
+       <tab>;;8.0;KERNEL;**[patch list]**;Jul 10, 1995
+   
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  XLFNAME2               3511246              3490048       134,211,301,343
+  XLFNAME7                   N/A              3042037             343
+  XLFNAME8                   N/A              5364173             343
+  XU8343P                    N/A              4903053             343
+  XU8343Q                    N/A               968275             343
+  XU8343R                    N/A              4954250             343
+  XU8343S                    N/A             14904490             343
+  XUPSPAID              11140807             11153200           309,343
+  XUPSNAME               2887621    Will be deleted at site by the patch
+  XUPSNM1                4205133    Will be deleted at site by the patch
+   
+ Test Sites
+ ==========
+ BATTLE CREEK (VMS/DSM)
+ VAMC HONOLULU HAWAII (NT/CACHE) 
+ FAYETTEVILLE (VMS/CACHE)
+ MUSKOGEE (VMS/CACHE)
+  
+  
+ Blood Bank clearance
+ ====================
+ June 25, 2004 
+  
+ EFFECT ON BLOOD BANK FUNCTIONAL REQUIREMENTS: Patch XU*8*343 contains 
+ changes to a package referenced in VHA IO SEPG SOP 192-023 "Review of 
+ VISTA Patches for Effects on VISTA Blood Bank Software . This patch does 
+ not alter or modify any VistA Blood Bank software design safeguards or 
+ safety critical elements functions.
+  
+ RISK ANALYSIS: Changes made by patch XU*8*343 have no effect on Blood 
+ Bank software functionality, therefore RISK is none.
+  
+  
+ Installation Instructions
+ =========================
+ To minimize impact on the user, the patch is recommended to be installed
+ or queued to be installed after normal business hours.
+  
+ The installation time will depend on the length of the conversion 
+ process. In a quiet Cache test account with 11000 New Person entries, the 
+ installation took less than 5 minutes.
+  
+ So that the user who installs the patch will receive the reports and 
+ notifications, please make sure the user has a valid DUZ to receive 
+ MailMan messages.
+  
+ The installation will automatically run the New Person Name conversion as 
+ post-install routine (POST^XU8343P). The conversion standardizes the Name 
+ field (#.01) of the NEW PERSON file, update the corresponding entries in
+ the NAME COMPONENTS file (#20), update the data dictionary definition of 
+ the Name field and the "B" cross-reference, and recompile any templates 
+ and triggered fields.
+  
+ 1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu. [Note: 
+     TEXT PRINT/DISPLAY option in the PackMan menu will display the 
+     patch text only.] 
+  
+ 2.  Review your mapped set.  If any of the routines listed in the
+     ROUTINE SUMMARY section are mapped, they should be removed
+     from the mapped set at this time.
+  
+ 3.  From the Kernel Installation and Distribution System Menu, select 
+     the Installation menu.  
+  
+ 4.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter XU*8.0*343):
+  
+  
+      a.  Backup a Transport Global - this option will create a backup
+          message of any routines exported with the patch.  It will NOT
+          backup any other changes such as DDs or templates.
+      b.  Compare Transport Global to Current System  - this option will
+          allow you to view all changes that will be made when the patch
+          is installed.  It compares all components of the patch (routines,
+          DDs, templates, etc.).
+      c.  Verify Checksums in Transport Global - this option will
+          allow you to ensure the integrity of the routines that are in
+          the transport global.
+      d.  Print Transport Global - this option will allow you to view the
+          components of the KIDS build.
+  
+  6.  Use the Install Package(s) option and select the package XU*8.0*343.
+  
+  7.  When prompted "Want KIDS to INHIBIT LOGONs during the install? 
+      YES//", respond NO.
+  
+  8.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols? YES//', respond YES.  When prompted to select the options
+      you would like to place out of order, enter the following:
+             [XUSEREDIT]        Edit an Existing User
+             [XUSERREACT]       Reactivate a User
+             [XUSERNEW]         Add a New User to the System
+  
+  9.  If routines were unmapped as part of step 2, they should be returned
+      to the mapped set once the installation has run to completion.
+  
+  
+ POST-INSTALLATION INSTRUCTIONS
+ ==============================
+  1.  You may delete the post install routines XU8343* after successful
+      patch installation, if the name conversion is complete, and the
+      needed reports are generated.
+  
+  2.  If the reports generated by the conversion process show that any name
+      was parsed or standardized incorrectly, please use the Edit an
+      Existing User [XUSEREDIT] option to make corrections by directly
+      editing the name components.
+  
+  3.  ^XTMP("XUNAME") will be retained for 90 days after the conversion 
+      was last started.
+
+Routine Information:
+====================
+
+Routine Name:
+  - XLFNAME2
+
+
+Routine Checksum:
+
+Routine Name:
+  - XLFNAME7
+
+
+Routine Checksum:
+
+Routine Name:
+  - XLFNAME8
+
+
+Routine Checksum:
+
+Routine Name:
+  - XU8343P
+
+
+Routine Checksum:
+
+Routine Name:
+  - XU8343Q
+
+
+Routine Checksum:
+
+Routine Name:
+  - XU8343R
+
+
+Routine Checksum:
+
+Routine Name:
+  - XUPSPAID
+
+
+Routine Checksum:
+
+Routine Name:
+  - XU8343S
+
+
+Routine Checksum:
+
+Routine Name:
+  - XUPSNAME
+
+ Delete at site
+
+Routine Checksum:
+
+Routine Name:
+  - XUPSNM1
+
+ Delete at site
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : WANG,DANDAN                   Date Entered  : MAR 31, 2004
+Completed By: SINGH,GURBIR                  Date Completed: AUG 17, 2004
+Released By : TILLIS,LEWIS                  Date Released : AUG 23, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

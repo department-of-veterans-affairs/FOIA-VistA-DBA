@@ -1,0 +1,286 @@
+$TXT Created by BEUSCHEL,GARY at MAILMAN.FO-OAKLAND.MED.VA.GOV  (KIDS) on Wednesday, 03/17/04 at 14:04
+=============================================================================
+Run Date: MAR 24, 2004                     Designation: XM*8*24
+Package : XM - MAILMAN                        Priority: Mandatory
+Version : 8        SEQ #23                      Status: Released
+                  Compliance Date: APR 24, 2004
+=============================================================================
+
+Associated patches: (v)XM*8*6     <<= must be installed BEFORE `XM*8*24'
+
+Subject: CHECK BEFORE RELAYING MESSAGES
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Enhancement (Mandatory)
+  - Other
+
+Description:
+============
+
+ Patch XM*8.0*24
+ 
+ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ 
+                              ATTENTION!
+    You should enter a MAIL GROUP for the new bulletin XM RELAY ATTEMPTED.
+ 
+    Non-VA sites should read the patch description carefully.  Non-VA sites
+                  will need to set new fields manually.
+ 
+ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ 
+ NOIS: MWV-0104-22303, TUC-0104-62259, MAD-0104-42234, PAL-0204-60051
+ Test Sites: FORUM; Martinsburg, WV; Martinez, CA; Palo Alto, CA; FO-Hines;
+             Madison, WI; FO-Albany; Central Alabama HCS; Montana HCS;
+             Columbus, OH
+ 
+ Recently, a MailMan site unwittingly acted as a relay for a non-VA site
+ sending a message containing the MyDoom virus to another non-VA site.  To
+ correct this, MailMan will no longer relay mail from a non-VA site to a
+ non-VA site.  This patch is about trying to prevent spammers and virus
+ propagators from sending their email through your site and from disguising
+ their messages to appear to be coming from your site.
+ 
+ Let's be clear here.  We're talking about when a site connects to your
+ site, and says, hi, I've got some messages for you.  For instance, if the
+ site is AOL, it will say, HELO AOL.COM.  Your site says "Hey, wassup?".
+ The other site says I've got a message from so-and-so, to FRED@YAHOO.COM.
+ Before this patch, MailMan would say, OK, and accept the message and
+ relay it on to FRED@YAHOO.COM.  Now, however, MailMan will say, I'm sorry
+ but I'm not going to relay this message and act as a stooge for you - do
+ it yourself.  Here's an example.  (I'm using AOL and Yahoo just because
+ they're familiar.  I'm not suggesting that they are part of the problem.)
+ 
+ 11:24:48 R: HELO AOL.COM                           <--- from outside site
+ 11:24:48 S: 250 OK FORUM.VA.GOV [8.0,DUP,SER,FTP]  <--- through FORUM
+ 11:24:48 Waiting for input
+ 11:24:48 R: MAIL FROM:<WILMA@AOL.COM>
+ 11:24:48 S: 250 OK Message-ID:9979753@FORUM.VA.GOV
+ 11:24:48 Waiting for input
+ 11:24:48 R: RCPT TO:<FRED@YAHOO.COM>               <--- to an outside user
+ 11:24:48 S: 550 Relaying denied.                   <--- No way!
+ 
+ If WILMA at AOL sends you a message at your site, and you want to forward
+ the message on to FRED@YAHOO.COM, that's fine.  This patch will not prevent
+ you from doing that.  That's something completely different from what this
+ patch is designed to prevent.
+ 
+ This patch adds a new bulletin which will notify the POSTMASTER any time
+ MailMan refuses to relay a message.  You are encouraged to add a mail group
+ to the bulletin to notify additional responsible persons.
+ Here's the bulletin:
+ 
+ NAME: XM RELAY ATTEMPTED           SUBJECT: Potential SPAM or VIRUS stopped
+   RETENTION DAYS: 7
+  MESSAGE:   A site calling itself |1| attempted to relay a message from: |3|
+  to:   |2| through this site.
+   
+  This attempt was denied.
+   
+  By far the most important thing that a service provider can do to reduce
+  spam or viruses is to ensure that any mail servers in operation accept only
+  outgoing mail from machines within their own domains.  This prohibits SMTP
+  relaying, denying spammers and virus propagators a necessary component of
+  anonymity.
+ MAIL GROUP: POSTMASTER
+  DESCRIPTION:   This bulletin is sent when MailMan prevents an outside site
+  from relaying a message to an outside site through this site.
+ PARAMETER: 1
+  DESCRIPTION:   The name of the site attempting to relay the message through
+  this site.
+ PARAMETER: 2
+  DESCRIPTION:   The intended recipient of the message.
+ PARAMETER: 3
+  DESCRIPTION:   The envelope from of the message.
+ 
+ This patch adds two new fields to the MAILMAN SITE PARAMETERS (#4.3) file:
+ 
+ STANDARD DATA DICTIONARY #4.3 -- MAILMAN SITE PARAMETERS FILE
+ STORED IN ^XMB(1,  (1 ENTRY)
+ DATA     NAME                  GLOBAL        DATA
+ ELEMENT  TITLE                 LOCATION      TYPE
+ --------------------------------------------------------------------------
+ 4.3,40   PREVENT MESSAGE RELAY? 4;1 SET
+ 
+                            '1' FOR YES;
+                            '0' FOR NO;
+          LAST EDITED:      FEB 09, 2004
+          HELP-PROMPT:      Should message relaying be prevented?
+          DESCRIPTION:      Answer YES if you want to prevent outside sites
+                            from sending mail through your site to other
+                            outside sites.  Spammers and Virus propagators
+                            use this technique to disguise the source of
+                            their mail, and to make it appear to come from
+                            a trusted source, namely your site.
+ 
+                            Answer NO if you want your site to act as a
+                            relay site for anyone.
+ 
+                            It is strongly recommended that you answer YES
+                            to prevent your site from unwittingly relaying
+                            destructive mail.
+ 
+                            If you answer YES, you should define your
+                            "inside" sites in the MY DOMAIN (field #41)
+                            multiple, so that MailMan can distinguish them
+                            from outside sites.
+ 
+                            Note: This does NOT prevent users from
+                            receiving mail from outside sites.  It also
+                            does NOT prevent users from forwarding mail to
+                            outside sites.  Such uses are perfectly OK.
+ 
+ 4.3,41   MY DOMAINS             4.1;0 Multiple #4.341
+ 
+ 4.341,.01  MY DOMAINS             0;1 FREE TEXT (Multiply asked)
+ 
+            INPUT TRANSFORM:  K:$L(X)>30!($L(X)<3) X
+            LAST EDITED:      FEB 09, 2004
+            HELP-PROMPT:      Answer must be 3-30 characters in length.
+            DESCRIPTION:      If you answered YES to PREVENT MESSAGE
+                              RELAYING? (field #40), to stop your site from
+                              relaying messages from outside sites through
+                              your site to other outside sites, you may add
+                              entries here, in order to define what is an
+                              "inside" site, or sites whose messages your
+                              site is willing to relay.
+ 
+                              For example, if your site is a VA site, then
+                              other VA sites are "inside" sites, and your
+                              site should relay mail for them.  So, any
+                              site whose domain name ends in ".VA.GOV" is
+                              an "inside" site.  So VA sites should have
+                              only one record in this multiple, and it
+                              should be ".VA.GOV".
+ 
+                              The default, if there are no entries in this
+                              multiple, is your site's domain name.
+ 
+                              MailMan will check the site name of any site
+                              which connects to it, and identifies itself
+                              in the SMTP HELO <sitename> command.  If the
+                              sitename ends in any of the entries in this
+                              multiple, then any mail coming from that site
+                              through your site to other sites, will be
+                              accepted and relayed onward.
+ 
+                              If the sitename does not end in any of the
+                              entries in this multiple, then messages will
+                              only be accepted that are addressed to
+                              recipients whose sitenames end in one of the
+                              entries in this multiple.  Otherwise, the
+                              site will receive an error message telling it
+                              that relaying is denied, and messages will
+                              not be accepted for relaying onward.
+ 
+            CROSS-REFERENCE:  4.341^B
+                              1)= S ^XMB(1,DA(1),4.1,"B",$E(X,1,30),DA)=""
+                              2)= K ^XMB(1,DA(1),4.1,"B",$E(X,1,30),DA)
+ 
+ The post-init routine, ^XMYP24, will populate these fields for VA sites.
+ Specifically, PREVENT MESSAGE RELAYING? (#40) will be set to YES, and
+ ".VA.GOV" will be added to the MY DOMAIN (#41) multiple.  Non-VA sites
+ will have to populate these fields manually if they want to prevent message
+ relaying.  Routine ^XMYP24 will be deleted once it has run.
+ 
+ Option XMKSP [MailMan Site Parameters] and Help Frame
+ XM-I-S-SITE PARAMETERS-REMOTE have been modified to include the new fields.
+ 
+ NOTE: This patch should be installed during off hours, when user activity
+ is at a minimum. It requires patch XM*8.0*6.  This patch will take less
+ than one minute to install.
+ 
+ IMPORTANT NOTE TO NON-VA SITES:
+ This patch is only active for VA sites.  VA sites are sites whose domain
+ name ends in ".VA.GOV".  This patch will have absolutely no effect at
+ non-VA sites.  If you want to prevent MailMan at your non-VA site from
+ acting as an unwitting relay, you must edit fields 40 and 41 in file 4.3.
+ ============================================================================ 
+ 
+ ROUTINES:
+ The second line of the routine now looks like:
+        ;;8.0;MailMan;**[patch list]**;Jun 28, 2002
+ 
+               Before          After
+ Name          Checksum        Checksum        Patch List
+ ------------------------------------------------------------------
+ XMR1          11104837        13422146        6,24
+ XMYP24        * NEW *           138765        24
+ * Checksums produced by CHECK^XTSUMBLD
+ 
+ This patch introduces routine ^XMYP24, which will be deleted once the
+ post-init has run.
+ ===========================================================================
+  
+ INSTALLATION:
+ NOTE: This patch should be installed during off hours, when user activity
+ is at a minimum. It requires patch XM*8.0*6.  This patch will take less
+ than 1 minute to install.
+ 1.  Users may be on the system during installation of this patch.
+ 2.  DSM Sites: If any of these routines is mapped, disable mapping for the 
+     affected routine(s).  
+ 3.  On the PackMan menu, use the 'INSTALL/CHECK MESSAGE' option.  This loads 
+     the patch into a Transport Global on your system.  
+ 4.  Users may be on the system.  You do not need to stop TaskMan or the
+     background filer.
+ 5.  On the KIDS:Installation menu, use the following options to install the
+     Transport Global:
+        Verify Checksums in Transport Global
+        Print Transport Global
+        Compare Transport Global to Current System
+        Backup a Transport Global
+        Install Package(s)
+  Select INSTALL NAME:    XM*8.0*24     Loaded from Distribution  <date/time>
+                          =========
+  Install Questions for XM*8.0*24
+ 
+  Incoming Files:
+ 
+    4.3       MAILMAN SITE PARAMETERS  (Partial Definition)
+  Note:  You already have the 'MAILMAN SITE PARAMETERS' File.
+ 
+  Want KIDS to Rebuild Menu Trees Upon Completion of Install? YES// YES
+                                                                    ===
+  Want KIDS to INHIBIT LOGONs during the install? YES// NO
+                                                        ==
+  Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// NO
+                                                                        ==
+  Enter the Device you want to print the Install messages.
+  You can queue the install by enter a 'Q' at the device prompt.
+  Enter a '^' to abort the install.
+ 
+  DEVICE: HOME// <You may queue it if you wish>
+                 ------------------------------
+ 6.  DSM Sites: After patch has installed, rebuild your map set, if necessary.
+ 7.  Enter a MAIL GROUP for the new bulletin XM RELAY ATTEMPTED.
+ ===========================================================================
+
+Routine Information:
+====================
+
+Routine Name:
+  - XMR1
+
+
+Routine Checksum:
+
+Routine Name:
+  - XMYP24
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : BEUSCHEL,GARY                 Date Entered  : FEB 02, 2004
+Completed By: SINGH,GURBIR                  Date Completed: MAR 23, 2004
+Released By : NOSS,ROD                      Date Released : MAR 24, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

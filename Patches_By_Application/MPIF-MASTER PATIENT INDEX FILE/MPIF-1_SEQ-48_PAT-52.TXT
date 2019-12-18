@@ -1,0 +1,408 @@
+$TXT Created by CHESNEY,CHRISTINE M at DEVCRN.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 10/28/09 at 08:59
+=============================================================================
+Run Date: NOV 30, 2009                     Designation: MPIF*1*52
+Package : MPIF - MASTER PATIENT INDEX VISTA   Priority: EMERGENCY
+Version : 1        SEQ #48                      Status: Released
+                  Compliance Date: DEC 03, 2009
+=============================================================================
+
+Associated patches: (v)MPIF*1*35   <<= must be installed BEFORE `MPIF*1*52'
+                    (v)MPIF*1*39   <<= must be installed BEFORE `MPIF*1*52'
+                    (v)MPIF*1*43   <<= must be installed BEFORE `MPIF*1*52'
+                    (v)MPIF*1*48   <<= must be installed BEFORE `MPIF*1*52'
+                    (v)XT*7.3*113  <<= must be installed BEFORE `MPIF*1*52'
+
+Subject: IDENTITY HUB CHANGES FOR MPI VISTA
+
+Category: 
+  - Enhancement ()
+  - Routine
+
+Description:
+============
+
+  NOTE: RG* and MPIF* patches should NOT be installed on legacy
+  systems to avoid issues with the legacy systems ending up as
+  Treating Facilities.
+   
+  XT*7.3*113, MPIF*1.0*35, MPIF*1.0*39, MPIF*1.0*43, and MPIF*1.0*48
+  are required builds for patch MPIF*1*52.
+  
+  *************************************************************************
+  NOTE:  The compliance date of this patch has been shortened due to
+  dependencies which exist with the MPI Austin patch MPI*1.0*71, 
+  the Person Service Identity Management (PSIM) and Identity Management 
+  (IMDQ) Toolkit software releases.  These releases support the switch to
+  Initiate Identity Hub probabilistic algorithm during MPI searches.  It is
+  imperative that this patch be installed no later than the compliance date
+  to ensure we are ready for the switch over. Your understanding and
+  support is appreciated.
+  ************************************************************************
+   
+  This patch is related to KERNEL patch XT*7.3*113, Clinical Info Resource 
+  Network (CIRN) patch RG*1.0*54, and Master Patient Index Austin patches
+  MPI*1.0*62 and MPI*1.0*71.
+   
+  This patch is in support of the Master Patient Index (MPI) Identity
+  Hub Project for the Healthcare Identity Management (HC IdM) team. The
+  project enables the change from the current MPI patient deterministic
+  lookup to an Identity Hub based probabilistic patient lookup.
+  
+  The commercial Identity Management software vendor that was selected
+  by the VHA to provide an Identity Management Probabilistic Algorithm
+  is Initiate.
+   
+  Initiate probabilistic search algorithm was purchased to be integrated
+  with the MPI and Person Service Identity Management (PSIM) for the
+  purpose of improving the matching of patients and persons across VHA.  
+  PSIM will serve as the interface to the Initiate algorithm and the MPI
+  will interact with PSIM.
+   
+  The Initiate centralized probabilistic search algorithm will replace the
+  local VistA KERNEL DUPLICATE RECORD MERGE search process for identifying
+  local potential duplicate PATIENT (#2) file records.  When the patient 
+  is presented to the MPI for an Integration Control Number (ICN) and the 
+  search algorithm identifies potential duplicate in VistA, the patients
+  are automatically added to the VistA DUPLICATE RECORD (#15) file.  Please
+  refer to VistA patch XT*7.3*113 for more information.
+   
+  Issue #1:
+  A new routine, MPIFDNL, calls the Remote Procedure, MPIF DNL ADD UPD, at
+  the Master Patient Index (MPI), to add, activate, or inactivate records
+  in the MPI DO NOT LINK (#985.28) file (MPI Austin file). The purpose of
+  this MPI file is to screen out records that have previously been
+  identified as different patients, so that they do not continuously get
+  logged as potential or automatic matches.
+   
+  If called from the Verify Potential Duplicates [XDR VERIFY ALL] option,
+  and the user sets the STATUS field on a pair of patients to VERIFIED,
+  NOT A DUPLICATE, then the MPIFDNL routine calls a Remote Procedure in
+  the MPI system, to add (or activate) the patient pair to the MPI DO
+  NOT LINK (#985.28) file (MPI Austin file) so that PSIM will not attempt
+  to link the patients in the future.
+   
+  If called from the Edit the Status Field of a Duplicate Record [XDR
+  EDIT DUP RECORD STATUS] option and the STATUS field of a patient pair
+  is set from VERIFIED, NOT A DUPLICATE back to POTENTIAL DUPLICATE,
+  UNVERIFIED, the Remote Procedure is called to inactivate the record
+  that was previously added to the MPI DO NOT LINK (#985.28) file in 
+  Austin.
+  
+  The action taken by another site will not impact the status of your 
+  potential duplicate pair if two sites have the same potential duplicate.
+  You will still be able to make your own determination if the patient is 
+  or is not a duplicate.
+  
+  Sites should not set the STATUS field of the potential duplicate via 
+  FileMan, this will not set an entry in the MPI DO NOT LINK (#985.28) 
+  file in Austin.
+  
+  Routine: MPIFDNL
+  RPC: MPIF DNL ADD UPD
+   
+  Issue #2:
+  All references to the logging of Potential Matches have been removed
+  from the VistA HL7 message processor routines.  That functionality is
+  now handled on the MPI in Austin where the Healthcare Identity 
+  Management (HC IdM) team will process the Potential Match exceptions. For
+  the VistA user, that means that there will no longer be any Potential
+  Matches Returned exceptions added to the MPI/PD Exception Handling [RG
+  EXCEPTION HANDLING] option.  If there are any potential duplicates at the
+  local site, they will be added directly to the VistA DUPLICATE RECORD
+  (#15) file for processing as described above.
+   
+  Issue #3:
+  Routine MPIFVTQ has been modified to send the following additional fields
+  from the PATIENT file (#2) to the Master Patient Index (MPI) in a VistA
+  HL7 message builder for use by the PSIM query for the search algorithm.
+      STREET ADDRESS [LINE 1] (#.111), 
+      STREET ADDRESS [LINE 2] (#.112), 
+      STREET ADDRESS [LINE 3] (#.113),
+      CITY (#.114), and
+      PHONE NUMBER [RESIDENCE] (#.132).
+  This data is not being updated, just potentially included in the query
+  sent to the MPI for searching.
+  
+  Issue #4:
+  The Display Only Query [MPIF DISPLAY ONLY QUERY TO MPI] display has
+  been enhanced to assist in reducing the number of duplicate records
+  added to the Master Patient Index (MPI) via the VAMC registration
+  processes.  Before registering a patient, the Display Only Query [MPIF
+  DISPLAY ONLY QUERY TO MPI] option can be used to determine if the
+  patient already exists on the MPI or if there is a duplicate (or
+  duplicates) on the MPI.
+   
+  The user is asked if the patient is currently in the VistA PATIENT (#2)
+  file.  If so, the patient name is entered and all of the identity traits
+  are collected from the PATIENT (#2) file record to send a HL7 query
+  to the MPI.
+   
+  If the user selects No, at the prompt if the patient is currently in 
+  the VistA PATIENT (#2) file, the user is prompted for a set of identity
+  traits.  When entering the patient name, input can be either upper or
+  lower case.  Using the identity traits, the HL7 query is sent to the MPI
+  where the new probabilistic search algorithm is used to get all matching
+  records. Whether the records are an exact match or a potential match is
+  determined by the match score in conjunction with established thresholds
+  and are displayed in hierarchical order.
+   
+  After the user selects a record from the list, a Remote Procedure, MPIF
+  EDAT REMOTE, extracts the patient information from the MPI.  This is the
+  same information that HC IdM has available on the MPI Extended Patient
+  Data Inquiry (EDAT) [MPI DATA MGT PDAT EXT MPI] report.  This will enable
+  the VAMC user to register the patient with the correct information,
+  thereby reducing duplication.  This option can also be used for
+  viewing potential matches after the registration process.
+  
+  Issue #5:
+  When the Healthcare Identity Management (HC IdM) team used the Resolve
+  MPI Duplicate [MPI DATA MGT DUP RES] option on the MPI for two records
+  which are duplicates and should have the same Integration Control Number
+  (ICN), a message was sent to the facilities associated with the ICN that
+  was deprecated.  The mail message, "MPI/PD Exception: Multiple ICNs",
+  stated the following: "Multiple ICNs: Patient DFN=xxxxxxxxx is trying to
+  be assigned ICN 123456786980 which is already in use for DFN=yyyyyyyyy".
+   
+  The logic has been changed in routine MPIF002 so that the previous
+  e-mail message is no longer sent.  Instead, the potential duplicate pair
+  is added to the DUPLICATE RECORD (#15) file with a status of POTENTIAL
+  DUPLICATE, UNVERIFIED.
+    
+  To let you know that potential duplicate(s) have occurred, a new message
+  is generated so that the pair can be verified/merged as applicable.
+  Information about the "Potential Duplicate PATIENT records found by MPI"
+  message is available in VistA patch XT*7.3*113.
+   
+  Issue #6:
+  VistA patch RG*1.0*52 removed code references to three obsolete Date
+  of Death exceptions: 215 - Death Entry on MPI not VISTA, 216 - Death
+  Entry on Vista not MPI, and 217 - Death Entries on MPI and Vista
+  DON'T MATCH.
+   
+  Routine MPIFBT3 contained code that references these exception types.
+  Since we did not want to delay the release of RG*1.0*52, code was put
+  in place in EXC^RGHLLOG to quit if these three exception types were
+  passed in as a parameter via routine MPIFBT3.  Now that RG*1.0*52 has
+  been released, the code in MPIFBT3 referencing these exception types
+  is being removed.
+   
+  Issue #7:
+  The following MPIF* options were distributed with patch MPIF*1.0*44
+  (released 2/6/07) as obsolete with an Out of Order message.  These
+  options are being distributed in this build as DELETE AT SITE in
+  order to remove them from the OPTION (#19) file.  There are other
+  MPI/PD options in the VAFC* namespace that are also obsolete that will
+  be removed in a future DG* patch.
+      AUTO CHANGE CMOR NIGHT JOB [MPIF CMOR REQUEST AUTO JOB]
+      Batch Review of CMOR Change Requests [MPIF BATCH REVIEW]
+      Coordinating Master of Record (CMOR) Request [MPIF CMOR MGR]
+      Create a New CMOR Change Request [MPIF NEW REQUEST]
+      Display a CMOR Change Request [MPIF VIEW REQUEST]
+      Edit Open CMOR Change Request [MPIF EDIT REQUEST]
+      Push CMOR Request [MPIF PUSH CMOR]
+      Report - CMOR Requests Approved [MPIF APPROVED REPORT]
+      Report - CMOR Requests Disapproved [MPIF DISAPPROVE REPORT]
+      Report - Pending Received Requests [MPIF RECEIVED REQUESTS]
+      Report - Sent Requests Still Pending [MPIF SENT REQUESTS]
+      Review Pending Change of CMOR Requests [MPIF REVIEW REQUEST]
+      Site Parameters Edit for CMOR [MPIF SITE PARAMETER]
+    
+  Issue #8:
+  During a code review, it was found that the unlock code in MAKE+28 in
+  routine MPIFRES was not unlocking the same global that was being locked
+  in MAKE+27.  This could cause a number of locks to remain in the lock
+  table until the Local/Missing ICN Resolution Background Job [MPIF
+  LOC/MIS ICN RES] completes and releases all associated locks.  Since
+  this background job runs frequently, there are not too many entries
+  to be processed; therefore, it has not caused an issue.  The unlock
+  code in MAKE+28 has been changed to unlock the same global as the one
+  locked in MAKE+27.  This was addressed in routine MPIFRES.
+  
+  Issue #9:
+  If an ICN was trying to be assigned to a site's patient, but that ICN
+  was already assigned to another patient and the MPIF LOC/MIS ICN RES
+  background job was the process making the ICN update, then the A28
+  message to have the second patient added to the MPI was not being
+  triggered.  This was corrected in routine MPIFBT3.
+  
+  Issue #10:
+  When processing a Health Level Seven A24 Link Patient Information 
+  message, if the ICN is already in use for another PATIENT (#2) file 
+  entry, the application level acknowledgement is being sent back with a 
+  status of AA with an error message.  The status should be AE with an 
+  error message. This is corrected in routine MPIFA24.
+   
+  Options:
+  ========
+  The following options are obsolete and are being distributed as
+  DELETE AT SITE in order to remove them from the OPTION (#19) file.
+      AUTO CHANGE CMOR NIGHT JOB [MPIF CMOR REQUEST AUTO JOB]
+      Batch Review of CMOR Change Requests [MPIF BATCH REVIEW]
+      Coordinating Master of Record (CMOR) Request [MPIF CMOR MGR]
+      Create a New CMOR Change Request [MPIF NEW REQUEST]
+      Display a CMOR Change Request [MPIF VIEW REQUEST]
+      Edit Open CMOR Change Request [MPIF EDIT REQUEST]
+      Push CMOR Request [MPIF PUSH CMOR]
+      Report - CMOR Requests Approved [MPIF APPROVED REPORT]
+      Report - CMOR Requests Disapproved [MPIF DISAPPROVE REPORT]
+      Report - Pending Received Requests [MPIF RECEIVED REQUESTS]
+      Report - Sent Requests Still Pending [MPIF SENT REQUESTS]
+      Review Pending Change of CMOR Requests [MPIF REVIEW REQUEST]
+      Site Parameters Edit for CMOR [MPIF SITE PARAMETER]
+     
+  Documentation Update:
+  =====================
+  MASTER PATIENT INDEX/PATIENT DEMOGRAPHICS (MPI/PD) VISTA documentation is
+  available, updated for patches RG*1.0*54 and MPIF*1.0*52.  Facilities
+  should download the revised documentation:
+  
+     (See patch description RG*1.0*54 for related documentation updates)
+   
+  The preferred retrieval method is to FTP from the ANONYMOUS.SOFTWARE
+  directory at: DOWNLOAD.VISTA.MED.VA.GOV
+  This transmits the file from the first available FTP server.
+  Sites may also elect to retrieve software directly from one
+  of the following servers.
+  
+  OI Field Office         FTP Address                  Directory
+  ------------------------------------------------------------------
+  Albany             ftp.fo-albany.med.va.gov     ANONYMOUS.SOFTWARE
+  Hines              ftp.fo-hines.med.va.gov      ANONYMOUS.SOFTWARE
+  Salt Lake City     ftp.fo-slc.med.va.gov        ANONYMOUS.SOFTWARE
+  
+  Note:  These files must be transferred in binary or IMAGE,
+         not ASCII, mode.
+   
+  The documents can also be downloaded from the VistA Documentation
+  Library (VDL) Web page in both Acrobat PDF and MS-Word DOC formats:
+   
+      http://www.va.gov/vdl/application.asp?appid=16
+   
+  Associated Remedy Ticket(s):
+  ============================
+  There are no associated Remedy Tickets.
+   
+  Associated New Service Request (NSR):
+  =====================================
+  There is no associated NSR with the patch.
+    
+  Test Sites:
+  ===========
+  Altoona
+  North Texas
+  Phoenix
+  
+        
+  NOTE: If you run ^XINDEX on routine MPIFA24, a reference to OMGPIDMI
+  is displayed as a routine that is not available on your system and
+  that is correct.  This relates only to the Federal Health Information
+  Exchange (FHIE) Framework system.  This reference was introduced in an
+  earlier patch - MPIF*1.0*25.
+     
+  Installation Instructions:
+  ==========================
+  This patch takes less than 2 minutes to install.  This patch should
+  be loaded during non-peak hours to minimize disruption to the users 
+  since heavily-used Registration options will be out of order.
+   
+  1.  Users are allowed on the system during patch installation.
+   
+  2.  The HL7 incoming filers should be stopped.  Use the Monitor,
+      Start, Stop Filers [HL FILER MONITOR] option on the Filer and
+      Link Management Options [HL MENU FILER LINK MGT] menu on the
+      HL7 Main Menu [HL MAIN MENU].
+   
+  3.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+      Note:  TEXT PRINT/DISPLAY option in the PackMan menu will display
+      the patch text only.
+     
+  4.  From the Kernel Installation and Distribution System Menu, select
+      the Installation menu.
+   
+  5.  From this menu, you may elect to use the following options:
+      (when prompted for INSTALL NAME, enter MPIF*1.0*52):
+       a.  Compare Transport Global to Current System  - this option will
+           allow you to view all changes that will be made when the patch
+           is installed.  It compares all components of the patch 
+           (routines, DDs, templates, etc.).
+       b.  Verify Checksums in Transport Global - this option will
+           allow you to ensure the integrity of the routines that are in
+           the transport global.
+       c.  Print Transport Global - this option will allow you to view the
+           components of the KIDS build.
+       d.  Backup a Transport Global - This option will create a backup
+           message of any routines exported with this patch. It will not
+           backup any other changes such as DD's or templates.
+    
+  
+ 6.  Use the Install Package(s) option and select the package MPIF*1.0*52.
+   
+  7.  When prompted 'Want KIDS to Rebuild Menu Trees Upon Completion of
+      Install? YES//', respond YES (this may disrupt CPRS users, so
+      if your facility has the XQBUILDTREEQUE tasked to run nightly,
+      you can say NO to this question.)
+   
+  8.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? NO//',
+      respond NO.
+   
+  9.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols? YES//', respond YES.  The following OPTIONS should be
+      disabled during the installation.
+      Register a Patient              [DG REGISTER PATIENT]
+      Load/Edit Patient Data          [DG LOAD PATIENT DATA]
+      Electronic 10-10EZ Processing   [EAS EZ 1010EZ PROCESSING]
+      MPI/PD Exception Handling [RG EXCEPTION HANDLING]
+      Display Only Query [MPIF DISPLAY ONLY QUERY TO MPI]
+      Local/Missing ICN Resolution Background Job [MPIF LOC/MIS ICN RES]
+      UPDATE BATCH JOB FOR HL7 v2.3   [VAFC BATCH UPDATE]
+   
+  10. After patch installation has completed, restart the HL7 incoming
+      filers.  Use the Monitor, Start, Stop Filers [HL FILER MONITOR]
+      option on the Filer and Link Management Options [HL MENU FILER 
+      LINK MGT] menu on the HL7 Main Menu [HL MAIN MENU].
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;1.0; MASTER PATIENT INDEX VISTA ;**[Patch List]**;30 Apr 99;Build 7
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: MPIF002
+    Before: B28350773   After: B18349548  **20,27,33,43,52**
+Routine Name: MPIFA24
+    Before: B21971494   After: B22867722  **22,24,27,31,25,41,39,48,52**
+Routine Name: MPIFBT3
+    Before: B22745391   After: B15393291  **1,3,10,17,21,24,28,31,33,35,43,52**
+Routine Name: MPIFDNL
+    Before:       n/a   After: B17887652  **52**
+Routine Name: MPIFQ0
+    Before: B70311672   After: B71703643  **1,3,8,14,13,16,17,21,20,24,
+                                           26,28,31,33,35,38,43,52**
+Routine Name: MPIFRES
+    Before: B24792139   After: B25044617  **1,7,10,15,17,21,26,28,33,35,
+                                           43,39,52**
+Routine Name: MPIFSA2
+    Before: B53121126   After: B80384646  **28,29,35,38,43,52**
+Routine Name: MPIFSA3
+    Before: B25833370   After: B27819479  **28,31,35,43,52**
+Routine Name: MPIFSAQ
+    Before: B13238010   After: B24115575  **1,3,8,13,17,21,23,28,35,52**
+Routine Name: MPIFVTQ
+    Before: B29495992   After: B42786955  **1,9,17,21,23,28,33,35,52**
+ 
+Routine list of preceding patches: 48
+
+=============================================================================
+User Information:                          Hold Date     : NOV 30, 2009
+Entered By  : DAVIS,PAULETTE                Date Entered  : MAY 08, 2008
+Completed By: CHESNEY,CHRISTINE M           Date Completed: NOV 30, 2009
+Released By : HEUER,CINDY                   Date Released : NOV 30, 2009
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

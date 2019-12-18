@@ -1,0 +1,679 @@
+$TXT Created by METCALF,ROGER at VAA-RAD.VA.GOV  (KIDS) on MONDAY, 07/09/01 at 09:16
+=============================================================================
+Run Date: JUL 10, 2001                     Designation: XU*8*206
+Package : XU - KERNEL                          Priority: Mandatory
+Version : 8       SEQ #169                       Status: Released
+=============================================================================
+
+Associated patches: (v)DVBA*2.7*32     install with patch       `XU*8*206'
+                    (v)RMPF*2*16       install with patch       `XU*8*206'
+                    (v)DG*5.3*357      install with patch       `XU*8*206'
+                    (v)MPIF*1*16       install with patch       `XU*8*206'
+                    (v)XU*8*43     <<= must be installed BEFORE `XU*8*206'
+                    (v)XU*8*112    <<= must be installed BEFORE `XU*8*206'
+
+Subject: Institution File Redesign (IFR)
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Other
+
+Description: 
+============
+
+ The purpose of this patch is to provide the sites with utilities that
+ facilitate the clean up of the INSTITUTION (#4) file, to populate the
+ local INSTITUTION (#4) file with a complete list of national facilities 
+ with station number, to implement a Master File Server mechanism that
+ maintains national Institution entries automatically, to modify the
+ INSTITUTION (#4) file Data Dictionary preventing local editing of national
+ data and adding historical time sensitive data fields, and to provide
+ Application Programmer Interface to return Institution and Institution
+ time sensitive information.
+  
+  
+ The clean up and the national file - Institution Master File
+ =============================================================
+  
+ The clean up utilities will provide several lists to compare the local
+ INSTITUTION (#4) file with the Institution Master File (IMF) -- the "gold"
+ file of Institutions complete with all approved station numbers including
+ inactive as well as active station numbers.  Utilities will be included to
+ resolve duplicate station numbers and to automatically populate the local
+ INSTITUTION (#4) file with national IMF data.
+  
+ The INSTITUTION (#4) file clean up utilities utilize the query functionality
+ provided by the Master File Server mechanism implemented with this patch.
+ The data is returned to the local site that stores the IMF data in a
+ temporary global.  The clean up utilities use this information for 
+ comparing and displaying the data, as well as automatically updating the
+ local INSTITUTION (#4) file.
+  
+ The Institution Master File (IMF) is made up of information collected from
+ the VISNs by the Office of Policy and Planning, the official spreadsheet of
+ station numbers distributed by Central Office, and information provided by
+ the Austin Automation Center and the National DataBase Integration (NDBI)
+ team.
+  
+ The clean up utilities are presented to the user via a List Manager interface.
+ The main List Manager screen displays INSTITUTION (#4) file vs. IMF file data.
+ There are several actions associated with this main screen. They are 
+ 'Delete local/dup. station #', 'List local station numbers',
+ 'List national data to merge', 'Auto update with national data', and 
+ 'Required clean-up actions'.
+  
+ Main Screen:  Name list.  INSTITUTION (#4) file vs. IMF
+ -------------------------------------------------------
+ This main screen displays a side-by-side view of the current INSTITUTION (#4)
+ file and its corresponding IMF entry sorted by station number.
+ Note some lines may not have both an INSTITUTION (#4) name and IMF name.
+ The reasons why there may not be an entry in both columns are: station
+ numbers in the INSTITUTION (#4) file not in the IMF or IMF entries missing
+ from the INSTITUTION (#4) file (see 'List local station numbers' and 'List
+ national data to merge').  Since the purpose of this list is to compare the
+ local file vs. the IMF (sorted by station number), if duplicate station
+ numbers in the local file exist they are not displayed twice.  The 
+ 'Delete local/dup. station #' action is used to fix/view these duplicates.
+  
+ Actions of the Main List Manager Screen
+ =======================================
+  
+ List local station numbers
+ --------------------------
+ This action checks for and displays any station numbers that are found in the
+ INSTITUTION (#4) file but are not included in the IMF.  These local station 
+ numbers are automatically deleted by the 'Delete local/dup. station #' 
+ associated action.  You may run this list prior to 'Delete local/dup. 
+ station #' to view local station numbers that will be deleted.
+  
+ ***Note: The 'Delete local/dup. station #' action will remove these
+ local station numbers.
+  
+ A new cross-reference ^DIC(4,"AOLD99",IEN,station_number) will exist for
+ deleted STATION NUMBER (#99).
+  
+ Delete local/dup. station #
+ ---------------------------
+ This action will first remove any local STATION NUMBER (#99) from the
+ INSTITUTION (#4) file.  It then checks for any duplicate station numbers.
+ For each set of duplicates, the action checks if one entry in the set is
+ pointed to by the LOGICAL LINK (#870) file; if so, that entry is kept and
+ the value of the STATION NUMBER (#99) field of the other duplicate entries
+ are deleted.  If any set of duplicates remain (the set having no pointer
+ from file #870), the action then displays them.  The display lists line
+ number, station number, institution name, and the internal entry number of
+ the INSTITUTION (#4) file entry.  An action is associated with this list
+ to automatically delete the duplicate station number by selecting the line
+ number of the entry to be affected; this deletion is of the STATION NUMBER
+ (#99) field and not the INSTITUTION (#4) file entry itself.
+  
+ Since the INSTITUTION (#4) file is referenced by numerous packages, there
+ is probably no one correct entry to select for station number deletion --
+ for those entries where the NAME (#.01) does not clearly indicate the 
+ correct choice.  The important thing is to resolve the duplicate.  If a
+ problem in a specific package should arise, that issue may have to be dealt
+ with on a case-by-case basis.  The patch does implement an API,
+ $$O99^XUAF4(IEN), and cross-reference, "O99", that may be used to resolve
+ (re-point) any package specific issues.  See below for more information 
+ about the API and cross-reference.
+  
+ All duplicate stations numbers must be resolved before the 'Auto update
+ with national data' action will allow the site to auto update their
+ INSTITUTION (#4) file with the IMF data.
+  
+ Any STATION NUMBER (#99) that is automatically deleted will be displayed
+ in the Action Area of the List Manager screen to denote processing.  To get
+ a proper list of local station numbers to be deleted, use the action
+ 'List local station numbers' PRIOR to running this action!  The duplicate
+ station numbers that are auto-resolved in favor of the file #870 pointer 
+ are only displayed in the Action Area following the listing of deleted 
+ local station numbers (with associated DIR End-Of-Page prompt).  This is 
+ the only place these type of duplicates are listed, although, all deleted 
+ STATION NUMBER (#99) field values are stored in a new cross-reference.
+  
+ A new cross-reference ^DIC(4,"AOLD99",IEN,station_number) will exist for
+ any deleted STATION NUMBER (#99).
+  
+ ******Note: If the site's own STATION NUMBER (#99) is duplicate then
+ extreme caution must be exercised when selecting the entry to delete the
+ STATION NUMBER (#99) from since the INSTITUTION (#4) file is referenced by
+ other standard files such as HL LOGICAL LINK (#870), MEDICAL CENTER DIVISION
+ (#40.8), and STATION NUMBER (TIME SENSITIVE) (#389.9).  These file entries
+ should be checked before and after performing the clean up to verify they
+ point to a valid Institution entry, complete with station number.
+  
+ Also note, other applications including AMIE, Record Tracking, and CIRN 
+ MPI/PD may be negatively affected if their pointers to an INSTITUTION (#4)
+ file entry don't have a valid STATION NUMBER (#99). ***********
+  
+ List national data to merge
+ ---------------------------
+ This action checks for and displays any station numbers that are in the IMF
+ but not found in the INSTITUTION (#4) file.  This list is informational only
+ and has no actions associated with it.  Sites may wish to print this list
+ before running 'Auto update with national data' to see which entries will
+ be added to the INSTITUTION (#4) file.
+  
+ Auto update with national data
+ ------------------------------
+ This action will automatically update the INSTITUTION (#4) file with IMF
+ data.  This action will first check for duplicate station numbers.  If any
+ duplicates are found the action will notify the user and suspend the update
+ until the duplicates are resolved (see 'Delete local/dup. station #').
+ If no duplicate station numbers are found the update begins.  First it will
+ clean out any data stored in the *STATION NAME (#7) field and then remove
+ any local station numbers stored in STATION NUMBER (#99) field; only
+ nationally approved station numbers are allowed.  Any entry with a STATUS
+ (#11) of INACTIVE will have the INACTIVE FACILITY FLAG (#101) set and the
+ STATUS (#11) field value deleted.  Next it will merge the IMF data with the
+ site's INSTITUTION (#4) file; this includes setting the STATUS (#11) flag
+ to national, and populating the fields NAME (#.01), STATION NUMBER (#99),
+ OFFICIAL VA NAME (#100), FACILITY TYPE (#13), and STATE (#2).  Inactive
+ facilities and deactivated station numbers will have the INACTIVE FACILITY
+ FLAG (#101) set.  Integrated/realigned facilities will have a pointer to/from
+ the new/old INSTITUTION (#4) file entry together with the effective date; 
+ these values will be stored in the HISTORY (#4.999) sub-file fields 
+ EFFECTIVE DATE (#.01), REALIGNED TO (#.05), and REALIGNED FROM (#.06).
+  
+ The auto update action will take approximately 5-10 minutes and the 
+ terminal will hang until complete.  This should complete the clean up, but
+ run the action 'Required clean-up actions' to verify there are no further 
+ duplicates and that all IMF data merged correctly.
+  
+ Required clean-up actions
+ -------------------------
+ This action may be run at any time to determine which steps are required to
+ successfully complete the INSTITUTION (#4) file clean up.  It first checks
+ for duplicate station numbers and any missing IMF data.  If any discrepancies
+ are found, they are displayed with the appropriate resolving action.  If no
+ discrepancies are found, the user will be notified the update is complete.
+  
+ The following new components are provided for the clean up:
+ -----------------------------------------------------------
+  
+   PROTOCOLS:
+     XUMF AUTO       Auto-update with national data  
+     XUMF CHCK       Required clean-up actions  
+     XUMF DSTA       Delete local/dup. station #
+     XUMF LLCL       List local data       
+     XUMF NAME       Names INSTITUTION vs. national     
+     XUMF NATL       List national data to merge  
+     XUMF RDSN       Resolve duplicate station numbers  
+     XUMF RDSN MENU  Duplicate station number menu 
+  
+   LIST TEMPLATES:
+     XUMF CHCK       Required clean-up actions
+     XUMF DSTA       Delete local/dup. station #
+     XUMF LLCL       List local data
+     XUMF NAME       Names INSTITUTION vs. national
+     XUMF NATL       List national data to merge
+  
+   ROUTINES:
+     XUMF4           Institution File Clean Up - MAIN
+     XUMF4A          Institution File Clean Up - AUTO  
+     XUMF4H          Institution File Clean Up - HELP
+  
+   OPTION:
+     XUMF INSTITUTION    Institution File Query / Update
+  
+   SECURITY KEY:
+     XUMF INSTITUTION    Institution Master File Key
+                         (locks XUMF INSTITUTION option)
+    
+  
+ Master File Server mechanism
+ ============================
+  
+ Once the clean up has been performed and the local INSTITUTION (#4) file 
+ merged with Institution Master File data from FORUM, further updates to 
+ the INSTITUTION (#4) file are handled automatically by the Master File 
+ Server mechanism.
+  
+ The administrator will receive update notifications such as new CBOC station 
+ numbers directly from the Information Management Service via the 045A4 
+ distribution list.
+  
+ The administrator will then add/edit the INSTITUTION (#4) file entry on
+ FORUM.  This will result in the building of an HL7 message containing the 
+ update, which will be sent to all VistA sites.  The message will be processed
+ automatically at the sites, updating the local INSTITUTION (#4) file with
+ the new/updated entry.
+  
+ The following components are provided for the Master File Server:
+ -----------------------------------------------------------------
+  
+   PROTOCOLS:
+     XUMF MFK       Master File App ACK     
+     XUMF MFN       Master File Notification     
+     XUMF MFQ       Master File Query     
+     XUMF MFR       Master File Response
+  
+   HL7 APPLICATION PARAMETERS:
+     XUMF MFK       Master File App ACK     
+     XUMF MFN       Master File Notification     
+     XUMF MFQ       Master File Query     
+     XUMF MFR       Master File Response
+  
+   ROUTINES:
+     XUMFH          Master File HL7 Msg Handler  
+     XUMFI          Master File Interface
+     XUMFP          Master File C/S Parameters
+     XUMFP4         Master File C/S Params INSTITUTION
+     XUMFP4C        Master File C/S Params INSTITUTION (cont)
+     XUMFPFT        Master File Param FACILITY TYPE
+  
+   LOGICAL LINK:
+     XUMF FORUM     The HL7 LOGICAL LINK (#870) to the Master File Server
+  
+  Note:  The link does not need to be started via Start logical Links option
+         due to its being a real-time link.
+  
+   MAIL GROUP:
+     XUMF INSTITUTION  Receives Institution update notifications (site)
+                         Add members to the group who are to be notified
+                         of any add/edits to national entries.  This group
+                         is for Institution specific messages.
+     XUMF SERVER       Receives MFS related messages (server & site)
+                         Add members to the group who are to be notified
+                         of any general server related messages such
+                         as errors.
+  
+   BULLETIN:
+     XUMF INSTITUTION  Update notification message (site)
+     XUMF ERROR        Error message (server)
+  
+  
+ Data Dictionary modifications
+ =============================
+  
+ INSTITUTION (#4) file
+ ---------------------
+  
+ The STATUS (#11) field will have 'INACTIVE' removed from the set of codes.  
+ Inactive entries will now be flagged by the INACTIVE FACILITY FLAG (#101)
+ field.  The input transform has been modified to prevent setting of the
+ STATUS (#11) field to national.  Only national entries may be flagged as 
+ NATIONAL and only by the IMF cleanup or server mechanism.  A site can not
+ create national entries or flag local entries as national.
+  
+ The STATION NUMBER (#99) field will be modified to prevent any local 
+ updating.  The STATION NUMBER (#99) field is reserved for national entries
+ only.  The STATION NUMBER (#99) field will be maintained by the Master File
+ Server mechanism.
+  
+ The NAME (#.01) field will be modified to prevent the editing of this
+ field for national entries.
+  
+ The STATE (#.02) field will be modified to prevent the editing of this 
+ field for national entries.
+  
+ The FACILITY TYPE (#13) field will be modified to prevent the editing of 
+ this field for national entries.
+  
+ The OFFICAL VA NAME (#100) field will be increased from a maximum of 30 
+ characters of free text to 80 characters.  This is to allow for the longer
+ new health care system names.  This field will also be modified to prevent 
+ the editing of national entries.
+  
+ The INACTIVE FACILITY FLAG (#101) field will have set of codes changed from 
+ 'Y' for 'YES' to '1' for 'INACTIVE'.  This field will also be modified to 
+ prevent the editing of national entries.
+  
+ A new HISTORY (#999.1) multiple field has been added with the following 
+ fields:
+  
+   EFFECTIVE DATE (#.01) - The effective date of the historical event.
+  
+   NAME (CHANGED FROM) (#.02) - If the NAME changed, this field holds the 
+ #.01 value prior to the edit on the effective date.
+  
+   OFFICIAL VA NAME (CHANGED FROM) (#.03) - If the OFFICAL VA NAME changed,
+ this field holds the #100 value prior to the edit on the effective date.
+  
+   REALIGNED TO (#.05) - This field holds a pointer to the INSTITUTION (#4) 
+ file entry with the new STATION NUMBER (#99) for this facility.
+  
+   REALIGNED FROM (#.06) - This field holds a pointer to the INSTITUTION (#4) 
+ file entry with the old STATION NUMBER (#99) for this facility.
+  
+   DEACTIVATED FACILITY / STA # (#.07) - This field flags (1) a deactivated
+ facility and/or station number for this effective date.
+  
+   ACTIVATED FACILITY (#.08) - This field flags (1) a re-activated
+ facility and/or station number for this effective date.
+  
+ Four new write identifiers are added with the patch and replace the current 
+ field identifiers.  The post-init routine XUMFPOST deletes the old field 
+ identifiers.  The new write identifiers are state, facility type, station 
+ number, and inactive facility flag with effective date.
+  
+ The post-init will also remove the following deprecated (starred) fields:
+  
+   *OUTPUT HEADER (#.04)
+   *STATION NAME (#7)
+   *MAILMAN FLAG (#12)
+   *OLD AMIS NUMBER (#77)
+   *G&L HEADER (#10)
+   *PACKAGE X-REF (#30) subfile
+  
+ FACILITY TYPE (#4.1) file
+ -------------------------
+  
+ A STATUS (#3) field is added.  This field is a set of codes.  'N' flags 
+ 'National' and 'L' flags 'Local' entries.
+  
+  
+ Application Programmer Interface
+ ================================
+  
+ $$IEN^XUAF4(STA) - returns the INSTITUTION (#4) file IEN for a given
+ station number
+  
+ $$STA^XUAF4(IEN) - returns the station number for a given INSTITUTION (#4) 
+ file IEN.
+  
+ $$TF^XUAF4(IEN) - is this an active treating facility (1=YES,0=NO) for a
+ given INSTITUTION (#4) file IEN?
+  
+ $$RT^XUAF4(IEN) - returns the realigned to 'IEN^station number^date' for a 
+ given INSTITUTION (#4) file IEN
+  
+ $$RF^XUAF4(IEN) - returns the realigned from 'IEN^station number^date' for a 
+ given INSTITUTION (#4) file IEN
+  
+ $$O99^XUAF4(IEN) -  if this entry was merged due to a duplicate station 
+ number, this function returns a pointer to new station number INSTITUTION 
+ (#4) file IEN
+  
+ F4^XUAF4(STA,ARRAY,FLAG,DATE) - File #4 multipurpose API
+  INPUT
+     STA     Station number (required)
+  [.]ARRAY   Array to return values.  (required)
+     FLAG    A = Active entries only.  (optional)
+             M = Medical treating facilities only.
+     DATE    Return name on this FM internal date.  (optional);
+  OUTPUT
+     ARRAY                     IEN or '0^error message'
+     ARRAY("NAME")             name
+     ARRAY("VA NAME")          official va name
+     ARRAY("STATION NUMBER")   station number
+     ARRAY("TYPE")             facility type name
+     ARRAY("INACTIVE")         inactive date (0=not inactive)
+       note: if inactive date not available but entry inactive then 1
+     ARRAY("REALIGNED TO")     IEN^station number^date
+     ARRAY("REALIGNED FROM")   IEN^station number^date
+  
+ DBIA #2171 documents the Institution APIs.
+  
+ List of Test Sites
+ ==================
+  
+ Birmingham ISC
+ Battle Creek VAMC
+ Washington, D.C. VAMC
+ North Texas HCS
+ Dayton VAMC
+  
+  
+ Routine Summary
+ ===============
+  
+ The following routines are included in this patch.  The second line of 
+ each of these routines now looks like:
+  ;;8.0;KERNEL;206;Jul 10, 1995
+  
+ Checksums:
+ =========
+  
+ Sites should use CHECK^XTSUMBLD to verify checksums. 
+  
+    Rtn Nm      Chksum Before       Chksum After       Patch List
+    ------      -------------       ------------       ----------
+    XUAF4         1458355             3805595          **43,112,206**
+    XUMF4           new               7946722          **206**
+    XUMF4A          new               5978851          **206**
+    XUMF4H          new               3756605          **206**
+    XUMFENV         new                608569          **206**
+    XUMFH           new               5277020          **206**
+    XUMFI           new               8135336          **206**
+    XUMFP           new               1454622          **206**
+    XUMFP4          new               8721287          **206**
+    XUMFP4C         new               4836667          **206**
+    XUMFPFT         new               5599821          **206**
+    XUMFPOST        new               1399192          **206**
+  
+ List of preceding patches: 43, 112.
+  
+ Installation Instructions:
+ ==========================
+  
+ The patch can be installed at anytime.  Install time should not take more
+ than two minutes.  The actual clean up, using the List Manager utilities,
+ will take additional time.  Since the INSTITUTION (#4) file is a standard
+ file referenced by many packages, it is recommended to perform the clean
+ up with as few users on the system as possible; this includes the auto 
+ update and delete duplicate station number actions.  The lists can be
+ run at any time.  Resolving any duplicate entries is interactive and will
+ vary site to site.  The auto update action should take five to ten minutes.
+  
+ Note: The clean up code queries the Master File Server on FORUM to get a 
+ copy of the Institution Master File.  The HL7 package checks whether a 
+ message is intended for production or training.  The FORUM server's HL7
+ site parameter is 'production', so attempting to install this patch in a 
+ test account with the site parameter set to 'training' will result in a 
+ response message containing an 'Application Reject' due to 'Processing ID 
+ Mismatch with Site Parameters'.
+  
+ Before installing the patch, make a copy of the INSTITUTION (#4) file. 
+  
+   Use ^%GTO (DSM) (for Cache use %GO) to save a copy of the INSTITUTION (#4)
+   file for backup purposes.  Following is an example:
+  
+     VAH>D ^%GTO
+  
+     This routine saves globals to be restored by %GTI
+  
+     Output Device ?  > DIC4.GBL
+  
+     Header comment... INSTITUTION (#4) file backup
+     global(s) ? > ^DIC(4
+     global(s) ? > ^DIC(4.1
+     global(s) ? > ^
+  
+     Global(s) Selected:
+        ^DIC(4)
+  
+     Output started for ^DIC at 8:19:50 AM
+  
+     Global transfer finished at 8:19:51 AM
+  
+     VAH>
+  
+ In the event of some unforeseen disaster the site decides they need to back
+ out of the clean up, the site may 'KILL ^DIC(4),^DIC(4.1' and DO ^%GTI (DSM)
+ (for Cache use DO ^%GI) to restore the backup copy.  This will restore the
+ data to its original state.
+  
+ 1.  Users ARE allowed to be on the system during the installation. 
+  
+ 2.  DSM/AXP sites: These routines are not usually mapped, so you will
+ probably not have to disable mapping. 
+  
+ 3.  You DO NOT need to stop TaskMan or the background filers.
+  
+ 4.  Use the "INSTALL/CHECK MESSAGE" option on the PackMan menu. This loads 
+ the patch into a Transport Global onto your system. 
+  
+ 5.  On the KIDS menu, select the "Installation" menu and use the following 
+ options to install the Transport Global: 
+  
+            Verify Checksums in Transport Global
+            Print Transport Global 
+            Compare Transport Global to Current System
+            Backup a Transport Global
+  
+            Install Package(s) 
+  
+              INSTALL NAME: XU*8.0*206
+                            ==========
+  
+     Want KIDS to Rebuild Menu Trees Upon Completion of Install? YES// NO
+                                                                       ==
+     Want KIDS to INHIBIT LOGONs during the install?  NO
+                                                      ==
+     Want to DISABLE Scheduled Options, Menu Options, and Protocols?  NO
+                                                                      ==
+                                                                             
+ 6.  DSM/AXP Sites - Answer NO to the question "Want to MOVE routines to 
+ other CPUs?"   
+  
+ 7.  DSM/AXP Sites:  If the routines were unmapped per STEP #2, the mapped 
+ set should be rebuilt once the installation has run to completion.
+  
+ 8.  Delete the post-init routine XUMFPOST and the environment check routine
+ XUMFENV.  DO NOT delete any other XUMF* routines!
+  
+ 9.  Add members to the XUMF INSTITUTION mail group who should be notified 
+ of any new station numbers added to the INSTITUTION (#4) file (IRM, PIMS 
+ ADPACs, etc).
+  
+ 10.  Add members to the XUMF SERVER mail group who should be notified of 
+ any server bulletins.  These bulletins may include error messages related 
+ to the server mechanism and may require intervention by IRM.
+  
+ Post Install Instructions:
+ ==========================
+  
+ 1.  Add the option Institution File Query / Update [XUMF INSTITUTION] to
+ the Kernel Management Menu [XUKERNEL].  Optional.
+  
+ 2.  Select the Institution File Query / Update option in the Kernel
+ Management Menu.  Several short messages will be displayed on your screen,
+ and then the terminal will hang 5-10 minutes while the option gets a copy
+ of the Institution Master File from FORUM.  When the query response message 
+ arrives the main List Manager display will appear on your screen (see the 
+ beginning of this patch description for more details).
+  
+ 3.  Run the 'List local station numbers' list (LLCL) to get a list of the
+ local station numbers that will be deleted from the STATION NUMBER (#99)
+ field.  Use the List Manager common Action 'PL' to get a printed copy of
+ the list.
+  
+ 4.  Run (optionally) the 'List national data to merge' (NATL) to get a list
+ of data to be merged to the INSTITUTION (#4) file.
+  
+ 5.  Run the 'Delete local/dup. station #' action (DSTA).  If any duplicates
+ remain (not auto-resolved by 'Delete local/dup. station #') use the
+ list and associated action 'Resolve duplicate station numbers' to fix 
+ remaining duplicates manually.  See the description of 'Delete local/dup. 
+ station #' for more information.
+  
+ 6.  Run the 'Auto update with national data' action (AUTO).
+  
+ 7.  Run the 'Required clean-up actions' action (CHCK).
+ If actions are displayed, run the appropriate actions and repeat step 6.
+ If not, congratulations!  You're done.
+  
+  
+ Additional documentation
+ ========================
+  
+ Product documentation may be found on the web at the following URL:
+  
+  <http://vista.med.va.gov/ifr/index.html> 
+  
+ Required package
+ ================
+  
+ VistA HL7 version 1.6 is required by this patch.  Contact NVS 
+ Infrastructure Team (G.CSINFRAST@FORUM.VA.GOV) if you need a complete build 
+ of the HL7 package. 
+
+Routine Information:
+====================
+
+Routine Name:
+  - XUAF4
+
+
+Routine Checksum:
+
+Routine Name:
+  - XUMF4
+
+
+Routine Checksum:
+
+Routine Name:
+  - XUMF4A
+
+
+Routine Checksum:
+
+Routine Name:
+  - XUMF4H
+
+
+Routine Checksum:
+
+Routine Name:
+  - XUMFH
+
+
+Routine Checksum:
+
+Routine Name:
+  - XUMFI
+
+
+Routine Checksum:
+
+Routine Name:
+  - XUMFP
+
+
+Routine Checksum:
+
+Routine Name:
+  - XUMFP4
+
+
+Routine Checksum:
+
+Routine Name:
+  - XUMFP4C
+
+
+Routine Checksum:
+
+Routine Name:
+  - XUMFPFT
+
+
+Routine Checksum:
+
+Routine Name:
+  - XUMFPOST
+
+
+Routine Checksum:
+
+Routine Name:
+  - XUMFENV
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : METCALF,ROGER A               Date Entered : JUL 02, 2001
+Completed By: MURPHY,MINAO J               Date Completed: JUL 10, 2001
+Released By : GAYFIELD,LISA                 Date Released : JUL 10, 2001
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

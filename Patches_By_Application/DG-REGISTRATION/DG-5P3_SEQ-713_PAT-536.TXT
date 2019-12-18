@@ -1,0 +1,309 @@
+$TXT Created by KOPP,TERRY at SQAVFF.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 02/12/09 at 10:42
+=============================================================================
+Run Date: JUN 24, 2009                     Designation: DG*5.3*536
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #713                    Status: Released
+                  Compliance Date: JUL 25, 2009
+=============================================================================
+
+Associated patches: (v)DG*5.3*467  <<= must be installed BEFORE `DG*5.3*536'
+                    (v)DG*5.3*688  <<= must be installed BEFORE `DG*5.3*536'
+
+Subject: Edit Hardship
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch (DG*5.3*536) addresses the following problems: 
+  
+   - After a site is integrated and the site number is changed or
+     if a site has split into multiple divisions, users are not able to
+     edit HARDSHIPS they had previously granted.
+  
+   - Before the INSTITUTION file (#4) entries were made to be standard, 
+     the internal entry number of the site was the same as the site 
+     number.  That may no longer be the case, but the registration code 
+     still assumes it is when dealing with hardship edit.  This can lead 
+     to the site being unable to edit ANY hardships they enter as the 
+     comparison is made between the actual site number and the internal 
+     entry number of that site in the INSTITUTION file (#4).
+     
+   - When a hardship is granted, billing stops for the veteran, even though
+     the Means Test status indicates billing should continue, even if at a
+     reduced rate.
+  
+  
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+ There is no NSR associated with this patch.
+  
+  
+ This patch addresses the following NOIS/Remedy ticket(s):
+ ---------------------------------------------------------
+ HD0000000063353 MAR-1102-20534  DG-Can't edit hardship
+     Duplicates: HD0000000064146  CPH-0804-41461  Hardship entered but 
+                                  can't be seen
+                 HD0000000064789  CPH-0105-41799  Hardship problem
+                 HD0000000092223  Hardship option
+                 HD0000000094308  Unable to edit hardship
+                 HD0000000111562  Primary means test doesn't match status
+                 HD0000000260403  Hardship Flag
+  
+ HD0000000169342 DG Means Test and Agreed to Pay Deductible Setting  
+                 Changed to Null when Hardship is Granted
+  
+  
+ Overview of Remedy Message(s): 
+ -----------------------------------
+ Remedy ticket: HD0000000063353  
+    Duplicates: HD0000000064146, HD0000000064789, HD0000000092223,
+                HD0000000094308, HD0000000111562, HD0000000260403
+  
+ Problem: Patch DG*5.3*435 added logic to routine DGMTHL that prevented
+          sites from editing a HARDSHIP that was granted by another site.
+          
+          As a result, users are not being allowed to edit hardships
+          under either of the following 2 conditions:
+            1. User cannot edit a hardship that was entered under another
+               site that they have access to unless they are logged on to
+               that site.
+            2. User cannot edit a hardship that was granted at a site where
+               the internal entry number of the institution and the station
+               number are not the same.
+           
+ Solution: The API which is used to compare the granting site to the
+           editing site is $$INST^DGENU().  This API uses the user profile
+           in the NEW PERSON file (#200) to identify the Institution the 
+           user is signed onto. The API will be modified to accept a
+           parameter to check the institution and additionally, all the
+           divisions the user has site login privilege for to verify the 
+           user is authorized to edit the hardship record. In addition, the
+           DGMTHL routine will be modified to check the external value of
+           the station number returned from the API against the actual
+           institution site number in the hardship record.
+  
+  
+ Remedy Ticket: HD0000000169342
+  
+ Problem: When a hardship is granted, the system automatically deletes the
+     field AGREED TO PAY DEDUCTIBLE (#.11) in the ANNUAL MEANS TEST file 
+     (#408.31).  Billing assumes if this field is blank, no billing 
+     should occur.  This causes problems for billing if the granting of the
+     hardship results in a Means Test status of MT Copay Required, GMT
+     Copay Required or Pending Adjudication, where billing should not be 
+     stopped.
+  
+ Solution:          
+     If after the hardship is granted, the status of the means test is set 
+     to GMT Copay Required, MT Copay Required or Pending Adjudication, the 
+     AGREED TO PAY DEDUCTIBLE field (#.11) in the ANNUAL MEANS TEST file
+     (#408.31) will not be set to null or deleted.  This will allow billing
+     to continue as it should for the veteran, at the appropriate rate.
+  
+  
+ Test Sites:
+ -----------
+  Cleveland (Large) 
+  Miami (Large) 
+  New York Harbor (Integrated)
+  
+  
+        ================INSTALLATION INSTRUCTIONS =================
+  
+ If installed during the normal workday, users may be on the system during 
+ installation of this patch; however, it is recommended that:
+        1.  TaskMan should be placed in a wait state in order to prevent 
+            HL7 filer errors while this patch is being installed.
+        2.  The following selection in the OPTION (#19) file, and all of
+            its descendants should be disabled to prevent possible
+            conflicts while running the KIDS Install. Other VISTA users
+            will not be affected:
+  
+                      [DGMTH HARDSHIPS]     Hardships
+  
+ Install Time - less than 5 minutes
+  
+ 1.  LOAD TRANSPORT GLOBAL 
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the 
+     INSTALL/CHECK MESSAGE PackMan option.  
+              
+ 2.  START UP KIDS 
+     -------------
+     Start up the Kernel Installation and Distribution System Menu 
+     [XPD MAIN]: 
+    
+          Edits and Distribution ...  
+          Utilities ...  
+          Installation ...  
+    
+ Select Kernel Installation & Distribution System Option: INStallation 
+                                                          ---
+          Load a Distribution 
+          Print Transport Global 
+          Compare Transport Global to Current System 
+          Verify Checksums in Transport Global 
+          Install Package(s) 
+          Restart Install of Package(s) 
+          Unload a Distribution 
+          Backup a Transport Global 
+    
+ Select Installation Option: 
+    
+ 3.  Select Installation Option: 
+     ---------------------------
+     NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+            NAME, enter DG*5.3*536):
+       
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when this patch
+         is installed.  It compares all components of this patch
+         (routines, DD's, templates, etc.).
+     c.  Verify Checksums in Transport Global - This option will allow
+         you to ensure the integrity of the routines that are in the
+         transport global.
+      
+ 4.  Select Installation Option: Install Package(s) 
+                                 ------------------
+     **This is the step to start the installation of this KIDS patch: 
+    
+    a.  Choose the Install Package(s) option to start the patch
+        install.
+  
+      When prompted 'Want KIDS to Rebuild Menu Trees Upon Completion of
+      Install? YES//'  Answer NO.
+  
+    b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+        YES//' answer NO.
+  
+    c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+        Options, and Protocols? YES//' answer YES.
+  
+    d.  When prompted 'Enter options you wish to mark as 'Out Of
+        Order':'  enter the following option:
+  
+                      [DGMTH HARDSHIPS]     Hardships
+  
+    e.  When prompted 'Enter protocols you wish to mark as 'Out Of
+        Order':' press <Enter>.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.3;Registration;**[Patch List]**;Aug 13,1993;Build 3
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: DGENU
+    Before: B39450626   After: B42315700  **121,122,147,232,314,564,624,
+                                           672,659,653,688,536**
+ Description of Changes:
+    Changed: INST through INST+2
+       From: INST() ;
+             ; Description: Determine the institution affiliation associated
+  with a user.
+        To: INST(VADUZ,VACHK) ;
+             ; Description: Determine the institution affiliation associated
+  with a
+             ;              user.
+   
+    Changed: INST+5 through INST+7
+       From: ;     DUZ(2) - Pointer to the INSTITUTION (#4) file (institution
+             ;              affiliated with user, prompted at Kernel sign-on)
+             ;
+         To: ;     VADUZ =  array if passed by reference:
+             ;           VADUZ = DUZ
+             ;           VADUZ(2) =  
+             ;              o  if this value is null: DUZ(2) (institution 
+  affiliated
+             ;                    with user, prompted at Kernel sign-on)
+   
+             ;              o  if value is not null: site to check as valid 
+  for the
+             ;                    user (Pointer to INSTITUTION (#4) file)
+   
+   
+    Inserted after: INST+12
+           ;    VACHK = passed by reference, returned as:
+           ;         null if the value in VADUZ(2) is null
+           ;            0 if the value in VADUZ(2) is not null and is not a 
+  valid
+           ;              site for the user
+           ;            1 if the value in VADUZ(2) is not null and is a 
+  valid site
+           ;              for the user
+   
+    ...................
+   Changed: INST+13
+       From: Q $S($G(DUZ(2)):DUZ(2),1:$P($$SITE^VASITE(),"^"))
+         To: S VACHK=$S($G(VADUZ(2))="":"",1:0)
+             I $G(VADUZ(2)) D
+             . N X,ZZ
+             . Q:'$G(VADUZ)
+             . S X=$$DIV4^XUSER(.ZZ,VADUZ)
+             . I X,$D(ZZ(VADUZ(2))) S VACHK=1
+             I '$G(VADUZ(2)) S VADUZ(2)=DUZ(2)
+             Q $S($G(VADUZ(2)):VADUZ(2),1:$P($$SITE^VASITE(),"^"))
+             ;
+
+Routine Name: DGMTHL
+    Before:  B4967483   After:  B5909603  **182,344,435,467,536**
+ Description of Changes:
+  Changed: HARDSHIP+3
+     From: N DFN,DGSITE,MTIEN,SGHRD
+       To: N DFN,DGSITE,MTIEN,SGHRD,DGOK,DGDUZ
+  ...................
+  Changed: HARDSHIP+11        
+     From: S (MTIEN,SGHRD)=""
+       To: S (MTIEN,SGHRD,DGSITE)="",DGOK=0
+  ...................
+  Changed: HARDSHIP+14 through HARDSHIP+15
+     From: S DGSITE=$$INST^DGENU()
+           I SGHRD,DGSITE'=SGHRD D  Q
+      To: I SGHRD'="" D
+          . S DGDUZ=$G(DUZ),DGDUZ(2)=$$CONVERT^DGENUPL1(SGHRD,"INSTITUTION")
+          . S DGOK="",DGSITE=$$INST^DGENU(.DGDUZ,.DGOK)
+          ;
+          I SGHRD,$S(DGSITE=+$G(DUZ(2)):0,1:'DGOK) D  Q
+  ...................
+  Changed: HARDSHIP+18
+     From: .W !?10,"Please, contact ",$P($G(^DIC(4,SGHRD,0)),U)," to edit
+   the record.",!
+       To: .W !?10,"Please, contact ",$P($G(^DIC(4,+$$CONVERT^DGENUPL1(
+  SGHRD," INSTITUTION"),0)),U)," to edit the record.",!
+
+Routine Name: DGMTHL1
+    Before: B62669929   After: B63428065  **182,456,536**
+ Description of Changes:
+  Delete : HARDSHIP+21
+     From: S HARDSHIP("AGREE")=""
+       To: 
+  ...................
+  Inserted after: GETSTAT+21
+    From: 
+      To: ; Don't reset agreed to pay if mt copay req/GMT copay req/pend adj
+          S:"^C^G^P^"'[(U_$P($G(^DG(408.32,+Y,0)),U,2)_U) HARDSHIP("AGREE")=
+  ""   
+
+ 
+Routine list of preceding patches: 456, 467, 688
+
+=============================================================================
+User Information:
+Entered By  : HUA,PATRICK                   Date Entered  : JUL 02, 2003
+Completed By: RUDINGER,NANCY L.             Date Completed: JUN 02, 2009
+Released By : FLANAGAN,PATTY                Date Released : JUN 24, 2009
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

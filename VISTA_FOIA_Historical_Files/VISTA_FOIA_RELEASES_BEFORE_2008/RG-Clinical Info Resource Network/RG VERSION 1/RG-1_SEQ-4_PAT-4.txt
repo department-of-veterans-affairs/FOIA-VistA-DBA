@@ -1,0 +1,347 @@
+$TXT Created by DAVIS,PAULETTE T at DEVCRN.ISC-ALBANY.VA.GOV  (KIDS) on THURSDAY, 07/06/00 at 13:20
+=============================================================================
+Run Date: JUL 20, 2000                     Designation: RG*1*4
+Package : RG - CLINICAL INFO  NETWORKPriority: Mandatory
+Version : 1         SEQ #4                     Status: Released
+=============================================================================
+
+Associated patches: (v)MPIF*1*1    <<= must be installed BEFORE `RG*1*4'
+                    (v)RG*1*3     <<= must be installed BEFORE `RG*1*4'
+                    (v)XU*8*131    <<= must be installed BEFORE `RG*1*4'
+                    (v)DG*5.3*261  <<= must be installed BEFORE `RG*1*4'
+                    (v)HL*1.6*58   <<= must be installed BEFORE `RG*1*4'
+
+Subject: CPRS REMOTE DATA VIEWS
+
+Category: 
+  - Routine
+  - Enhancement (Mandatory)
+  - Data Dictionary
+
+Description: 
+============
+
+  DG*5.3*261, HL*1.6*58, MPIF*1.0*1, RG*1.0*3 and XU*8.0*131 are required
+  builds for patch RG*1*4.
+   
+  The goal of the CPRS REMOTE DATA VIEWS project is to utilize
+  Clinical Information Resource Network - Patient Demographics and Master
+  Patient Index (CIRN PD/MPI) to retrieve a list of facilities at which
+  a patient has been seen.  Using the CPRS Graphical User Interface (GUI)
+  Reports Tab, the user may select the report they would like to see and the
+  site from which they would like to retrieve the report.
+   
+  This patch exports the routines and protocols necessary to build and
+  deliver HL7 messages that track patient admissions and discharges on
+  the Registration side, and clinic checkouts on the Scheduling side. 
+  This patch is directly related to DG*5.3*261, which exports data
+  dictionaries used to track when, where and why a patient has been
+  treated.
+   
+  An undefined error was reported by Nashville in NOIS NAS-0600-31949.
+  Entries in the "AICN" cross-reference were processed, assuming the
+  existence of the "MPI" node.  RGADT2 has been modified to check
+  for the node.
+   
+  Data Dictionary Changes:
+  ========================
+  The MPI/PD SEEDING COMP DATE/TIME (#12) field in the CIRN SITE PARAMETER
+  (#991.8) file is used to ensure that the seeding process is run only once
+  at a facility.
+   
+  Protocols:
+  ==========
+  Five new protocols are included to support the CPRS REMOTE DATA
+  VIEWS project.
+  (1) CIRN ADT Data Capture [RG ADT ENCOUNTER DRIVER]
+  The addition of the RG ADT ENCOUNTER DRIVER protocol will allow 
+  tracking of patient admissions and discharges on the Registration
+  (PIMS) side, as well as clinic checkouts on the Scheduling (PIMS)
+  side.  This protocol builds HL7 messages that update the TREATING
+  FACILITY LIST (#391.91) file, tracking the DATE LAST TREATED (#.03)
+  and ADT/HL7 EVENT REASON (#.07) fields for a particular patient at
+  a given facility.
+  (2) CIRN'S ADT-A01 Client Protocol [RG ADT-A01 CLIENT]
+  This client protocol processes Admission, Discharge, and Transfer
+  (ADT) update patient information (event code A01) Health Level Seven
+  (HL7) messages.  This protocol also re-routes the messages to the
+  CIRN Master of Record (CMOR) and from the CMOR to all other subscribers.
+  (3) CIRN's ADT-A01 Server Protocol [RG ADT-A01 SERVER]
+  This protocol is triggered whenever a patient is admitted through the
+  Registration (PIMS) module. It executes code that creates an HL7 ADT
+  message consisting of PID, EVN, PD1, and PV1 segments.  The message 
+  contains all relevant information about the event, including patient name,
+  event date/time, patient primary facility and patient class (inpatient or
+  outpatient).
+  (4) CIRN'S ADT-A03 Client Protocol [RG ADT-A03 CLIENT]
+  This client protocol processes Admission, Discharge, and Transfer (ADT)
+  update patient information (event code A03) Health Level Seven (HL7)
+  messages.  This protocol also re-routes the messages to the CIRN Master 
+  of Record (CMOR) and from the CMOR to all other subscribers.
+  (5) CIRN's ADT-A03 Server Protocol [RG ADT-A03 SERVER]
+  This protocol is triggered whenever a patient is discharged through the
+  Registration (PIMS) module, or checked out of a clinic through the 
+  Scheduling (PIMS) module. It executes code that creates an HL7 ADT message 
+  consisting of PID, EVN, PD1, and PV1 segments.  The message contains all 
+  relevant information about the event, including patient name, event
+  date/time, patient primary facility and patient class (inpatient or
+  outpatient).
+   
+  A new HL7 Application Parameter, RG CIRN ADT, is included to support
+  the CPRS REMOTE DATA VIEWS project.
+   
+  Test Sites:
+  ===========
+  Central Texas HCS
+  El Paso, TX
+  Grand Junction, CO
+  Miami, FL
+  Murfreesboro, TN
+  Muskogee, OK
+  Nashville, TN
+  Sheridan, WY
+  Tucson, AZ
+  West Palm Beach, FL
+   
+  Associated NOIS:
+  ================
+  NAS-0600-31949
+  
+  Routine Summary:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+   
+  <TAB>;;1.0;CLINICAL INFO RESOURCE NETWORK;**[Patch List]**;30 Apr 99
+  CHECK^XTSUMBLD results:
+   
+  Routine       Before Patch       After Patch       Patch List
+  --------      ------------       ------------      ----------
+    RG4POST         N/A              4101755             4
+    RGADT           N/A              4803747             4
+    RGADT1          N/A              4783498             4
+    RGADT2          N/A              6140297             4
+    RGRSDYN       3137397            3729693             4
+    RGRSMSH        843732            1008786             4
+   
+  Post-Install Routine RG4POST:
+  =============================
+  The Post-Install routine, RG4POST, has three primary functions.
+   
+  It adds the RG ADT ENCOUNTER DRIVER (extended action protocol) as an
+  item under the DGPM MOVEMENT EVENTS and SDAM APPOINTMENT EVENTS.
+   
+  Additionally, for existing CIRN PD/MPI 1.0 sites, it tasks off the
+  process that seeds the DATE LAST TREATED (#.03) and ADT/HL7 EVENT
+  REASON (#.07) fields in the TREATING FACILITY LIST (#391.91) file
+  and broadcasts Master File Update HL7 messages.  Admission and
+  discharge dates are checked on the registration side, and a status of
+  "check out" is looked for in the OUTPATIENT ENCOUNTER (#409.68) file.
+   
+  Finally, it adds RG CIRN ADT to the HL7 APPLICATION PARAMETER (#.02)
+  field for all entries in the ADT/HL7 EVENT REASON (#391.72) file.
+   
+  Installation Instructions:
+  ==========================
+   
+      **CAUTION**   Carefully read the following instructions
+                    before installing this patch.
+   
+  NOTE:  Sites that have Clinical Information Resource Network - Patient
+  Demographics/Master Patient Index (CIRN PD/MPI) 1.0 installed AND have
+  had your patients loaded to the Master Patient Index:
+   
+      A tool to project how long the seeding process will require has been
+      provided and should be used before loading this patch.  You can
+      determine the number of active and shared patients at your site by
+      utilizing routine ^RGRAS from programmer mode.  This routine was
+      distributed in patch RG*1*3.  The seeding process, which is tasked
+      off by the installation, will take a number of hours to complete.
+      We project that it will take between 30 minutes to 1 hour to process
+      10,000 active patients (those with an Integration Control Number).
+      The seeding process will generate a number of Master File Update
+      messages.  Message projections are one message per shared patient
+      per shared site plus one to the MPI.  A sample of the report
+      generated by routine RGRAS follows.
+   
+      Treating Facility Update Seeding Statistics
+      Printed at SITE NAME on Jun 13, 2000@10:03
+      ------------------------------------------------------------------
+      Total number of active patients with an ICN:                 16598
+      Total number of shared patients:                         6155
+        (# of messages to send to MPI)
+      Total number of remote Treating Facilities found:        9307
+        (# of messages to send to remote sites)           ---------
+              Approximate # of HL7 messages to be generated:  15462
+   
+      Based on this report, it is projected to take between 50 minutes
+      to 1 hour and 40 minutes to complete the seeding process at this
+      site.  You can also see the projected number of messages that will
+      be generated as a result of the seeding process.  Use this
+      information to determine when to queue the installation to begin.
+      If the projection indicates that the process will take less than
+      3 hours to complete, you can queue the installation of RG*1.0*4
+      to take place any weekday evening during the off-hours.
+      If the projection indicates that the process will take longer than
+      3 hours, you should queue the installation of RG*1.0*4 to take place
+      during the weekend.  In either case, we request that you NOT queue
+      the installation for Friday evenings as this extra messaging could
+      impact the weekend CIRN installations.  It would be prudent to
+      monitor your links to ensure that all messages are transmitted.
+   
+      The actual time required for the seeding process at the test
+      sites is shown below.
+      Facility         Active ICNs     Seeding Time     Seed Time/ICN
+      -----------------------------------------------------------------
+      El Paso (Mirror)    36,926           0:53         14 min/10,000
+      Grand Junction      20,975           1:07         32 min/10,000
+      Miami               92,084           4:17         28 min/10,000
+      Murfreesboro        53,084           2:13         25 min/10,000
+      Nashville           77,723           5:16         41 min/10,000
+      Sheridan            15,269           1:11         46 min/10,000
+      West Palm Beach     89,387           7:09         48 min/10,000
+   
+      Because the installation of RG*1.0*4 immediately tasks off the 
+      seeding process, it is recommended that you queue the installation 
+      to begin during the off-hours.  The seeding process examines all 
+      active patients, those who have an Integration Control Number (ICN).
+      For each active patient, admissions, discharges or clinic checkouts 
+      are examined.  If an event is found, the DATE LAST TREATED (#.03) and
+      ADT/HL7 EVENT REASON (#.07) fields in the TREATING FACILITY LIST 
+      (#391.91) file are calculated and transmitted in a Treating Facility
+      Update message.  At the end of the seeding process, a MailMan
+      message is sent to the installer, indicating that the job finished
+      and providing some statistics.  This patch may be loaded with users
+      on the system.  Installation will take less than 2 minutes.
+     
+  NOTE:  Clinical Information Resource Network - Patient Demographics/
+  Master Patient Index (CIRN PD/MPI) 1.0 sites that HAVE NOT had your 
+  patients loaded to the Master Patient Index:
+   
+      The seeding procedure as detailed above does NOT take place as a
+      separate process.  The calculation of the DATE LAST TREATED (#.03)
+      and ADT/HL7 EVENT REASON (#.07) is incorporated into the load to
+      the MPI, thus cutting down on messaging.  This patch may be loaded
+      with users on the system.  You may wish to install it during non-peak
+      hours.  Installation will take less than 2 minutes.  This patch was
+      tested during the regular CIRN PD/MPI install weekend for the
+      following sites: Muskogee, Tucson and Central Texas HCS.
+   
+  1.  Using the TaskMan option Schedule/Unschedule Options [XUTM SCHEDULE],
+      unschedule the following option:
+        VAFC BATCH UPDATE          UPDATE BATCH JOB FOR HL7 v2.3
+   
+  2.  Use the INSTALL/CHECK MESSAGE option on the Packman menu.  [Note: 
+      TEXT PRINT/DISPLAY option in the PackMan menu will display the 
+      patch text only.]
+   
+  3.  None of the routines in the CIRN Patient Demographics package
+      have been recommended for routine mapping.
+   
+  4.  From the Kernel Installation and Distribution System Menu, select
+      the Installation menu.
+   
+  5.  From this menu, you may elect to use the following options (when
+      prompted for the INSTALL NAME, enter RG*1.0*4).
+   
+      (a)  Backup a Transport Global - this option will create a backup
+           message of any routines exported with the patch.  It will NOT
+           backup any other changes such as DDs or templates.
+   
+      (b)  Compare Transport Global to Current System - this option will
+           allow you to view all changes that will be made when the
+           patch is installed.  It compares all components of the patch
+           (routines, DDs, templates, etc.).
+   
+      (c)  Verify Checksums in Transport Global - this option will allow
+           you to ensure the integrity of the routines that are in the
+           transport global.
+   
+      (d)  Print Transport Global - this option will allow you to view the
+           components of the KIDS build.
+   
+  6.  Use the Install Package(s) option and select the package RG*1.0*4.
+   
+  7.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? YES//',
+      respond NO.
+   
+  8.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols? YES//', respond NO.
+   
+  9.  It is recommended that the installation be queued to begin during
+      the off-hours for CIRN PD/MPI 1.0 sites that have had your patients
+      loaded to the Master Patient Index.
+           Enter the Device you want to print the Install messages.
+           You can queue the install by enter a 'Q' at the device prompt.
+           Enter a '^' to abort the install.
+           DEVICE: HOME//Q             << Enter Q.
+           DEVICE:                     << Select a device.
+           Request Start Time:  NOW//  << Enter date/time as suggested in
+                                          the installation instructions.
+   
+  10. Using the TaskMan option Schedule/Unschedule Options [XUTM SCHEDULE],
+      schedule the option VAFC BATCH UPDATE [UPDATE BATCH JOB FOR HL7 v2.3]
+      to run every 10 minutes.
+   
+  11. Routines RGRAS and RG4POST can be deleted from your system after
+      successful completion of the SEEDING PROCESS.  When the seeding
+      process finishes, the installer will receive the following message.
+      Subj: CIRN-CPRS DATE LAST TREATED seeding (#391.91 ; .03) results
+      From: POSTMASTER (Sender: INSTALLING USER,NAME)
+      -----------------------------------------------------------------
+      # of processed patients, in the PATIENT (#2) file
+      with an ICN: 53084
+      TFL seeding process run time:  2:12:43 (DD HH:MM:SS format)
+      # of records processed per minute: 399.98
+
+Routine Information:
+====================
+
+Routine Name:
+  - RG4POST
+
+
+Routine Checksum:
+
+Routine Name:
+  - RGADT
+
+
+Routine Checksum:
+
+Routine Name:
+  - RGADT1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RGADT2
+
+
+Routine Checksum:
+
+Routine Name:
+  - RGRSDYN
+
+
+Routine Checksum:
+
+Routine Name:
+  - RGRSMSH
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : DAVIS,PAULETTE                 Date Entered : NOV 09, 1999
+Completed By: HERREN,CATHRYN                Date Completed: JUL 19, 2000
+Released By : CARLSON-GOTTS,NANCY           Date Released : JUL 20, 2000
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

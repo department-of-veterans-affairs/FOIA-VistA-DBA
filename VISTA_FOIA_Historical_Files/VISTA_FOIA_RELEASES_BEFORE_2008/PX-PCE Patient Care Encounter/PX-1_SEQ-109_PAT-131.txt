@@ -1,0 +1,223 @@
+$TXT Created by LUNDEN,JOHN at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 05/11/04 at 15:11
+=============================================================================
+Run Date: JUL 20, 2004                     Designation: PX*1*131
+Package : PX - PCE PATIENT CARE ENCOUNTER     Priority: Mandatory
+Version : 1       SEQ #109                      Status: Released
+                  Compliance Date: AUG 20, 2004
+=============================================================================
+
+Associated patches: (v)PX*1*29     <<= must be installed BEFORE `PX*1*131'
+
+Subject: FIX V FILE INTEGRITY CHECKER PROMPTING
+
+Category: 
+  - Routine
+  - Other
+
+Description:
+============
+
+ This patch addresses the problem of the automatic (no prompt) choice when 
+ running the "Repair 4 'MAIN' V Files without prompts" in the PXQ integrity
+ checker/fixer. Previously the "R" option did not run in automatic mode. 
+ This utility will run under the menu options "PCE IRM MAIN MENU", "PCE/SD
+ Debugging Utilities ..." as "V File Cross Reference Repair".
+  
+ NOTE - This utility is being provided for sites that have experienced
+ corruption in their PCE V files. It does not need to be run unless you 
+ have this problem. This process may take a long time for large files.
+  
+  
+  
+ ASSOCIATED E3R(S):
+ ==================
+ N/A
+  
+ ASSOCIATED NOIS:
+ ================
+ ISD-0503-72179 - bad pointers to Visits in V POV
+  
+ Duplicates:
+      TAM-0603-30233 - ISHIST+1^PXRMVSIT Error
+      MEM-1198-71564 - undefined variable ^AUPNVPOV(525452,0)
+      MWV-0399-20826 - UNDEF DX BY FREQUENCY/PXRRFDSE
+      PAL-0699-60903 - Cannot check appointment out
+      MWV-0899-20643 - Diagnosis Ranked by Frequency Errors
+      V07-0200-N1702 - $G needed in VPOV+17^PXRMVPOV
+      ISP-0503-N2108 - Missing 0 nodes in VISIT file. ~AUPNVSIT(n,0)
+      SDC-0201-60377 - UNDEF VAR IN PXRRECSE
+      SFC-0601-60453 - PCE Encounter Summary <UNDEF>
+      HON-1198-62288 - DEBUGGER UNDEF PRINT+5^PXQUTL1
+  
+  
+ Participating Test Sites:
+ =========================== 
+  
+ El Paso,TX
+ Fayetteville,AR
+ North Florida/South Georgia
+ Portland,OR
+  
+ NOIS Overview:
+ ==============
+ Different routines (particularly reports) are crashing due to there being no
+ top level data for cross references in one of the V Files. These files 
+ include the V PROVIDER (9000010.06), V CPT(9000010.18), diagnosis V POV 
+ (9000010.07), VISIT(9000010), V IMMUNIZATION(9000010.11), V SKIN
+ TEST(9000010.12), V EXAM(9000010.13), V TREATMENT(9000010.15), V PATIENT
+ ED(9000010.16) and V HEALTH FACTOR(9000010.23) files. Many of these
+ cross reference problems come from a number of years ago. Many of the causes 
+ of these problems have already been fixed. Therefore, the first step is to get
+ get the data cleaned up. Then we can accurately discern what is still a true 
+ problem and what is not. One major tool in this process is the "Cross-
+ Reference Repair" option in the PXQ integrity checker.If, in this option, 
+ the "R   Repair 4 MAIN V Files without prompts" should be run overnight to
+ clean up the cross references. However, this option still prompts every
+ time a broken cross-reference is found. It also still prompts for which 
+ cross references to check in the VISIT file(9000010). This patch will make
+ this option run without the prompting. This should allow sites to clean up
+ their V Files. Then we can properly assess whether or not the causes to 
+ this degradation have been addresses.
+  
+ MENU:
+ ====
+ A new menu option called "PCE V FILE CROSS REFERENCE REP  PX V File 
+ Repair" will be added under "PCE IRM MAIN MENU" then "PCE/SD Debugging
+ Utilities".
+  
+ TECHNICAL:
+ ==========
+ Routine PXQUTL3 will be modified so that when the above options are chosen
+ the user will be prompted as to whether or not to run with/without prompts
+ by calling the PRMPT line tag. This will set the variable "AUTO" to "F". 
+ This will suppress the prompting when broken cross-references are found. 
+ If "AUTO" is set to "F" then "AUTOO" will also be set to "F". This will
+ suppress the prompting for specific cross-references in the VISIT file.
+  
+       ;;1.0;PCE PATIENT CARE ENCOUNTER;**29,131**;Aug 12, 1996
+  
+                CHECK^XTSUMBLD Results
+ ROUTINE NAME    BEFORE PATCH     AFTER PATCH     PATCH LIST
+ ============    ============     ===========     ==========
+ PXQUTL3         20944565         19714882        29,131
+  
+  
+ ROUTINE COMPARES:
+ ================
+  
+  
+ BEFORE:
+ File USER$:[LUNDENJ]PXQUTL3_GOLD.RS;1
+     5           ;;1.0;PCE PATIENT CARE ENCOUNTER;**29**;Aug 12, 1996
+     6           ;
+  
+ AFTER:
+ File USER$:[LUNDENJ]PXQUTL3_MNT.RS;3
+     5           ;;1.0;PCE PATIENT CARE ENCOUNTER;**29,131**;Aug 12, 1996
+     6           ;
+  
+ ***** 
+ BEFORE:
+    19           S DIR(0)="S^S:Screen of 4 'MAIN' files;P:Provider V 
+                   PROVIDER FILE;D:Diagnosis V POV FILE;C:CPT V CPT 
+                   FILE;V:Visit VISIT FILE;O:Other 6 V Files;R:Repair 4
+                   'MAIN' V Files without prompts;
+                   F:Fix ALL files without prompting (automatic)"
+    20           S DIR("A")="Which file do you need to fix "
+  
+ AFTER:
+    19           S DIR(0)="S^S:Screen of 4 'MAIN' files;P:Provider V 
+                   PROVIDER FILE;D:Diagnosis V POV FILE;C:CPT V CPT
+                   FILE;V:Visit VISIT FILE;O:Other 6 V Files;R:Repair 4
+                   'MAIN' V Files without prompting (automatic);
+                   F:Fix ALL files without prompting (automatic)"
+    20           S DIR("A")="Which file do you need to fix "
+  
+ *****
+ BEFORE:
+    31           I Y="R" D P,D,C,V^PXQUTL3A G T
+    32           I Y="S" D S^PXQUTL3A G T
+  
+ AFTER:
+    31         I Y="R" D PRMPT S:AUTO="F" AUTOO="F" D P,D,C,V^PXQUTL3A G T
+    32         I Y="S" D S^PXQUTL3A G T
+  
+ *****
+ BEFORE:
+   129           S:'$G(PRVCNT) PRVCNT=1 S:'$G(POVCNT) POVCNT=1
+  
+ AFTER:
+   129           N CPTP,VSTX,VSTXP     ;PX*1.0*131 (to satisfy ^XINDEX)
+   130           S:'$G(PRVCNT) PRVCNT=1 S:'$G(POVCNT) POVCNT=1
+  
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+  
+  This patch can be installed during the normal workday without disrupting 
+  any files. KIDS install.  Other VISTA users will not be effected.
+  
+  Installation should take less than 5 minutes.
+  
+  1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+  
+  2.  Review your mapped set.  If the routines are mapped, they should be
+      removed from the mapped set at this time.
+  
+  3.  From the Kernel Installation & Distribution System menu, select
+      the Installation menu.
+  
+  4.  From this menu, you may elect to use the following options
+      (when prompted for INSTALL NAME, enter PX*1.0*131)
+      a.  Backup a Transport Global - This option will create a backup 
+          message of any routines exported with the patch.  It will NOT
+          backup any other changes such as DDs or templates.
+      b.  Compare Transport Global to Current System - This option will 
+          allow you to view all changes that will be made when the patch is
+          installed. It compares all components of the patch (routines,
+          DDs, templates, etc.)
+      c.  Verify Checksums in Transport Global - This option will ensure 
+          the integrity of the routines that are in the transport global.
+  
+  5.  Use the Install Package(s) option and select the package PX*1.0*131.
+  
+  6.  Want KIDS to Rebuild Menu Trees Upon Completion of Install? YES// 
+      " respond NO.
+  
+  7.  When prompted "Want KIDS to INHIBIT LOGONs during the install?
+      YES//" respond NO.
+  
+  8.  When prompted "Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols? YES//" respond "YES".
+   
+  9.  When prompted to select the options you would like to place out of
+      of order, enter the following:
+  
+         PCE/SD Debugging Utilities
+  
+  10. If any routines were unmapped as part of step 2, they should be
+      returned to the mapped set once the installation has run to
+      completion.
+
+Routine Information:
+====================
+
+Routine Name:
+  - PXQUTL3
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : LUNDEN,JOHN                   Date Entered  : NOV 19, 2003
+Completed By: ILUSTRISIMO,LUCY              Date Completed: JUL 19, 2004
+Released By : CANNEDY,JOELLEN               Date Released : JUL 20, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

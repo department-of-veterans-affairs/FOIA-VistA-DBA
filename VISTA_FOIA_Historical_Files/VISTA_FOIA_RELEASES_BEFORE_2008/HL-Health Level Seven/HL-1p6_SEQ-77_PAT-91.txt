@@ -1,0 +1,294 @@
+$TXT Created by ANDREASSEN,LARRY J at NXT.KERNEL.FO-OAKLAND.MED.VA.GOV  (KIDS) on THURSDAY, 05/16/02 at 06:34
+=============================================================================
+Run Date: MAY 17, 2002                     Designation: HL*1.6*91
+Package : HL - HEALTH LEVEL SEVEN     Priority: Mandatory
+Version : 1.6        SEQ #77                    Status: Released
+=============================================================================
+
+
+Subject: New NAMESPACE field in HL7 Message Text file
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description: 
+============
+
+ Test sites:    Greater Los Angeles Regional Healthcare (West Los Angeles),
+                Grand Junction, Sheridan
+  
+ NOIS:          None
+  
+ Note:          This patch requires that KIDS builds HL*1.6*47, HL*1.6*57,
+                HL*1.6*59, and HL*1.6*82 be installed.
+  
+ OVERVIEW
+  
+ The Health Level 7 (HL7) messages sent and received by sites are being
+ increasingly studied for workflow patterns and totals.  This evaluation of
+ HL7 data by clients of the HL7 package has resulted in the request for HL7
+ totals subdivided by the namespace of the message's originating package.
+ Unfortunately, the namespace of a message is not always determinable.
+  
+ This patch provides a method for HL7 clients to pass their namespace into 
+ the HL7 APIs that create messages or acknowledgements. When this is done,
+ the provided namespace will be stored with the message, enabling
+ subsequent totaling by namespace.  Additional details of this patch are
+ provided next.
+  
+ DETAILS
+  
+ There are three supported HL7 APIs by which HL7 messages are created: 
+  
+  - GENERATE^HLMA(HLEID,HLARYTYP,HLFORMAT,.HLRESLT,HLMTIEN,.HLP)
+  - GENACK^HLMA1(HLEID,HLMTIENS,HLEIDS,HLARYTYP,HLFORMAT,
+                .HLRESLTA,HLMTIENA,.HLP)
+  - DIRECT^HLMA(HLEID,HLARYTYP,HLFORMAT,.HLRESLT,HLMTIEN,.HLP)
+  
+ In all three APIs, the last parameter HLP is passed by reference.  Prior 
+ to calling these APIs, the client package may set HLP array elements and 
+ then pass these by reference into the API.  An example call using the HLP 
+ array is shown below.
+  
+   <tab>S HLP("SECURITY")=1214315
+   <tab>D GENERATE^HLMA(HLEID,HLARYTYP,HLFORMAT,.HLRESLT,HLMTIEN,.HLP)
+  
+ These APIs, including the HLP pass-by-reference array, are documented in 
+ section 12.1.2, 12.1.3, and 12.1.4 of the VistA HL7 Site Manager & 
+ Developer Manual.
+  
+ After patch HL*1.6*91 is installed, an additional HLP array element may
+ be defined before calling these APIs by which the namespace of the client 
+ process can be made known to the API code.  This additional HLP array 
+ element is HLP("NAMESPACE").  An example call using this new array 
+ element is shown below.
+  
+   <tab>S HLP("NAMESPACE")="DG"
+   <tab>S HLP("SECURITY")=1214315
+   <tab>D GENERATE^HLMA(HLEID,HLARYTYP,HLFORMAT,.HLRESLT,HLMTIEN,.HLP)
+  
+ (The array contained in these three APIs is HLP, and this patch 
+ documentation consistently refers to HLP.  However, since this is a 
+ pass-by-reference array, any array name may be selected by the client 
+ process calling these APIs.)
+  
+ Patch HL*1.6*91 creates a new field in the HL7 Message Text file (#772) 
+ to store the client process namespace when it is passed as described 
+ above.  This new field's definition is shown below.
+  
+ 'NAMESPACE' FIELD STANDARD DATA DICTIONARY LISTING
+ --------------------------------------------------
+ 772,16        NAMESPACE              0;13 FREE TEXT
+  
+        INPUT TRANSFORM:  K:$L(X)>4!($L(X)<1)!'(X?1U1.3NU) X
+        LAST EDITED:      FEB 15, 2002
+        HELP-PROMPT:      Answer must be 1-4 characters in length,
+                          and start with 1 uppercase letter,
+                          followed by up to 3 uppercase letters and
+                          numerics.
+        DESCRIPTION:      This field must not be filled in
+                          manually.  It will be filled in
+                          automatically by the HL7 processes that
+                          create entries in the HL7 Message Text
+                          file (#772).  In most instances,
+                          applications will call GENERATE^HLMA,
+                          GENACK^HLMA, or DIRECT^HLMA.  When they
+                          do, they will pass by reference into the
+                          last OPTIONS (in the documentation)
+                          parameter the value of the namespace.
+                          The value of the namespace will be in the
+                          form of OPTIONS("NAMESPACE")=NAMESPACE.
+  
+                          Please note that the calls to the three
+                          APIs mentioned above use the variable HLP
+                          to hold the passed in by reference array.
+                          So, in the HLMA code (and other code
+                          invoked by HLMA), the actual variable
+                          used is HLP("NAMESPACE").
+  
+                          This field is populated by UPDATE^HLTF0.
+  
+ When the client process defines HLP("NAMESPACE") prior to the API call, 
+ and passes in the HLP array (as shown in the above example), the defined 
+ namespace is stored in the HL7 Message Text file (#772) entry created.  
+ The code that actually stores HLP("NAMESPACE") in this file is contained 
+ in UPDATE^HLTF0.
+  
+ All HLP array elements are optional; they are not required when these 
+ APIs are called.  However, it is strongly recommended that the 
+ HLP("NAMESPACE") array element be defined whenever it is possible to 
+ determine the proper namespace.
+  
+  
+ Note: HL7 messaging by the Master Patient Index (MPI) application occurs
+       using the EN^HLCSAC API.  The private use of this API by the MPI
+       application is covered by Integration Agreement 3471.  It is
+       important that MPI HL7 messages be assigned the correct namespace,
+       and this is done automatically now.  There is no need for the
+       MPI application to pass their namespace into the EN^HLCSAC API.
+       In the future, if this API is opened up to other applications,
+       there is a way to override the MPI namespace saved.  If the
+       local variable HLP("NAMESPACE") is defined before calling the
+       EN^HLCSAC API, the value of HLP("NAMESPACE") will be saved in
+       the message as the namespace.
+  
+  
+ The first and second lines of the routines included in this patch are
+ shown below.
+  
+ HLCSAS1 ;ISCSF/RWF - Read data ;08/24/99  08:06
+         ;;1.6;HEALTH LEVEL SEVEN;**43,57,91**;Jul 17,1995
+ HLMA    ;AISC/SAW-Message Administration Module ;09/20/2001  12:34
+         ;;1.6;HEALTH LEVEL SEVEN;**19,43,58,63,66,82,91**;Oct 13, 1995
+ HLMA1   ;AISC/SAW-Message Administration Module (Cont'd) ;04/06/99  
+           10:56
+         ;;1.6;HEALTH LEVEL SEVEN;**19,43,91**;Oct 13, 1995
+ HLMA2   ;AISC/SAW-Message Administration Module ;09/20/2001  12:35
+         ;;1.6;HEALTH LEVEL SEVEN;**19,43,57,58,64,65,76,82,91**;
+           Oct 13, 1995
+ HLTF0   ;AISC/SAW,JRP - File Data in Message Text File ; 
+           05/05/2000 09:01
+         ;;1.6;HEALTH LEVEL SEVEN;**12,19,64,91**;Oct 13, 1995
+ HLTP1   ;AISC/SAW-Transaction Processor Module (Cont'd) ;04/21/98  09:38
+         ;;1.6;HEALTH LEVEL SEVEN;**34,47,91**;Oct 13, 1995
+ HLTP4   ;SFIRMFO/RSD - Transaction Processor for TCP ;03/07/2000  17:41
+         ;;1.6;HEALTH LEVEL SEVEN;**19,57,59,91**;Oct 13, 1995
+  
+ The VA Kernel checksum for the routine included in this patch
+ (calculated using CHECK^XTSUMBLD) is listed below.
+  
+                 Checksum        Checksum
+   Routine Name  Before Patch    After Patch     Patch List
+   ============  ============    ===========     =====================
+   HLCSAS1       1743950         2183617         43,57,91
+   HLMA          9200711         9200711         19,43,58,63,66,82,91
+   HLMA1         3849338         3849338         19,43,91
+   HLMA2         8331015         8331015         19,43,57,58,64,65,76,82,91
+   HLTF0         3232637         3415603         12,19,64,91
+   HLTP1         4286011         4286011         34,47,91
+   HLTP4         7964901         7964901         19,57,59,91
+  
+ Sites should use CHECK^XTSUMBLD to verify checksums after patch
+ installation.
+  
+ There are five routines above whose checksums will not change after this 
+ patch is installed; HLMA, HLMA1, HLMA2, HLTP1, and HLTP4.  The only 
+ changes made to these routines is the addition of comment lines 
+ documenting the new HLP("NAMESPACE") array element.  Since comment lines 
+ are not counted in a routine's checksum, the addition of these comment 
+ lines do not affect the routine's checksums.
+  
+ Installation Instructions:
+ ==========================
+  
+    NOTICE:  Do not proceed unless patches HL*1.6*47, HL*1.6*57, 
+             HL*1.6*59, and HL*1.6*82 have been installed.
+  
+    1.  Users are allowed to be on the system during the installation.
+  
+    2.  AXP/DSM SITES: Review your mapped routine set.  If the
+        routine listed in the ROUTINE SUMMARY section is mapped, it
+        should be removed from the mapped set at this time.
+  
+    3.  Stop all background processes (logical links and incoming
+        and outgoing filers) using the 'Filer and Link Management 
+        Option's 'Stop All Messaging Background Processes [HL STOP ALL]' 
+        menu option.
+  
+    4.  Stop the link manager using the 'TCP Link Manager Start/Stop 
+        [HL START/STOP LINK MANAGER]' menu option.
+  
+    5.  AXP/DSM SITES ONLY: Disable all HL7 UCX Services for this
+        installation.
+  
+    6.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This
+        option will load the KIDS package onto your system.
+  
+    7.  This patch is now loaded into a transport global on your
+        system. The next step is to use KIDS to install the Transport
+        global. This is done using the 'Installation' menu's 'Install
+        Package(s) [XPD INSTALL BUILD]' menu option. When using this
+        menu option to install the patch build, you will be asked
+        several questions.  The questions, and the answers you should
+        supply, are shown below.
+  
+        INSTALL NAME: <HL*1.6*91>
+        Want KIDS to INHIBIT LOGONS during the install?  <NO>
+        Want to DISABLE Scheduled Options, Menu Options,
+          and Protocols?  <NO>
+  
+    8.  Start all background processes (logical links and incoming
+        and outgoing filers) using the Filer and Link Management 
+        Option's 'Restart/Start All Links and Filers [HL TASK RESTART]'
+        menu option.
+  
+        (Note that links that do not have "autostart" enabled will need
+        to be restarted manually.)
+  
+    9. AXP/DSM SITES ONLY: If you previously disabled an HL7 UCX Service
+       for this installation, you may enable it now.
+  
+   10.  AXP/DSM SITES ONLY: After the patch has been installed, rebuild
+        your map set, if necessary.
+  
+   11.  Start the link manager using the 'TCP Link Manager Start/Stop
+        [HL START/STOP LINK MANAGER]' menu option.
+
+Routine Information:
+====================
+
+Routine Name:
+  - HLMA
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLMA1
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLMA2
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLTF0
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLTP1
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLTP4
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSAS1
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : ANDREASSEN,LARRY               Date Entered : FEB 15, 2002
+Completed By: HERREN,CATHRYN                Date Completed: MAY 16, 2002
+Released By : APOLONIO,AUGUSTO              Date Released : MAY 17, 2002
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

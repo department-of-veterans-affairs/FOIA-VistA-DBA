@@ -1,0 +1,915 @@
+
+=============================================================================
+Run Date: APR 23, 2004                     Designation: TIU*1*112
+Package : TIU - TEXT INTEGRATION UTILITIES    Priority: Mandatory
+Version : 1       SEQ #164                      Status: Released
+                  Compliance Date: JUN 22, 2004
+=============================================================================
+
+Associated patches: (v)TIU*1*61    <<= must be installed BEFORE `TIU*1*112'
+                    (v)TIU*1*100   <<= must be installed BEFORE `TIU*1*112'
+                    (v)TIU*1*109   <<= must be installed BEFORE `TIU*1*112'
+                    (v)TIU*1*113   <<= must be installed BEFORE `TIU*1*112'
+                    (v)TIU*1*115   <<= must be installed BEFORE `TIU*1*112'
+                    (v)TIU*1*123   <<= must be installed BEFORE `TIU*1*112'
+                    (v)TIU*1*124   <<= must be installed BEFORE `TIU*1*112'
+                    (v)PXRM*1.5*7  <<= must be installed BEFORE `TIU*1*112'
+                    (v)TIU*1*131   <<= must be installed BEFORE `TIU*1*112'
+                    (v)TIU*1*151   <<= must be installed BEFORE `TIU*1*112'
+                    (v)TIU*1*154   <<= must be installed BEFORE `TIU*1*112'
+                    (v)TIU*1*162   <<= must be installed BEFORE `TIU*1*112'
+                    (v)TIU*1*164   <<= must be installed BEFORE `TIU*1*112'
+                    (v)TIU*1*167   <<= must be installed BEFORE `TIU*1*112'
+
+Subject: TIU/SURGERY INTERFACE
+
+Category: 
+  - Routine
+  - Enhancement (Mandatory)
+  - Data Dictionary
+  - Input Template
+  - Other
+
+Description:
+============
+
+ GENERAL DESCRIPTION:
+ ====================
+ This patch implements an interface with the Surgery Package v3.0. Nurse
+ Intraoperative, Anesthesia, and Operation Reports will be captured,
+ electronically signed, and stored in TIU, and will be available on the new
+ Surgery Tab in CPRS. Sites using the Non-OR Procedure module of the
+ Surgery Package will also be able to capture, sign, and retain Procedure
+ Reports for such cases. 
+  
+ The Reminders Exchange utility is used to export and install a new 
+ Surgical Reports Class as an immediate descendent of the Clinical
+ Documents class, with the following hierarchical structure:
+  
+ 1      CLINICAL DOCUMENTS                  CL  
+ 2       +ADDENDUM                          DC  
+ 3       +DISCHARGE SUMMARY                 CL  
+ 4       +PROGRESS NOTES                    CL  
+ 5        SURGICAL REPORTS                  CL  
+ 6          OPERATION REPORTS               DC  
+ 7            OPERATION REPORT              TL  
+ 8          NURSE INTRAOPERATIVE REPORTS    DC  
+ 9            NURSE INTRAOPERATIVE REPORT   TL  
+ 10         ANESTHESIA REPORTS              DC  
+ 11           ANESTHESIA REPORT             TL  
+ 12         PROCEDURE REPORT (NON-O.R.)     DC  
+ 13           PROCEDURE REPORT              TL  
+  
+ These new entries in the Document Definition file will be activated upon
+ Installation, but won't come into use until implementation of SR*3*100 is
+ complete.
+ 
+ An environment check will be performed to ensure that the new entries will 
+ not conflict with any pre-existing DOCUMENT CLASS or TITLE.
+  
+ At the time of release of SR*3*100 and TIU*1*112, some functional issues 
+ related to retracting and reassigning documents remained. There was also 
+ an intermittent problem with addenda not being attached to the parent 
+ operative report document.  All of these issues will be addressed in 
+ follow-up patches to TIU and Surgery software. The patch numbers are 
+ TIU*1*187 and SR*3*128.
+  
+ TIU*1.0*187 is currently in the testing phase and is expected to be 
+ released shortly.
+  
+ Here are the remaining issues related that will be addressed by 
+ TIU*1.0*187.
+  
+ LIT-0204-70862 Unattached Addendum
+ Addendums created with an unknown document associated when they should be 
+ attached to an Operation Report
+  
+ Work Around: There is no available workaround. The problem will be
+ corrected with the release of TIU*1.0*187.
+  
+  
+ LIT-0304-70956 Concurrent Case Issue
+ Reassigning Documents functions differently from other TIU documents. 
+ Operation Reports were hard-coded to prevent reassignment if text was 
+ already entered for the document attached to the Surgery case.
+  
+ Work Around: There is no available workaround. The problem will be
+ corrected with the release of TIU*1.0*187.
+  
+  
+ SBY-0303-30729 Reassign problems for Operation Reports
+ Reassigning Documents functions differently from other TIU documents. 
+ Operation Reports were hard-coded to prevent reassignment if text was 
+ already entered for the document attached to the Surgery case.
+  
+ Work around: There is no available workaround. The problem will be
+ corrected with the release of TIU*1.0*187.
+ 
+ 
+ NOIS MESSAGES:
+ ==============
+ No open NOIS calls are resolved by this patch.
+  
+ E3Rs:
+ =====
+ #13560 ELECTRONIC SIGNATURE OF OPERATION REPORTS
+ This patch, together with SR*3*100, will satisfy the request.
+   
+ BUILD COMPONENTS:
+ =================
+  
+ DATA DICTIONARIES:
+ ==================
+                                          UP    SEND  DATA                USER
+                                          DATE  SEC.  COMES  SITE   RSLV  OVER
+ FILE #      NAME                         DD    CODE  W/FILE DATA   PTS   RIDE
+ -------------------------------------------------------------------------------
+  
+ 8925        TIU DOCUMENT                 YES   YES   NO                  
+ Partial DD: subDD: 8925       fld: 1405
+ The REQUESTING PACKAGE REFERENCE field is extended to allow a reference 
+ to a SURGICAL CASE in file #130 to be kept for one or more TIU Documents
+ belonging to the SURGICAL REPORTS Class.
+  
+ 8925.1      TIU DOCUMENT DEFINITION      YES   YES   NO                  
+ Partial DD: subDD: 8925.1     fld: .01
+                               fld: .02
+                               fld: .03
+                               fld: 6.5
+                               fld: 6.51
+ The input transforms for fields .01, .02, and .03 are revised to 
+ eliminate use of the local variable DA, which is not used by VA FileMan's
+ Database Server calls (i.e., UPDATE^DIE and FILE^DIE). In addition, two
+ new MUMPS-type fields are added to the TIU DOCUMENT DEFINITION file to
+ support optional functions that the developer of a Class may wish to be
+ executed On Browse (e.g., inclusion of supplementary information from the
+ requesting package), or On Retract (e.g., communication with the
+ requesting package when a document belonging to their Class is retracted). 
+  
+ INPUT TEMPLATE:
+ ===============
+ TIU ENTER/EDIT SURGICAL REPORT    FILE #8925 
+   This is the EDIT TEMPLATE used by the new SURGICAL REPORTS Class, when 
+   a user elects to edit any of the new Surgery titles using the List
+   Manager Interface.
+  
+  
+ OPTIONS:
+ ========
+ TIU REVIEW UNDICTATED DOCS
+   This new option presents the clinician with a list of all his/her 
+   UNDICTATED documents, which may then be dictated, transcribed, and
+   uploaded into TIU. For the time being, only Operation and/or Procedure
+   Reports generated from Surgical Cases will be included in this list.
+   When the Clinical Procedures application is implemented, undictated CP
+   Reports will appear in the list as well. This new option will be added
+   to the Integrated Document Management [TIU MAIN MENU MIXED CLINICIAN]
+   menu in TIU. You may also wish to add it to your Surgery Menu if your
+   Surgeons are more likely to access it from there.
+  
+ TIU BROWSE DOC TRANSCRIPTION
+   This new option allows the transcriptionist to select one or more 
+   documents from specific patient's record, and browse each document
+   in succession. It allows the transcriber to search, edit, make addenda,
+   or print each document, as specified by local business rules.
+  
+ TIU REVIEW UNTRANSCRIBED DOCS
+   This new option allows transcriptionists to generate a list of documents
+   that satisfy a variety of search criteria (UNDICTATED and UNTRANSCRIBED 
+   documents by default) and search, browse, edit, make addenda, or print 
+   selected documents from the list, as permitted by local business rules.
+  
+  
+ LIST TEMPLATES:
+ ===============
+ TIU BROWSE FOR TRANSCRIPTION
+   This List Template will allow transcriptionists to browse documents, 
+   and act on them to search, edit, make addenda, or print documents, as
+   permitted by the business rules for the facility.
+  
+ TIU DOCUMENT DICTATED
+   This List Template will present the user with the available information 
+   about a single undictated document, and allow him/her to specify that
+   the document has been dictated (when, and by whom).
+  
+ TIU REVIEW UNDICTATED DOCS
+   This List Template will present the clinician with a list of his/her
+   undictated Documents which they may then review and dictate.
+  
+ TIU REVIEW UNTRANSCRIBED DOCS
+   This List Template will present transcriptionists with lists of 
+   undictated and untranscribed documents, and allow them to search,
+   browse, edit, or print documents as permitted by local business rules.
+  
+  
+ PROTOCOLS:
+ ==========
+ TIU ACTION BROWSE FOR TRANSCRIPTION
+   Allows users to browse through Documents from the Review Screen.  In
+   addition to scrolling sequentially through the selected documents and
+   their addenda, the user may Search for a particular word or phrase, or
+   Print draft copies to a selected device.
+  
+ TIU ACTION DICTATE DOCUMENTS
+   Allows users to mark documents as "Dictated/Not Transcribed." 
+   
+   NOTE:  This step is only applicable when an UNDICTATED document is 
+   created in anticipation of Dictation/Transcription and Upload.
+  
+ TIU ACTION MENU DICTATION
+   Menu of actions supporting dictation. Used by the List Template TIU 
+   REVIEW UNDICTATED DOCS.
+  
+ TIU ACTION MENU TRANSCRIPTION
+   Menu of actions which may be executed by transcriptionists.
+  
+ TIU BROWSE ACTION DOCUMENT DICTATED
+   Allows clinicians to indicate that the current document has been 
+   dictated (along with when and by whom).
+  
+ TIU BROWSE MENU DICTATION 
+   Menu of actions supporting dictation. Used by the List Template TIU 
+   DOCUMENT DICTATED.
+  
+ TIU BROWSE MENU TRANSCRIPTION
+   Menu of actions which may be executed within the browser by 
+   transcriptionists.
+  
+  
+ REMOTE PROCEDURES:
+ ==================
+ TIU GET DOCUMENTS FOR REQUEST
+   This Remote Procedure returns the list of documents associated with a
+   given Request (e.g., Consult Request, or Surgical Case).
+  
+ TIU IDENTIFY SURGERY CLASS
+   This RPC returns the record number of the new SURGICAL REPORTS Class
+   in the TIU DOCUMENT DEFINITION file (#8925.1).
+  
+ TIU IS THIS A SURGERY? 
+   BOOLEAN RPC which evaluates whether the title indicated is that of a
+   SURGICAL REPORT
+  
+ TIU LONG LIST SURGERY TITLES
+   This RPC serves lists of selectable TITLES within the SURGICAL REPORTS
+   Class.
+ 
+ HOST FILE & DOCUMENTATION:
+ =========================
+ This patch will be available only as a host file.
+ The name of the file is TIU_1_112.KID.
+ 
+ Sites will retrieve VistA software via FTP.  The preferred method is to 
+ FTP the file from download.vista.med.va.gov.  This transmits the file 
+ from the first available FTP server.  Sites may also elect to retrieve 
+ software directly from a specific server as follows:
+ 
+    CIO FIELD OFFICE   FTP ADDRESS                 DIRECTORY
+    ----------------   -------------------------   --------------------
+    Albany             ftp.fo-albany.med.va.gov    [anonymous.software]
+    Hines              ftp.fo-hines.med.va.gov     [anonymous.software]
+    Salt Lake City     ftp.fo-slc.med.va.gov       [anonymous.software]
+  
+ The updated TIU documentation for the user and technical manual are also 
+ available at the FTP sites listed above.
+ The name of the files are TIU_1_112TM.PDF and TIU_1_112UM.PDF.
+ 
+ ROUTINES:
+ =========
+ The following is a list of the routines included in this patch. The 
+ second line of each routine looks like:
+  
+ <tab>;;1.0;TEXT INTEGRATION UTILITIES;**[Patch List]**;Jun 20, 1997
+ 
+ Routine Name   Before Patch   After Patch                        Patch List
+ ============   ============   ===========                        ==========
+ TIUADD             10055641      10105914                      3,88,100,112
+ TIUBR               9779863      10472369           32,87,93,58,100,162,112
+ TIUEC112                N/A       2629625                               112
+ TIUEDIM             7816881       8197053               7,41,52,100,109,112
+ TIUEDIT            10502468      10869456             1,7,22,52,100,109,112
+ TIUEDITR            5733951       6114123               7,41,48,100,109,112
+ TIULC1              8200882       8593301         3,4,40,49,100,131,113,112
+ TIUPEFIX            9563806      10094241              1,21,100,167,113,112
+ TIUPR112                N/A       1377701                               112
+ TIUPS112                N/A       2728910                               112
+ TIUPUTC             9502796       9511887               3,21,81,100,113,112
+ TIUPUTS                 N/A       8844502                               112
+ TIUR               12321278      11973297              74,79,58,100,113,112
+ TIUR1               8333778       8175593                    79,100,113,112
+ TIURA2              5062577       8344398                 88,58,100,123,112
+ TIURB2             10109406      10551884                   100,109,154,112
+ TIURD2             18598009      18738274                61,100,109,113,112
+ TIURD3             19248184      19545727                    61,124,113,112
+ TIUSROI                 N/A      12417350                               112
+ TIUSROI1                N/A      10634824                               112
+ TIUSRV             15191430      14983008     1,19,28,87,61,100,109,113,112
+ TIUSRV1             8098565       7339303                        61,100,112
+ TIUSRVD             8828085       9479523     1,7,22,47,103,100,115,164,112
+ TIUSRVLR                N/A       1456289                               112
+ TIUSRVP            15211186      14179202   1,7,19,28,47,89,104,100,115,109
+                                                                 167,113,112
+ TIUSRVP1            8522129       9252695      19,59,89,100,109,167,113,112
+ TIUSRVR             5274640       5421089           19,28,69,89,122,109,112
+ TIUSRVR1            7985599       8693624           19,32,87,89,100,109,112
+ 
+ INSTALLATION:
+ =============
+ This patch should be loaded during non-peak hours to minimize disruption 
+ to users, who can remain on the system during installation.  Installation 
+ will take less than 2 minutes.
+  
+ 1. Use the 'Load a Distribution' option on the KIDS installation menu.  
+    When prompted to enter a host file, type in TIU_1_112.KID.
+  
+ 2. Review your mapped set. If any of the routines are mapped, they should
+    be removed from the mapped set at this time.
+  
+ 3. On the KIDS menu under the 'INSTALLATION' menu, use the following
+    options as desired:
+       Print Transport Global
+       Compare Transport Global to Current System
+       Verify checksums in Transport Global
+       Backup a Transport Global
+  
+ 4. On the KIDS menu under the 'INSTALLATION' menu, use the following 
+    options to install the patch:
+       Install Packages(s)  (TIU*1.0*112)
+ 
+ 5. When prompted, "Want KIDS to Rebuild Menu Trees Upon Completion of
+    Install? YES//", respond NO.
+  
+ 6. When prompted "Want KIDS to INHIBIT LOGON's during the install? YES//",
+    respond "NO".
+ 
+ 7.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and 
+     Protocols? YES//', respond YES, and DISABLE the TIU* Options and
+     Protocols.
+  
+ 8. When prompted "Delay Install (Minutes): (0-60) 0//" respond "0"
+  
+ 9. If any routines were unmapped as part of step 2, they should be
+    returned to the mapped set once the installation has run to completion.
+  
+ 10.After the package has been installed successfully, sites should delete
+    the post-install routine, TIUPS112, and the environment check routine, 
+    TIUEC112.
+  
+  
+ POST-INSTALLATION INSTRUCTIONS:
+ ===============================
+  
+ 1. Your Clinical Applications Coordinator (CAC) should work with your 
+    Surgery ADPAC to define the parameters for the new SURGICAL REPORTS
+    Class, using the Document Parameter Edit option [TIU DOCUMENT PARAMETER
+    EDIT] as shown below:
+  
+ >D ^XUP
+  
+ Setting up programmer environment
+ Terminal Type set to: C-VT320
+  
+ Select OPTION NAME: TIU IRM MAINTENANCE MENU       TIU Maintenance Menu
+  
+  
+    1      TIU Parameters Menu ...
+    2      Document Definitions (Manager) ...
+    3      User Class Management ...
+  
+  
+ You have PENDING ALERTS
+           Enter  "VA   VIEW ALERTS     to review alerts
+  
+ Select <Boston HCS> TIU Maintenance Menu Option: 1  TIU Parameters Menu
+  
+  
+    1      Basic TIU Parameters
+    2      Modify Upload Parameters
+    3      Document Parameter Edit
+    4      Progress Notes Batch Print Locations
+    5      Division - Progress Notes Print Params
+  
+  
+ You have PENDING ALERTS
+           Enter  "VA   VIEW ALERTS     to review alerts
+  
+ Select <Boston HCS> TIU Parameters Menu Option: DOCument Parameter Edit
+ First edit Institution-wide parameters:
+  
+ Select DOCUMENT DEFINITION: SURGICAL REPORTS       CLASS
+   Are you adding 'SURGICAL REPORTS' as 
+     a new TIU DOCUMENT PARAMETERS (the 69TH)? No// Y  (Yes)
+ DOCUMENT DEFINITION: SURGICAL REPORTS// 
+ REQUIRE RELEASE: ??
+    This parameter determines whether the person entering the document is
+    required (and prompted) to release the document from a draft state upon
+    exit from the entry/editing process.
+         
+    Though designed for Discharge Summaries, release may be used for any
+    kind of TIU document.
+    
+      Choose from: 
+        1        YES
+        0        NO
+ REQUIRE RELEASE: N  NO
+ REQUIRE MAS VERIFICATION: ??
+    This parameter determines whether verification by MAS is required, prior
+    to public access and signature of the document.
+          
+    Though designed for Discharge Summaries, verification may be used for any
+    kind of TIU document, and is particularly helpful for documents that are
+    uploaded from a transcription service.
+          
+    Allowable values are:  0       NO
+                           1       YES, ALWAYS
+                           2       UPLOAD ONLY
+                           3       DIRECT ENTRY ONLY
+          
+    where 1 indicates that these documents require verification regardless of
+    how they originate; 2 indicates that verification is required only when
+    the documents are Uploaded; and 3 indicates that verification is required
+    only when documents are entered directly into VISTA.
+    
+      Choose from: 
+        1        YES, ALWAYS
+        0        NO
+        2        UPLOAD ONLY
+        3        DIRECT ENTRY ONLY
+ REQUIRE MAS VERIFICATION: N  NO
+ REQUIRE AUTHOR TO SIGN: ??
+    Currently applies only to Discharge Summaries. This field indicates
+    whether or not the author should sign the document before the expected
+    cosigner (attending).
+          
+    If parameter is set to NO, only the expected cosigner is alerted for
+    signature. Although the unsigned document appears in the author's unsigned
+    list, and he is ALLOWED to sign it, his signature is not REQUIRED.
+          
+    If set to YES, then the author is alerted for signature, and if the
+    expected cosigner should attempt to sign the document first, he is
+    informed that the author has not yet signed.
+    
+      Choose from: 
+        1        YES
+        0        NO
+ REQUIRE AUTHOR TO SIGN: Y  YES
+ ROUTINE PRINT EVENT(S): ??
+    A document of the given type, and of ROUTINE urgency, is automatically
+    printed whenever one of these events occurs.
+          
+    For example, a site may specify that ROUTINE documents print only upon
+    Completion (i.e., signature or cosignature), while STAT documents print
+    upon Release from Transcription, MAS Verification, or both, in addition 
+    to printing upon completion.
+          
+    If print events are not specified, and a CHART COPY DEVICE is defined for
+    the Medical Center Division, then the document will be auto-printed only
+    upon completion.
+          
+    If field MANUAL PRINT AFTER ENTRY is set to YES, then auto-print is
+    ignored entirely.
+          
+    If urgency is not specified for some document, then its urgency is
+    considered to be routine, and the document prints when a routine print
+    event occurs.
+    
+      Choose from: 
+        R        release
+        V        verification
+        B        both
+ ROUTINE PRINT EVENT(S): 
+ STAT PRINT EVENT(S): ??
+    This field is identical to ROUTINE PRINT EVENT(S), except that it applies
+    to documents of STAT urgency rather than ROUTINE urgency.
+    
+      Choose from: 
+        R        release
+        V        verification
+        B        both
+ STAT PRINT EVENT(S): 
+ MANUAL PRINT AFTER ENTRY: Y  YES
+ ALLOW CHART PRINT OUTSIDE MAS: ^MANUAL PRINT AFTER ENTRY  
+ MANUAL PRINT AFTER ENTRY: YES// ??
+    This parameter is used for documents where a manually-printed hard copy
+    is desired following document entry. If the parameter is set to YES, the
+    user is prompted to print a copy on exit from their preferred editor, and
+    auto-printing (as described in fields ROUTINE/STAT PRINT EVENT(S)) is
+    ignored.
+    
+      Choose from: 
+        1        YES
+        0        NO
+ MANUAL PRINT AFTER ENTRY: YES// Y  YES
+ ALLOW CHART PRINT OUTSIDE MAS: ??
+    This field determines whether non-MAS users (for example, providers) are
+    asked if they want WORK copies or CHART copies when they print a document.
+    If the field is NOT set to YES, they are not asked, and the printout is a
+    WORK copy.
+          
+    Generally, this is set to YES for PROGRESS NOTES, which are likely to be
+    printed on the Ward or in the Clinic for immediate inclusion in the chart.
+    For DISCHARGE SUMMARIES, which are typically printed centrally, it is
+    usually set to NO, since duplicate CHART COPIES are a particular problem.
+    
+      Choose from: 
+        1        YES
+        0        NO
+ ALLOW CHART PRINT OUTSIDE MAS: Y  YES
+ ALLOW >1 RECORDS PER VISIT: ??
+    This field determines whether a given document may be created more than
+    once per visit.  For example, it is often appropriate to enter multiple
+    PROGRESS NOTES for a single HOSPITALIZATION or CLINIC VISIT, whereas only
+    one DISCHARGE SUMMARY is usually entered per HOSPITALIZATION.
+    
+      Choose from: 
+        1        YES
+        0        NO
+ ALLOW >1 RECORDS PER VISIT: Y  YES
+ ENABLE IRT INTERFACE: ??
+    This enables TIU's interface with Incomplete Record Tracking (IRT),
+    which updates IRT's deficiencies when transcription, signature,
+    or cosignature events are registered for a given document.
+          
+    NOTE: IRT is designed for DISCHARGE SUMMARIES, and is appropriate only for
+    types of documents where only one document is expected per patient
+    movement. We therefore ask you to leave this parameter undefined (or set
+    it to NO) for PROGRESS NOTES.
+    
+      Choose from: 
+        0        NO
+        1        YES
+ ENABLE IRT INTERFACE: N  NO
+ SUPPRESS DX/CPT ON ENTRY: ??
+    This parameter applies only to documents for outpatient care. Together
+    with parameter ASK DX/CPT ON ALL OPT VISITS, it determines whether or not
+    a user is prompted for diagnoses and procedures after signing or editing a
+    document.
+          
+    If this parameter is set to YES (for suppress), the user is not prompted
+    for this information. 
+          
+    If this parameter is set to NO or is blank, the user may or may not be
+    prompted, depending on the type of visit and on parameter ASK DX/CPT ON
+    ALL OPT VISITS.
+          
+    If a site elects to suppress diagnoses and procedures, the site must
+    capture this information by some other means (such as an AICS encounter
+    form), in order to receive workload credit for these visits.
+    
+      Choose from: 
+        1        YES
+        0        NO
+ SUPPRESS DX/CPT ON ENTRY: 
+ FORCE RESPONSE TO EXPOSURES: ??
+    When set to YES, this parameter forces the user to respond when asked to
+    specify a veteran's Service Connection Classification (AO, IR, or EC),
+    when creating a standalone visit.
+    
+      Choose from: 
+        1        YES
+        0        NO
+ FORCE RESPONSE TO EXPOSURES: 
+ ASK DX/CPT ON ALL OPT VISITS: ??
+    This parameter applies only to documents for outpatient care, and is
+    IGNORED if SUPPRESS DX/CPT ON ENTRY is set to YES.
+          
+    If DX/CPT prompts are NOT suppressed, and ASK DX/CPT ON ALL OPT VISITS is
+    set to YES, the user is prompted for DX/CPT information for scheduled as
+    well as unscheduled (stand-alone) visits.
+          
+    If DX/CPT prompts are NOT suppressed, and ASK DX/CPT ON ALL OPT VISITS is
+    set to NO, the user is prompted for DX/CPT information for unscheduled
+    visits ONLY.
+    
+      Choose from: 
+        1        YES
+        0        NO
+ ASK DX/CPT ON ALL OPT VISITS: 
+ SEND ALERTS ON ADDENDA: ??
+    This parameter determines whether AUTHORS and COSIGNERS of a document of
+    this kind (and any of its descendent types) will receive an informational
+    alert when addenda are added by other persons. Like all document
+    parameters, it may be overridden at descendent levels of the Document
+    Definition Hierarchy. DEFAULT is NO.
+    
+      Choose from: 
+        1        YES
+        0        NO
+ SEND ALERTS ON ADDENDA: N  NO
+ ORDER ID ENTRIES BY TITLE: ??
+    This prompt applies only to notes with interdisciplinary entries under
+    them.
+          
+    When an ID note is displayed or printed, the child entries are normally
+    ordered by reference date under the parent entry. In some cases it may be
+    preferable to order them alphabetically by title. If this parameter is set
+    to YES, child entries are displayed by title rather than by date.
+          
+    The default order is by date.
+    
+      Choose from: 
+        1        YES
+        0        NO
+ ORDER ID ENTRIES BY TITLE: 
+ SEND ALERTS ON NEW ID ENTRY: ??
+    This parameter applies only to interdisciplinary parent notes.
+         
+    If this parameter is set to YES, the signer (cosigner) of an
+    interdisciplinary parent note is alerted when a new entry is added to the
+    note.
+          
+        The default is NO.
+    
+      Choose from: 
+        1        YES
+        0        NO
+ SEND ALERTS ON NEW ID ENTRY: 
+ SEND COSIGNATURE ALERT: ??
+    This parameter controls the sequence in which alerts are sent to the
+    expected cosigner of a document. Allowable choices are:
+    
+      Choose from: 
+        0        After Author has SIGNED
+        1        Immediately (Concurrent w/Author)
+ SEND COSIGNATURE ALERT: I  Immediately (Concurrent w/Author)
+ EDITOR SET-UP CODE: ??
+    This is M code which is executed prior to invoking the user's preferred
+    editor.  It ordinarily sets local variables, which are then used in the
+    editor's header, etc.
+          
+    For example, code written at Boston VAMC sets a local array containing
+    patient demographics.  An M-based editor used at the site can then display
+    demographic information in a fixed header when a user edits a document.
+    
+ EDITOR SET-UP CODE: 
+  
+ If document is to be uploaded, specify Filing Alert Recipients:
+  
+ Select FILING ERROR ALERT RECIPIENTS: <LASTNAME,FIRST>
+   Are you adding '<LASTNAME,FIRST>' as 
+    a new FILING ERROR ALERT RECIPIENTS (the 1ST for this TIU DOCUMENT
+    PARAMETERS)? No// Y  (Yes)
+ Select FILING ERROR ALERT RECIPIENTS: <Enter> 
+  
+ Now enter the USER CLASSES for which cosignature will be required:
+  
+ Select USERS REQUIRING COSIGNATURE: <Enter> 
+  
+ Now enter the DIVISIONAL parameters:
+  
+ Select DIVISION: <Enter>
+  
+ Press RETURN to continue...<Enter>
+  
+  
+    1      Basic TIU Parameters
+    2      Modify Upload Parameters
+    3      Document Parameter Edit
+    4      Progress Notes Batch Print Locations
+    5      Division - Progress Notes Print Params
+ 
+ Select <Boston HCS> TIU Parameters Menu Option:
+  
+  
+    Note that the parameter values indicated above are suggestions only. 
+    You may have substantially different requirements at your facility,
+    depending upon your work process for Surgical Reports. You may also
+    override them for particular Document Classes or Titles that descend
+    from Surgical Reports.
+  
+ 2. Finally, to complete implementation of this patch, please refer to the
+    Installation and Implementation Guides for SR*3*100, which outlines the
+    new functionality as well as recommended ASU Business Rules for the new
+    SURGICAL REPORTS Class. These are:
+  
+ ASU Rule Browser          Jul 31, 2002@13:12:42         Page:    1 of    1
+               List Business Rules by DOCUMENT DEFINITION          28 Rules
+                        for CLASS SURGICAL REPORTS
+ +-------------------------------------------------------------------------
+ 1    A COMPLETED (CLASS) SURGICAL REPORT may BE VIEWED by a USER
+ 2    An UNSIGNED (CLASS) SURGICAL REPORT may BE EDITED by an 
+        AUTHOR/DICTATOR
+ 3    An UNSIGNED (CLASS) SURGICAL REPORT may BE DELETED by an 
+        AUTHOR/DICTATOR
+ 4    An UNSIGNED (CLASS) SURGICAL REPORT may BE VIEWED by an 
+        AUTHOR/DICTATOR
+ 5    An UNCOSIGNED (CLASS) SURGICAL REPORT may BE VIEWED by an 
+        AUTHOR/DICTATOR
+ 6    An UNCOSIGNED (CLASS) SURGICAL REPORT may BE VIEWED by an EXPECTED 
+        COSIGNER
+ 7    An UNSIGNED (CLASS) SURGICAL REPORT may BE PRINTED by an 
+        AUTHOR/DICTATOR
+ 8    An UNCOSIGNED (CLASS) SURGICAL REPORT may BE PRINTED by an 
+        AUTHOR/DICTATOR
+ 9    An UNCOSIGNED (CLASS) SURGICAL REPORT may BE EDITED by an EXPECTED 
+        COSIGNER
+ 10   An UNCOSIGNED (CLASS) SURGICAL REPORT may BE PRINTED by an EXPECTED
+        COSIGNER
+ 11   An UNSIGNED (CLASS) SURGICAL REPORT may BE SIGNED by an 
+        AUTHOR/DICTATOR
+ 12   An UNCOSIGNED (CLASS) SURGICAL REPORT may BE COSIGNED by an EXPECTED
+        COSIGNER
+ 13   An UNSIGNED (CLASS) SURGICAL REPORT may BE VIEWED by a CHIEF, MIS
+ 14   An UNSIGNED (CLASS) SURGICAL REPORT may BE DELETED by a CHIEF, MIS
+ 15   An UNCOSIGNED (CLASS) SURGICAL REPORT may BE VIEWED by a CHIEF, MIS
+ 16   An UNCOSIGNED (CLASS) SURGICAL REPORT may BE DELETED by a CHIEF, MIS
+ 17   An UNSIGNED (CLASS) SURGICAL REPORT may BE EDITED by an EXPECTED 
+        COSIGNER
+ 18   An UNSIGNED (CLASS) SURGICAL REPORT may BE VIEWED by an EXPECTED 
+        COSIGNER
+ 19   An UNSIGNED (CLASS) SURGICAL REPORT may BE EDITED by a CLINICAL 
+        SERVICE CHIEF
+ 20   An UNSIGNED (CLASS) SURGICAL REPORT may BE VIEWED by a CLINICAL 
+        SERVICE CHIEF
+ 21   An UNSIGNED (CLASS) SURGICAL REPORT may BE SIGNED by a CLINICAL 
+        SERVICE CHIEF
+ 22   An UNSIGNED (CLASS) SURGICAL REPORT may BE SIGNED by an EXPECTED 
+        COSIGNER
+ 23   An UNCOSIGNED (CLASS) SURGICAL REPORT may BE VIEWED by a USER
+ 24   An UNCOSIGNED (CLASS) SURGICAL REPORT may BE COSIGNED by an ATTENDING
+        PHYSICIAN
+ 25   A COMPLETED (CLASS) SURGICAL REPORT may BE DELETED by a CHIEF, MIS
+ 26   An UNTRANSCRIBED (CLASS) SURGICAL REPORT may BE VIEWED by an
+        AUTHOR/DICTATOR
+ 27   An UNDICTATED (CLASS) SURGICAL REPORT may BE EDITED by an 
+        AUTHOR/DICTATOR
+ 28   A RETRACTED (CLASS) SURGICAL REPORT may BE VIEWED by a MEDICAL 
+        INFORMATION SECTION
+
+Routine Information:
+====================
+
+Routine Name:
+  - TIUADD
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUBR
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUEDIM
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUEDIT
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUEDITR
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIULC1
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUPEFIX
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUPR112
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUPS112
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUPUTC
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUPUTS
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUR
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUR1
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIURA2
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIURD2
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUSROI
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUSRV
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUSRV1
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUSRVD
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUSRVLR
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUSRVP
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUSRVP1
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUSRVR
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUSRVR1
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIURD3
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIUEC112
+
+
+Routine Checksum:
+
+Routine Name:
+  - TIURB2
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : RUSSELL,JOEL                  Date Entered  : FEB 14, 2001
+Completed By: CONDIE,KENNY                  Date Completed: APR 22, 2004
+Released By : RIDINGS,SCOTT                 Date Released : APR 23, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

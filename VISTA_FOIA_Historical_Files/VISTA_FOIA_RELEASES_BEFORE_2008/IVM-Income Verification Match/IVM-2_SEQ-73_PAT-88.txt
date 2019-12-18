@@ -1,0 +1,227 @@
+$TXT Created by HUA,PATRICK at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 09/10/03 at 13:13
+=============================================================================
+Run Date: SEP 17, 2003                     Designation: IVM*2*88
+Package : IVM - INCOME VERIFICATION MATCH     Priority: EMERGENCY
+Version : 2        SEQ #73                      Status: Released
+                  Compliance Date: SEP 19, 2003
+=============================================================================
+
+Associated patches: (v)IVM*2*74    <<= must be installed BEFORE `IVM*2*88'
+
+Subject: Stop Repeat Z07s on SC vets
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch is being released as an EMERGENCY in a continued effort to 
+ reduce the amount of HL7 traffic between VistA and the HEC.
+  
+ Under certain conditions, variable IVMMTDT can contain a value of null.
+ When this happens, the ZIC segment is built incorrectly with a value of 
+ -10000 (null income year minus one and concatenated with four zeros) and 
+ transmitted to HEC in a Z07 upload.  In addition to the ZIC segment being 
+ built incorrectly, the null IVMMTDT variable is also causing the check to 
+ $$LST^DGMTCOU1 to return a null.  This null-dated test is being passed 
+ into IVMPTRN3 where a lookup is done, to locate the IEN of the IVM 
+ PATIENT file #301.5.  As a result, the IEN of the IVM PATIENT file #301.5 
+ is not found and no new entry was created.  So, IVM PATIENT file #301.5 
+ is not updated and the ATR cross-reference is not killed out after a 
+ successful transmission to HEC.  This patch is addressing SC Veteran 
+ multiple transmitters only.  A subsequent patch, IVM*2.0*89 (Fix Means 
+ Test Repeaters), will be addressing the NSC repeaters.
+  
+ This patch, IVM*2.0*88, will update the IVMPTRN7 routine to set the 
+ IVMMTDT variable to a default of value of today if it is null.
+  
+  
+ This patch addresses the following E3R(s):
+ ------------------------------------------
+ There are no E3Rs associated with this patch.
+  
+  
+ This patch addresses the following NOIS message(s):
+ ---------------------------------------------------
+ IVM-0803-30372: CHECK EXCESSIVE NUMBER OF ORU Z07S
+  
+  
+ Overview of NOIS Message(s):
+ ---------------------------
+ NOIS: IVM-0803-30372 - CHECK EXCESSIVE NUMBER OF ORU Z07S
+  
+ Problem:  The HEC has recently began receiving a large amount of incoming 
+ Z07 messages from the sites.
+  
+ Resolution:  The IVM PATIENT file #301.5 is not being properly updated 
+ when a transmission is successfully sent to HEC.  As a result, multiple 
+ transmissions are sent again at a later time.  Code changes will be made 
+ to properly update the IVM PATIENT file.
+  
+  
+ Test Sites:
+ -----------
+ Madison
+ Milwaukee
+ Tomah
+  
+  
+        ================INSTALLATION INSTRUCTIONS =================
+  
+ If installed during the normal workday, it is recommended that the 
+ following menu options (File #19) and all of their descendants be 
+ disabled to prevent possible conflicts while running the KIDS Install.  
+ Other VISTA users will not be affected.
+  
+           [IVM BACKGROUND JOB]       IVM BACKGROUND JOB
+  
+ You may wish to stop the HL7 filers prior to the install to prevent 
+ possible 'No Source Errors' from occurring. No transmissions will be lost 
+ if the filers are not stopped first, they will be picked up once the 
+ filers are restarted.
+  
+ The patch should be installed during non-peak hours.
+  
+  
+ Install Time - 15 minutes
+  
+  
+   1.   LOAD TRANSPORT GLOBAL 
+        ---------------------
+        Choose the PackMan message containing this patch and invoke the
+        INSTALL/CHECK MESSAGE PackMan option.
+  
+   2.   DISABLE ROUTINE MAPPING   (DSM for Open VMS sites only)
+        -----------------------
+        Disable routine mapping on all systems for the routines listed in
+        step 3 below.
+  
+ NOTE:  If the routines included in this patch are not currently in
+               your mapped routine set, please skip this step.
+  
+   3.   COMPONENTS SENT WITH PATCH
+        --------------------------
+        The following is a list of the routines included in this patch.
+        The second line of each of these routines now looks like:
+  
+      <tab>;;2.0;INCOME VERIFICATION MATCH;**[patch list]**;JUL 8,1996
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch        Patch List
+  ============      ============          ===========        ==========
+  IVMPTRN7          1674268               1760223            9,11,24,34,74
+                                                             88
+  
+           Total number of routines - 1
+  
+   4.   START UP KIDS
+        -------------
+        Start up the Kernel Installation and Distribution System Menu
+        [XPD MAIN]:
+  
+             Edits and Distribution ...
+             Utilities ...
+             Installation ...
+  
+   Select Kernel Installation & Distribution System Option: INStallation 
+                                                            ---
+             Load a Distribution
+             Print Transport Global
+             Compare Transport Global to Current System
+             Verify Checksums in Transport Global
+             Install Package(s)
+             Restart Install of Package(s)
+             Unload a Distribution
+             Backup a Transport Global
+  
+   Select Installation Option:
+  
+   5.   Select Installation Option:
+        --------------------------
+        NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+               NAME, enter IVM*2.0*88):
+  
+        a.  Backup a Transport Global - This option will create a backup
+            message of any routines exported with this patch. It will not
+            backup any other changes such as DD's or templates.
+        b.  Compare Transport Global to Current System - This option will
+            allow you to view all changes that will be made when this patch
+            is installed.  It compares all components of this patch
+            (routines, DD's, templates, etc.).
+        c.  Verify Checksums in Transport Global - This option will allow
+            you to ensure the integrity of the routines that are in the
+            transport global.
+  
+   6.   Select Installation Option: Install Package(s)
+                                    ----------------
+        **This is the step to start the installation of this KIDS patch:
+  
+       a.  Choose the Install Package(s) option to start the patch install.
+       b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+           YES//' answer NO (unless otherwise indicated)
+       c.  When prompted 'Want to DISABLE Scheduled Options, Menu
+           Options, and Protocols? YES//' answer YES (unless otherwise
+           indicated)
+       d.  When prompted 'Enter options you wish to mark as 'Out Of
+           Order':'  Enter the following options:
+  
+             IVM BACKGROUND JOB  [IVM BACKGROUND JOB]
+  
+       e.  When prompted 'Enter protocols you wish to mark as 'Out Of
+           Order':' press <return>.
+  
+   7.   REBUILD MAPPED ROUTINE(S)  (DSM for Open VMS sites only)
+        -------------------------
+        Optional - Include the routines distributed with this patch
+        in the mapped routine set.
+  
+        NOTE: This step is only necessary if you performed step 2 or
+              if you wish to include the routines in your mapped set.
+  
+   8.  When the installation is complete, be sure to re-start the filers
+       if you chose to stop them.
+
+Routine Information:
+====================
+
+Routine Name:
+  - IVMPTRN7
+
+ Original Code:
+  
+     ; handle message header processing for HL7 full data trans (Z07) msg
+     D MSH^IVMUFNC4($G(IVMNOMSH),$G(IVMFLL),$G(IVMREC),.IVMCT,.IVMCNTID)
+     ;
+     ; build HL7 Full Data Transmission (Z07) message
+     D BUILD^IVMPTRN8(DFN,IVMMTDT,.IVMCT,.IVMQUERY)
+     ;
+  
+  
+ Modified Code:
+  
+     ; handle message header processing for HL7 full data trans (Z07) msg
+     D MSH^IVMUFNC4($G(IVMNOMSH),$G(IVMFLL),$G(IVMREC),.IVMCT,.IVMCNTID)
+     ;
+     I IVMMTDT="" D
+     .S IVMMTDT=$P($$LST^DGMTU(DFN,DT),"^",2)
+     .I IVMMTDT="" S IVMMTDT=DT
+     ;
+     ; build HL7 Full Data Transmission (Z07) message
+     D BUILD^IVMPTRN8(DFN,IVMMTDT,.IVMCT,.IVMQUERY)
+     ;
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : HUA,PATRICK                   Date Entered  : SEP 09, 2003
+Completed By: MULLER,RICHARD                Date Completed: SEP 17, 2003
+Released By : GANUS,MAUNETTE                Date Released : SEP 17, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

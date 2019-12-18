@@ -1,0 +1,231 @@
+$TXT Created by LUNDEN,JOHN at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 07/26/04 at 14:46
+=============================================================================
+Run Date: SEP 01, 2004                     Designation: SD*5.3*381
+Package : SD - SCHEDULING                     Priority: Mandatory
+Version : 5.3       SEQ #306                    Status: Released
+                  Compliance Date: OCT 02, 2004
+=============================================================================
+
+
+Subject: FIX FORM FEED IN 'NO-SHOWING' A PATIENT
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ While 'no-showing' a patient AND choosing to Auto-rebook, the rebook 
+ report and the letter print on the same page. The report needs to be 
+ brought into SAC standards by leaving the form at the top of the page. 
+ This way the report and the letter can be run independent of each other.
+  
+  
+ ASSOCIATED E3R(s):
+ =================
+ N/A
+  
+  
+ ASSOCIATED NOIS:
+ ===============
+ DUB-0604-31204 - No show letters are printing incorrectly SD*5.3*330
+  
+    Duplicate: GRJ-0604-51408 - No show letters are not printing correctly
+               DAN-0604-41982 - No Show Letters
+               WRJ-0704-10648 - no show automatic rebook report
+               ALT-0704-21548 - No Show letter is incorrect
+  
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Altoona, PA
+ Dublin, GA
+ Salisbury, NC
+ White River, VT
+  
+  
+ TECHNICAL:
+ ===========
+  
+ PROBLEM:
+ --------
+ When the No-Show letters were fixed to eliminate extra form feeds and 
+ bring them into compliance with SAC standards it exposed a report 
+ generated when "No-Showing" a patient and auto-rebooking that was not 
+ written to SAC standards. Therefore, the report would print on the same 
+ page as the patient letter.
+  
+ RESOLUTION:
+ -----------
+ Add a form feed at the end of the report so that it leaves the printer at 
+ the top of the form. 
+  
+  
+ ROUTINE SUMMARY:
+ ================
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+  
+      <tab>;;5.3;Scheduling;**[patch list]**;Aug 13, 1993
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  SDN0                  10745291              8957076             381
+  
+  
+ MNT,VBB>D ^%RCMP
+  
+ Enter program #1 name: [PAT,VEE]SDN0
+  
+ Enter program #2 name: SDN0
+  
+ Output Device ?  < 0 > 
+  
+  
+ Routine compare of '[PAT,VEE]SDN0' AND 'SDN0' on 26-JUL-2004 14:48:22.91
+  
+  
+ ***********************
+   1)   SDN0      ;ALB/TMP - NO SHOW AUTO-REBOOK ; 20 MAY 85  1:27 pm
+   2)             ;;5.3;Scheduling;;Aug 13, 1993
+   3)   START     U IO K ^UTILITY($J) I C="ALL" K C
+  
+ --------
+   1)   SDN0      ;ALB/TMP - NO SHOW AUTO-REBOOK ; 6/21/04 2:09pm
+   2)             ;;5.3;Scheduling;**381**;Aug 13, 1993
+   3)   START     U IO K ^UTILITY($J) I C="ALL" K C
+  
+ ***************
+  
+ ***********************
+   8)             F SDQ=0:0 S SDQ=$N(^SC(SDQ)) Q:SDQ'>0  I 
+ $P(^SC(SDQ,0),"^",3)="
+ C",$S($P(^(0),"^",15)="":1,$P(^(0),"^",15)=SDV1:1,1:0),($N(^SC(SDQ,"S",SDT
+ ))\1)=SDT S SC=SDQ D OVR
+   9)             ;G PLET
+  
+ --------
+   8)             S SDQ=0
+   9)             F  S SDQ=$O(^SC(SDQ)) Q:+SDQ=0  D
+   10)            .I
+ $P(^SC(SDQ,0),"^",3)="C",$S($P(^(0),"^",15)="":1,$P(^(0),"^"
+ ,15)=SDV1:1,1:0),($O(^SC(SDQ,"S",SDT))\1)=SDT S SC=SDQ D OVR
+   11)            ;G PLET
+  
+ ***************
+  
+ ***********************
+   15)            F GDATE=CDATE:0 S GDATE=$N(^SC(SC,"S",GDATE)) 
+ Q:GDATE<0!(GDATE>(CDATE+1))  F L=0:0 S L=$N(^SC(SC,"S",GDATE,1,L))
+ Q:L<0  S A=^(L,0) I $D(^DPT(+A
+ ,"S",GDATE,0)),$P(^(0),"^",2)="N",$P(^(0),"^",14)=SDTIME D MAXCK D:'POP 
+ EN1^SDAUT2 D ^SDNP
+   16)            Q
+  
+ --------
+   17)            S GDATE=CDATE
+   18)            F  S GDATE=$O(^SC(SC,"S",GDATE)) 
+ Q:GDATE=""!(GDATE>(CDATE+1))  D
+   19)            .S L=0
+   20)            .F  S L=$O(^SC(SC,"S",GDATE,1,L)) Q:L=""  S A=^(L,0) I 
+ $D(^DPT(+A,"S",GDATE,0)),$P(^(0),"^",2)="N",$P(^(0),"^",14)=SDTIME D
+ MAXCK D:'POP EN1^SD AUT2 D ^SDNP
+   21)            W:$G(ALS)="Y" @IOF
+   22)            Q
+  
+ ***************
+  
+ ***********************
+   22)            K SDIS F I=0:0 S I=$N(^DPT(+A,"DE","B",SDC,I)) 
+ Q:I'>0!($D(SDIS))  I $D(^DPT(+A,"DE",I)) F I1=0:0 S
+ I1=$N(^DPT(+A,"DE",I,1,I1)) Q:I1'>0  S SDD=$P(^(I1,0),"^",3)\1 I
+ '(SDD-SDDT),$P(^(0),"^",4)["Exceeded" D SETM
+ Q
+   23)            Q
+  
+ --------
+   28)            K SDIS
+   29)            S I=0
+   30)            F  S I=$O(^DPT(+A,"DE","B",SDC,I)) Q:I=""!($D(SDIS))  D
+   31)            .I $D(^DPT(+A,"DE",I)) D
+   32)            ..S I1=0
+   33)            ..F  S I1=$O(^DPT(+A,"DE",I,1,I1)) Q:I1=""  S 
+ SDD=$P(^(I1,0),"^",3)\1 I '(SDD-SDDT),$P(^(0),"^",4)["Exceeded" D SETM Q
+   34)            Q
+  
+ ***************
+  
+  
+ A total of 4 differences found.
+  
+  
+   
+  
+ ======================INSTALLATION INSTRUCTIONS========================
+ This patch can be installed during business hours, but because some 
+ options will be out of service during the installation process it is 
+ suggested that it be queued for non-peak hours. Installation will take 
+ less than 5 minutes. Users may remain on the system, though the option 
+ "Appointment Management" will be disabled during the installation.
+  
+   
+   
+  1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+   
+  2.  Review your mapped set.  If the routines are mapped, they should be
+      removed from the mapped set at this time.
+   
+  3.  From the Kernel Installation & Distribution System menu, select
+      the Installation menu.
+   
+  4.  From this menu, you may elect to use the following options
+      (when prompted for INSTALL NAME, enter SD*5.3*381)
+      a.  Backup a Transport Global - This option will create a backup 
+          message of any routines exported with the patch.
+          It will NOT backup any other changes such as DDs or templates.
+      b.  Compare Transport Global to Current System - This option will 
+          allow you to view all changes that will be made when the patch
+          is installed. It compares all components of the patch (routines,
+          DDs, templates, etc.)
+      c.  Verify Checksums in Transport Global - This option will ensure 
+          the integrity of the routines that are in the transport global.
+            
+  5.  Use the Install Package(s) option and select the package SD*5.3*381.
+   
+  6.  When prompted "Want KIDS to INHIBIT LOGONs during the install?
+      YES// respond "NO".
+   
+  7.  When prompted "Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols? YES// respond "YES".
+  
+  8.  When prompted to select the options you would like to place out
+      of order, enter the following:
+  
+         SDAM APPT MGT       Appointment Management
+  
+  9.  If any routines were unmapped as part of step 2, they should be
+      returned to the mapped set once the installation has run to
+      completion.
+
+Routine Information:
+====================
+
+Routine Name:
+  - SDN0
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : LUNDEN,JOHN                   Date Entered  : JUN 21, 2004
+Completed By: ILUSTRISIMO,LUCY              Date Completed: AUG 31, 2004
+Released By : BENBOW,PHYLLIS O              Date Released : SEP 01, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

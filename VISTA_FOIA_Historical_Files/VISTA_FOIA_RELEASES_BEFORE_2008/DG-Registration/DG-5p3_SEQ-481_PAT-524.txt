@@ -1,0 +1,308 @@
+$TXT Created by DOWNING,TODD at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 10/01/03 at 19:11
+=============================================================================
+Run Date: NOV 13, 2003                     Designation: DG*5.3*524
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #481                    Status: Released
+                  Compliance Date: DEC 14, 2003
+=============================================================================
+
+Associated patches: (v)DG*5.3*477  <<= must be installed BEFORE `DG*5.3*524'
+                    (v)DG*5.3*510  <<= must be installed BEFORE `DG*5.3*524'
+
+Subject: PROBLEMS WITH INPATIENT ROSTER, UNCLEAR DESCRIPTION, CLAIM NUMBER AND LOAD PTF.
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Input Template
+
+Description:
+============
+
+ This patch addresses problems in the Registration package. It enables the 
+ users to print the Inpatient Roster for providers who have left a facility.
+ It clarifies the dates of eligibility for Spanish American War veterans.  
+ It allows users to enter more than 3 surgeries for the same date.  And, it
+ prevents the entry of an insurance claim number which is too long when a
+ pseudo-SSN is used.
+  
+ ASSOCIATED E3R:
+ ===============
+ N/A
+  
+ ASSOCIATED NOISes:
+ ==================
+ BOS-1098-12331  DIC('S') SCREEN USES DELETED FIELD
+ MIW-1102-40535  Brief Description for Spanish American Period of Service
+ ANN-1202-40157  PTF CODING PROBLEM
+ ISB-0103-31564  Psuedo SSN used for Claim Number
+  
+  
+ PARTICIPATING TEST SITES:
+ =========================
+   
+ Milwaukee, WI
+ Big Spring, TX
+   
+  
+ NOIS OVERVIEW:
+ ==============
+  
+ 1. BOS-1098-12331  DIC('S') SCREEN USES DELETED FIELD
+  
+ Problem:
+ --------
+ The DG INPATIENT ROSTER option calls the DGOINPT routine. This routine
+ does not allow the user to print providers with the "I" node set in the
+ ^VA(200 global.  This causes a problem when providers leave the facility
+ and later return.
+  
+ Resolution:
+ -----------
+ The screen (below) has been removed from PROV+6^DGOINPT
+  
+ DIC("S")="S DGTM=$G(^(""I""))I DGTM'>0!(DGTM>DT)"
+  
+  
+ 2. MIW-1102-40535 Brief Description for Spanish American Period of Service
+  
+ Problem:
+ --------
+ The Brief Description field (#21) for the Spanish American War entry in 
+ the Period of Service file (#21) may be misleading due the use of two-digit 
+ year values:  (4/21/98-7/4/02). This could be interpreted as 
+ 4/21/1998 - 7/4/2002.
+  
+ Resolution:
+ -----------
+ The Brief Description has been changed to: (4/21/1898-7/4/1902)
+  
+  
+ 3. ANN-1202-40157  PTF CODING PROBLEM
+  
+ Problem:
+ --------
+ Ann Arbor reported a problem with PTF when complying with the following 
+ rule during coding of surgical episodes:
+  
+ "Per Coding Clinic, Second Quarter 1995, page 10 "to code 03.09, Other 
+ Exploration and decompression of the spinal canal, it is to be reported 
+ twice, when a decompression microlaminoplasty is carried out at L3-4 
+ and L4-5 during the same surgical episode." 
+  
+ Performing 03.09 twice requires 4 separate surgical episodes to be entered 
+ (Load/Edit PTF Data Option).  PTF will not allow the record to be closed
+ with more than 3 surgeries on the same day for a given patient.
+  
+ Resolution:
+ -----------
+ ^DGPTFTR0 and ^DGPTR0 have been modified to display the message as a 
+ warning only, allowing the user to decide whether or not to proceed (see 
+ below).
+  
+ Performing edit checks...
+ **There are more than three surgeries on the same date**
+ OK to continue?? YES// ....
+ ****** PTF CLOSED OUT ******
+  
+ Note:  If the user answers NO at the prompt, the software will behave as 
+ before (i.e. the record will not close out).
+  
+  
+ 4. ISB-0103-31564  Psuedo SSN used for Claim Number
+  
+ Problem:
+ --------
+ MPI Data Quality Management reported a problem with sites transmitting
+ pseudo SSNs as Claim Numbers for Eligibility.  MPI considers a pseudo 
+ SSN to be an invalid Claim Number and rejects Claim Numbers greater 
+ than 9 characters.  The current work around is to have sites change the
+ Claim Number (screen 7, Load/Edit Patient Data option) to something 
+ other than the pseudo SSN and retransmit.
+  
+ Resolution:
+ -----------
+ The input transform for the CLAIM NUMBER field (#.313) of the PATIENT file 
+ (#2) currently allows pseudo SSNs to be entered.  The input transform has 
+ been modified to disallow SSN's greater than 9 characters when entering 
+ "SS" for the CLAIM NUMBER, or when typing a patient's pseudo SSN directly
+ into the field.  The help text for this field has been updated to reflect
+ this change.  
+  
+  
+ DATA DICTIONARY CHANGES:
+ ========================
+  
+ 1. A change was made to the BRIEF DESCRIPTION (field #20) of the SPANISH 
+ AMERICAN entry in the PERIOD OF SERVICE file (#21). 
+  
+ Before:
+ -------
+ (4/21/98-7/4/02)
+  
+ After:
+ ------
+ (4/21/1898-7/4/1902)
+  
+  
+ 2. The input transform of the CLAIM NUMBER field (#.313) of the PATIENT 
+ file (#2) was changed as follows:
+  
+ Before:
+ -------
+ S DFN=DA D EV^DGLOCK I $D(X) S L=$S($D(^DPT(DA,0)):$P(^(0),U,9),1:X) 
+ W:X?1"SS".E "  ",L S:X?1"SS".E X=L I X'=L K:$L(X)>8!($L(X)<7)!'(X?.N) X
+  
+ After:
+ ------ 
+ S DFN=DA D EV^DGLOCK I $D(X) S L=$S($D(^DPT(DA,0)):$P(^(0),U,9),1:X)
+ W:X?1"SS".E "  ",L S:X?1"SS".E X=L K:$L(X)>9 X Q:'$D(X)  I X'=L K:$L
+ (X)>8!($L(X)<7)!'(X?.N) X
+  
+  
+ 3. The Help Prompt text of the CLAIM NUMBER field (#.313) of the PATIENT 
+ file (#2) was changed as follows:
+  
+ Before:
+ -------
+ HELP-PROMPT:      Enter this patient's claim number as 7-8 
+                   numerics or enter SS if the claim number is the
+                   same as his/her SSN. 
+  
+ After:
+ ------
+ HELP-PROMPT:      Enter this patient's claim number as 7-8 
+                   numerics or enter SS if the claim number is the 
+                   same as his/her SSN.  Pseudo SSNs are not 
+                   allowed. 
+  
+ TEMPLATES:
+ ==========
+  
+ The following compiled PATIENT file (#2) Input Templates will be recompiled
+ during the installation process to incorporate changes made to the input
+ transform of the CLAIM NUMBER field (#.313):
+  
+ DG LOAD EDIT SCREEN 7
+ DVBHINQ UPDATE
+  
+  
+ ROUTINE SUMMARY:
+ ================
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+  
+     <tab>;;5.3;Registration;**[patch list]**;AUG 13, 1993
+  
+                            CHECK^XTSUMBLD results
+ Routine name      Before Patch          After Patch         Patch List
+ ============      ============          ===========         ==========
+ DG53P524                   N/A              8097988             524
+ DGOINPT                9811683              9530352             524
+ DGPTFTR0              10113549             10191072         247,510,524
+ DGPTR0                10105370             10176433     114,247,338,342,510
+                                                                  524
+  
+  
+ DISTRIBUTION:
+ =============
+ This patch is exported using KIDS.
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+  
+ This patch may be run with users on the system, but it is recommended 
+ that it be queued to run after normal business hours to minimize the
+ impact on users of the Registration package.
+  
+ Installation will take less than 2 minutes.
+  
+ 1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu to unload
+     the KIDS distribution included with this message.
+  
+ 2.  Review your mapped set.  If any of the routines listed in the ROUTINE  
+     SUMMARY section are mapped, they should be removed from the mapped set 
+     at this time.
+  
+ 3.  From the Kernel Installation and Distribution System Menu, select
+     the Installation menu.
+  
+ 4.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter DG*5.3*524):
+  
+     a.  Compare Transport Global to Current System  - this option will
+         allow you to view all changes that will be made when the patch
+         is installed.  It compares all components of the patch (routines,
+         DDs, templates, etc.).
+     b.  Verify Checksums in Transport Global - this option will
+         allow you to ensure the integrity of the routines that are in
+     c.  Print Transport Global - this option will allow you to view the
+         components of the KIDS build.
+    
+ 5.  Use the Install Package(s) option and select the package DG*5.3*524.
+  
+ 6.  When prompted ' Want KIDS to INHIBIT LOGONs during the install?
+     YES//', respond NO.
+  
+ 7.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+     Protocols? YES//', respond YES. When prompted to select the options you
+     would like to place out of order, enter the following:
+  
+     DG PTF SCREEN  Load/Edit PTF Data
+          
+ 8.  If routines were unmapped as part of step 2, they should be returned
+     to the mapped set once the installation has run to completion.
+  
+  
+ POST INSTALLATION INSTRUCTIONS:
+ ===============================
+  
+ 1. Recompile any local* compiled Input Templates on the PATIENT file (#2)
+ that include the CLAIM NUMBER field (#.313).  
+  
+ * The supported Input Templates DG LOAD EDIT SCREEN 7 and DVBHINQ UPDATE 
+ will be recompiled during installation and do not need to be recompiled 
+ manually.
+  
+ 2. Post-install routine, DG53P524, may be deleted after installation.
+
+Routine Information:
+====================
+
+Routine Name:
+  - DGPTFTR0
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGPTR0
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGOINPT
+
+
+Routine Checksum:
+
+Routine Name:
+  - DG53P524
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : DOWNING,TODD                  Date Entered  : MAY 21, 2003
+Completed By: BAUMAN,HELENE                 Date Completed: NOV 13, 2003
+Released By : ALEXANDER,DIANNE              Date Released : NOV 13, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,275 @@
+$TXT Created by KOPP,TERRY at PASVFF.FO-ALBANY.MED.VA.GOV  (KIDS) on Friday, 08/10/07 at 09:22
+=============================================================================
+Run Date: OCT 09, 2007                     Designation: DG*5.3*764
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #675                    Status: Released
+                  Compliance Date: NOV 09, 2007
+=============================================================================
+
+Associated patches: (v)DG*5.3*653  <<= must be installed BEFORE `DG*5.3*764'
+                    (v)DG*5.3*751  <<= must be installed BEFORE `DG*5.3*764'
+
+Subject: OEF/OIF SITE DATA PROBLEM
+
+Category: 
+  - Routine
+  - Other
+
+Description:
+============
+
+ I. OVERVIEW
+  
+ This patch corrects two problems:
+    1.  A problem was found after the implementation of the changes and
+        enhancements to the Registration V. 5.3 package in support of the
+        Operation Enduring & Iraqi Freedom (OEF/OIF) initiative that were
+        released in OEF/OIF patches DG*5.3*673 (phase I) and DG*5.3*689
+        (phase II). The problem is related to the erroneous calculation of
+        the combat veteran end date on the Health Eligibility Center (HEC)
+        system.
+    2.  With the implementation of patch DG*5.3*653 ENROLLMENT VISTA
+        CHANGES TO SUPPORT ESR (RELEASE 1), a new consistency check (#718
+        CD PERMANENT INDICATOR INVALID) was added. This consistency check
+        prevents a Z07 Full Data Transmission HL7 message from being sent
+        to the HEC for a patient with a Catastrophic Disability (CD)
+        condition if the PERMANENT INDICATOR (#2) field of the CD STATUS
+        CONDITIONS (#.398) subfile of the PATIENT (#2) file is not equal to
+        any of the permitted values 1 (PERMANENT), 2 (NOT PERMANENT) or 3 
+        (UNKNOWN). The new consistency check prevents the Z07 HL7 message
+        from being sent when the Permanent Status Indicator is left
+        unanswered, which is problematical.
+  
+ II. ASSOCIATED REMEDY TICKETS & NEW SERVICE REQUESTS
+  
+ The following section lists the Remedy tickets and/or New Service Requests
+ associated with this patch.
+  
+ 1. Associated Remedy Tickets:
+    -----------------------------------------
+    HD0000000173516 Combat End Date Still Not Calculating Correctly
+    
+ 2. Associated New Service Request(s):
+    -----------------------------------------
+    NONE 
+  
+ III. FUNCTIONAL OVERVIEW
+  
+ This patch corrects the following problems:
+  
+ 1. OEF/OIF episodes that are entered at the site are disappearing.
+    Remedy Ticket reference: HD0000000173516
+    Problem:  The problem is caused by the erroneous storage of the value
+              for site entering the data. It should have been stored as a 
+              pointer to the INSTITUTION (#4) file, but was instead stored 
+              as the actual site number. If the site number has a suffix 
+              (for example, 521DU), the job that builds the Z07 HL7 message
+              drops the conflict from the HL7 message.
+    Solution: Fix the storage of the data to the internal value to prevent
+              the problem from occurring again and change the display of 
+              the site on Registration Screen 6, edit group 2 (Conflict 
+              Locations) to use the STATION NUMBER field (#99) from the
+              INSTITUTION file (#4), not the pointer value. To attempt to
+              clean up the data that is already there, a post installation
+              routine will read through the OEF/OIF conflicts and will
+              examine the data in the ENTERED BY SITE field (#.06) in the
+              SERVICE [OEF OR OIF] subfile (#2.3215) of the PATIENT file
+              (#2).  When it finds site data that has a suffix, it will
+              replace that value with the value of the pointer to the
+              INSTITUTION file for that site.
+  
+ 2.  Consistency check prevents Z07 HL7 message transmission.
+     Problem: If there is no value in the PERMANENT INDICATOR field (#2) of
+              the subfile CD STATUS CONDITIONS (#2.398) in the PATIENT 
+              file (#2) for a patient with a CD condition, the Z07 HL7
+              message for the patient is not sent.
+    Solution: The post-install routine will change the record for
+              consistency check 718 in the INCONSISTENT DATA ELEMENTS file
+              (#38.6), for the field USE FOR Z07 CHECK (#6).  Its value
+              will be changed from 'YES' to 'NO'.  This will allow the Z07
+              HL7 message to be sent for patients with a CD condition
+              regardless of the value of the PERMANENT INDICATOR field.
+        
+  
+ IV. TECHNICAL COMPONENTS
+  
+ The following section describes the technical components being exported
+ with this patch.
+  
+ 1. The following ROUTINES will be added/modified.
+  
+  ROUTINE SUMMARY:
+  ================
+  The following is a list of the routines included in this patch.  The
+  second line of each of these routines will look like:
+  
+    OLD CHECKSUM METHOD RESULTS:
+  
+      <tab>;;5.3;Registration;**[patch list]**;Aug 13, 1993
+  
+                             CHECK^XTSUMBLD results
+  
+  Routine name   Before Patch   After Patch          Patch List
+  ============   ============   ===========      ===================
+  DG53742                 N/A       7577469             764
+  DGRP6CL            23184810      22927308          689,751,764
+  DGRP6CL1           15678074      15756912            689,764
+    
+                 # of new routines:  1
+             # of routines changed:  2
+  total # of routines in the patch:  3
+  
+  
+ V. INSTALLATION INSTRUCTIONS
+  
+  * Environment Check:
+  
+     Programmer access is required for installing this patch.  Prior to 
+     installation, the installer must ensure the DUZ(0) node of the DUZ
+     array is set to the "@" symbol.
+  
+  * Users On the System: 
+  
+     This patch may be installed with users on the system, but should be
+     loaded during non-peak hours to minimize disruption to users and to
+     reduce the possibility of errors when the routines are updated.
+  
+  * Software Installation Time:
+  
+     The estimated installation time is less than 5 minutes during off peak
+     hours.  There is, however, a post-installation routine that queues a 
+     job to do some data cleanup that is described below.
+  
+  
+  Installation Steps:
+  ===================
+  
+   1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu to unload
+      the KIDS distribution included with this message.
+  
+   2. From the 'Kernel Installation & Distribution System' menu, select the
+      Installation menu.
+  
+   3. From this menu, you may now elect to use the following options (when
+      prompted for INSTALL NAME, enter DG*5.3*764).
+  
+      a. Backup a Transport Global - This option will create a backup
+         message of any routines exported with the patch.  It will NOT
+         backup any changes such as DDs or templates.
+  
+      b. Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when the patch is
+         installed.  It compares all components of the patch (routines,
+         DDs, templates, etc.).
+  
+      c. Verify Checksums in Transport Global - This option will allow you
+         to ensure the integrity of the routines that are in the transport
+         global.
+  
+      d. Print Transport Global - this option will allow you to view the
+         components of the KIDS build.
+  
+   4. Use the Install Package(s) option and select package DG*5.3*764.
+  
+   5. When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+      YES//', it is recommended you answer NO.
+  
+   6. When prompted to 'Want to DISABLE Scheduled Options, Menu Options,
+      and Protocols? YES//', respond YES.  When prompted to select the
+      options you would like to place out of order, enter the following:
+  
+        DG REGISTER PATIENT        Register a Patient
+        DG LOAD PATIENT DATA       Load/Edit Patient Data
+  
+              
+ VI. IMPLEMENTATION STEPS
+  
+      There is a post-installation routine that is run during the
+      installation of this patch. The routine is DG53742 and it will
+      perform two functions:
+      
+      1.  It will queue a job that will read through the PATIENT file
+          (#2) using the 'ALOEIF' cross reference. This job will change
+          any data found in the SERVICE [OEF OR OIF] subfile (#2.3215) of
+          the PATIENT (#2) file, ENTERED BY SITE (#.06) field having a
+          suffix to the pointer to that site in the INSTITUTION (#4) file.
+          The task description is "Correct OEF/OIF site info." It may be
+          stopped using Task Manager and restarted, if needed. A bulletin
+          is sent to the DGEN ELIGIBILITY ALERT mail group each time the
+          job is stopped and when it has completed and it will contain
+          summary statistics. Do not be surprised if there are few if any
+          records corrected. Because of the nature of this problem, the
+          OEF/OIF conflict record was deleted via the return Z11 
+          Eligibility/Enrollment Data Transmission HL7 message, so only
+          data entered very recently will be able to be corrected.
+  
+          The bulletin will look similar to this:
+  
+    Subj: Correct OEF/OIF site info COMPLETED on Aug 08, 2007@09:10:19  
+    [#1998568] 08/08/07@09:10  5 lines
+    From: POSTMASTER  In 'IN' basket.   Page 1  *New*
+    ------------------------------------------------------------------------
+    Correct OEF/OIF site info COMPLETED on Aug 08, 2007@09:10:19
+               
+               
+                        Total Patient Records Read:         467
+                     Total OEF/OIF Records Changed:          13
+               
+                  Enter message action (in IN basket): Ignore// 
+ --------------------------------------------------------------------------
+  
+    The following entrypoints for this functionality are available from
+    programmer's mode:
+  
+    Command                       Function Performed
+    =======                       ==================
+    D RUN^DG53742                 Used to restart the job after it has 
+                                  been stopped using Task Manager. The 
+                                  process will pick up where it last left
+                                  off.
+    D STATUS^DG53742              Used to display the current status of 
+                                  the job.
+  
+      2.  It will also set the value of the USE FOR Z07 CHECK (#6) field
+          of the INCONSISTENT DATA ELEMENTS (#38.6) file for the entry
+          identified as NUMBER: 718 and NAME: CD PERMANENT INDICATOR
+          INVALID to be NO.
+               
+            
+ VII. TEST SITES
+  
+ The following sites participated in the testing of the DG*5.3*764 
+ software.
+   MADISON, WI (medium)
+   LITTLE ROCK, AR (large)
+   MARYLAND HCS (integrated)
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.3;Registration;**[Patch List]**;Aug 13,1993;Build 16
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: DG53742
+    Before:       n/a   After: B41932788  **764**
+Routine Name: DGRP6CL
+    Before: B62565358   After: B63349974  **689,751,764**
+Routine Name: DGRP6CL1
+    Before: B35021800   After: B35133864  **689,764**
+ 
+Routine list of preceding patches: 751
+
+=============================================================================
+User Information:
+Entered By  : KOPP,TERRY M                  Date Entered  : JUL 13, 2007
+Completed By: RUDINGER,NANCY L.             Date Completed: OCT 03, 2007
+Released By : HOLMES,MARY                   Date Released : OCT 09, 2007
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

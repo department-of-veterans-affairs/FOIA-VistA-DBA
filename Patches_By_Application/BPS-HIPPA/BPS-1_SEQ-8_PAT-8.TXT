@@ -1,0 +1,724 @@
+
+=============================================================================
+Run Date: SEP 14, 2010                     Designation: BPS*1*8
+Package : BPS - E CLAIMS MGMT ENGINE          Priority: Mandatory
+Version : 1         SEQ #8                      Status: Released
+                  Compliance Date: OCT 15, 2010
+=============================================================================
+
+Associated patches: (v)BPS*1*7     <<= must be installed BEFORE `BPS*1*8'
+
+Subject: ePHARMACY COB SUPPORT
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ This patch has enhancements which extend the capabilities of the Veterans 
+ Health Information Systems and Technology Architecture (VistA) electronic 
+ pharmacy (ePharmacy) billing system.  Below is a list of all the
+ applications involved in this project along with their patch number:
+  
+    APPLICATION/VERSION                                  PATCH
+    --------------------------------------------------------------
+    OUTPATIENT PHARMACY (OP) V. 7.0                      PSO*7*290
+    INTEGRATED BILLING (IB) V. 2.0                       IB*2*411
+    ELECTRONIC CLAIMS MANAGEMENT ENGINE (ECME) V. 1.0    BPS*1*8
+  
+ The three patches (PSO*7*290, IB*2*411 and BPS*1*8) are being released in 
+ a Kernel Installation and Distribution System (KIDS) multi-build 
+ distribution bundle BPS PSO IB BUNDLE 4.0. For more specific instructions
+ please refer to the installation steps provided in each of the patches.
+  
+ The main purpose of this patch is to implement functionality that 
+ supports e-billing of the patients secondary insurance plans. These 
+ modifications allow the VA to send additional claims electronically to the
+ patient's secondary insurances in order to reimburse money from those
+ payers that are responsible for the payments but were not billed
+ previously. Thus this enhancement will help VA sites to increase their
+ revenue. 
+  
+ While claims to the Primary insurance companies are sent automatically,
+ the claims to the Secondary insurance companies can now be sent manually
+ by using the new menu option Process Secondary/TRICARE Rx to ECME [BPS COB
+ PROCESS SECOND TRICARE. The same menu option can also be used to manually
+ generate primary claims if the patient has a dual eligibility (for
+ example, a TRICARE patient has both reimbursable insurance and TRICARE
+ plans with Pharmacy coverage), these cases were not previously handled by
+ the software. With this enhancement patch, duel eligible patients can now
+ be manually billed using the ePharmacy software.
+  
+ Two new reports are introduced with this patch to support both secondary 
+ billing and primary billing for TRICARE patients. The first report, 
+ Potential Secondary Rx Claims Report [BPS COB RPT SECONDARY CLAIMS], will
+ identify prescriptions/refills that potentially can be billed to the
+ secondary insurance plans. The second report, Potential TRICARE Claims
+ Report [BPS COB RPT TRICARE CLAIMS], will identify prescriptions/refills
+ for TRICARE patients that potentially can be billed to the TRICARE
+ insurance plans.
+  
+ All three new menu options are combined together under the new ECME 
+ Pharmacy COB [BPS COB MENU] menu:
+  
+     COB    ECME Pharmacy COB ...
+         SEC    Potential Secondary Rx Claims Report
+         TRI    Potential TRICARE Claims Report
+         PRO    Process Secondary/TRICARE Rx to ECME
+  
+ This patch modifies the Electronic Claims Management Engine v1.0 
+ application as described below:
+  
+  
+ 1. ECME engine:
+ The modifications made in this patch allow: 
+ - the engine to recognize secondary claims and process additional COB 
+ (Coordination Of Benefits) fields specific for secondary claims
+  
+ - the engine to use specific plans and rate types selected by the user
+  
+ - specific data collected for secondary claims to be stored in the BPS 
+ TRANSACTION, BPS LOG OF TRANSACTIONS, BPS CLAIMS and BPS REQUESTS files
+  
+ - specific data collected for secondary claims to be processed, formatted 
+ and included in HL7 messages sent to the payer
+  
+ - specific entries in the BPS NCPDP FIELD DEFS file (#9002313.91) to be 
+ updated in order to process the additional COB fields and transmit them 
+ to the secondary payer in the correct format
+  
+ - COB Indicator information to be returned in the EN^BPSNCPDP API 
+  
+ - the ECME to send reject codes to Outpatient Pharmacy along with the COB 
+ indicator so the Pharmacy software can distinguish reject codes returned 
+ by secondary and primary payers
+  
+ The new routine BPSFLD01 was created to store GET, SET and FORMAT code to 
+ support processing of the COB fields transmitted to the secondary payers.
+  
+ The claim status code was adjusted to provide correct status information 
+ for secondary and primary claims.
+  
+ The API DUR1^BPSNCPD3 (ICR #4560) was modified to allow the calling 
+ application to specify the COB (payer sequence) indicator of the claim 
+ for which it is called and to implement a new format of the array for  
+ returned values.
+  
+ The testing tool was modified to process secondary claims.
+  
+  
+  
+ 2. ECME User Screen modifications to display COB (payer sequence) 
+ indicators:
+  
+ 2.1. Main Display Screen and Further Research Screen modifications. 
+ To distinguish primary and secondary claims displayed on the screen, each 
+ status line is supplied with COB indicators: "p" for primary and "s" for 
+ secondary claims. Status of another claim associated with the same
+ prescription/refill (if any) is displayed in parenthesis. 
+   9.1 ACETAMINOPHEN 650 12345-4321-22 03/02 102287 1/0113558 W RT DIS/NR
+       p-Reversal accepted
+   9.2 MEDROXYPROGESTRON 00009-0050-02 02/11 102289 0/0113560 W RT ACT/RL
+       s-Payable (p-Payable)
+  
+  
+ 2.2. The Print Claim Log screen displays a new label to indicate the COB 
+ insurance level:
+     Rx Coordination of Benefits: PRIMARY
+  
+ 2.3. The initial page of the developer log was updated to display the 
+ information for the specific claim line selected. 
+     Insurance: COB INSURANCE
+     RX Coord of Benefits: Secondary
+  
+ The subsequent pages are based upon the prescription and fill and are not 
+ able to differentiate between insurances.  However, a log entry 
+ indicating the COB level will be added each time the prescription and fill
+ is processed. 
+     BPSOSRB-Secondary Insurance
+     BPSOSQA-Secondary Insurance
+  
+  
+ 3. Reversing claims:
+ The primary claim cannot be reversed if there is a payable secondary 
+ claim. In such a case the user will be advised to reverse the secondary 
+ claim first. 
+  
+   1.12 FLURAZEPAM 15MG C 00140-0065-14 03/04 102322$ 2/0113596 W RT ACT/RL
+ cannot be Reversed if the secondary claim is payable.
+ Please reverse the secondary claim first.
+  
+  
+ 4. Resubmit Claims and Resubmit claims w/EDITS (RED) functionality:
+ The primary claim cannot be resubmitted if there is a payable secondary 
+ claim. In such a case the user shall be advised to reverse the secondary 
+ claim first. 
+  
+  1.12  FLURAZEPAM 15MG C 00140-0065-14 03/04 102322$ 2/0113596 W RT ACT/RL
+ Are you sure?(Y/N)? y  YES
+ The claim: 
+  1.12  FLURAZEPAM 15MG C 00140-0065-14 03/04 102322$ 2/0113596 W RT ACT/RL
+ cannot be Resubmitted if the secondary claim is payable.
+ Please reverse the secondary claim first.
+  
+  
+ 5. Send to Worklist functionality:
+ The ECME software was modified to 
+ - allow secondary claims to be sent to the Pharmacy Worklist manually 
+ from the User Screen,
+ - send Refill Too Soon and DUR rejects for secondary claims to the 
+ Pharmacy Worklist automatically. 
+  
+  
+ 6. ECME Claim Results and Status reports:
+ The ECME Claim Results and Status reports (Payable Claims Report [BPS RPT
+ PAYABLE], Rejected Claims Report [BPS RPT REJECTION], Reversal Claims
+ Report [BPS RPT REVERSAL], Claims Submitted, Not Yet Released [BPS RPT NOT
+ RELEASED], Recent Transactions [BPS RPT RECENT TRANSACTIONS], and Closed
+ Claims Report [BPS RPT CLOSED CLAIMS]) were modified to display the COB
+ indicators. The Excel format of the reports include the COB indicator of
+ the submitted claim as a new piece of data in the data string.
+  
+  
+ 7. ECME Claims-Response Inquiry [BPS RPT CLAIMS RESPONSE] report:
+ The report reflects new COB data sent in secondary claims.
+  
+  
+ 8. ECME Potential Secondary Rx Claims Report [BPS COB RPT SECONDARY 
+ CLAIMS]:
+ This new report returns all primary prescription claims, whether 
+ processed electronically or paper, that has possible secondary insurance 
+ identified in the patient insurance file.
+  
+  
+ 9. Potential TRICARE Claims Report [BPS COB RPT TRICARE CLAIMS]:
+ This new report returns prescriptions that have not yet been billed for 
+ any patient who has an active insurance plan with a type of plan = TRICARE
+ and who has a dual eligibility (veteran and TRICARE) and whose
+ prescription Rx Patient Status is not exempt for TRICARE Billing. This
+ report also includes prescriptions for patients who have TRICARE only in
+ case of the system not being available and the prescription not being
+ processed automatically by ECME.
+  
+  
+ 10. Process Secondary/TRICARE Rx to ECME [BPS COB PROCESS SECOND TRICARE]:
+ The new option was introduced to process the claims identified on the new 
+ reports.  This option will submit the claim to ECME and also can be 
+ used to resubmit the claim when the user needs to change data specific 
+ for secondary claims. Any other processing on this claim can be done
+ through the existing actions available on the ECME User Screen.
+  
+ When processing a claim using a specific prescription number, the users
+ will need to select the fill number from the list provided by the software
+ to generate a claim. The user will be required to enter the billing rate
+ type since there are 2 types of claims that will primarily be using this
+ option. Reimbursable Insurance and TRICARE (including TRICARE Reimbursable
+ Insurance) are the only types of Billing Rates that will be allowed to be 
+ used for ECME billing at this time.
+  
+ When processing the secondary claim, the users will be presented with the 
+ secondary claim data and will be prompted to edit this data if 
+ necessary.  Secondary claim data elements include:
+  
+ Other Coverage Code
+ Other Payer Coverage Type
+ Other Payer ID Qualifier
+ Other Payer ID
+ Other Payer Date
+  
+ If the primary payer paid the primary claim:
+ Other Payer Amount Paid Qualifier (mult)
+ Other Payer Amount Paid (mult)
+  
+ If the primary payer rejected the primary claim:
+ Other Payer Reject Codes (mult)
+  
+ This option can also be used to resubmit secondary claims when the user
+ needs to edit the specific secondary claims information submitted 
+ previously. The user will be prompted for the same information and this 
+ time the default values for the prompts will be set to data submitted in 
+ the latest transaction. In addition during resubmission the user can 
+ change the secondary payer and the rate type if needed. The resubmission 
+ is allowed only for rejected or reversed secondary claims. The payable 
+ claims need to be reversed in the User Screen before they can be 
+ resubmitted through this menu option.
+  
+ This option also allows the user to submit and resubmit primary claims 
+ for prescriptions/refills for TRICARE patients and patients with dual 
+ eligibility. When processing primary claims the users will be prompted to 
+ select a primary payer for the e-claim and the rate type. The software 
+ allows the user to resubmit the existing primary claims and change the 
+ payer and/or the rate type if needed. The resubmission is allowed only 
+ for rejected or reversed claims. The payable claims need to be reversed 
+ in the User Screen before they can be resubmitted through this menu 
+ option.
+  
+ 11. COB indicators for Pharmacy Activity log entries:
+ ECME code was modified to add COB indicators to Pharmacy Activity log 
+ when the claim is resubmitted via User Screen actions "Resubmit Claim" 
+ and "Resubmit Claim w/EDITS" and also when it is reversed manually via
+ "Reverse Payable Claim" action or automatically by ECME nightly processing
+ job (auto reversals).
+  
+  
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+ There is no NSR associated with this patch.
+  
+  
+ This patch addresses the following Remedy Tickets:
+ --------------------------------------------------
+ 1. HD374000  Inability to reverse TRICARE claims
+ 2. HD374001  Incorrect Rx cost calculation for TRICARE claims
+  
+  
+ Overview of Remedy Tickets:
+ ---------------------------
+ 1. HD374000  Inability to reverse TRICARE claims
+  
+ Problem:
+ --------
+ VA Eastern Kansas HCS reported they are unable to reverse electronic 
+ TRICARE claims through the ECME user screen.  They are getting a message 
+ stating:  "The claim: ... is Tricare claim and cannot be Reversed."
+  
+ Resolution:
+ -----------
+ Remove the lines of code in routine BPSSCRRV that prevented this 
+ functionality.
+  
+  
+ 2. HD374001  Incorrect Rx cost calculation for TRICARE claims
+  
+ Problem:
+ --------
+ VA Eastern Kansas HCS reported that the billing software is incorrectly 
+ calculating the prescription cost for ECME claims in cases where the drug 
+ is using the NCPDP QUANTITY MULTIPLIER field. The billing software is 
+ calculating the cost based on the NCPDP quantity rather than the 
+ dispensed quantity.
+  
+ Resolution:
+ -----------
+ Correct the ECME utilities STARRAY^BPSNCPD1 and EN^BPSNCPD2 to NOT send 
+ the NCPDP quantity to billing, but instead send the dispensed quantity to 
+ billing as found in the prescription fill and refill data.  Continue to 
+ send the NCPDP quantity in the ECME ePharmacy transaction. Also, correct 
+ the ECME utility IBSEND^BPSECMP2 to send the dispensed quantity to 
+ billing as found in the prescription fill and refill data.
+  
+  
+ Components Sent With Patch
+ --------------------------
+ The following is a list of files and fields included in this patch:
+  
+                                            UP    SEND  DATA    USER
+                                            DATE  SEC.  COMES   OVER
+ FILE #      FILE NAME                      DD    CODE  W/FILE  RIDE
+ -------------------------------------------------------------------
+  
+ 9002313.02  BPS CLAIMS                     YES   NO    NO      NO
+ Partial DD: subDD: 9002313.02 fld: .08
+             subDD: 9002313.0401fld: 443
+  
+ 9002313.57  BPS LOG OF TRANSACTIONS        YES   NO    NO      NO
+ Partial DD: subDD: 9002313.57 fld: 1204
+                               fld: 1205
+             subDD: 9002313.5714
+             subDD: 9002313.57902fld: 902.28
+                               fld: 902.29
+                               fld: 902.3
+                               fld: 902.31
+                               fld: 902.32
+                               fld: 902.33
+  
+ 9002313.59  BPS TRANSACTION                YES   NO    NO      NO
+ Partial DD: subDD: 9002313.59 fld: 1204
+                               fld: 1205
+             subDD: 9002313.5914
+             subDD: 9002313.59902fld: 902.28
+                               fld: 902.29
+                               fld: 902.3
+                               fld: 902.31
+                               fld: 902.32
+                               fld: 902.33
+  
+ 9002313.77  BPS REQUESTS                   YES   NO    NO      NO
+ Partial DD: subDD: 9002313.77 fld: 1.08
+                               fld: 1.09
+                               fld: 1.1
+                               fld: 1.11
+                               fld: 1.12
+             subDD: 9002313.778
+  
+ 9002313.78  BPS INSURER DATA               YES   NO    NO      NO
+ Partial DD: subDD: 9002313.78 fld: 3.06
+  
+  
+ The following is a list of options included in this patch:
+  
+ Option Name                      Distribution
+ -----------                      ------------
+ BPS COB MENU                     SEND TO SITE
+ BPS COB PROCESS SECOND TRICARE   SEND TO SITE
+ BPS COB RPT SECONDARY CLAIMS     SEND TO SITE
+ BPS COB RPT TRICARE CLAIMS       SEND TO SITE
+ BPSMENU                          USE AS LINK FOR MENU ITEMS
+  
+  
+ Documentation Retrieval:
+ ========================
+ Sites may retrieve documentation in one of the following ways:
+  
+  1.  The preferred method is to FTP the files from 
+      download.vista.med.va.gov, which will transmit the files from the
+      first available FTP server.
+  
+  2.  Sites may also elect to retrieve documentation directly from a 
+      specific server as follows:
+  
+      Albany          ftp.fo-albany.med.va.gov
+      Hines           ftp.fo-hines.med.va.gov
+      Salt Lake City  ftp.fo-slc.med.va.gov
+  
+  3.  Documentation can also be retrieved from the VistA Documentation 
+      Library (VDL) on the Internet at the following address,
+      http://www.va.gov/vdl.
+  
+ The documentation distribution includes:
+  
+     FILE NAME                             DESCRIPTION
+     ---------------------------------------------------------------------
+     bps_1_p8_rn.pdf                       ECME Release Notes
+     bps_1_p8_um.pdf                       ECME User Manual
+     bps_1_p8_tm.pdf                       ECME Technical Manual
+  
+  
+ Test Sites:
+ ===========
+ Phoenix
+ Loma Linda
+ Tennessee Valley
+ Kansas City
+  
+  
+  
+        ================INSTALLATION INSTRUCTIONS =================
+  
+ To avoid disruptions, these patches should be installed when users are
+ not on the system and during non-peak hours.  Of particular concern would
+ be the items below.
+  
+     1.  Do not install the patch when ECME claims are being generated
+         by the BPS Nightly Background Job option [BPS NIGHTLY
+         BACKGROUND JOB].  Wait for this job to finish or complete the
+         installation before this job starts.
+     2.  Do not install the patch when prescriptions are being
+         transmitted to CMOP.  Wait for the CMOP transmission to finish
+         or complete the installation before the transmission starts.
+         Check with Pharmacy Service or your pharmacy Automated Data
+         Processing Application Coordinator (ADPAC) to find out when
+         CMOP transmissions occur.
+  
+ Install Note:  Because of the updating entries for the file (#9002313.91) 
+ BPS NCPDP FIELD DEFS, during the install you will see the following
+ messages  
+  
+ Starting post-install of BPS*1*8
+  
+   updating data for the NCPDP field# 337...
+   updating data for the NCPDP field# 338...
+   updating data for the NCPDP field# 339...
+   updating data for the NCPDP field# 340...
+   updating data for the NCPDP field# 341...
+   updating data for the NCPDP field# 342...
+   updating data for the NCPDP field# 431...
+   updating data for the NCPDP field# 443...
+   updating data for the NCPDP field# 471...
+   updating data for the NCPDP field# 472...
+   updating data for the NCPDP field# 412...
+   updating data for the NCPDP field# 477...
+   updating data for the NCPDP field# 481...
+   updating data for the NCPDP field# 483...
+  
+   14 entries have been updated successfully
+  
+ Install Time - Approximately less than 5 minutes
+  
+  
+  
+ 1.  OBTAIN PATCHES
+     --------------
+  
+     Obtain the host file BPS_1_8_PSO_IB.KID, which contains the following
+     three patch installs:
+  
+         BPS*1.0*8
+         PSO*7*290
+         IB*2.0*411
+  
+      Sites can retrieve VistA software from the following FTP addresses.
+      The preferred method is to FTP the files from:
+  
+                     download.vista.med.va.gov
+  
+      This will transmit the files from the first available FTP server.
+      Sites may also elect to retrieve software directly from a specific
+      server as follows:
+  
+        Albany                  ftp.fo-albany.med.va.gov
+        Hines                   ftp.fo-hines.med.va.gov
+        Salt Lake City          ftp.fo-slc.med.va.gov
+  
+      The BPS_1_8_PSO_IB.KID host file is located in the anonymous.software
+      directory.  Use ASCII Mode when downloading the file.
+  
+ 2.  START UP KIDS
+     -------------
+     Start up the Kernel Installation and Distribution System Menu option
+     [XPD MAIN]:
+  
+          Edits and Distribution ...
+          Utilities ...
+          Installation ...
+  
+     Select Kernel Installation & Distribution System Option: INStallation
+                                                              ---
+          Load a Distribution
+          Print Transport Global
+          Compare Transport Global to Current System
+          Verify Checksums in Transport Global
+          Install Package(s)
+          Restart Install of Package(s)
+          Unload a Distribution
+          Backup a Transport Global
+  
+     Select Installation Option:
+  
+  
+ 3.  LOAD TRANSPORT GLOBAL FOR MULTI-BUILD
+     -------------------------------------
+     From the Installation menu, select the Load a Distribution option.
+     When prompted for "Enter a Host File:", enter the full directory path 
+     where you saved the host file BPS_1_8_PSO_IB.KID (e.g.,
+     SYS$SYSDEVICE:[ANONYMOUS]BPS_1_8_PSO_IB.KID).
+  
+     When prompted for "OK to continue with Load? NO//", enter "YES."
+  
+     The following will display:
+  
+       Loading Distribution...
+  
+         BPS PSO IB BUNDLE 4.0
+         BPS*1.0*8
+         PSO*7.0*290
+         IB*2.0*411
+       Use INSTALL NAME: BPS PSO IB BUNDLE 4.0 to install this
+       Distribution.
+  
+ 7.  RUN OPTIONAL INSTALLATION OPTIONS FOR MULTI-BUILD
+     -------------------------------------------------
+     From the Installation menu, you may select to use the following
+     options (when prompted for the INSTALL NAME, enter
+     BPS PSO IB BUNDLE 4.0):
+  
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch.  It will not
+         backup any other changes such as DD's or templates.
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when this patch
+         is installed.  It compares all components of this patch
+         (routines, DD's, templates, etc.).
+     c.  Verify Checksums in Transport Global - This option will allow
+         you to ensure the integrity of the routines that are in the
+         transport global.
+  
+ 8.  INSTALL MULTI-BUILD
+     -------------------
+     This is the step to start the installation of this KIDS patch.  This 
+     will need to be run for the BPS PSO IB BUNDLE 4.0.
+     
+     a.  Choose the Install Package(s) option to start the patch
+         install.
+     b.  When prompted for the "Select INSTALL NAME:", enter BPS PSO IB
+         BUNDLE 4.0.
+     c.  For the BPS*1*8 patch, when prompted "Want KIDS to Rebuild Menu 
+         Trees Upon Completion of Install? YES//"  enter YES unless your
+         system does this in a nightly TaskMan process.
+     d.  For the PSO*7*290 patch, when prompted "Want KIDS to Rebuild Menu 
+         Trees Upon Completion of Install? YES//"  enter YES unless your
+         system does this in a nightly TaskMan process.
+     e.  For the IB*2*411 patch, when prompted "Want KIDS to Rebuild Menu 
+         Trees Upon Completion of Install? YES//"  enter YES unless your
+         system does this in a nightly TaskMan process.
+     f.  When prompted "Want KIDS to INHIBIT LOGONs during the
+         install? YES//"  enter NO.
+     g.  When prompted "Want to DISABLE Scheduled Options, Menu Options,
+         and Protocols? YES//"  enter YES.
+     h.  When prompted "Enter options you wish to mark as 'Out Of
+         Order':"  enter the following options:
+      
+           Billing Clerk's Menu     [IB BILLING CLERK MENU]
+           Billing Supervisor Menu ... [IB BILLING SUPERVISOR MENU]
+           Patient Insurance Menu ... [IBCN INSURANCE MGMT MENU]
+           e-Pharmacy Menu ... [IBCNR E-PHARMACY MENU]
+           ECME Billing Events Report option [IB ECME BILLING EVENTS]
+           ECME [BPSMENU]
+           ECME User Screen [BPS USER SCREEN]
+           Rx (Prescriptions) [PSO RX]
+           ePharmacy Menu [PSO EPHARMACY MENU]
+           Suspense Functions [PSO PND] 
+  
+     i.  When prompted "Enter protocols you wish to mark as 'Out Of
+         Order':"  enter <return>.
+     j.  When prompted "Delay Install (Minutes):  (0-60): 0//"  enter an
+         appropriate number of minutes to delay the installation in 
+         order to give users enough time to exit the disabled options
+         before the installation starts.
+     k.  When prompted "Device: Home//"  respond with the correct device.
+  
+  
+ The second line of each of the following routines now looks like:
+  
+     ;;1.0;E CLAIMS MGMT ENGINE;**[Patch List]**;JUN 2004;Build 29
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: BPS10P8
+    Before:       n/a   After: B14241991  **8**
+Routine Name: BPSBCKJ
+    Before: B46863482   After: B49753700  **1,2,5,7,8**
+Routine Name: BPSBUTL
+    Before: B52438241   After: B54102124  **1,3,2,5,7,8**
+Routine Name: BPSECA1
+    Before:  B9994271   After: B12154283  **1,5,8**
+Routine Name: BPSECMP2
+    Before: B65381768   After: B81277814  **1,5,6,7,8**
+Routine Name: BPSECX0
+    Before:  B4171802   After: B23106196  **1,5,8**
+Routine Name: BPSFLD01
+    Before:       n/a   After:  B9727334  **8**
+Routine Name: BPSNCPD1
+    Before: B46831868   After: B44878746  **1,3,5,6,7,8**
+Routine Name: BPSNCPD2
+    Before: B37810791   After: B42415694  **1,5,6,7,8**
+Routine Name: BPSNCPD3
+    Before: B28795294   After: B28796956  **1,5,6,7,8**
+Routine Name: BPSNCPD4
+    Before: B40771134   After: B43623914  **6,7,8**
+Routine Name: BPSNCPD5
+    Before: B64980990   After: B78805427  **7,8**
+Routine Name: BPSNCPD6
+    Before: B36903046   After: B39101412  **7,8**
+Routine Name: BPSNCPDP
+    Before: B54845917   After: B76105402  **1,3,4,2,5,6,7,8**
+Routine Name: BPSOS6M
+    Before: B10068430   After: B11551065  **1,5,8**
+Routine Name: BPSOSC2
+    Before: B29561871   After: B34066005  **1,5,8**
+Routine Name: BPSOSCC
+    Before: B24314564   After: B26147652  **1,2,5,8**
+Routine Name: BPSOSCD
+    Before: B38794587   After: B50726570  **1,3,2,5,7,8**
+Routine Name: BPSOSCE
+    Before: B13508896   After: B14075186  **1,5,7,8**
+Routine Name: BPSOSCF
+    Before: B26940349   After: B28717442  **1,5,8**
+Routine Name: BPSOSH2
+    Before: B26441893   After: B63139845  **1,5,8**
+Routine Name: BPSOSHF
+    Before: B11141582   After: B32080446  **1,5,8**
+Routine Name: BPSOSIY
+    Before: B55797518   After: B67267504  **1,3,5,6,7,8**
+Routine Name: BPSOSIZ
+    Before: B14362353   After: B16026755  **1,5,7,8**
+Routine Name: BPSOSQA
+    Before:  B8495270   After:  B9957067  **1,5,7,8**
+Routine Name: BPSOSRB
+    Before: B38286741   After: B41392879  **1,5,7,8**
+Routine Name: BPSOSRX
+    Before: B40176170   After: B41387461  **1,5,7,8**
+Routine Name: BPSOSRX2
+    Before: B19493151   After: B20068937  **7,8**
+Routine Name: BPSOSRX3
+    Before: B60624911   After:B105355282  **7,8**
+Routine Name: BPSOSRX4
+    Before: B38901734   After: B55754369  **7,8**
+Routine Name: BPSOSRX5
+    Before: B30558901   After: B36392851  **7,8**
+Routine Name: BPSOSRX6
+    Before: B25462490   After: B25512407  **7,8**
+Routine Name: BPSPRRX
+    Before:       n/a   After: B99076770  **8**
+Routine Name: BPSPRRX1
+    Before:       n/a   After: B12437232  **8**
+Routine Name: BPSPRRX2
+    Before:       n/a   After:  B8324629  **8**
+Routine Name: BPSPRRX3
+    Before:       n/a   After: B99615569  **8**
+Routine Name: BPSPRRX4
+    Before:       n/a   After: B15420214  **8**
+Routine Name: BPSPRRX5
+    Before:       n/a   After: B48156542  **8**
+Routine Name: BPSPRRX6
+    Before:       n/a   After: B57663596  **8**
+Routine Name: BPSRES
+    Before: B66886236   After: B93916400  **3,5,7,8**
+Routine Name: BPSRPT1
+    Before: B52062138   After: B52995272  **1,5,7,8**
+Routine Name: BPSRPT4
+    Before: B67405446   After: B69467414  **1,5,7,8**
+Routine Name: BPSRPT5
+    Before: B72711123   After: B79661218  **1,3,5,7,8**
+Routine Name: BPSRPT6
+    Before: B59574231   After: B66218478  **1,3,5,7,8**
+Routine Name: BPSRPT7
+    Before: B77006502   After: B77430067  **1,3,5,7,8**
+Routine Name: BPSRPT8
+    Before: B78632943   After: B84250810  **1,3,5,7,8**
+Routine Name: BPSRPT9
+    Before:       n/a   After: B81558879  **8**
+Routine Name: BPSRPT9A
+    Before:       n/a   After: B71706588  **8**
+Routine Name: BPSSCR03
+    Before: B48894943   After: B42145046  **1,5,7,8**
+Routine Name: BPSSCRCL
+    Before: B65041094   After: B76318080  **1,3,5,7,8**
+Routine Name: BPSSCRLG
+    Before: B95335082   After: B97729982  **1,5,7,8**
+Routine Name: BPSSCRRS
+    Before: B34449344   After: B44067784  **1,3,5,7,8**
+Routine Name: BPSSCRRV
+    Before: B37049932   After: B40545723  **1,5,6,7,8**
+Routine Name: BPSSCRU3
+    Before: B30240821   After: B30637579  **1,5,7,8**
+Routine Name: BPSSCRU5
+    Before: B61189921   After: B62214356  **1,5,7,8**
+Routine Name: BPSSCRU6
+    Before:  B5405845   After: B18199575  **3,8**
+Routine Name: BPSTEST
+    Before: B58349994   After: B68950406  **6,7,8**
+Routine Name: BPSUTIL2
+    Before: B11085686   After: B26258660  **7,8**
+Routine Name: BPSWRKLS
+    Before: B27286584   After: B31684663  **7,8**
+ 
+Routine list of preceding patches: 7
+
+=============================================================================
+User Information:
+Entered By  : ZEIGLER,EDWARD L              Date Entered  : OCT 25, 2007
+Completed By: TORRANCE,LORI                 Date Completed: SEP 14, 2010
+Released By : BOTTINI,STEVE                 Date Released : SEP 14, 2010
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

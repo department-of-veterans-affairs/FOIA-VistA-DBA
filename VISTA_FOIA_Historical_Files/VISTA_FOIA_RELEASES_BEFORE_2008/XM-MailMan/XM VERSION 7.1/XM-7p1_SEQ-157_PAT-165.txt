@@ -1,0 +1,346 @@
+$TXT Created by BEUSCHEL,GARY at MAILMAN.ISC-SF.VA.GOV  (KIDS) on FRIDAY, 01/12/01 at 12:49
+=============================================================================
+Run Date: JAN 23, 2001                     Designation: XM*7.1*165
+Package : XM - MAILMAN                         Priority: Mandatory
+Version : 7.1       SEQ #157                     Status: Released
+=============================================================================
+
+
+Subject: XMINETMM Openfail Errors
+
+Category: 
+  - Informational
+  - Enhancement (Mandatory)
+
+Description: 
+============
+
+ This is an informational patch for DSM sites only.  Other sites may
+ disregard.  DSM sites, you must manually perform updates.  It is important
+ that you read this patch and follow the instructions to update your
+ XMINET_ALPHA.COM file.
+  
+ Patch XM*7.1*165
+  
+ NOIS: none
+ Test Sites:  FORUM
+  
+ This patch repeats information in AXP ALERT*117, an excerpt of which follows:
+  
+ TO:   AXP/VMS DSM SITES
+ FROM: National AXP/VMS Technical Support Team
+ RE:   AXP ALERT*117  HLSEVEN and XMINETMM "Openfail errors"
+  
+ HLSEVEN has uncovered a VMS TCP/IP problem regarding DSM not being able to
+ open a BG device for use. This problem is related to multi-processor CPU
+ systems (i.e. ES40, 4100) with more than one CPU. It is not VMS or UCX
+ (TCPIP) version specific, as we have identified the problem on systems
+ running VMS 6.2-1H3 to VMS 7.2.1 and also UCX version 4.2 ECO 3 as well as
+ TCPIP version 5.0A. A condition can occur where the server site will fail
+ to open the BGnnnn: device and the HLSEVEN.LOG will report the following
+ errors:
+  
+ %DSM-F-OPENERR, error opening device or file
+ -DSM-E-ERRCODE, Error Code = 0
+ -SYSTEM-F-BADPARAM, bad parameter value
+  
+ VistA uses two types of "listen services", HLSEVEN and XMINETMM. Tests have
+ shown that the XMINETMM service is also prone to the same symptoms as seen
+ by the HLSEVEN service. These tests were run on the FORUM system and have
+ produced retries during heavy activity periods. Therefore, the AXP, HLSEVEN
+ and Mailman teams have agreed to jointly release the following Alert and
+ Informational patches. 
+  
+ AXP Alert*117
+ HL*1.6*70
+ XM*7.1*165
+  
+ The following is an excerpt from Compaq Engineering acknowledging our
+ findings and their description of the problem.
+  
+ ********************************************************************
+ Compaq
+  
+ Engineering thinks the problem here is a race between the INETACP, which
+ has just created the process via $CREPRC(), and the process just created.
+  
+ The INETACP doesn't relinquish its ownership of the BG device for the
+ accepted connection (which it passes in SYS$NET process logical) until
+ sometime after $CREPRC() returns success status.  If the process gets to
+ run first it may have trouble assigning this BG momentarily.  
+  
+ This situation only occurs for listen services; nolisten services
+ (like FTP) are handled very differently.
+ *********************************************************************
+  
+ Although this problem has been acknowledged, Compaq is reluctant to issue a
+ patch to the current version of TCPIP V5.0 due to its complexity. They have 
+ agreed to provide a fix in a future release. This future release should be 
+ TCPIP Services for VMS version 5.1, due sometime next year (2001). As an 
+ interim "work-around" solution, new HLSEVEN.COM and XMINET_ALPHA.COM command 
+ procedures have been written to compensate for this "race condition". 
+  
+ XMINET_ALPHA.COM Descriptions
+  
+ This command procedure has been edited to check the status of the BG device
+ prior to entering DSM. It contains two IF-THEN-ELSE statements. The first
+ is a loop to count to 10. The command procedure will terminate after 10
+ tries to gain access to the BG device. The second is a loop to test the bit
+ mask status [stat=f$getdvi("''x'","STS")] of the BG device. It was found
+ that with a bit mask value of 65552, DSM could not open the BG device but a
+ bit mask value of 16 allowed DSM to open the BG device. If the bit mask
+ value is not equal to 16, then the command procedures will wait one second
+ and try again. 
+  
+ Typical log file entries:
+  
+ Note - New log files will not be generated if the XMINET_ALPHA.LOG file
+ version number has reached 32767. To generate new log files, delete all
+ XMINET_ALPHA.LOG files and new ones will be generated starting with version
+ 1. Please also note that empty log files may be normal. If the current log
+ file for the latest connection is still open and the connection is still
+ active, the file will be empty and nothing will be displayed. Very busy
+ XMINETMM services may see this and they can also generate failure to purge
+ error messages. Keeping more log files in the purge statement in the
+ command procedures can avoid purge error messages - adjust accordingly.
+  
+ Successful connection with no retries
+  
+  $type hlseven.log
+  $!HLSEVEN.COM-for incoming connect requests
+  $!-------------------------------------------------------------
+  $ set noon        !Don't stop
+  $ set noverify    !change as needed   
+ Opening _BG8534:
+ _BG8534: is now ready for use - entering DSM
+   HLSEVEN     job terminated at  2-NOV-2000 07:55:38.44
+  $
+  
+ Unsuccessful connection after maximum retries
+  
+  $type hlseven.log
+  $!HLSEVEN.COM-for incoming connect requests
+  $!-------------------------------------------------------------
+  $ set noon        !Don't stop
+  $ set noverify    !change as needed   
+ Opening _BG8215:
+ 1> _BG8215: not ready!
+ 2> _BG8215: not ready!
+ 3> _BG8215: not ready!
+ 4> _BG8215: not ready!
+ 5> _BG8215: not ready!
+ 6> _BG8215: not ready!
+ 7> _BG8215: not ready!
+ 8> _BG8215: not ready!
+ 9> _BG8215: not ready!
+ 10> _BG8215: not ready!
+ Could not open _BG8215: - exiting
+   HLSEVEN     job terminated at  2-NOV-2000 07:50:40.84
+  $
+  
+ A successful connection after 2 retries
+  
+  $type hlseven.log
+  $!HLSEVEN.COM-for incoming connect requests
+  $!-------------------------------------------------------------
+  $ set noon        !Don't stop
+  $ set noverify    !change as needed   
+ Opening _BG8215:
+ 1> _BG8215: not ready!
+ 2> _BG8215: not ready!
+ _BG8215: is now ready for use - entering DSM
+   HLSEVEN     job terminated at  2-NOV-2000 07:50:40.84
+  $
+  
+ The XMINET_ALPHA.COM command procedure is included below, and can be copied
+ & pasted into a VMS file directly from this message. Alternatively, the
+ XMINET_ALPHA.COM (XM7_1P165.COM) file will be available for downloading from
+ the [.SOFTWARE] directories at the following ftp sites:
+  
+ Hines                   152.129.1.110
+ Albany                  152.127.1.5
+ Salt Lake City          152.131.2.1
+  
+ To install:
+  
+ Disable the UCX XMINETMM service
+  $ UCX DISABLE SERVICE XMINETMM (UCX Version 4.2)
+ or
+  $ TCPIP DISABLE SERVICE XMINETMM (TCPIP Version 5.0A) 
+  
+ Using either method, place this new XMINET_ALPHA.COM procedure in the
+ SYS$LOGIN directory of the XMINETMM user. Be sure to edit accordingly. 
+  
+ Copy and Paste Method:
+  
+  $ SET DEFAULT USER$:[XMINETMM] or equivalent of the XMINETMM user.
+  
+ Copy file from below into your Windows buffer by highlighting the entire
+ text of the XMINET_ALPHA.COM file below.
+  
+  $ CREATE XMINET_ALPHA.COM
+  
+ Paste the contents of your windows buffer and use CTRL Z to close file.
+ Then check/edit XMINET_ALPHA.COM to ensure that the DSM command line is
+ correct for your system.  (You may use your previous version of
+ XMINET_ALPHA.COM file as a reference.  The entry SOC^XMRUCX is correct.
+ SOC25^XMRUCX should no longer be used.)
+  
+ Using FTP Method:
+  
+ To retrieve from [.SOFTWARE] directories listed above:
+  
+  $ FTP 152.129.1.111
+ 220 ISC4A2 FTP Server (Version 4.2) Ready.
+ Connected to 152.129.1.111. 
+ Name (152.129.1.111:dsmmgr): ANONYMOUS
+ 331 Guest login OK, send ident as password.
+ Password: 
+ 230 Guest login OK, access restrictions apply.
+ FTP> SET DEF [.SOFTWARE]
+ 250-CWD command successful.
+ 250 New default directory is VA1$:[ANONYMOUS.SOFTWARE]
+ FTP> GET XM7_1P165.COM XMINET_ALPHA.COM
+ 200 TYPE set to IMAGE.
+ 200 PORT command successful.
+ 150 Opening data connection for VA1$:[ANONYMOUS.SOFTWARE]XM7_1P165.COM;1 
+ (152.132.1.56,4900)
+ 226 Transfer complete.
+ local: SYS$:[DSMMGR]XMINET_ALPHA.COM;1  remote: XM7_1P165.COM
+ 1346 bytes received in 00:00:00.16 seconds (7.96 Kbytes/s)
+ FTP> EXIT
+ 221 Goodbye.
+  $
+  
+ Check/edit XMINET_ALPHA.COM to ensure that the DSM command line is
+ correct for your system.  (You may use your previous version of
+ XMINET_ALPHA.COM file as a reference.  The entry SOC^XMRUCX is correct.
+ SOC25^XMRUCX should no longer be used.)
+  
+  $ COPY XMINET_ALPHA.COM USER$:[XMINETMM] or equivalent of the XMINETMM user.
+  
+ Before enabling the XMINETMM service, be sure to check the file ownership
+ and protection. 
+  
+ Enable the UCX XMINETMM service
+  $ UCX ENABLE SERVICE XMINETMM (UCX Version 4.2)
+ or
+  $ TCPIP ENABLE SERVICE XMINETMM (TCPIP Version 5.0A)
+  
+ Please note that Mailman puts a leading space before the "$" of each DCL
+ command line in the XMINET_ALPHA.COM file as it is documented. If you choose
+ to cut and paste the file from this message, you will need to edit it to
+ remove the spaces before enabling the services.
+  
+ *** Cut here ***
+  
+  $!XMINET_ALPHA.COM - for incoming connect requests
+  $!-------------------------------------------------------------
+  $ set noon        !don't stop
+  $ set noverify    !change as needed   
+  $! set verify     !change as needed
+  $ purge/keep=5 sys$login:*.log !Purge log files only
+  $ set proc/priv=(share)  !Required for MBX device
+  $ x=f$trnlnm("sys$net")  !This is our MBX device
+  $! 
+  $ write sys$output "Opening "+x !This can be viewed in the log file
+  $! Check status of the BG device before going to DSM
+  $ cnt=0
+  $ CHECK:
+  $ stat=f$getdvi("''x'","STS")
+  $ if cnt .eq. 10
+  $ then
+  $ write sys$output "Could not open ''x' - exiting"
+  $ goto EXIT
+  $ else
+  $       if stat .ne. 16
+  $       then
+  $       cnt=cnt+1
+  $       write sys$output "''cnt'> ''x' not ready!"
+  $       wait 00:00:01 !Wait one second to assure connection
+  $       goto CHECK
+  $       else
+  $       write sys$output "''x' is now ready for use - entering DSM"
+  $!-------------------------------------------------------------
+  $! **Be sure this command line is correct for your system
+  $! **and if access control is enabled, that this account has
+  $! **access to this uci,vol & routine.
+  $!
+  $ DSM/E=DSMMGR/U=VAH/V=ROU/DATA="''X'" SOC^XMRUCX
+  $!-------------------------------------------------------------
+  $       endif
+  $ endif
+  $ EXIT:
+  $ logout/brief
+  
+ *** end cut here ***
+  
+ IMPORTANT!!!   IMPORTANT!!!   IMPORTANT!!!
+  
+ This XMINET_ALPHA.COM file is a generic file to be used and EDITED by all
+ VMS/DSM sites. Please refer to the comment lines in the command procedure.
+ THIS COMMAND PROCEDURE MAY NOT WORK AS DISTRIBUTED.
+ Please verify that the DSM command line is correct for your site.
+  
+ NOTE: This patch should be installed during off hours, when user activity
+ is at a minimum.
+ ============================================================================ 
+  
+ ROUTINES:
+ The second line of the routine now looks like:
+        ;;7.1;MailMan;**[patch list]**;Jun 02, 1994
+  
+               Before          After
+ Name          Checksum        Checksum        Patch List
+ ------------------------------------------------------------------
+ This patch has no routines.
+  
+ ===========================================================================
+  
+ INSTALLATION:
+ NOTE: This patch should be installed during off hours, when user activity
+ is at a minimum.
+ 1.  Users may be on the system during installation of this patch.
+ 2.  On the PackMan menu, use the 'INSTALL/CHECK MESSAGE' option.  This loads 
+     the patch into a Transport Global on your system.  
+ 3.  You do not need to stop TaskMan or the background filer.
+     Users may be on the system.
+ 4.  On the KIDS:Installation menu, use the following options to install the
+     Transport Global:
+        Verify Checksums in Transport Global
+        Print Transport Global
+        Compare Transport Global to Current System
+        Backup a Transport Global
+        Install Package(s)
+  Select INSTALL NAME:    XM*7.1*165    Loaded from Distribution  <date/time>
+                          ==========
+  Install Questions:
+  Want KIDS to INHIBIT LOGONs during the install? YES// NO
+                                                        ==
+  Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// NO
+                                                                        ==
+  Enter the Device you want to print the Install messages.
+  You can queue the install by enter a 'Q' at the device prompt.
+  Enter a '^' to abort the install.
+  
+  DEVICE: HOME// <It's up to you.  You may queue it if you wish.>
+                 ------------------------------------------------
+ 5.  Now read and follow the instructions in the Patch Description to
+ update your XMINET_ALPHA.COM file.
+ ===========================================================================
+
+Routine Information:
+====================
+
+=============================================================================
+User Information:                               
+Entered By  : BEUSCHEL,GARY                  Date Entered : JAN 12, 2001
+Completed By: MAUNSELL,MICHAL L            Date Completed: JAN 22, 2001
+Released By : GRAY,STEPHEN                  Date Released : JAN 23, 2001
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,190 @@
+$TXT Created by TRAXLER,FRANK at DEV.DEV.FO-HINES.MED.VA.GOV  (KIDS) on Tuesday, 07/05/05 at 17:12
+=============================================================================
+Run Date: SEP 19, 2005                     Designation: GMRV*5*12
+Package : GMRV - GEN. MED. REC. - VITALS      Priority: Mandatory
+Version : 5         SEQ #6                      Status: Released
+                  Compliance Date: OCT 20, 2005
+=============================================================================
+
+Associated patches: (v)GMRV*5*8    <<= must be installed BEFORE `GMRV*5*12'
+
+Subject: PATIENT MERGE CHECK
+
+Category: 
+  - Routine
+  - Other
+  - Enhancement (Mandatory)
+  - Data Dictionary
+
+Description:
+============
+
+  Associated Remedy
+  =================
+  101794
+  
+  Associated E3R(s)
+  ================= 
+  19523
+  19542
+  
+  Test Sites:
+  ===========
+  Cheyenne
+  Martinsburg
+  St. Louis 
+  
+  
+ 1) This patch adds an additional check to the SET LOGIC of the ADHRNEW and
+ AHDRERR indexes on the GMRV VITAL MEASUREMENT (#120.5) file. If the
+ variable XDRDVALF equals 1, the rest of the SET LOGIC code is not
+ executed. This will prevent the index from processing FILE 120.5 records
+ when a patient merge is being performed. (E3R 19523)
+  
+ After the patch is installed, the AHDRNEW index definition will be:
+  FILE: 120.5
+  NAME: AHDRNEW                        
+  SHORT DESCRIPTION: INDEX for HDR
+  TYPE: MUMPS                          
+  EXECUTION: FIELD
+  ROOT TYPE: INDEX FILE                
+  ROOT FILE: 120.5
+  USE: ACTION
+  DESCRIPTION:   This cross-reference calls a Health Data Repository (HDR) 
+  API whenever a new entry is created.
+   
+  No actual cross-reference nodes are set or killed.  
+   
+  Calls to the VDEFQM routine are covered by Integration Agreement 4253.  
+  Calls to the VADPT routine are covered by Integration Agreement 3744.  
+  Use of the XDRDVALF variable is covered by Integration Agreement 4690.
+  SET LOGIC: Q:$D(DIU(0))!($$TESTPAT^VADPT($P(^GMR(120.5,DA,0),U,2)))
+  !($G(XDRDVALF)=1)  N ERR,GMVFLAG I $T(QUEUE^VDEFQM)]"" S GMVFLAG=
+  $$QUEUE^VDEFQM("ORU^R01"," SUBTYPE=VTLS^IEN="_DA,.ERR)
+  SET CONDITION CODE: I X1(1)="",X2(1)'="" S X=1
+  KILL LOGIC: Q                        
+  KILL ENTIRE INDEX CODE: Q
+  ORDER NUMBER: 1                        
+  TYPE OF VALUE: FIELD
+  FILE: 120.5                          
+  FIELD: .02
+  
+ After the patch is installed, the AHDRERR index definition will be:
+  FILE: 120.5
+  NAME: AHDRERR                        
+  SHORT DESCRIPTION: INDEX for HDR
+  TYPE: MUMPS                          
+  EXECUTION: FIELD
+  ROOT TYPE: INDEX FILE                
+  ROOT FILE: 120.5
+  USE: ACTION
+  DESCRIPTION:   This cross-reference calls a Health Data Repository (HDR) 
+  API whenever a FILE 120.5 entry is marked as entered-in-error.
+   
+  No actual cross-reference nodes are set or killed.  
+   
+  Calls to the VDEFQM routine are covered by Integration Agreement 4253.  
+  Calls to the VADPT routine are covered by Integration Agreement 3744.  
+  Use of the XDRDVALF variable is covered by Integration Agreement 4690.
+  SET LOGIC: Q:$D(DIU(0))!($$TESTPAT^VADPT($P(^GMR(120.5,DA,0),U,2)))
+  !($G(XDRDVALF)=1)  N ERR,GMVFLAG I $T(QUEUE^VDEFQM)]"" S GMVFLAG=
+  $$QUEUE^VDEFQM("ORU^R01"," SUBTYPE=VTLS^IEN="_DA,.ERR)
+  SET CONDITION CODE: I X1(1)="",X2(1)]"" S X=1
+  KILL LOGIC: Q                        
+  KILL ENTIRE INDEX CODE: Q
+  ORDER NUMBER: 1                        
+  TYPE OF VALUE: FIELD
+  FILE: 120.5                          
+  FIELD: 2
+  
+ 2) This patch modifies the code that builds the ORC segment of the Health
+ Level 7 (HL7) message in the GMVVDEF1 routine to use the station number
+ where the record was created instead of the pointer value to that station
+ entry. (E3R 19542)
+  
+ Before this patch, ORC+3^GMVVDEF1 looks like:
+  <tab>S X=KEY_HLCM_$P(SITEPARM,U,4)_"_120.5",$P(OUTX,HLFS,3)=X
+  
+ After this patch, it looks like:
+  <tab>S X=KEY_HLCM_$P(SITEPARM,U,6)_"_120.5",$P(OUTX,HLFS,3)=X
+  
+ 3) This patch fixes a problem with building the ORC segment of the HL7
+ message in the GMVVDEF1 routine. If the hospital location associated with 
+ the vitals record does not have a division value, there is an error. After
+ this patch, the null value will be used as the division value to prevent
+ the error. (Remedy 101794)
+  
+  
+ Documentation:
+ ==============
+ There are no documentation changes for this patch.
+  
+ Routine Version Line:
+ =====================
+  
+ Below is a list of the routines included in this patch. The second line of
+ each of these routines now looks like:
+  
+ ;;5.0;GEN. MED. REC. - VITALS;**[Patch History]**;Oct 31, 2002
+  
+ Checksum Results:
+ =================
+  
+ Routine Name   Before Patch    After Patch     Patch History
+ ============   ============    ===========     =============
+  GMV12PST       new             7745437         12
+  GMVVDEF1       8483466         8575731         5,8,12
+  
+ Installation Instructions:
+ ==========================
+  
+ 1) This patch can be installed with users on the system. However, 
+    installation should be done when use of the package is low.
+    Installation should take less than 2 minutes.
+  
+ 2) Load the Transport Global.
+  
+ 3) (Optional) Run the following KIDS options before installing the patch:
+  
+               Compare Transport Global to Current System
+               Verify Checksums in Transport Global
+               Backup a Transport Global
+  
+ 4) Install the Build GMRV*5.0*12.
+  
+    At the 'Want KIDS to INHIBIT LOGONs during the install' prompt answer
+    NO.
+  
+    At the 'Want to DISABLE Scheduled Options, Menu Options, and
+    Protocols?' prompt answer NO.
+  
+ 5) (Optional) Delete the GMRV12PST routine after the patch installation is
+               complete.
+
+Routine Information:
+====================
+
+Routine Name:
+  - GMV12PST
+
+
+Routine Checksum:
+
+Routine Name:
+  - GMVVDEF1
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : TRAXLER,FRANK                 Date Entered  : JUN 07, 2005
+Completed By: REZNIK,CHARMAINE              Date Completed: SEP 15, 2005
+Released By : GIVENS,DALE S                 Date Released : SEP 19, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

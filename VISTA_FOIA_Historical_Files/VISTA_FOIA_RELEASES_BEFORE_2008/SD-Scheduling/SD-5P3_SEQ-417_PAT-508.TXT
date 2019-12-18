@@ -1,0 +1,257 @@
+$TXT Created by WILLIAMS,JOHN at MUS4.FO-BAYPINES.MED.VA.GOV  (KIDS) on Wednesday, 04/18/07 at 15:25
+=============================================================================
+Run Date: AUG 29, 2007                     Designation: SD*5.3*508
+Package : SD - SCHEDULING                     Priority: Mandatory
+Version : 5.3       SEQ #417                    Status: Released
+                  Compliance Date: SEP 29, 2007
+=============================================================================
+
+Associated patches: (v)SD*5.3*426  <<= must be installed BEFORE `SD*5.3*508'
+
+Subject: RETRIEVE PURGED APTS - SCHEDULING API
+
+Category: 
+  - Routine
+
+Description:
+============
+
+  
+  
+ PURPOSE OF THE PATCH
+ ====================
+ This patch contains updates to the encapsulated external appointment 
+ query API (SDAPI^SDAMA301), which now gives applications the ability 
+ to retrieve non-cancelled, purged VistA appointments from the PATIENT
+ sub-file (#2.98). Purged VistA appontments are those appointments that 
+ have an entry in the APPOINTMENT multiple (#1900) of the Patient File 
+ (#2) but no enty in the APPOINTMENT multiple (#1900) of the Hospital 
+ Loccation file (#44). This change is required to give application teams
+ the ability to continue to encapsulate Class I and Class III software,
+ as this API is the only approved method of retrieving appointment 
+ information, because direct access to the appointments in the PATIENT 
+ sub-file (#2.98) and the HOSPITAL LOCATION sub-file (#44.003) have 
+ been restricted.
+  
+ This patch also contains a modification to the API that will allow the
+ calling applications to request 7 additional fields:
+  
+ 1) RSA APPPOINTMENT ID (FIELD #26)
+ 2) DATA ENTRY CLERK DUZ AND NAME (FIELD #28)
+ 3) NO-SHOW/CANCELED BY DUZ AND NAME (FIELD #29)
+ 4) CHECK-IN USER DUZ AND NAME(FIELD #30)
+ 5) CHECK-OUT USER DUZ AND NAME (FIELD #31)
+ 6) CANCELLATION REASON IEN AND NAME (FIELD #32)
+ 7) CONSULT IEN (FIELD #33)
+  
+ NOTE: Field #27 is reserved for future use.
+  
+ Field 26 will be stored in piece 26 of the standard output
+ node for this API:
+ ^TMP($J,"SDAMA301",SORT1,[SORT2],APPT DTM)
+  
+  
+ Fields 28 through 33 will be stored in pieces 1 thru 6 of the new output
+ node (note the zero):
+ ^TMP($J,"SDAMA301",SORT1,[SORT2],APPT DTM,0)
+  
+  
+ Also, a new parameter is allowed for the fields ("FLDS") filter. SDAPI
+ will now allow the user to request "ALL", case is irrelevant, to retrieve
+ all available VistA and/or RSA appointment fields:  ARRAY("FLDS")="ALL"
+ This will result in all available fields being returned.
+  
+  
+ Installing the patch will not modify existing functions or data in any
+ way.  It contains eight routines.
+  
+  
+ TEST SITES
+ ==========
+ VAMC Altoona PA
+ Central Texas Temple VAMC
+ Loma Linda VAMC 
+  
+  
+ OVERVIEW
+ ========
+ The API shall allow a new parameter, "PURGED", to be passed in the 
+ array to SDAPI^SDAMA301, which will allow applications to retrieve 
+ non-canceled 'Purged' VistA appointments (appointments with a status of 
+ I, ""(NULL) or NT in the PATIENT sub-file (#2.98) that do not have a 
+ corresponding entry in the HOSPITAL LOCATION sub-file (#44.003)).
+  
+ Note: This parameter will have no affect on appointment retrieval from 
+ the Remote Database of the Replacement Scheduling Application when it
+ has been implemented.
+  
+ If the 'PURGED' parameter is defined in the array that is passed to the 
+ API then the following shall be true:
+  
+  ARRAY("PURGED") shall equal:
+      NULL: Non-Canceled Purged Appointments are NOT returned.
+         1: Non-Canceled Purged Appointments are returned.
+  
+  If the "PURGED" parameter is set equal to 1 then the following shall
+  also be required:
+  
+    Patient filter [ARRAY(4)] must be defined and equal to a semi-colon
+    delimited list or global location ["^DPT("] of one or more patient 
+    DFNs.
+  
+    The following field numbers in ARRAY("FLDS") CANNOT be requested to 
+    be returned:
+        5 : Length of Appointment
+        6 : Comments
+        7 : Overbook
+        8 : Eligibility of Visit
+        9 : Check-In Date
+       11 : Check Out Date
+       22 : Status
+       28 : Data Entry Clerk
+       30 : Check-In User
+       31 : Check-Out User
+       33 : Consult Link
+     
+ If any of the above conditions are NOT true then the API will generate 
+ and return an error code, 115, with the following error message: 
+ "INVALID INPUT ARRAY ENTRY". NO Appointment Information will be returned.
+  
+ SOFTWARE AND DOCUMENTATION DISTRIBUTION:
+ ========================================
+  
+ This patch will be distributed in a PackMan message through the National
+ Patch Module.  The KIDS build for this patch is SD*5.3*508.  See
+ Installation Instructions below:
+  
+ Sites may retrieve the documentation directly via ftp.  The preferred
+ method is to FTP the files from:
+  
+       download.vista.med.va.gov
+  
+ This transmits the file from the first available FTP server.  Sites may
+ also elect to retrieve software directly from the ANONYMOUS.SOFTWARE
+ directory from a specific server as follows:
+  
+ ALBANY:                  ftp.fo-albany.med.va.gov
+ HINES:                   ftp.fo-hines.med.va.gov
+ SALT LAKE:               ftp.fo-slc.med.va.gov
+  
+ Filename                 Description
+ ========                 =========== 
+ SD_53_508RN.PDF          Release Notes
+  
+ Note: This file is binary and must be transferred using binary file
+ transfer tools.
+  
+  
+ NOIS/REMEDY TICKETS COVERED:
+ ======================
+ There are no NOIS or Remedy tickets covered in this patch.
+    
+ ROUTINE SUMMARY:
+ ================
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+   
+     <tab>;;5.3;Scheduling;**[patch list]**;Aug 13, 1993
+   
+                             CHECK^XTSUMBLD results
+ Routine name      Before Patch          After Patch         Patch List
+ ============      ============          ===========         ==========
+ SDAMA300             5781532              7365635           301,347,508
+ SDAMA301              931566              2769453         301,347,426,508
+ SDAMA302             6673446              6965050           301,347,508
+ SDAMA303             6154293              6678832           301,347,508
+ SDAMA304             2379344              2379344           301,347,508
+ SDAMA305             9703439             13477913           301,347,508
+ SDAMA306             2096152              2759976           301,347,508
+ SDAMA307              497659              4698150             301,508
+  
+                             CHECK1^XTSUMBLD results
+ Routine name      Before Patch          After Patch         Patch List
+ ============      ============          ===========         ==========
+ SDAMA300            42283370             56732651           301,347,508
+ SDAMA301             3523610             12164760         301,347,426,508
+ SDAMA302            24026521             25526866           301,347,508
+ SDAMA303            22767510             24778447           301,347,508
+ SDAMA304             8330866              8771531           301,347,508
+ SDAMA305            43200965             66007958           301,347,508
+ SDAMA306             7276418             11098328           301,347,508
+ SDAMA307             1446187             33225711             301,508
+  
+                       Number of Routines = 8
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ This patch should be installed during non-peak hours. Users can be on 
+ the system. Installation will take less than 1 minute.
+  
+  NOTE: THE FOLLOWING PATCH IS REQUIRED PRIOR TO INSTALLATION. KIDS will 
+        not allow the installation of this patch without the prior 
+        installation of the following patch: SD*5.3*426 
+   
+   1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+   
+   2.  From the Kernel Installation and Distribution System Menu, select
+       the Installation menu.
+   
+   3.  From this menu, you may elect to use the following options
+       (when prompted for INSTALL NAME, enter SD*5.3*508):
+         a.  Backup a Transport Global - this option will create a backup
+             message of any routines exported with the patch.  It will NOT
+             backup any other changes such as DDs or templates.
+         b.  Compare Transport Global to Current System  - this option will
+             allow you to view all changes that will be made when the patch
+             is installed.  It compares all components of the patch
+             (routines, DDs, templates, etc.).
+         c.  Verify Checksums in Transport Global - this option will
+             allow you to ensure the integrity of the routines that are in
+             the transport global.
+   
+   4.  Use the Install Package(s) option and select the package SD*5.3*508.
+   
+   5.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+       YES??//',respond NO.
+   
+   6.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+       Protocols? YES//', respond NO.
+ 
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: SDAMA300
+    Before: B42283370   After: B56732651  **301,347,508**
+Routine Name: SDAMA301
+    Before:  B3523610   After: B12164760  **301,347,426,508**
+Routine Name: SDAMA302
+    Before: B24026521   After: B25526866  **301,347,508**
+Routine Name: SDAMA303
+    Before: B22767510   After: B24778447  **301,347,508**
+Routine Name: SDAMA304
+    Before:  B8330866   After:  B8771531  **301,347,508**
+Routine Name: SDAMA305
+    Before: B43200965   After: B66007958  **301,347,508**
+Routine Name: SDAMA306
+    Before:  B7276418   After: B11098328  **301,347,508**
+Routine Name: SDAMA307
+    Before:  B1446187   After: B33225711  **301,508**
+ 
+Routine list of preceding patches: 426
+
+=============================================================================
+User Information:
+Entered By  : WILLIAMS,JOHN F               Date Entered  : FEB 21, 2007
+Completed By: HOWELL,LYNN                   Date Completed: AUG 28, 2007
+Released By : FITCH,DONNA                   Date Released : AUG 29, 2007
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,310 @@
+$TXT Created by MENDOZA,RAUL at PAT-XWB.FO-OAKLAND.MED.VA.GOV  (KIDS) on Wednesday, 06/08/05 at 14:11
+=============================================================================
+Run Date: OCT 26, 2005                     Designation: XWB*1.1*34
+Package : XWB - RPC BROKER                    Priority: Mandatory
+Version : 1.1        SEQ #33                    Status: Released
+                  Compliance Date: NOV 26, 2005
+=============================================================================
+
+
+Subject: M2M Bug Fixes
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ Patch XWB*1.1*34 addresses (fixes) the following issues with the M-to-M 
+ Broker reported by the Imaging Team. 
+  
+ 1. Control characters
+ Data returned from RPC calls no longer contains carriage-return 
+ characters.
+  
+ 2. A-synchronous Disconnects
+ ^XWBM2MC intermittently calls $$CLOSE^XWBRL after the API 
+ has already closed the socket-device.  This only seems to happens if   
+ the network partner closes the socket before the process closes it.
+  
+ 3. Remaining information in ^TMP
+ $$CLOSE() did not KILL the entry in the ^TMP global for the current
+ context, in which it was written originally to do so.
+  
+ 4. Error Reporting
+ When an error occurs inside an RPC on the remote machine, the M2M broker 
+ client has no documented mechanism to report back any information about
+ the error tot he client.
+  
+ 5. Imbalanced Quote Characters in XML Message
+ When the M2M broker server attempts to report a M (MUMPS) error back to
+ the client, it generates incorrect XML code containing imbalanced quote 
+ characters causing the client to receive no response at all. 
+  
+ 6. Embedded Control Characters in XML Message
+ When the M2M broker server attempts to report an M error back to the 
+ client, it generates incorrect XML code containing embedded "<" and ">" 
+ characters.  These characters are confusing the VistA XML parser causing
+ the client to receive no response at all. 
+  
+ 7. Undefined Variable (XWBOS)
+ The server-side code intermittently encounters an undefined variable 
+ XWBOS error. Because the error causes the server never to send a  
+ response to the client, the client receives a "Socket Broker" error 
+ message.
+  
+  
+ 8. Multi-divisional Sites and $$CONNECT
+ The $$CONNECT() function does not work for multi-divisional sites because 
+ it only established unsubscripted DUZ. This API has been updated to 
+ establish subscripted DUZs (e.g., DUZ(1),DUZ(2), etc. ) resolving this 
+ issue.
+  
+ 9. Documentation of Return Values
+ The documentation of the M2M client is in conflict with the actual 
+ implementation with respect to consolidated sites:
+ The documentation in routine XWBM2MC states:
+ ; Return (1)=DUZ, (2)=(0=OK, 1,2...=Can't sign-on for some reason)
+ ; (3)=verify needs changing, (4)=Message, (5)=0, (6)=msg cnt, (6+n)
+ ; ((6)+7)=# div user must select from, ((6)+7+n)=div
+ thus suggesting that a list of possible locations is returned by the 
+ login-request. In reality an explicit RPC must be called to obtain the 
+ list of possible locations (or "divisions"). There is no documentation 
+ that indicates what the name of that RPC is, or how it ought to be called.
+  
+ 10. RPCs with no Input Parameters
+ When an RPC is called that has no input parameters, an error occurs, 
+ which is not at all reported to the calling software.
+  
+ 11. Port Number is Hard Coded in Menu Option XWB M2M CACHE LISTNER
+ The port-number for the M-to-M Broker listener is hard-coded in 
+ the menu option named XWB M2M CACHE LISTNER, which starts the listener.
+ Because the port number is not passed as a site-parameter, this makes it 
+ impossible to run  multiple VISTA systems on one machine, each with its
+ its own port-number. This makes testing difficult.
+  
+ 12. Menu option XWB M2M CACHE LISTNER uses wrong commands to start 
+ listener
+ The menu option named XWB M2M CACHE LISTENER, which is used to start the 
+ listener for the M-to-M broker, issues a M "DO" command, rather than a M 
+ "JOB" command. As a result, when the menu option XWB M2M CACHE LISTENER
+ is started, the incorrect use of the M "DO" command never returns
+ to the menu program.
+  
+ 13. Distinction between "Logins Disabled" and "Invalid Access 
+ Information"
+ The function $$CONNECT^XWBM2MC returns a value of "0" when no connection 
+ can be established, without providing any additional information as to 
+ why the connection failed. Possible causes are:
+  
+   -Could not open the <address> and port <number> connections (most
+    likely because server process is not currently running)
+   -XUS SIGNON SETUP RPC failed
+   -XUS AV CODE RPC failed
+   -Invalid user, no user number returned (most likely because specified 
+    Access or Verify code is not valid)
+   -Could not obtain list of valid divisions for current user
+   -User Set-Up in VistA does not reflect access to DICOM Gateway
+   -Could not Set active Division for current user
+  
+ 14. Special characters in returned values.
+ When a parameter is passed to an RPC and that contains special characters 
+ like <, >, & or ", the API on the client "escapes" them and the code
+ on the server resolves the escaped values to the original characters 
+ before the RPC code is called.  However, when a value that is 
+ being returned contains one of the special characters, it is passed 
+ "unedited", and has the potential of confusing the parser on the 
+ receiving end.
+  
+ 15. Unlock in Error Trap
+ When an error occurs inside an RPC, the default situation is as follows:
+   - Broker traps the error
+   - logs it using ^%ZTER
+   - returns error information to the client
+   - waits for the next RPC call. 
+  
+ Optionally, the code inside the RPC function can establish its own
+ error trap.  The "default" error trap does not release any LOCKs
+ that may have been established inside the RPC.
+  
+ 16. Change in Meaning of $X between Cach  4.x and Cach  5.x
+ There is a slight but nasty difference between Cache 4.x and Cache 5.x 
+ that relates to the meaning of $X in TCP/IP I/O.
+  
+  
+ Patch XWB*1.1*34 introduces two new M-to-M Broker APIs, a modified 
+ option, and provides a new entry point to create a TCP/IP service, 
+ described as follows:
+ =================================================================
+  
+ NEW M-TO-M BROKER APIs 
+ 1. $$GETDIV^XWBM2MC() - this API gets the division/s for a user.  
+ Returns 1-success, 0-fail.  This API require on parameter where the 
+ division string will be placed.
+  
+   Format:  $$GETDIV^XWBM2MC(XWBDIVG)
+   XWBDIVG - where the division string will be place.
+   
+   Results:
+   XWBDIVG(1) - number of divisions
+   XWBDIVG(#) - "ien;station name;startion #" 
+  
+ 2. $$SETDIV^XWBM2MC() - set the division for a user.  Returns 1-success, 
+ 0-fail.  Requires a parameter which is the division to set.
+ Format:  $$SETDIV^XWBM2MC(XWBDIVS)
+ XWBDIVS - is the division to set.  Use the ien from $$GETDIV()
+  
+ MODIFIED OPTION
+ 1. XWB M2M CACHE LISTENER  - port number is no longer hard coded.  This 
+ option will prompt the user to enter a port number (4800 is the 
+ default).  The option will "job" off the task to start the listener.
+ (**It is recommended to use the TCP/IP Service**)
+  
+   For example:
+   XWB M2M CACHE LISTENER     Start M2M RPC Broker Cache Listener
+   PORT:  4800//
+  
+ NEW ENTRY POINT
+ 1.  STRT(PORT) - This entry is called from the option "XWB M2M CACHE 
+ LISTENER " and "job" off the listener for Cache sites.  Cache/VMS sites 
+ have the option to create a TCP/IP services and use the entry point 
+ CACHEVMS^XWBVLL described in patch XWB*1.1*41.
+  
+  
+ Patch Tracking #:  41152162
+ =========================== 
+  
+  
+ List of Test Sites
+ ==================
+ VISTA Imaging System Team, Washington Office of Information Field Office 
+ (OIFO)
+  
+ Atlanta VAMC
+ Biloxi VAMC
+ Fayetteville NC VAMC
+ Little Rock VAMC
+ Prescott VAMC
+ Seattle VAMC 
+  
+  
+ Blood Bank Team Coordination
+ ============================
+ Clearance - 4/13/04
+  
+  
+ Documentation
+ ============= 
+ Vista M-to-M Broker, Patch XWB*1.1*34 documentation can be found in the 
+ VistA Anonymous directories and on the VistA Documentation Library (VDL)
+ in the following two formats:
+  
+     XWB1_1P34SP.PDF                    XWB1_1P34SP.DOC
+  
+ The preferred retrieval method to download the documentation for Patch 
+ XWB*1.1*34 is to FTP from the ANONYMOUS.SOFTWARE directory at: 
+  
+    DOWNLOAD.VISTA.MED.VA.GOV.
+  
+ This transmits the file from the first available FTP server. Sites may 
+ also elect to retrieve software directly from one of the following 
+ servers.
+    
+    OI Field Office         FTP Address                  Directory
+    ------------------------------------------------------------------
+    Albany             ftp.fo-albany.med.va.gov     ANONYMOUS.SOFTWARE
+    Hines              ftp.fo-hines.med.va.gov      ANONYMOUS.SOFTWARE
+    Salt Lake City     ftp.fo-slc.med.va.gov        ANONYMOUS.SOFTWARE
+    
+  Note:  These files must be transferred in binary or IMAGE, not
+         ASCII, mode.  The VistA Documentation Library (VDL) contains
+         all end-user manuals.
+  
+ Vista M-to-M Broker, Patch XWB*1.1*34 documentation is also made 
+ available online in Adobe Acrobat Portable Document (PDF) Format on the 
+ VistA Documentation Library (VDL) at the following Web address:
+  
+    http://vaww.vista.med.va.gov/vdl/Infrastructure.asp#App128
+  
+  
+ Routine Summary
+ ===============
+ The following routines are included in this patch.  The second line of 
+ each of these routines now looks like:
+  ;;1.1;RPC BROKER;**[Patch List]**;Mar 28, 1997
+  
+ Checksums
+ =========
+ Sites should use CHECK^XTSUMBLD to verify checksums
+  
+ Routine Name    Before Patch   After Patch    Patch List
+ ============    ============   ===========    ==========
+ XWBM2MC         6758340        9476748        28,34
+ XWBRL           3848552        4387751        28,34
+ XWBRPC          10961081       11723540       28,34
+ XWBRPCC         5907709        6219879        28,34
+ XWBUTL          3238078        3649080        28,34
+ XWBVLL          3252550        3398737        28,41,34
+                            
+  
+ Installation Instructions
+ =========================
+ >>>Users may remain on the system.
+ >>>TaskMan does *not* need to be stopped.
+  
+ >>>All open connection to the M2M service should be closed.
+ >>>It is recommended to disable the TCPIP service that is used the M2M software.
+  
+    1.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This
+        option will load the KIDS package onto your system.
+  
+    2.  The patch has now been loaded into a Transport global on your
+        system. Now you need to use KIDS to install the Transport global.
+        On the KIDS menu, under the 'Installation' menu, use the following
+        options:
+  
+           Verify Checksums in Transport Global
+           Print Transport Global
+           Compare Transport Global to Current System
+           Backup a Transport Global
+                  
+    3.  Users can remain on the system. This patch can be loaded any
+        non-peak time.
+        TaskMan can remain running.
+  
+    4.  Installation will take less than 2 minutes.
+        On the KIDS menu, under the 'Installation' menu, use the following
+        option:
+         Install Package(s)  'XWB*1.1*34'
+                              ==========
+  
+        Want KIDS to Rebuild Menu Trees Upon Completion of Install? YES//NO
+                                                                         ==
+        Want KIDS to INHIBIT LOGONs during the install? YES// NO
+                                                              ==
+        Want to DISABLE Scheduled Options, Menu Options, and Protocols? NO
+                                                                        ==
+  
+    5.  Enable the TCPIP service that is used by the M2M software.
+
+Routine Information:
+====================
+Routine Name: XWBM2MC
+Routine Name: XWBRL
+Routine Name: XWBRPC
+Routine Name: XWBRPCC
+Routine Name: XWBUTL
+Routine Name: XWBVLL
+
+=============================================================================
+User Information:
+Entered By  : MENDOZA,RAUL E.               Date Entered  : DEC 17, 2002
+Completed By: SINGH,GURBIR                  Date Completed: SEP 23, 2005
+Released By : PALMER,MICHAEL                Date Released : OCT 26, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

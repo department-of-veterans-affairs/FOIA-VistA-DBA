@@ -1,0 +1,624 @@
+
+=============================================================================
+Run Date: MAY 10, 2005                     Designation: RA*5*45
+Package : RA - RADIOLOGY/NUCLEAR MEDICINE     Priority: Mandatory
+Version : 5        SEQ #49                      Status: Released
+                  Compliance Date: JUN 10, 2005
+=============================================================================
+
+Associated patches: (v)RA*5*51     <<= must be installed BEFORE `RA*5*45'
+
+Subject: Contrast studies in Radiology - Orderable Items inconsistency
+
+Category: 
+  - Input Template
+  - Routine
+  - Data Dictionary
+  - Print Template
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ Patch RA*5*45 is one of two patches that work together; in order of
+ install, they are:
+   OR*3*211
+   RA*5*45
+  
+ These two patches will be released as a multi-build named:
+ 'RA_OR_45_CONTRAST_MEDIA.KID'.
+  
+ The functional changes included in OR*3*211 can be viewed by executing 
+ the 'Display a Patch' option for that patch.
+  
+ Description of RA*5*45
+ ======================
+ This patch answers a registered Patient Safety Issue [PSI-03-047] by
+ addressing two contrast media related issues and a Rad/Nuc Med request 
+ print/display issue [HEH-1103-40959 (Heartland-East HCS)].
+  
+ The first is the problem of a parent procedure's descendent procedures 
+ not being checked for contrast media during ordering.  Also, a parent 
+ procedure is not flagged as having contrast media in the ORDERABLE ITEMS 
+ file (#101.43) when one or more of its descendent procedures have 
+ contrast media. This can lead to complications when treating patients.
+  
+ Please note that during order entry, an Allergy-Contrast Media order 
+ check will only occur if:
+  
+ 1. The imaging procedure uses contrast
+                       and
+ 2.  The patient has one of the following active allergies from the VA 
+     Drug Class (#50.605) file:
+     IONIC CONTRAST MEDIA
+     RADIOLOGICAL/CONTRAST MEDIA
+  
+ The second is the use of AMIS codes in determining whether contrast media 
+ is associated with the procedure.  This is no longer an acceptable way to
+ associate contrast media to a procedure, because an AMIS code may include 
+ procedures with and without contrast media.  The association of contrast 
+ media with procedure is more accurately made with CPT codes.
+  
+ As a result of tying CPT code to contrast media, the [RA PROCEDURE] option
+ does not allow editing of the CPT code for existing procedures. This new
+ feature prevents patient treatment misrepresentation that can be caused by
+ changing the definition of the procedure.
+  
+ The request issue deals with how the pregnancy status of the 
+ female patient is displayed to the user. Since a substantial amount of
+ time may pass from the time the order is placed to the time the order is
+ registered, if the patient wasn't pregnant at the time of the order, 
+ instead of not displaying a pregnancy status, the "Patient not pregnant 
+ at time of order" will be displayed.
+  
+ Prior to installing the combined build, contrast media definitions were 
+ associated with AMIS codes. The value of the AMIS code for the radiology 
+ nuclear medicine procedure indicated the contrast media used. AMIS CODES 
+ is a multiple (#71.03) field in the RAD/NUC MED PROCEDURES (#71) file. 
+ The following types of contrast media existed prior to
+ RA_OR_45_CONTRAST_MEDIA.KID:
+ 'B' for 'Barium'
+ 'C' for 'Cholecystogram'
+ 'M' for 'unspecified contrast media'
+  
+ After the installation of RA_OR_45_CONTRAST_MEDIA.KID, a CONTRAST MEDIA 
+ multiple field will be added to the following files: RAD/NUC MED PATIENT 
+ (#70) file (sub-file: 70.3225) and the RAD/NUC MED PROCEDURES (#71) file 
+ (sub-file: 71.0125). The following contrast media types will replace the 
+ three above:
+ 'I' for 'Ionic Iodinated'
+ 'N' for 'Non-ionic Iodinated'
+ 'L' for 'Gadolinium'
+ 'C' for 'Cholecystographic'
+ 'G' for 'Gastrografin'
+ 'B' for 'Barium'
+ 'M' for 'unspecified contrast media' (backwards compatibility)
+  
+ After the patch is installed, a post-init will check every Rad/Nuc Med 
+ orderable item (OI) in CPRS' ORDERABLE ITEMS (#101.43) file for contrast
+ media (CM) definitions. If an OI has a CM definition, then the post-init 
+ will designate the associated Rad/Nuc Med procedure in the RAD/NUC MED 
+ PROCEDURES (#71) as having the same CM definition. The user will be 
+ informed, via email, which Rad/Nuc Med procedures have been updated 
+ either successfully or unsuccessfully.
+  
+ A second post-init will then run which will initiate a whole-file update 
+ between the RAD/NUC MED PROCEDURES and the ORDERABLE ITEMS files.
+ This second post-init ensures:
+ a) That all OI non-parent procedures are defined exactly as Rad/Nuc
+    non-parent procedures.
+ b) That Rad/Nuc Med parent procedures having descendents with CM
+    associations update the parent orderable item by indicating the parent
+    has CM associations. Note: The OI file does not recognize
+    parent/descendent relationships; that is why OI parents are allowed a
+    contrast media associations.
+  
+ The user will be informed, via email, which Rad/Nuc Med procedures have
+ been updated either successfully or unsuccessfully.
+  
+ After the patch is installed and the post-inits complete, procedures
+ associated with contrast media when ordered or registered for patients
+ who had contrast media allergic reactions in the past will display 
+ the contrast media causing the allergic reaction to the user.
+  
+ Options Changed
+ ===============
+  
+  Procedure related:
+  ------------------
+  * Active Procedure List (Long) [RA PROCLONG]
+  * Active Procedure List (Short) [RA PROCSHORT]
+  * Alpha Listing of Active Procedures [RA ALPHALIST]
+  * Inactive Procedure List (Long) [RA INACPRCLONG]
+  * List of Inactive Procedures (Short) [RA INACPRCSHORT]
+  * Parent Procedure List [RA PROCPARENT]
+  * Series of Procedures List [RA PROCSERIES]
+  * List of Procedures with Contrast [RA PROCMEDIA]
+  * Display Rad/NM Procedure Contrast Media History [RA CMAUDIT HISTORY]
+  * Procedure Enter/Edit [RA PROCEDURE]
+  * Rad/Nuc Med Procedure Information Look-Up [RA DISPLAY IMAGPROCINFO] 
+  * Procedure File Listings [RA PROCLISTS]
+  
+  Request related:
+  ----------------
+  * Detailed Request Display [RA ORDERDISPLAY]
+  * Print Rad/Nuc Med Requests by Date [RA ORDERPRINTS]
+  * Print Selected Requests by Patient [RA ORDERPRINTPAT]
+  
+  Exam related:
+  -------------
+  * Exam Profile (selected sort) [RA PROFSORT]
+  * Profile of Rad/Nuc Med Exams [RA PROFQUICK]
+  * Case No. Exam Edit [RA EDITCN]
+  * Edit Exam by Patient [RA EDITPT]
+  * Status Tracking of Exams [RA STATRACK]
+  * View Exam by Case No. [RA VIEWCN]
+  * Exam Deletion [RA DELETEXAM]
+  
+  Report related:
+  ---------------
+  * Display a Rad/Nuc Med Report [RA RPTDISP]
+  * Draft Report (Reprint) [RA REPRINT]
+  * On-line Verifying of Reports [RA RPTONLINEVERIFY]
+  * Report Entry/Edit [RA RPTENTRY]
+  * Resident On-line Pre-Verification [RA RESIDENT PRE-VERIFY]
+  * Select Report to Print by Patient [RA RPTPAT]
+  * Unverify a Report for Amendment [RA UNVERIFY]
+  * Access Uncorrected Reports [RA UNCORRECTED REPORTS]
+  
+  Options created for this patch:
+  -------------------------------
+  * List of Procedures with Contrast [RA PROCMEDIA]
+  * Display Rad/NM Procedure Contrast Media History [RA CMAUDIT HISTORY]
+  
+ Data Dictionary
+ ===============
+ File RAD/NUC MED PATIENT (#70)
+  sub dictionary: 70.03, field: BARIUM USED? (#5) **deleted by post-init**
+  sub dictionary: 70.03, field: CONTRAST MEDIA USED (#10)
+  sub dictionary: 70.03, field: CONTRAST MEDIA ACTIVITY LOG (#250m)
+    sub dictionary: 70.16, field: DATE/TIME EDITED (#.01)
+                                  PRIOR CONTRAST MEDIA VALUE (#2)
+                                  USER WHO EDITED CONTRAST (#3)
+  sub data dictionary: CONTRAST MEDIA (#225m) 
+    sub dictionary: 70.3225, field: CONTRAST MEDIA (#.01)
+  
+ File RAD/NUC MED PROCEDURES (#71)
+  sub dictionary: 71, field: CONTRAST MEDIA USED (#20)
+  sub dictionary: 71, field: CONTRAST MEDIA (#125m)
+    sub dictionary: 71.0125, field: CONTRAST MEDIA (#.01)            
+  sub dictionary: 71, field: AMIS CODE (#175m)
+    sub dictionary: 71.03, field: AMIS CODE (#.01) Description only
+  sub dictionary: 71, field: CONTRAST MEDIA ACTIVITY LOG (#250m)
+    sub dictionary: 71.06, field: DATE/TIME EDITED (#.01)
+                                  PRIOR CONTRAST MEDIA VALUE (#2)
+                                  USER WHO EDITED CONTRAST (#3)
+  
+ File MAJOR RAD/NUC MED AMIS CODES (#71.1)
+  sub dictionary: 71.1, field: MAJOR AMIS CODE (#.001) Description only
+  sub dictionary: 71.1, field: DESCRIPTION (#.01) "DEL" node 
+  
+ Print Templates
+ ===============
+ RA ALPHA LIST OF ACTIVES (#71)
+ RA PARENT PROCEDURE LIST (#71)
+ RA PROCEDURE LIST (#71)
+ RA PROCEDURE SHORT LIST (#71)
+  
+ Input Templates
+ ===============
+ RA EXAM EDIT (#70)
+ RA PROCEDURE EDIT (#71)
+ RA STATUS CHANGE (#70)
+  
+ Related Site/Remedy/NOIS references
+ ===================================
+ Richmond              Remedy # HD0000000067478   NOIS: RIC-0502-20827
+ Northern California   Remedy # HD0000000067724   NOIS: MAC-0903-61801
+ Heartland-East HCS    Remedy # None              NOIS: HEH-1103-40959
+ Mountain Home VAMC    Remedy # HD0000000068440   NOIS: None
+  
+ Documentation and Host File Retrieval:
+ ======================================
+ This patch is available via ftp in a KIDS distribution. The host file is 
+ named RA_OR_45_CONTRAST_MEDIA.KID and is located in the 
+ [ANONYMOUS.SOFTWARE] directory of the following OI Field Offices: 
+  
+ Albany          ftp.fo-albany.med.va.gov
+ Hines           ftp.fo-hines.med.va.gov
+ Salt Lake City  ftp.fo-slc.med.va.gov
+  
+ The documentation and software distribution includes:
+  
+ File Name                              Description
+ =========                              ===========
+ RA_OR_45_CONTRAST_MEDIA.KID            Host file containing KIDS software
+                                        distribution
+  
+ ra5-0ag.pdf                            The ADPAC Guide in .pdf format
+ ra5-0tm.pdf                            The Technical Manual in .pdf format
+ ra5-0um.pdf                            The User Manual in .pdf format
+  
+ Once released, documentation may also be retrieved from VISTA
+ Documentation Library (VDL) on the Internet at the following address,
+ http://www.va.gov/vdl
+  
+ Test Sites
+ ==========
+ Northern California (Martinez), CA
+ White River Junction, VT
+ VA Health Care Upstate New York (Buffalo)
+  
+ The second line of the routine now looks like:
+ ;5.0;Radiology/Nuclear Medicine;**[patch number]**;Mar 16, 1998
+  
+                        CHECK^XTSUMBLD results
+ Name          Before Patch       After Patch       Patch List
+ ----------------------------------------------------------------
+ RA45PST       N/A                3865185           45
+ RA45PST1      N/A                6858003           45
+ RA45PST2      N/A                9056793           45
+ RACMHIS       N/A                7690691           45
+ RADEM1        8939570            10680172          45
+ RAEDCN        28242867           24022873          5,13,10,18,28,31,34,45
+ RAEDCN1       2948642            7924594           18,45
+ RAEDPT        6004419            6424730           10,18,28,45
+ RAMAIN2       11467456           13024121          45
+ RAMAINP1      3356556            9396499           3,45
+ RAMAINU       N/A                6604102           45
+ RAMAINU1      N/A                4267425           45
+ RAO7MFN       10033679           9909094           1,6,10,18,45
+ RAO7PC1       4988201            4988201           1,16,18,26,36,45
+ RAO7PC1A      13362260           13401859          1,10,26,31,36,45
+ RAO7PC2       12546577           13303812          1,11,14,16,22,27,45
+ RAO7PC4       12829193           13713291          28,32,31,45
+ RAO7UTL       4993295            6235271           18,45
+ RAORD1        19192472           19206033          10,45
+ RAORD2        15522254           16592047          5,10,51,45
+ RAORD3        13362556           14044719          5,15,21,27,45
+ RAORD5        13837177           14010598          8,10,15,31,45
+ RAORD6        20456866           16690655          5,10,15,18,27,45
+ RAORD61       N/A                5157089           45
+ RAPINFO       6544230            8150810           10,45
+ RAPROD        16571532           17091996          10,35,45
+ RAPROD1       18529710           18723570          15,18,45
+ RAPROD2       4015870            6030670           45
+ RART3         9260244            9929650           8,10,18,27,35,45
+ RARTE         12455147           13233809          18,34,45
+ RARTR3        7227526            8374182           8,10,19,27,35,45
+ RASTED        20445380           21073275          1,10,18,28,45
+ RAUTL2        12821191           16596455          10,26,45
+ RAUTL21       3596173            5107529           26,45
+ RAUTL8        9923944            11287595          45
+  
+ Installation Instructions:
+ ==========================
+ The install time for this patch may be more than 5 minutes because Menu
+ Trees are rebuilt during the installation.  Please check with your IRM
+ supervisor regarding rebuilding Menu Trees. The installation of this 
+ patch should be coordinated with the Radiology ADPAC due to menu 
+ structure changes and the added capability of associating contrast media 
+ to Rad/Nuc Med procedures.
+  
+ This patch should be installed when there are no Rad/Nuc Med users on the 
+ system.
+   
+ NOTE: MailMan and Kernel patches must be current on the target system to
+       avoid problems loading and installing this patch.
+  
+  1.  Review your mapped set. If the routines are mapped, they should
+      be removed from the mapped set at this time.
+  
+  2.  From the Kernel Installation & Distribution System menu, select
+      the Installation menu.
+  
+    a.  From this menu, select the option Load a Distribution.  When
+        prompted for a file name, type in the directory where you have
+        stored the host file, followed by the file name.
+  
+  3.  From this menu, you may select to use the following options
+      (when prompted for INSTALL NAME, enter RA_OR_CONTRAST MEDIA 1.0)
+  
+    a.  Backup a Transport Global - this option will create a backup
+        message of any routines exported with the patch.
+    
+    b.  Compare Transport Global to Current System - this option will
+        allow you to view all changes that will be made when the patch
+        is installed.
+    
+    c.  Verify Checksums in Transport Global - this option will ensure
+        the integrity of the routines that are in the transport global.
+  
+  4.  Use the 'Install Package(s)' option under the 'Installation' menu.
+      When prompted for INSTALL NAME, enter: RA_OR_CONTRAST MEDIA 1.0
+   
+  
+       When prompted "Want KIDS to Rebuild Menu Trees Upon Completion of 
+       Install? YES//, respond YES.
+  
+       When prompted "Want KIDS to INHIBIT LOGONs during the install?
+       YES//", respond NO.
+   
+       When prompted "Want to DISABLE Scheduled Options and Menu Options?
+       YES//", respond YES.      
+  
+       When prompted "Enter options you wish to mark as 'Out of Order':",
+       enter the following to disable all Rad/Nuc Med options:
+      
+         RA*
+   
+       When prompted "Enter protocols you wish to mark as 'Out of Order':",
+       enter the following to disable all Rad/Nuc Med protocols:
+   
+         RA*
+   
+  5.  Verify that the patch installation completed correctly by using the
+      KIDS 'Utilities...' [XPD UTILITY] option 'Install File Print' [XPD
+      PRINT INSTALL FILE] and selecting this patch (RA*5.0*45).
+  
+  6.  On a mapped system, rebuild your map set.
+  
+  7.  After the post-installation has completed successfully, the following
+      two actions should be taken:
+  
+     1.  Delete following routines used in the 'RA_OR_CONTRAST MEDIA 1.0'
+         multi-build patch installation process.
+  
+         These routines are in the ORY211* namespace:
+          ORY2110
+          ORY21101
+          ORY21102
+          ORY21103
+          ORY21104
+          ORY21105
+          ORY21106
+          ORY21107
+          ORY21108
+          ORY2111
+          ORY2112
+          ORY2113
+          ORY2114
+          ORY211ES
+  
+     2.  It is REQUIRED that the Radiology service ADPAC run the menu
+         option: 'Active Procedure List (Short)' [RA PROCSHORT]
+  
+         This option will list, by imaging type, all active procedures and
+         the current contrast media associations for detailed procedures.
+         The Radiology ADPAC must thoroughly review this list and make
+         appropriate corrections/additions of contrast media associations
+         to any detailed procedure that uses contrast using the 'Procedure
+         Entry/Edit' [RA PROCEDURE] menu option.  Parent procedures will
+         automatically inherit contrast media associations from their
+         descendent procedures.
+  
+         **IMPORTANT NOTE** Not performing this step could result in absent
+         or unexpected CPRS Order checks at the time of physician order 
+         entry which could lead to patient complications when contrast
+         procedures are performed. 
+
+Routine Information:
+====================
+
+Routine Name:
+  - RA45PST
+
+
+Routine Checksum:
+
+Routine Name:
+  - RA45PST1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RA45PST2
+
+
+Routine Checksum:
+
+Routine Name:
+  - RACMHIS
+
+
+Routine Checksum:
+
+Routine Name:
+  - RADEM1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAEDCN
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAEDCN1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAEDPT
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAMAIN2
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAMAINP1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAMAINU
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAMAINU1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAO7MFN
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAO7PC1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAO7PC1A
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAO7PC2
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAO7PC4
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAO7UTL
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAORD1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAORD2
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAORD3
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAORD5
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAORD6
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAORD61
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAPINFO
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAPROD
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAPROD1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAPROD2
+
+
+Routine Checksum:
+
+Routine Name:
+  - RART3
+
+
+Routine Checksum:
+
+Routine Name:
+  - RARTE
+
+
+Routine Checksum:
+
+Routine Name:
+  - RARTR3
+
+
+Routine Checksum:
+
+Routine Name:
+  - RASTED
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAUTL2
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAUTL21
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAUTL8
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : CEBELINSKI,GREGORY            Date Entered  : SEP 26, 2003
+Completed By: PATRICK,PAT                   Date Completed: MAY 10, 2005
+Released By : HINES,RICK                    Date Released : MAY 10, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

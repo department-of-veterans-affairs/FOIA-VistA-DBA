@@ -1,0 +1,458 @@
+$TXT Created by TRAXLER,FRANK at DEV.DEV.FO-HINES.MED.VA.GOV  (KIDS) on Tuesday, 08/18/09 at 12:10
+=============================================================================
+Run Date: NOV 10, 2009                     Designation: GMRV*5*23
+Package : GMRV - GEN. MED. REC. - VITALS      Priority: Mandatory
+Version : 5        SEQ #17                      Status: Released
+                  Compliance Date: DEC 11, 2009
+=============================================================================
+
+Associated patches: (v)GMRV*5*1    <<= must be installed BEFORE `GMRV*5*23'
+                    (v)GMRV*5*3    <<= must be installed BEFORE `GMRV*5*23'
+                    (v)GMRV*5*6    <<= must be installed BEFORE `GMRV*5*23'
+                    (v)GMRV*5*22   <<= must be installed BEFORE `GMRV*5*23'
+                    (v)GMRV*5*25   <<= must be installed BEFORE `GMRV*5*23'
+
+Subject: SWITCHING TO PXRMINDX INDEX
+
+Category: 
+  - Routine
+  - Enhancement (Mandatory)
+  - Other
+
+Description:
+============
+
+ ASSOCIATED E3R(s)
+ =================
+ 20191 - API ENCHANCEMENTS FOR CLIO 
+  
+ 19259 - CASMED INTERFACE
+  
+  
+ ASSOCIATED REMEDY TICKETS
+ =========================
+ 116911 - Pain Scores 0 Display as Critical Red Buttons in the Nursing 
+          Dashboard
+  
+ 174395 - Problem with nationally released objects
+  
+ 277170 - Date/Time pulled from PC rather than VistA
+  
+ 277330 - ARCHIVING
+  
+ 301139 - 1 Incorrect vital
+  
+ 508 COMPLIANCE
+ ==============
+ Section 508 testing was conducted on the software by two test engineers 
+ from the VA Section 508 Program Office. The software was modified to meet 
+ their recommendations and re-tested. The software is now 508 compliant. 
+ Many of the changes are not noticeable since they involve use of screen 
+ reading software. One new report, Graph Report, was added. It summarizes 
+ in text format the values on the graph display. 
+  
+ E3R 20191 - API ENCHANCEMENTS FOR CLIO CHANGES 
+ ==============================================
+ 1) This patch modifies the existing Vitals package routines so they use
+ the "PXRMINDX(120.5" index to find patient vital sign records. Before this
+ patch, these routines used the AA cross-reference in the GMRV VITAL 
+ MEASUREMENT file (#120.5). This new approach is being used because a new
+ software package called Clinical Observations will also collect patient
+ vitals data, but will store data in a different file. The Clinical
+ Observations package (CliO) will update the "PXRMINDX(120.5" index just as
+ the Vitals package currently does. The "PXRMINDX(120.5" index belongs to
+ the Clinical Reminders package and is used to resolve reminders related to
+ patient vital signs. These routine changes will allow the Vitals package
+ to retrieve patient vital signs data from both the GMRV VITAL MEASUREMENT 
+ file (#120.5) and the Clinical Observations package. The programming calls
+ will continue to function as before with the same input parameters and
+ output with two exceptions. The GMV LATEST VM and GMV V/M ALLDATA Remote
+ Procedure Calls (RPCs) will return an extra piece of data that identifies
+ the package where the record is stored (e.g., Vitals or CliO). These RPCs
+ are used by the Vitals Graphical User Interface (GUIs).
+  
+ VistA applications and locally developed routines that use these existing
+ APIs should not see any change with invoking the APIs or the format of the
+ results.
+  
+ VistA applications that use the AA cross-reference or get data directly
+ from the Vitals package globals will modify their existing code to use the
+ "PXRMINDX(120.5" index and the APIs provided in this patch.
+  
+ Facilities that have local development that does direct global reads of 
+ the  AA cross-reference are encouraged to change their code to use the
+ "PXRMINDX(120.5" index and one of the existing APIs (e.g., GMRVUTL or
+ GMVPXRM) to get the record data.
+  
+ Several new APIs are added to the GMVUTL routine to retrieve patient
+ records.
+  
+ Three new routines (GMVGETVT, GMVGETQL and GMVGETC) are added to retrieve
+ information about vital types (GMRV VITAL TYPE file (#120.51)), qualifiers
+ (GMRV VITAL QUALIFIER file (#120.52)) and categories (GMRV VITAL CATEGORY
+ file (#120.53)).
+  
+ The Remote Procedure Calls (and corresponding ICR #, if any) using the
+ modified routines:
+  GMV CUMULATIVE REPORT
+  GMV PT GRAPH
+  GMV LATEST VM (4358)
+  GMV V/M ALLDATA (4654)
+  GMV EXTRACT REC (4416)
+  GMV LATEST VITALS FOR PATIENT 
+  GMV LATEST VITALS BY LOCATION
+  GMV ENTERED IN ERROR-PATIENT
+  
+ Application Programming Interfaces (and corresponding ICR #, if any) using
+ the modified routines:
+  EN^GMVPXRM (3647)
+  VITALS^GMVPXRM (3647)
+  EN6^GMRVUTL (1120)
+  EN1^GMRVUT0 (1446)
+  EN1^GMVHS (4791)
+  EN3^GMRVSC0 (1444)
+  EN1^GMVDCEXT (4251)
+  EN1^GMVDCSAV (3996)
+  CALBMI^GMRVBMI 
+  CALBMI^GMVBMI
+  GMVUTL (5046) new
+  GMVGETVT (5047) new
+  GMVGETQL (5048) new
+  GMVGETC (5050) new
+  
+ The GMRVUT0 and GMVHS Application Programming Interfaces (APIs) each
+ return an array. Before this patch the right most subscript in each array
+ was the internal entry number of the record in GMRV VITAL MEASUREMENT file
+ (#120.5). Once a facility starts to use the Clinical Observations package,
+ a record in the array may come from the new OBS file (#704.117) instead of
+ the GMRV VITAL MEASUREMENT file (#120.5). If the record comes from the OBS
+ file (# 704.117) this subscript will be a phony number. It will not be the
+ internal entry number of the record because the OBS file (#704.117) uses a
+ Global Unique ID (GUID) which is a string of unique characters to identify
+ its records instead of a purely canonic number. Assigning a phony canonic
+ number to the subscript allows the existing applications that call these
+ APIs to continue to $ORDER through the array. The existing applications
+ that have permission to use these APIs do not use this subscript to
+ actually look up the record in the GMRV VITAL MEASUREMENT file (#120.5) so
+ the change should not cause a problem.
+  
+ 2) The following five options under the Reports menu of the Vitals User
+ interface will no longer be available.
+   Vital Signs Record
+   B/P Plotting Chart
+   Weight Chart
+   POx/Respiration Chart
+   Pain Chart
+  
+ Similar graphic reports can be printed by right-clicking in the data grid
+ display and selecting the Print Graph option or using the Print Graph
+ option under the File menu.
+  
+  
+ E3R 19259 - CASMED INTERFACE CHANGES 
+ ====================================
+ A "Read Monitor" button is added to the "Enter Vitals" screen. When this 
+ button is invoked, the software will attempt to retrieve vital sign 
+ readings from a vital sign monitor (VSM) connected to the workstation.  
+ The vital sign readings that appear on the VSM screen will be sent to the 
+ "Enter Vitals" screen and pasted into the input template. This saves the 
+ user from having to type in the values. 
+  
+ There are two types of interfaces between the "Read Monitor" button and 
+ the vital signs monitor: 1) direct link to a CASMED VSM and 2) a Dynamic 
+ Link Library (DLL) link to all other VSMs.
+  
+ When the Vitals software starts up, the VSM connected to the workstation 
+ should be turned on. The Vitals software checks all of the DLLs in the 
+ "Program Files\VistA\Vitals\Plugins" directory to determine if any of the
+ DLLs respond to the VSM. The first DLL that confirms it can "talk" to the
+ VSM is recognized. If none of the DLLs respond, the VSM is considered to
+ be a CASMED VSM and that interface is used.
+  
+ Vendor supplied DLLs should be placed in the "Program 
+ Files\VistA\Vitals\Plugins" directory of the workstation where the VSM 
+ will be connected. If this directory does not exist, it should be created.
+ Other files supplied by a VSM vendor should be placed in the "Program
+ Files\vendor name\" directory (e.g., "Program Files\ACME Medical Co\".
+  
+  
+ REMEDY TICKET FIXES
+ ===================
+ 116911 - Pain Scores 0 Display as Critical Red Buttons in the Nursing 
+          Dashboard
+  
+ ICR 1446 sometimes returned an abnormal flag (i.e., an asterisk) with a
+ Pain score. Some of the vital types have normal ranges defined, but Pain
+ does not. Pain should never return an abnormal flag. After this patch is
+ installed, it will not.
+  
+ Routine(s): GMRVUT2
+  
+  
+ 174395 - Problem with nationally released objects
+  
+ ICR 1446 did not return a Blood Pressure or Pulse reading if it was not
+ numeric (e.g., Refused, On Pass or Unavailable). After this patch it will.
+  
+ Routine(s): GMRVUT2
+  
+ 277170 - Date/Time pulled from PC rather than VistA 
+  
+ Prior to GMRV*5*22 the Vitals.exe and GMV_VitalsViewEnter.dll had a bug
+ that used the date/time from the workstation clock as the default for when
+ the observation was made. The default date/time should be taken from the
+ server clock. The GMRV*5*22 patch fixed the problem in the Vitals.exe
+ only. This patch will fix the problem in the GMV_VitalsViewEnter.dll file.
+  
+ 277330 - ARCHIVING
+  
+ The package does not export any archive/purge functionality. However,
+ Section 6 of the Technical Manual provides instructions for using FileMan 
+ functionality to do so. Archiving/purging vitals records is discouraged.
+ Therefore, these instructions will be removed from the Technical Manual.
+  
+ 301139 - 1 Incorrect vital
+  
+ This ticket was elevated to a Patient Safety Issue (PSPO 1258). The wrong
+ weight was entered for a patient. The mistake was discovered a few days
+ later. The record was changed to "Entered-in-Error". A new record was 
+ entered with the correct weight. Before that happened, a medication was 
+ given to the patient with the dosage based on the incorrect weight. No
+ harm came to the patient and the dosage was corrected based on the 
+ correct weight. To prevent future occurrences, the software will do an 
+ additional check on any new weight and height values entered. If the new 
+ weight value is different by 20% or more from the previous value, a 
+ warning message will be displayed. If the new height value is different 
+ by 10% or more from the previous value, a warning message will be 
+ displayed. 
+  
+  
+ Software Retrieval:
+ -------------------
+ The KIDS build is attached to this message.
+  
+ The other files in this patch are bundled into the VITL5_P23.ZIP 
+ file. Use Binary to download the file.
+  
+ Sites may retrieve the ZIP file in one of the following ways:
+  
+ 1.  The preferred method is to FTP the files from:
+  
+     download.vista.med.va.gov
+  
+     This will transmit the files from the first available FTP Server.
+  
+ 2.  Sites may also elect to retrieve the software directly from a 
+     specific Server as follows:
+  
+     CIO FIELD OFFICE      FTP ADDRESS                  DIRECTORY
+     ---------------       -----------                  ---------
+     Albany                ftp.fo-albany.med.va.gov    [anonymous.software]
+     Hines                 ftp.fo-hines.med.va.gov     [anonymous.software]
+     Salt Lake City        ftp.fo-slc.med.va.gov       [anonymous.software]
+  
+     The ZIP file contains:
+  
+     FILE NAME                 DESCRIPTION                RETRIEVAL FORMAT
+     ----------                -----------                ----------------
+     VITL5_P23.EXE             GUI executable                       Binary 
+     VITL5_P23_SRC.ZIP         GUI source code                      Binary
+     GMV_VitalsViewEnter.DLL   DLL file                             Binary
+     GMV_VitalsViewEnter.HLP   Help file for DLL                    Binary
+     GMV_VitalsViewEnter.CNT   Table of Contents for                Binary
+                               the DLL Help file
+     VITL5_TM.PDF              Technical Manual (all pages)         Binary
+     VITL_5_P23_TM_CHANGE      Technical Manual (change pages)      Binary
+     _PAGES.PDF
+     VITL5_UM.PDF              User Manual (all pages)              Binary
+     VITL_5_P23_UM_CHANGE      User Manual (change pages)           Binary
+     _PAGES.PDF
+     VITL5_P23_IG.PDF          Installation Guide                   Binary
+     VITL5_P23_RN.PDF          Release Notes                        Binary
+  
+ The User Manual (all pages) can also be retrieved from the VistA
+ Documentation Library (VDL) on the VA Intranet at the following address:
+   
+     http://www.va.gov/vdl
+  
+ Test Sites:
+ -----------
+  Central Plains HCS
+  Charleston
+  Eastern Colorado HCS
+  Fayetteville, AR
+  Heartland-East HCS
+  Hines
+  Minneapolis 
+  
+ Installation Instructions:
+ ==========================
+ 1) This patch can be installed with users on the system. However, it 
+    should be installed when use of the software is low. Installation
+    should take less than 5 minutes. 
+  
+    Please see the Installation Guide (VITL5_P23_IG.PDF) for an example.
+  
+ 2) Load the Transport Global.
+  
+ 3) (Optional) Run the following KIDS options before installing the patch:
+  
+               Compare Transport Global to Current System
+               Verify Checksums in Transport Global
+               Backup a Transport Global                   
+  
+ 4) Install the KIDS Build GMRV*5.0*23.
+  
+    At the "Want KIDS to Rebuild Menu Trees Upon Completion of Install?
+    NO//" prompt answer according to your facility's policy concerning the
+    rebuilding of menu trees.
+  
+    At the 'Want KIDS to INHIBIT LOGONs during the install' prompt answer
+    NO.
+  
+    At the 'Want to DISABLE Scheduled Options, Menu Options, and
+    Protocols?' prompt answer YES.
+    
+    Place the following options out of service:
+      Vitals/Measurements GUI Application [GMV V/M GUI]
+  
+ 5. The post-installation routine, GMV23PST, is automatically deleted.
+  
+ 6. Unzip the VITL5_P23.zip file and move the VITL5_P23.exe file to an
+    appropriate directory and/or workstations.
+  
+ 7. Install the new Vitals executable files.
+    a) Double-click on the VITL5_P23.EXE file to start the InstallShield 
+       Wizard.
+    b) Follow the Wizard instructions. When prompted to "Modify, repair, 
+       or remove the program." select "Repair".
+    c) Follow the wizard instructions to completion.
+  
+ 8. The installation wizard creates the following files:
+  
+    C:\Program Files\vista\Vitals\Vitals.exe
+    C:\Program Files\vista\Vitals\VitalsManager.exe
+    C:\Program Files\vista\Vitals\Help\Vitals.hlp
+    C:\Program Files\vista\Vitals\Help\Vitals.cnt
+    C:\Program Files\vista\Vitals\Help\VitalsManager.hlp
+    C:\Program Files\vista\Vitals\Help\VitalsManager.cnt
+    C:\Program Files\vista\Vitals\Help\Roboex32.dll
+  
+    The exe files are placed in the "Program Files\vista\Vitals" directory
+    on the workstation. The other files are placed in the "Program 
+    Files\vista\Vitals\Help" directory.
+  
+    If you are running the software from a server, you should move these 
+    files to the server.
+  
+    If you are running the software from individual workstations and want
+    to push these files, you should include them in your script.
+  
+ 9. Push the GMV_VitalsViewEnter.dll, GMV_VitalsViewEnter.hlp, and
+    GMV_VitalsViewEnter.cnt files to the "Program Files\vista\Common Files
+    directory of the workstation where CPRS is located. For example, if
+    CPRS is installed on the C:\ drive, the three DLL related files must
+    be copied into the C:\Program Files\vista\Common Files directory. If
+    this directory path does not exist, you must create it.
+  
+     IMPORTANT: These files must not be installed in the same folder as
+     CPRS. CPRS looks for these three files in the specified directory
+     path. If CPRS cannot find the DLL and its supporting files, the users
+     will not be able to enter patient vitals/measurements data.
+  
+ 10. The GMVPXRM and GMVUTL routines call new routines (MDCLIO1 and MDTERM)
+     that will be released with MD*1.0*16. These GMV* routines will not
+     call these MD* routines if they do not exist on the system. If you run
+     the XINDEX utility for the GMRV*5.0*23 patch before MD*1.0*16 is
+     installed, you will see these error messages which can be ignored.
+  
+     F - Reference to routine '^MDCLIO1'. That isn't in this UCI.
+     F - Reference to routine '^MDTERM'. That isn't in this UCI.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.0;GEN. MED. REC. - VITALS;**[Patch List]**;Oct 31, 2002;Build 25
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: GMRVBMI
+    Before:  B5009163   After:   B312331  **23**
+Routine Name: GMRVSC0
+    Before: B24203413   After: B14042810  **23**
+Routine Name: GMRVSC1
+    Before:  B9241892   After: B14206536  **23**
+Routine Name: GMRVSC2
+    Before: B15866640   After: B17609755  **23**
+Routine Name: GMRVUT0
+    Before: B12655515   After: B14673210  **23**
+Routine Name: GMRVUT2
+    Before: B18552169   After: B17965647  **23**
+Routine Name: GMRVUTL
+    Before:  B6225466   After:  B4909510  **23**
+Routine Name: GMV23PST
+    Before:       n/a   After:  B9487682  **23**
+Routine Name: GMVBMI
+    Before:  B5347673   After:  B6498219  **3,23**
+Routine Name: GMVDCEXT
+    Before: B43745459   After: B58279686  **23**
+Routine Name: GMVDCSAV
+    Before: B19948030   After: B10117160  **9,3,25,23**
+Routine Name: GMVDS0
+    Before: B20439902   After: B23299046  **23**
+Routine Name: GMVDS1
+    Before: B17212354   After: B17287007  **23**
+Routine Name: GMVDS2
+    Before:  B3421820   After:     B1905  **23**
+Routine Name: GMVER0
+    Before:  B9040069   After:  B9089403  **23**
+Routine Name: GMVGETC
+    Before:       n/a   After:  B3544134  **23**
+Routine Name: GMVGETD
+    Before: B12427237   After: B46740490  **3,22,23**
+Routine Name: GMVGETD1
+    Before:  B3929660   After:  B4725749  **23**
+Routine Name: GMVGETD2
+    Before: B21008972   After: B21667822  **1,23**
+Routine Name: GMVGETQL
+    Before:       n/a   After:  B4569446  **23**
+Routine Name: GMVGETVT
+    Before:       n/a   After:  B7880375  **23**
+Routine Name: GMVGGR1
+    Before: B19172168   After: B21349900  **3,23**
+Routine Name: GMVGGR2
+    Before: B16803927   After: B17252274  **3,23**
+Routine Name: GMVHS
+    Before: B58476565   After: B32961922  **3,23**
+Routine Name: GMVHS1
+    Before:  B8049761   After: B22061645  **3,23**
+Routine Name: GMVLAT0
+    Before: B31312749   After: B31803306  **1,3,23**
+Routine Name: GMVPXRM
+    Before: B36506457   After: B46095157  **6,23**
+Routine Name: GMVSC0
+    Before: B17816371   After: B17931365  **23**
+Routine Name: GMVSC1
+    Before:  B8913074   After: B14142553  **23**
+Routine Name: GMVSC2
+    Before: B15927181   After: B16556193  **23**
+Routine Name: GMVSR0
+    Before: B30880367   After: B32180686  **23**
+Routine Name: GMVUTL
+    Before:    B84410   After: B41699178  **23**
+ 
+Routine list of preceding patches: 6, 22, 25
+
+=============================================================================
+User Information:                          Hold Date     : NOV 10, 2009
+Entered By  : TRAXLER,FRANK                 Date Entered  : FEB 13, 2008
+Completed By: CHIPMAN,HONEY                 Date Completed: NOV 10, 2009
+Released By : MURCH,CLAUDETTE               Date Released : NOV 10, 2009
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

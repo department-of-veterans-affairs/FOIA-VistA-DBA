@@ -1,0 +1,302 @@
+$TXT Created by DESMOND,LINDA at DEVVOO.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 02/10/03 at 11:01
+=============================================================================
+Run Date: MAR 03, 2003                     Designation: DG*5.3*491
+Package : DG - REGISTRATION                    Priority: EMERGENCY
+Version : 5.3       SEQ #433                     Status: Released
+                  Compliance Date: MAR 05, 2003
+=============================================================================
+
+Associated patches: (v)DG*5.3*469  <<= must be installed BEFORE `DG*5.3*491'
+
+Subject: ENROLLMENT SUB-PRIORITIES
+
+Category: 
+  - Enhancement ()
+  - Routine
+  - Data Dictionary
+
+Description: 
+============
+
+ OVERVIEW
+ ========
+  
+ On January 17, 2003, Secretary of Veterans Affairs Anthony J. Principi 
+ announced in the Federal Register that VA will enroll all priority groups 
+ of veterans, except those veterans in Priority 8 who were not in an 
+ enrolled status on January 17, 2003, or who requested disenrollment on or 
+ after that date.
+  
+ The Enrollment Sub-priorities (ESP) project introduces enhancements to 
+ the VistA and HEC Legacy systems to support the Secretary's decision to 
+ suspend new enrollments of veterans in Priority 8.  The ESP project 
+ consists of two builds: (1) the enhancements to the VistA system are 
+ contained in this patch, DG*5.3*491; (2) the enhancements for the HEC 
+ Legacy system are being released in patch IVMB*2.0*729. The ESP project 
+ enhancements consist of the following:
+  
+ 1. The current logic must be modified to allow a user to set an 
+ Enrollment Group Threshold (EGT) that will stop enrollments for a 
+ Priority Group without regard to sub-priorities.  This would allow 
+ restriction of new enrollments in multiple sub-priorities while leaving 
+ enrolled veterans intact. In support of this requirement, a new EGT type, 
+ 4 - ENROLLMENT DECISION, has been created.
+  
+ 2. The EGT functionality must be modified to prevent a future effective 
+ date from replacing the EGT at the sites.  An issue was identified during 
+ MEGA Phase I where a future dated EGT setting replaced the existing EGT 
+ at the VISTA sites, and new enrollment records could be created based on 
+ a null EGT.
+  
+ 3. Enrollment priority sub-categorization to enrollment Priority Groups 7 
+ and 8 and all related functional enhancements required to support this 
+ re-categorization are being implemented in this patch.  A conversion of 
+ existing veterans in enrollment Priority Group 7 or 8 will not be 
+ necessary to reflect the new  sub-categorization as all existing patients 
+ are currently assigned sub-priority 'a' or 'c'.  The following 
+ sub-priorities are being added and removed to meet this requirement:
+  
+                     -----------------------
+                    |   OLD     |    NEW    |
+                    |-----------------------|
+                    |    a      |     a     |
+                    |    b      | <deleted> |
+                    |    c      |     c     |
+                    |    d      | <deleted> |
+                    | <added>   |     e     |
+                    | <added>   |     g     |
+                     -----------------------
+  
+ 4. The priority algorithm must consider the date of application along 
+ with other eligibility factors when determining eligibility for 
+ enrollment.
+  
+ 5. An authorized user at HEC must be able to reverse an overridden 
+ enrollment record that was enrolled utilizing the EGT SUPERVISOR OVERRIDE 
+ menu option.
+  
+ 6. Enrollment letters that were blocked for Priority Group 8 veterans 
+ must be re-queued.  This will require the original entry to be removed 
+ and a new letter triggered in order to ensure the correct veteran 
+ information is used for the letter.  AAC will provide a file and an 
+ Enrollment Letter clean-up process must be run after the EGT Effective 
+ date.
+  
+ 7. Modifications are needed to the HEC routine, PRI^AYCEPHPD, to resolve 
+ an anomaly, related to REJECTED statuses, that was found during technical 
+ discovery for this project.
+  
+ 8. Current functionality allows automatic reenrollment of rejected 
+ veterans when the EGT level is changed.  This functionality is being 
+ changed to prevent automatic reenrollment.
+  
+ 9. The REJECTED; BELOW ENROLLMENT GROUP THRESHOLD enrollment status 
+ should be assigned to all records below an EGT setting for a type 4 EGT 
+ setting.
+  
+ 10.  Identify and remove the ineligible date from Priority Group 8  
+ veterans who applied for enrollment after the enrollment decision (EGT) 
+ effective date.  Provide a file of records where the ineligible date was 
+ removed.  Provide a file of records where the ineligible date was not 
+ removed but the ineligible reason contains the number 8.  Provide a mail 
+ message that summarizes the records that were converted.
+  
+  
+ FUNCTIONAL DESCRIPTION
+ ======================
+ The functional changes that will be introduced with this patch include:
+  
+ 1. Modification to the Enrollment Type field (#.04) of the Enrollment 
+ Group Threshold file (#27.16) to add the new Type 4 - Enrollment Decision.
+  
+ 2. Modification to the Enrollment Subgroup field (#.12) of the Patient 
+ Enrollment file (#27.11) to add the new sub-priorities.
+  
+ 3. Modifications to the algorithm to assign sub-priorities to Priority 
+ Group 7 and 8 veterans based on the new business rules for Enrollment 
+ Type 4 - Enrollment Decision.
+  
+ 4. Modifications to the API that determines if a veteran is above the 
+ Enrollment Group Threshold to include the new business rules for 
+ Enrollment Type 4 - Enrollment Decision.
+  
+ 5. Modifications to the algorithm that determines continuous enrollment 
+ to use the Enrollment application date.
+  
+ 6. Modifications to the consistency checks done during the upload of 
+ enrollment records to include the new sub-priorities.
+  
+ 7. Modifications to the following reports to include the new enrollment 
+ type 4:
+  
+          EGT Preliminary Summary Impact Report
+          EGT Preliminary Detailed Impact Report
+          EGT Actual Summary Impact Report
+          EGT Actual Detailed Impact Report
+  
+  
+ TECHNICAL DESCRIPTION
+ =====================
+ The following is a summary of the changes included in this patch.  For a 
+ detailed description of these changes, please refer to the ESP Project 
+ Enrollment Sub-priorities Change Request Software Design Document.  This 
+ documents can be found on the web page for the Enrollment Sub-priorities 
+ Project Notebook.  The address is: 
+  
+ http://tspr.vista.med.va.gov/warboard/anotebk.asp?proj=719
+  
+ DATA DICTIONARY CHANGES:
+ ========================
+  
+ 1. ENROLLMENT GROUP THRESHOLD (File #27.16) - the following field was 
+ modified:
+    Field #   Field Name           Field Type       New Value
+    .04       EGT TYPE             SET OF CODES     4:ENROLLMENT DECISION
+  
+ 2. PATIENT ENROLLMENT (File #27.11) - the following field was modified:
+    Field #   Field Name           Field Type       New Value      
+    .12       ENROLLMENT SUBGROUP  SET OF CODES     2:b  (Deleted)
+                                                    4:d  (Deleted)
+                                                    5:e  (Added)
+                                                    7:g  (Added)
+  
+  
+ ROUTINE SUMMARY:
+ ================
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+  
+      <tab>;;5.3;Registration;**[patch list]**;Aug 13,1993
+  
+                            CHECK^XTSUMBLD results
+ Routine name      Before Patch      After Patch           Patch List
+ ============      ============      ===========           ==========
+ DGENA2                 4969645          5119270     121,122,147,232,327
+                                                            469,491
+ DGENA3                19934699         20191337      232,306,327,367,417
+                                                           454,456,491
+ DGENA6                 6761125          6800415        232,327,417,491
+ DGENEGT1               8621498          8991774        232,417,454,491
+ DGENELA4              12569084         13114703      232,275,306,327,314
+                                                      367,417,437,456,491
+ DGENRPT1               7236490          6617652      232,306,417,456,491
+ DGENRPT2              10557294          9938456      232,306,417,456,491
+ DGENRPT3               9312944          8694106      232,306,417,456,491
+ DGENRPT4              12672790         12053952      232,306,417,456,491
+  
+  
+ INSTALLATION INSTRUCTIONS
+ =========================  
+ It is recommended this patch be installed outside of normal business 
+ hours to avoid any complications resulting from users on the system.
+ Installation will take less than 5 minutes.
+  
+ 1. Review your mapped set.  If any of the routines listed in the
+    ROUTINE SUMMARY section are mapped, they should be removed from
+    the mapped set at this time.
+  
+ 2.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu. [Note:
+     TEXT PRINT/DISPLAY option in the PackMan menu will display the patch
+     text only].
+  
+ 3.  From the Kernel Installation and Distribution System (KIDS)
+     menu, select the Installation menu.
+    
+ 4.  From this menu, you may elect to use the following options:
+          (when prompted for INSTALL NAME, enter DG*5.3*491)
+    
+       a.  Backup a Transport Global - this option will create a backup
+           message of any routines exported with the patch.  It will
+           NOT backup any other changes such as DDs or templates.
+       b.  Compare Transport Global to Current System  - this option
+           will allow you to view all changes that will be made when
+           the patch is installed.  It compares all components of the
+           patch (routines, DDs, templates, etc.).
+       c.  Verify Checksums in Transport Global - this option will
+           allow you to ensure the integrity of the routines that are
+           in the transport global.
+       d.  Print Transport Global - this option will allow you to view
+           the components of the KIDS build.
+  
+  5.  Use the Install Package(s) option and select the package
+      DG*5.3*491.
+    
+  6.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+      YES//', respond NO.
+  
+  7.  When prompted "Want to DISABLE Scheduled options, Menu Options,
+      and Protocols? YES//", respond NO.
+  
+  8.  If routines were unmapped as part of step 1, they should be
+      returned to the mapped set once the installation has run to
+      completion.
+
+Routine Information:
+====================
+
+Routine Name:
+  - DGENA3
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGENA6
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGENEGT1
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGENELA4
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGENRPT1
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGENRPT2
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGENRPT3
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGENRPT4
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGENA2
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : DESMOND,LINDA                  Date Entered : DEC 19, 2002
+Completed By: MORGAN,BRIAN                  Date Completed: FEB 27, 2003
+Released By : KOVACH,STUART                 Date Released : MAR 03, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

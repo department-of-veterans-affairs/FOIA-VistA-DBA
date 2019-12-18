@@ -1,0 +1,490 @@
+$TXT Created by GINSBERG,ELIOT at MNTVLL.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 10/24/06 at 11:23
+=============================================================================
+Run Date: JAN 19, 2007                     Designation: DG*5.3*657
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #653                    Status: Released
+                  Compliance Date: FEB 19, 2007
+=============================================================================
+
+Associated patches: (v)DG*5.3*538  <<= must be installed BEFORE `DG*5.3*657'
+                    (v)DG*5.3*570  <<= must be installed BEFORE `DG*5.3*657'
+                    (v)DG*5.3*673  <<= must be installed BEFORE `DG*5.3*657'
+                    (v)DG*5.3*689  <<= must be installed BEFORE `DG*5.3*657'
+
+Subject: UPDATE DATA ENTRY CONSISTENCY CHECKS
+
+Category: 
+  - Routine
+  - Enhancement (Mandatory)
+  - Data Dictionary
+
+Description:
+============
+
+ As part of the Enrollment VistA Changes (EVC) project, this patch
+ (DG*5.3*657) will be updating/adding/deleting consistency checks from the 
+ following options:  Register a Patient [DG REGISTER PATIENT], Load/Edit 
+ Patient Data [DG LOAD PATIENT DATA], Preregistration Menu [DGPRE 
+ PRE-REGISTER MENU], and Inconsistency Supervisor Menu [DG CONSISTENCY 
+ SUPERVISOR MENU]. This will improve data quality by reducing data
+ inconsistencies. The EVC project is being undertaken to support technology
+ and business changes that are occurring with the implementation of the HEC
+ Enrollment System Redesign (ESR) project.
+  
+ Item #1 - Delete data from certain fields when VETERAN (Y/N)? Field #1901,
+ Patient File #2 changes from 'Yes' to 'No':
+ ======================================================================
+ On screen 7, when the VETERAN (Y/N)? field is changed from "YES" to "NO",
+ the data values will be deleted (set to Null) in the following fields 
+ (all from the PATIENT file #2):
+  
+ Field Name                       Field #   Screen Name           Screen
+ ---------------------            --------  -----------           ------
+ POW STATUS INDICATED?            .525      POW:                      6
+ POW FROM DATE                    .527         From:                  6
+ POW TO DATE                      .528         To:                    6
+ POW CONFINEMENT LOCATION         .526         War:                   6
+ MILITARY DISABILITY RETIREMENT   .3602     Mil Disab Retirement:     6
+ DISCHARGE DUE TO DISABILITY      .3603     Dischrg Due to Disab:     6
+ SERVICE CONNECTED?               .301      Svc Connected:            7
+ SERVICE CONNECTED PERCENTAGE     .302      SC Percent:               7
+ SC AWARD DATE                    .3012     SC Award Date:            7
+ RATED INCOMPETENT?               .293      Rated Incomp.:            7
+ DATE RULED INCOMPETENT (VA)      .291         Date (VA):             7
+ DATE RULED INCOMPETENT (CIVIL)   .292         Date (CIVIL):          7
+ RECEIVING A&A BENEFITS?          .36205    Aid & Attendance:         7
+ RECEIVING HOUSEBOUND BENEFITS?   .36215    Housebound:               7
+ RECEIVING A VA PENSION?          .36235    VA Pension:               7
+ RECEIVING VA DISABILITY?         .3025     VA Disability:            7
+ TOTAL ANNUAL VA CHECK AMOUNT     .36295    Total Check Amount:       7
+ SERVICE CONNECTED CONDITIONS     .3731     Service Connected Conditions
+                                            as stated by applicant    7
+  
+ Although the following fields in the PATIENT file #2 don't appear on
+ screen 7, they too will be deleted when the VETERAN (Y/N)? field in the 
+ PATIENT (#2) file is changed from 'YES' to 'NO'.
+  
+ AMOUNT OF AID & ATTENDANCE       .3621     Patient #2
+ AMOUNT OF HOUSEBOUND             .3622     Patient #2
+ EFF. DATE COMBINED SC% EVAL.     .3014     Patient #2
+ AMOUNT OF VA DISABILITY          .303      Patient #2
+ AMOUNT OF VA PENSION             .3624     Patient #2
+  
+ In addition, when the VETERAN (Y/N)? field is changed from 'YES' to 
+ 'No':
+      The PATIENT TYPE (#391) and PRIMARY ELIGIBILITY (#.361) will not be
+      changed automatically.
+  
+      Note:  Because the VETERAN was changed from 'YES' to 'NO', it's
+      possible that the eligibility TYPE (#4) of the ELIGIBILITY CODE FILE 
+      (#8) will still refer to a veteran.  This will result in an 
+      inconsistency type # 19 - ELIG/NONVET STAT INCONSISTENT.  It is
+      then up to the input user to correctly assign a PRIMARY ELIGIBILITY
+      to remove the inconsistency.
+  
+    
+      If the PATIENT ELIGIBILITIES multiple (#361) contains any of the 
+      following:
+      'SC LESS THAN 50%' or 'SERVICE CONNECTED 50% to 100%' or 'NSC, VA 
+      PENSION' or 'AID & ATTENDANCE' or 'HOUSEBOUND' or ALLIED VETERAN', 
+      that eligibility will be removed.
+  
+  
+ Item #2 - Create a new consistency check #87 to require one or more rated
+ disabilities when SERVICE CONNECTED? (field #.301) is answered "YES".
+ ======================================================================
+ A new Consistency Check, #87, will be created.  Named, "SC ELIG BUT NO RD
+ CODES", an inconsistency #87 will be generated for the following two sets 
+ of conditions:
+  
+ IF SERVICE CONNECTED? (#.301) is answered "YES"
+    And PRIMARY ELIGIBILITY CODE (#.361) is "SC LESS THAN 50%"
+    And SERVICE CONNECTED PERCENTAGE (#.302) is 0 or less than 50 
+    And RATED DISABILITIES (#.3721) is Null.
+ IF SERVICE CONNECTED? (#.301) is answered "YES"
+    And PRIMARY ELIGIBILITY CODE (#.361) is "SERVICE CONNECTED 50% TO 100%"
+    And SERVICE CONNECTED PERCENTAGE (#.302) is 50 or greater
+    And RATED DISABILITIES (#.3721) is Null.
+  
+  
+ Item #3 - Consistency Check #55 INCOME DATA MISSING will be modified.
+ ======================================================================
+ The INCOME DATA MISSING inconsistency will no longer be generated for the
+ following conditions:
+ IF SERVICE CONNECTED? (#.301) is YES
+    And PRIMARY ELIGIBILITY CODE (#.361) is "SC<50%"
+    And SERVICE CONNECTED PERCENTAGE (#.302) is 10% or greater
+    And RECEIVING A&A BENEFITS? (#.3621) is answered "YES"
+ IF SERVICE CONNECTED? (#.301) is YES
+    And PRIMARY ELIGIBILITY CODE (#.361) is "SC<50%"
+    And SERVICE CONNECTED PERCENTAGE (#.302) is 10% or greater
+    And RECEIVING A VA PENSION? (#.36235) is answered "YES"
+ IF TYPE (#391) is "NSC Veteran"
+    And RECEIVING A&A BENEFITS? (#.3621) is answered "YES"
+ IF TYPE (#391) is "NSC Veteran"
+    And RECEIVING A VA PENSION? (#.36235) is answered "YES"
+  
+  
+ Item #4 - Consistency Check #61 INCOMPLETE PHONE NUMBER will be modified.
+ ======================================================================
+ The Consistency Check INCOMPLETE PHONE NUMBER (#61), which checked for
+ a Null PHONE NUMBER [RESIDENCE] (#.131) and a Null PHONE NUMBER [WORK]
+ (#.132), will be modified. The check for a Null PHONE NUMBER [RESIDENCE]
+ (#.131) will be disabled. For the PHONE NUMBER [WORK] (#.132) field, an
+ inconsistency will be generated if the Patient is EMPLOYED FULL TIME,
+ EMPLOYED PART TIME, or SELF EMPLOYED and this field (#.132) is Null.
+  
+  
+ Item #5 - Consistency Check #66 PSEUDO IN USE will be disabled.
+ ======================================================================
+ The Consistency Check - PSEUDO SSN IN USE (#66): which checked for a
+ Pseudo SSN in the SOCIAL SECURITY NUMBER (#.09) field - is no longer
+ necessary and is being removed with this patch.
+  
+ For the options Register a Patient [DG REGISTER PATIENT], Load/Edit 
+ Patient Data [DG LOAD PATIENT DATA], and Preregistration Menu [DGPRE
+ PRE-REGISTER MENU], if you select a patient by name and the person has a
+ PSEUDO SSN on file, the message "**Pseudo SSN**" will be displayed next to
+ the SSN upon patient lookup.
+  
+ DOCUMENTATION RETRIEVAL
+ =======================
+ Sites may retrieve the user documentation directly using FTP from the
+ ANONYMOUS.SOFTWARE directory at the following OI Field Offices:
+     
+                  Albany   : ftp.fo-albany.med.va.gov
+                  Hines    : ftp.fo-hines.med.va.gov
+            Salt Lake City : ftp.fo-slc.med.va.gov
+    First Available Server : download.vista.med.va.gov (preferred method)
+    
+                                                                           
+   The following files will be available:
+     
+        File Name                     Description
+        ---------                     -----------      
+  DG_5_3_P657_REG_UM.PDF         Update PIMS V. 5.3 Registration User
+                                                                 Manual
+  DG_5_3_P657 SADT_UM.PDF        Update PIMS V. 5.3 Supervisor ADT User
+                                                                 Manual  
+   
+   Note:  Use Binary mode when transferring the .PDF files.
+    
+   The VistA Documentation Library [VDL] web site contains all end-user 
+   manuals.  The address is http://www.va.gov/vdl/.
+   
+  
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+ There is no NSR associated with this patch.
+  
+  
+ This patch addresses the following Remedy ticket(s):
+ --------------------------------------------------------
+ HD0000000063610 TAM-0903-31485  55 INCOME MISSING DATA PROBLEM
+  
+ There is a problem with the 55 INCOME DATA MISSING inconsistency when   
+ veteran is entered as Primary Eligibility:  NSC VA PENSION.  It should   
+ not ask for income since they are not required to give income but it   
+ does
+  
+  
+ Test Sites:
+ -----------
+ DETROIT, MI (Large)
+ SALT LAKE CITY, UT (Large)
+ MONTANA HCS (Integrated)
+  
+  
+        ================INSTALLATION INSTRUCTIONS =================
+  
+ If installed during the normal workday, it is recommended that the
+ following selection(s) in the OPTION (#19) file, and all of their
+ descendants be disabled to prevent possible conflicts while running the
+ KIDS Install. Other VISTA users will not be affected.
+  
+ Register a Patient                 [DG REGISTER PATIENT]
+ Load/Edit Patient Data             [DG LOAD PATIENT DATA]
+ Preregistration Menu               [DGPRE PRE-REGISTER MENU]
+ Inconsistency Supervisor Menu      [DG CONSISTENCY SUPERVISOR MENU]
+  
+ Install Time - less than 5 minutes
+   1.   LOAD TRANSPORT GLOBAL 
+        ---------------------
+        Choose the PackMan message containing this patch and invoke the 
+        INSTALL/CHECK MESSAGE PackMan option.  
+   
+   2.   COMPONENTS SENT WITH PATCH
+        --------------------------
+  
+  ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;5.3;Registration;**[patch list]**;AUG 13, 1993;Build 3
+  
+                              CHECK^XTSUMBLD results
+  Routine       Before Patch   After Patch              Patch List
+  =======       ============   ===========              ==========
+  DG53657P               N/A       5632117                  657
+  DGRP7CC                N/A       3462224                  657
+  DGRPC2            14442275      15178570           45,69,108,121,205
+                                                    218,342,387,470,467
+                                                    489,505,507,528,451
+                                                        564,570,657
+  DGRPC3             8505965       8684039            451,632,673,657
+  DGRPCE1           34981797      35500118          108,226,470,454,489
+                                                    505,522,451,632,689
+                                                            657
+  DPTLK1            14419464      14564860           32,50,197,249,317
+                                                    391,244,532,574,620
+                                                      641,680,538,657
+  
+ Number of routines in patch:           6
+      Number of new routines:           2
+  Number of routines changed:           4
+  
+  
+  
+                       CHECK1^XTSUMBLD (new method) results
+  Routine       Before Patch   After Patch              Patch List
+  =======       ============   ===========              ==========
+  DG53657P               N/A      18327297                  657
+  DGRP7CC                N/A       9449490                  657
+  DGRPC2            59651485      65148755           45,69,108,121,205
+                                                    218,342,387,470,467
+                                                    489,505,507,528,451
+                                                        564,570,657
+  DGRPC3            18322459      20051384            451,632,673,657
+  DGRPCE1           58806369      60025284          108,226,470,454,489
+                                                    505,522,451,632,689
+                                                            657
+  DPTLK1            41327686      42806553           32,50,197,249,317
+                                                    391,244,532,574,620
+                                                      641,680,538,657
+  
+ Number of routines in patch:           6
+      Number of new routines:           2
+  Number of routines changed:           4
+  
+ The following is a list of fields included in this patch:
+  
+        Field Name (Number)           File Name (Number)
+        -------------------           ------------------
+        VETERAN(Y/N)? (#1901)         PATIENT (#2)
+  
+        This data dictionary change was to add an M-style cross reference 
+        (AN1) that contains triggers to delete data from the fields 
+        listed in item # 1 above when the 'VETERAN (Y/N)' field is
+        changed to from 'Yes' to 'No'.
+  
+  
+   3.   START UP KIDS 
+        -------------
+        Start up the Kernel Installation and Distribution System Menu 
+        [XPD MAIN]: 
+    
+             Edits and Distribution ...  
+             Utilities ...  
+             Installation ...  
+    
+   Select Kernel Installation & Distribution System Option: INStallation 
+                                                            ---
+             Load a Distribution 
+             Print Transport Global 
+             Compare Transport Global to Current System 
+             Verify Checksums in Transport Global 
+             Install Package(s) 
+             Restart Install of Package(s) 
+             Unload a Distribution 
+             Backup a Transport Global 
+    
+   Select Installation Option: 
+    
+   4.   Select Installation Option: 
+        ---------------------------
+        NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+               NAME, enter DG*5.3*657):
+       
+        a.  Backup a Transport Global - This option will create a backup
+            message of any routines exported with this patch. It will not
+            backup any other changes such as DD's or templates.
+        b.  Compare Transport Global to Current System - This option will
+            allow you to view all changes that will be made when this patch
+            is installed. It compares all components of this patch
+            (routines, DD's, templates, etc.).
+        c.  Verify Checksums in Transport Global - This option will allow
+            you to ensure the integrity of the routines that are in the
+            transport global.
+      
+   5.   Select Installation Option: Install Package(s) 
+                                    ----------------
+        **This is the step to start the installation of this KIDS patch: 
+    
+      a. Choose the Install Package(s) option to start the patch install.
+      b. When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+         YES//' answer NO (unless otherwise indicated).
+      c. When prompted 'Want to DISABLE Scheduled Options, Menu Options,
+         and Protocols? YES//' answer YES (unless otherwise indicated) 
+      d. When prompted 'Enter options you wish to mark as 'Out Of
+         Order':'  Enter the following options:
+   
+         Register a Patient                 [DG REGISTER PATIENT]
+         Load/Edit Patient Data             [DG LOAD PATIENT DATA]
+         Preregistration Menu               [DGPRE PRE-REGISTER MENU]
+         Inconsistency Supervisor Menu      [DG CONSISTENCY SUPERVISOR
+                                                                MENU]
+  
+      d. When prompted 'Enter protocols you wish to mark as 'Out Of
+         Order':' press <Enter>.
+  
+ Post Install Instructions
+      It is not necessary to delete the post install routine DG53657P 
+ after the installation is finished.
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: DG53657P
+    Before:       n/a  After: B18327297  **657**
+Routine Name: DGRP7CC
+    Before:       n/a  After:  B9449490  **657**
+Routine Name: DGRPC2
+    Before: B59651485  After: B65148755  **45,69,108,121,205,218,342,387,
+                                          470,467,489,505,507,528,451,564,
+                                          570,657**
+ Description of Changes:
+  Summary of changes:
+  additional business rules added to module CHECK55
+   
+  Before:
+   +71        I $P(DGP(.13),"^")=""!($P(DGP(.13),"^",2)="") S X=61 D COMB
+   After:
+   +71        ; DG*5.3*657 BAJ Phone number check modified
+   +72        ; Home phone check is disabled
+   +73        ; Work phone is required only if pt is employed
+   +74        N EMPST
+   +75        S EMPST=","_$P(^DPT(DFN,.311),U,15)_","
+   +76        I ",1,2,4,"[EMPST,($P(DGP(.13),"^",2)="") S X=61 D COMB
+   
+  Before:
+   +90        I $P(DGP(0),"^",9)["P" S X=66 D COMB
+   After:
+   +95        ; DG*5.3*657 BAJ 11/20/2005 Removed from CC.  Pseudo notice 
+  appears
+   in Patient List
+   +96        ;I $P(DGP(0),"^",9)["P" S X=66 D COMB
+   +97        ; off
+   
+  Before:
+   After:
+   +178       N PCNT
+   
+  Before:
+   +192       ;
+   After:
+   +200       ; DG*5.3*657 BAJ
+   +201       ; Additional business rules
+   +202       ; Do NOT file inconsistency for the following:
+   +203       ; 1. Service Connected = YES, Eligibility Code is "SC LESS 
+  THAN 50%
+  ", SC % is 10-49, A&A = "YES"
+   +204       ; 2. Service Connected = YES, Eligibility Code is "SC LESS 
+  THAN 50%
+  ", SC % is 10-49, VA Pension = "YES"
+   +205       ; 3. Patient Type is "NSC Veteran" and A&A = "YES"
+   +206       ; 4. Patient Type is "NSC Veteran" and VA Pension = "YES"
+   +207       ; Arrays elements used:
+   +208       ; .. VAEL(3) $P 1 = SERVICE CONNECTED? $P 2 = SC %
+   +209       ; .. VAEL(6) $P 2 = PATIENT TYPE, "B" INDEX VALUE
+   +210       ; .. VAMB(1) $P 1 = RECEIVING A&A
+   +211       ; .. VAMB(4) $P 1 = RECEIVING VA PENSION
+   +212       I $P(VAEL(1),"^",2)="SC LESS THAN 50%",+VAEL(3) S 
+  PCNT=$P(VAEL(3),"
+  ^",2) I PCNT'<10,PCNT'>50 S DGRTN=$S(+VAMB(1):1,VAMB(4):1,1:DGRTN)
+   +213       I $P($G(VAEL(6)),"^",2)="NSC VETERAN" S 
+  DGRTN=$S(+VAMB(1):1,VAMB(4)
+  :1,1:DGRTN)
+
+Routine Name: DGRPC3
+    Before: B18322459  After: B20051384  **451,632,673,657**
+ Description of Changes:
+  Description of changes:
+  added module 87
+   
+  87       ; DG*5.3*657 BAJ 11/24/2005 CC #87 added
+           ; SC Eligibility but no rated Disability Codes
+           ; 1. Svc Connected is answered "YES"
+           ; 2. Eligibility code is either SC < 50% or SC 50-100%
+           ; 3. Svc connected %-age is 0 or greater
+           ; 4. Patient has no rated disabilities
+           ; .. VAEL(1) $P 1 = Primary Eligibility Code  $p 2 = Primary 
+  Elig Exter
+  nal Value
+           ; .. VAEL(3) $P 1 = SERVICE CONNECTED? $P 2 = SC %
+           ; .. Rated Disabilities : ^DPT(DFN,.372,0) $P 4 is number of 
+  records  '
+  ($P($G(^DPT(DFN,.372,0)),"^",4)) is TRUE
+           ;
+           ; Get Eligibility info
+           D ELIG^VADPT
+           ;
+           ; If not svc connected, don't check
+           I '$G(VAEL(3)) D NEXT G @DGLST
+           ;
+           I +VAEL(3)=1!(+VAEL(3)=3) D
+           . Q:$P(VAEL(3),"^",2)<0
+           . Q:$P(VAEL(3),"^",2)=""
+           . I '($P($G(^DPT(DFN,.372,0)),"^",4)) S X=87 D COMB
+           D NEXT G @DGLST
+
+Routine Name: DGRPCE1
+    Before: B58806369  After: B60025284  **108,226,470,454,489,505,522,
+                                          451,632,689,657**
+ Description of Changes:
+  Description of changes:
+  modified edits # 61 and added # 87
+   
+  Before:
+   +33  61    ;;S:$G(DGER)[",8," Y="@619";.131;.132;@619;
+   
+  After:
+   +34  61    ;;S:$G(DGER)[",8," Y="@619";.132;@619;
+   
+  Before:
+   
+  After:
+   +79  87    ;;D VETTYPE^DGRPE1;D MSG^DGRPE1 S Y=0;@114;K DGRDCHG;D 
+  DR^DGRPE1;.3
+  02;.3721;D EFF^DGRPE1;D:$G(DGRDCHG) BULL^DGRPE1;K DGRDCHG
+   +80        ;
+
+Routine Name: DPTLK1
+    Before: B41327686  After: B42806553  **32,50,197,249,317,391,244,532,
+                                          574,620,641,680,538,657**
+ Description of Changes:
+  Summary of changes:
+  added the following code to module SSN
+   
+  Before:
+   
+  After:
+   +159       .; DG*5.3*657 BAJ 11/20 2005
+   +160          .; display Pseudo SSN alert on list
+   +161          .I SSN?9N1"P" S SSN=SSN_" **Pseudo SSN**"
+
+
+=============================================================================
+User Information:
+Entered By  : MULLER,RICHARD                Date Entered  : MAR 15, 2005
+Completed By: RUDINGER,NANCY L.             Date Completed: JAN 18, 2007
+Released By : GROOMS,ANTHONY E              Date Released : JAN 19, 2007
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

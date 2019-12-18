@@ -1,0 +1,643 @@
+$TXT Created by GAVRILOV,SERGEY at DEV.DEV.FO-HINES.MED.VA.GOV  (KIDS) on Wednesday, 02/23/05 at 10:37
+=============================================================================
+Run Date: APR 29, 2005                     Designation: ROR*1*8
+Package : ROR - CLINICAL CASE REGISTRIES      Priority: Mandatory
+Version : 1         SEQ #8                      Status: Released
+                  Compliance Date: MAY 23, 2005
+=============================================================================
+
+Associated patches: (v)ROR*1*6     <<= must be installed BEFORE `ROR*1*8'
+                    (v)ROR*1*7     <<= must be installed BEFORE `ROR*1*8'
+
+Subject: Historical Data Extraction and Context Management (CCOW)
+
+Category: 
+  - Routine
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ This patch prepares the Immunology Case (ICR) and Hepatitis C (Hep C)
+ registries for the historical data extraction, and instructs the users how
+ to perform it.  Please read the instructions (ROR1_0P8IG) completely and
+ then follow them step by step.
+  
+ A new version of the Clinical Case Registries (CCR) GUI is also exported 
+ as a part of this patch.  The new GUI includes the HL7 context management 
+ (CCOW) functionality (both patient and user subjects).
+  
+ The fixes and enhancements can be separated into two groups: M code and
+ GUI changes.
+  
+ M Code
+ ------
+  
+ [01] ICR and Hep C historical data extraction
+      ----------------------------------------
+  
+ Post-install routine of this patch prepares the ICR and Hep C registries
+ for the historical data extraction (AKA backpull) that will extract the
+ clinical data for the registry patients starting from January 1, 1985.
+  
+ Code of the RORHDT02, RORHDT04, and RORHDTUT routines has been amended to
+ simplify simultaneous historical data extraction for several registries
+ (format of the output file names has been changed to include the registry
+ name).
+  
+ Description of the FILE NAME field (1.01) of the ROR HDT TASK file 
+ (#798.5) has been updated to reflect the new file name format.
+  
+ [02] Too aggressive error checks
+      ---------------------------
+  
+ The data extraction code of the nightly task performed too aggressive 
+ error checks on the AUTOMATED INSTRUMENT DATA ? (21) field of the
+ ELECTROCARDIOGRAM (EKG) file (#691.5).  If this field was empty, an error
+ was recorded in the log and processing of the patient data was aborted
+ despite the fact that there was no "required" indicator for this field in
+ the data dictionary.
+  
+ The RORHL13 routine has been amended (the aforementioned error check has
+ been removed).
+  
+ The NOIS references for this problem are FGH-0804-30388, LOU-0804-41178,
+ MAR-0804-20334, and SFC-0704-60158.
+  
+ [03] Inpatient and Outpatient Utilization report in loop
+      ---------------------------------------------------
+  
+ When running the 'Inpatient and Outpatient Utilization' report, it went
+ into an infinite loop in routine RORX005A.  The problem was caused by a 
+ Fee Basis record of the PTF file (#45) that overlapped another inpatient
+ admission.
+  
+ The RORX005A routine has been amended to prevent the infinite loop in case
+ of incorrect data.
+  
+ The NOIS reference for this problem is LON-0904-61196.
+  
+ [04] Inactivation reason and date are not sent
+      -----------------------------------------
+  
+ 30 days after a date of death is entered for a registry patient, the 
+ nightly task automatically inactivates the registry record.  If it is
+ determined later that the patient was erroneously added to the registry in
+ the first place, the CCR GUI allows the user to manually inactivate the
+ patient again, which should exclude them from the registry reports.
+  
+ Despite the fact that the manual inactivation of deceased patients was
+ enabled in the GUI, the code of the ROR PATIENT (IN)ACTIVATE remote
+ procedure ignored such requests.
+  
+ The RORRP030 routine has been amended.
+  
+ The NOIS reference for this problem is PAL-0804-60772.
+  
+ [05] ICR data is not extracted in some cases
+      ---------------------------------------
+  
+ The ICR data extraction task stopped transmitting the data for some
+ patients despite having on-going clinical events.
+  
+ The investigation showed that the data was not sent because of the problem
+ [02] mentioned earlier.  The software flagged valid EKG data as
+ erroneous.  Moreover, the error was considered a severe one.  As a result,
+ no data was sent for the patients in question since those EKG procedures
+ had been performed.
+  
+ The NOIS reference for this problem is PAL-0904-60103.
+  
+ [06] Updated ICR search criteria
+      ---------------------------
+  
+ According to the NOIS PAL-0804-60107 the registry update task was missing
+ some patients with positive HIV antibody tests because patients with
+ positive Elisa tests automatically went on to Western Blot tests with the
+ results reported under the Western Blot.  The CCR search engine did not
+ look for positive tests with LOINC codes for HIV Western Blots.
+  
+ Two LOINC codes for HIV 1 Western Blot (13499-9 and 21009-6) have been
+ added to the ICR lab search criteria.
+  
+ [07] CCR alerts and CPRS GUI
+      -----------------------
+  
+ If a local coordinator inactivated a patient in the CCR GUI, this 
+ generated an alert.  These alerts appeared in the CPRS GUI under 
+ notifications.  However, they could be processed only by the old "roll and
+ scroll" interface, not by the CPRS GUI.
+  
+ These alerts used M routines to display expanded explanations of the
+ corresponding events.  Since the CPRS GUI does not process these alerts,
+ the inactivation/reactivation and task completion alerts have been
+ modified so that they are considered by the CPRS GUI as informational 
+ and can be processed.
+  
+ Detailed explanations have been moved to the user manual and the reference
+ guide.
+  
+ The RORERR20, RORRP030, RORTSK01, and RORUTL18 routines have been amended.
+  
+ The VistA dialogs 7980000.013, 7980000.014, and 7980000.019 are deleted 
+ by this patch from the DIALOG file (#.84).
+  
+ The NOIS reference for this problem is PAL-0604-61001.
+  
+ [08] List of Hep C NDC codes
+      -----------------------
+ The National Drug Code (NDC) 0004-0350-99 has been added to the DRUG
+ THERAPY LIST multiple (17) of the Hepatitis C (Hep C) registry parameters
+ record in the ROR REGISTRY PARAMETERS file (#798.1).
+  
+ The NOIS reference for this problem is PRO-0404-11958.
+  
+ [09] Reports missing some ARV drugs
+      ------------------------------
+  
+ The code for some reports, which was selecting the drug prescriptions,
+ examined order dates of original prescriptions instead of fill dates.  
+ This caused discrepancies between pharmacy related reports.
+  
+ The RORX009A and RORX011 routines have been amended.
+  
+ The NOIS reference for this problem is PAL-0804-61825.
+  
+ [10] Missing HL7 encoding
+      --------------------
+  
+ It was discovered that text in some fields of the Microbiology, Surgical
+ Pathology, and Cytopathology HL7 segments was not properly encoded.  Since
+ that text contained |TAB|, |INDENT|, and other word-processing "windows",
+ it broke the structure of the segments.
+  
+ The RORHL10, RORHL11, RORHL12 and RORHL121 routines have been amended to 
+ apply proper HL7 encoding to the text fields.
+  
+ The NOIS reference for this problem is PAL-1004-60805.
+  
+ [11] New HIV Drugs
+      -------------
+  
+ As per request from Center of Quality Management (CQM), two HIV drugs have
+ been added to the ROR GENERIC DRUG file (#799.51) and associated with the
+ ICR: EPZICOM (ABACAVIR/LAMIVUDINE) and TRUVADA (EMTRICITABINE/TENOFOVIR).
+  
+ [12] Temporary fix for Vitals API bug
+      --------------------------------
+  
+ Vitals API EN1^GMRVUT0, which is used by the CCR to extract the vital
+ signs, erroneously appends zero to the dates without a time part. As a
+ result, those dates were considered invalid during conversion into HL7
+ format and were replaced by empty strings.
+  
+ The RORHL16 routine has been ammended to provide a temporary fix for this 
+ problem (remove the zero) until the Vitals API is fixed.
+  
+ The NOIS reference for this problem is PAL-0105-60940.
+  
+ [13] Fix for invalid output transforms in the LAB DATA file (#63)
+      ------------------------------------------------------------
+  
+ The following fields of the LAB DATA file (#63) have invalid output 
+ transforms (direct WRITE):
+  
+  DATE/TIME SPECIMEN TAKEN (.01) of the multiple EM (2)
+  DATE/TIME SPECIMEN TAKEN (.01) of the multiple SURGICAL PATHOLOGY (8)
+  DATE/TIME SPECIMEN TAKEN (.01) of the multiple CYTOPATHOLOGY (9)
+  
+ Those output transforms look like this:
+  
+  D D^LRU W ?0,"---------------------------------"
+  
+ This caused a problem for the historical data extraction. The CCR package
+ used constructions like this:
+  
+  D GETS^DIQ(63.08,IENS,".01;.03;.06;.07;.08","IE","ROROUT","RORMSG")
+  
+ As a result, those lines of dashes ended up in the output files (HL7 
+ batches) and made the HL7 parser at AAC crazy.
+  
+ Since the external value of the .01 field was not actually needed, the
+ RORHL06 and RORHL10 routines have been modified to extract only its
+ internal value (separately from other fields).
+  
+ The NOIS reference for this problem is ISH-0105-41112.
+  
+ CCR GUI
+ -------
+  
+ [01] HL7 context management
+      ----------------------
+  
+ The code of the CCR GUI has been modified to implement the HL7 Context 
+ Management Standard developed by the Clinical Context Object Workgroup
+ (CCOW).  
+  
+ In order to use these enhancements, the Sentillion Vergence desktop
+ components should be installed on the user workstation and the required
+ Kernel (XU*8*337) and RPC Broker (XWB*1.1*35) patches should be installed
+ on the M server.
+  
+ If the desktop components are not installed or not configured properly,
+ the GUI will still be functional but all context management functionality
+ will be disabled.
+  
+ If the required Kernel and/or RPC Broker patches are not installed, then
+ the Single Sign-On/User Context (SSO/UC) functionality will be disabled.
+  
+ [02] Incorrect number of patients in the list
+      ----------------------------------------
+  
+ If the number of patients conforming to the search criteria was greater
+ than the maximum value defined by the CCR GUI options, then up to 20
+ patient records more than the value of the parameter were added to the
+ list on the Registry tab.
+  
+ The code of the GUI has been modified to load the correct number of 
+ patient records.
+  
+ The NOIS reference for this problem is PHI-0704-20569.
+  
+ [03] Incorrect ethnicity check-boxes on the CDC form
+      -----------------------------------------------
+  
+ While a patient was shown by the CPRS GUI with race and ethnicity
+ 'Unknown', the 'Ethnicity' check-boxes of the CDC form indicated 'Not
+ Hispanic or Latino'.
+  
+ The code of the GUI has been modified to check the correct 'Ethnicity'
+ check-box.
+  
+ The NOIS reference for this problem is DET-0704-41561.
+  
+ [04] Interface enhancements
+      ----------------------
+  
+ Since the implementation of the context management involved significant 
+ changes to the GUI code, it had some "side effects" in the form of user
+ interface enhancements (see the User Manual for more details):
+  
+  * When search for patient(s) is performed from the Registry tab, the
+    "Patients found" field indicates the status of the search process.
+  
+  * A long patient search can be aborted by pressing the <ESC> key.
+  
+  * Sort order indicators have been added to the task and patient lists.
+  
+  * Location and appearance of common buttons (Ok, Cancel, Save, etc.) 
+    have been uniformly modified for all dialog boxes.
+  
+  * Activate and Inactivate buttons have been removed from the ICR 
+    Patient Data Editor dialog box (because this functionality is
+    available from the main toolbar).
+  
+  * Lists shown in most dialog boxes can now be sorted by different 
+    columns.
+  
+  * Appearance and functionality of the double-pane lists in the Site 
+    Parameters dialog box have been improved (e.g. Remove All buttons 
+    and 'drag and drop' functionality have been added).  See the
+    updated User Manual for more details.
+  
+  * Due to non-conformance with GUI design standards for VA applications,
+    the Reconnect menu option has been removed from the File menu.
+  
+  
+ Associated NOIS and Remedy Tickets:
+ ==================================
+  
+ DET-0704-41561     HD0000000068139
+ FGH-0804-30388     HD0000000068167
+ ISH-0105-41112     HD0000000071188
+ LON-0904-61196     HD0000000068266
+ LOU-0804-41178     HD0000000068202
+ MAR-0804-20334     HD0000000068163
+ PAL-0604-61001     HD0000000068058
+ PAL-0804-60107     HD0000000068155
+ PAL-0804-60772     HD0000000068183
+ PAL-0804-61825     HD0000000068221
+ PAL-0904-60103     HD0000000068235
+ PAL-1004-60805     HD0000000068335
+ PAL-0105-60940     HD0000000068666
+ PHI-0704-20569     HD0000000067112
+ PRO-0404-11958     HD0000000067986
+ SFC-0704-60158     HD0000000068097
+  
+  
+ Thanks to Test Sites:
+ ====================
+  
+ Bronx
+ Coatesville
+ Long Beach
+ NY Harbor
+ Palo Alto
+ San Antonio 
+  
+  
+ Routine Summary:
+ ===============
+  
+ The following routines are included in this patch.  The second line of 
+ each of these routines now looks like:
+  
+   <tab>;;1.0;CLINICAL CASE REGISTRIES;**[patchlist]**;May 14, 2002
+  
+                  Checksum
+   Routine    Before     After   Patch List
+   --------  --------  --------  ---------------------------
+   ROR        2393807   2393819  2,3,5,6,8
+   ROR01         1117      1117  5,8
+   RORERR20  13404338  13500365  2,3,5,8
+   ROREXT     4234009   4259663  2,5,8
+   ROREXTUT   6225863   5466521  2,5,8
+   RORHDT02   1374405   2424530  2,5,8
+   RORHDT04   8306528   8399917  2,3,4,5,8
+   RORHDTUT   4563799   4590218  5,8
+   RORHL06    4487923   4688456  2,5,8
+   RORHL08    4376658   6190681  5,8
+   RORHL10    6706945   6840817  5,8
+   RORHL11    5142087   5507013  5,8
+   RORHL12    2274629   2446424  5,8
+   RORHL121   9997256  10798141  5,8
+   RORHL13    3432675   3406802  5,8
+   RORHL16    2973634   3293867  5,8
+   RORHL17    6039977   5969995  5,6,8
+   RORHL7     5115013   5463554  2,5,8
+   RORNTEG    4224648   4216987  3,4,5,6,8
+   RORNTEG0   3103265   3102911  3,4,5,6,8
+   RORP006    4399886   n/a      6
+   RORP008        n/a   3623044  8
+   RORRP024   3769315   3821351  5,8
+   RORRP030   6154417   4942418  5,6,8
+   RORRP035   1615892   1615985  5,8
+   RORSETU2   2901879   3134457  5,8
+   RORTSK01   7060222   6875571  5,8
+   RORUPD52   2548867   2583157  3,8
+   RORUTL18    285281    927178  6,8
+   RORX005A   7139090   7242281  5,8
+   RORX009A   6814376   7103569  5,8
+   RORX011    6937846   7479478  5,8
+  
+  
+ Data Dictionary Summary:
+ =======================
+  
+     File     Field     Comments
+   --------  -------  ---------------------------------------------
+  
+   798.1     21.06    New field (HDT PATIENTS PER BATCH).
+     
+   798.5     1.01     Description of the FILE NAME field has been
+                      updated to reflect the changes in the code.
+  
+  
+ INSTALLATION FILES:
+ ==================
+  
+ The following software and documentation files are exported as part of
+ this patch:
+   
+   File Name         Contents                 Transfer Mode  Size
+   ----------------  -----------------------  -------------  ---------
+   ROR1_OP8GUI.ZIP   Zipped GUI distributive  BINARY         3,764,007
+  
+   ROR1_0P8DOC.ZIP   Patch Documentation      BINARY           255,752
+     ROR1_0P8IG.DOC    Installation and                        201,728
+     ROR1_0P8IG.PDF    Implementation Guide                    258,386
+  
+ The files listed above may be obtained via FTP.  The preferred method is 
+ to FTP the files from:
+   
+   download.vista.med.va.gov
+   
+ This transmits the files from the first available FTP server.  Sites may 
+ also elect to retrieve software directly from a specific server as
+ follows:
+   
+   CIO Field Office  FTP Address                Directory
+   ----------------  -------------------------  --------------------
+   Albany            ftp.fo-albany.med.va.gov   [anonymous.software]
+   Hines             ftp.fo-hines.med.va.gov    [anonymous.software]
+   Salt Lake City    ftp.fo-slc.med.va.gov      [anonymous.software]
+   
+ The documentation will be in the form of an Adobe Acrobat file, and can
+ also be found on the Health System Design and Development website:
+   
+   http://www.va.gov/vdl/
+  
+  
+ Installation Instructions:
+ =========================
+  
+ Please follow the instructions provided in the Clinical Case Registries 
+ Patch ROR*1*8 Installation/Implementation Guide (ROR1_0P8IG).
+
+Routine Information:
+====================
+
+Routine Name:
+  - RORHDT04
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORHL13
+
+
+Routine Checksum:
+
+Routine Name:
+  - ROR
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORHL17
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORRP030
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORTSK01
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORUTL18
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORX005A
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORP008
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORNTEG
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORNTEG0
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORX009A
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORX011
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORERR20
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORHL10
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORHL11
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORHL12
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORHL121
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORSETU2
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORUPD52
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORP006
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORRP024
+
+
+Routine Checksum:
+
+Routine Name:
+  - ROREXT
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORHL08
+
+
+Routine Checksum:
+
+Routine Name:
+  - ROR01
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORHDT02
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORHDTUT
+
+
+Routine Checksum:
+
+Routine Name:
+  - ROREXTUT
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORHL7
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORHL16
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORHL06
+
+
+Routine Checksum:
+
+Routine Name:
+  - RORRP035
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : GAVRILOV,SERGUEI              Date Entered  : AUG 11, 2004
+Completed By: PATRICK,PAT                   Date Completed: APR 29, 2005
+Released By : BELSCHWINDER,MICHAEL          Date Released : APR 29, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

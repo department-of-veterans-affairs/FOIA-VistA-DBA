@@ -1,0 +1,336 @@
+$TXT Created by WANG,MARK at CVAH.SUPPORT.CIOFO-SLC.MED.VA.GOV  (KIDS) on Thursday, 11/20/03 at 15:50
+=============================================================================
+Run Date: DEC 02, 2003                     Designation: OSI*4*3
+Package : OSI - OS-OPENM                      Priority: Mandatory
+Version : 4         SEQ #2                      Status: Released
+                  Compliance Date: JAN 02, 2004
+=============================================================================
+
+
+Subject: P-MESSAGE UPDATE FOR VMS/CACHE
+
+Category: 
+  - Routine
+
+Description:
+============
+
+  
+ *** NOTE:  THIS PATCH IS FOR VMS/CACHE SITES ONLY ***
+  
+ PROBLEM DESCRIPTION
+  
+ There is an inconsistency in the way in which the IO variable is being 
+ handled in the CLOSE EXECUTE code of the P-MESSAGE-HFS terminal type.  
+ This inconsistency results in the variable IO(1,IO) being retained even 
+ though the close execute code specifically deletes it.  A subsequent call 
+ to ^%ZISC results in a <NOTOPEN>C0+16^%ZISC.  C0^%ZISC is only executed
+ because the job was queued AND the variable IO(1,IO) is defined.  Note
+ that this problem only occurs when output to the P-MESSAGE device is
+ queued through Task Manager -- using the device directly results in no
+ problems.  Further, since this error is actually occuring after the output
+ has been sent to a mail message, users would not notice a problem.  The
+ abovementioned <NOTOPEN> error would only be logged in the error trap.
+  
+ The current CLOSE EXECUTE code for the P-MESSAGE-HFS terminal type reads:
+  
+ W:$X ! S ZIO=$ZIO C IO S IO=ZIO O IO:("RS"):1 D READ^XM APHOST X "C
+ IO:""D""" K IO(1,IO)
+  
+ The above code changes IO to equal the value of $ZIO.  This is necessary
+ because $ZIO contains the full VMS device and directory path, as well as
+ the host file name and version number where the data was written.  For
+ example:
+  
+ IO=USER$:[TEMP]hostfilename.TMP
+ $ZIO=_$1$DGA200:[TEMP]hostfilename.TMP;1
+  
+ The above code then opens the host file (full path and version), reads 
+ from it, and finally closes it.  It's also supposed to K IO(1,I0) to 
+ prevent any further attempts to close the device.  Unfortunately, 
+ IO(1,IO) no longer contains the original name of IO.
+  
+ This patch changes the CLOSE EXEUCTE code to retain the original value of
+ IO so that we can successfully delete IO(1,IO) when all processing is
+ done.  This will prevent further attempts to close the device by
+ TaskMan.  The new code is:
+  
+ W:$X ! S ZIO=$ZIO,ZZIO=IO C IO S IO=ZIO O IO:("RS"):1 D READ^XMAPHOST X
+ "C IO:""D""" K IO(1,ZZIO),ZIO,ZZIO
+  
+ The original value of IO is kept in ZZIO.  All the processing remains the 
+ same, except that we substitute ZZIO for IO in the K IO(1,IO) command.
+  
+ Reference Remedy ticket HD0000000030782.
+  
+ Test sites (thanks to all):
+  
+         VAMC Clarksburg, WV
+         VAMC Fresno, CA
+         VAMC Butler, PA
+  
+ INSTALLATION
+  
+ This patch can be installed with users on the system and no special 
+ considerations for Task Manager.  It is recommended, nonetheless, that 
+ you install this patch at a time of low system usage.
+  
+ STEP 1.  Load the distribution from the PackMan message:
+  
+ From the Systems Manager Menu (EVE), select MailMan Menu
+  
+           Core Applications ...
+           Device Management ...
+    FM     VA FileMan ...
+           Manage Mailman ...
+           Menu Management ...
+           Programmer Options ...
+           Operations Management ...
+           Spool Management ...
+           Information Security Officer Menu ...
+           Taskman Management ...
+           User Management ...
+    VPE    Victory Programming Environment (VPE) Shell
+           Application Utilities ...
+           Avanti System Utilities
+           Capacity Management ...
+           LET'S ERROR OUT
+           TEST
+  
+ Select Systems Manager Menu Option: MAILMAN Menu
+  
+ VA MailMan 8.0 service for WANG.MARK@CVMS.SUPPORT.CIOFO-SLC.MED.VA.GOV
+ You last used MailMan: 10/23/03@10:05
+ You have no new messages.
+  
+  
+    NML    New Messages and Responses
+    RML    Read/Manage Messages
+    SML    Send a Message
+           Query/Search for Messages
+    AML    Become a Surrogate (SHARED,MAIL or Other)
+           Personal Preferences ...
+           Other MailMan Functions ...
+           Help (User/Group Info., etc.) ...
+  
+ Select MailMan Menu Option: READ/Manage Messages
+  
+ Select message reader: Classic// 
+ Read mail in basket: IN//        (2 messages)
+ Last message number: 2   Messages in basket: 2
+ Enter ??? for help.
+  
+ IN Basket Message: 1// ?  IN Basket, 2 messages (1)
+ *=New/!=Priority.......Subject..................From..................
+  *1. OSI*4*3 TEST v1                            <"NPM[#37404921]"@FORU
+  
+ IN Basket Message: 1// 1
+  
+ Subj: OSI*4*3 [#91058] 23 Oct 2003 11:12:55 -0400 (EDT)  396 lines
+ From: <"NPM   [#37404921]"@FORUM.VA.GOV>  In 'IN' basket.   Page 1
+ --------------------------------------------------------------------------
+ $TXT Created by WANG,MARK at CVAH.SUPPORT.CIOFO-SLC.MED.VA.GOV  (KIDS) on 
+ Monday, 10/20/03 at 16:45
+ ==========================================================================
+ Run Date: OCT 23, 2003                     Designation: OSI*4*3
+ Package : OSI - OS-OPENM                      Priority: Mandatory
+ Version : 4                                     Status: Verified/Released
+ ==========================================================================
+  
+  
+ Subject: P-MESSAGE UPDATE FOR VMS/CACHE
+  
+ Category: 
+   - Routine
+  
+ Description:
+ ============
+  
+   
+  *** NOTE:  THIS PATCH IS FOR VMS/CACHE SITES ONLY ***
+  
+  
+ Enter message action (in IN basket): Delete// Xtract KIDS
+ Select PackMan function: INSTALL/CHECK MESSAGE
+  
+ Line 77   Message #91058     Unloading KIDS Distribution   OSI*4.0*3
+    OSI*4.0*3
+  
+ Want to Continue with Load? YES// 
+ Loading Distribution...
+  
+    OSI*4.0*3
+ This Patch is for Version 4, you are running Version 3.2
+  
+ Want to continue installing this build? NO// YES
+ **NOTE:  YOU MAY SEE THE ABOVE MESSAGE -- ANSWER 'YES' TO CONTINUE THE
+ INSTALL.  AFTER INSTALLATION YOUR PACKAGE FILE VERSION FOR OS-OPENM WILL 
+ BE UPDATED TO VERSION 4.0**
+  
+ Select PackMan function:                         
+  
+ Enter message action (in IN basket): Delete// Ignore
+  
+    NML    New Messages and Responses
+    RML    Read/Manage Messages
+    SML    Send a Message
+           Query/Search for Messages
+    AML    Become a Surrogate (SHARED,MAIL or Other)
+           Personal Preferences ...
+           Other MailMan Functions ...
+           Help (User/Group Info., etc.) ...
+  
+ Select MailMan Menu Option: <-- press <enter> to exit MailMan menu
+  
+ STEP 2.  From the System Manager Menu (EVE), select Programmer Options...
+  
+           Core Applications ...
+           Device Management ...
+    FM     VA FileMan ...
+           Manage Mailman ...
+           Menu Management ...
+           Programmer Options ...
+           Operations Management ...
+           Spool Management ...
+           Information Security Officer Menu ...
+           Taskman Management ...
+           User Management ...
+    VPE    Victory Programming Environment (VPE) Shell
+           Application Utilities ...
+           Avanti System Utilities
+           Capacity Management ...
+           LET'S ERROR OUT
+           TEST
+  
+ Select Systems Manager Menu Option: PROGrammer Options
+  
+ STEP 3.  From the Programmer Options menu, select Kernel Installation & 
+ Distribution System (KIDS) menu...
+  
+    KIDS   Kernel Installation & Distribution System ...
+    NTEG   Build an 'NTEG' routine for a package
+    PG     Programmer mode
+           Calculate and Show Checksum Values
+           Delete Unreferenced Options
+           Error Processing ...
+           Global Block Count
+           List Global
+           Map Pointer Relations
+           Number base changer
+           Routine Tools ...
+           Test an option not in your menu
+           Verifier Tools Menu ...
+  
+ Select Programmer Options Option: KIDS  Kernel Installation & 
+ Distribution System
+  
+ STEP 4.  From the KIDS menu, select INSTALLATION option...
+  
+           Edits and Distribution ...
+           Utilities ...
+           Installation ...
+  
+ Select Kernel Installation & Distribution System Option: INSTALLATION
+  
+ STEP 5.  From the Installation menu, select Install Package(s) option...
+  
+    1      Load a Distribution
+    2      Verify Checksums in Transport Global
+    3      Print Transport Global
+    4      Compare Transport Global to Current System
+    5      Backup a Transport Global
+    6      Install Package(s)
+           Restart Install of Package(s)
+           Unload a Distribution
+  
+ Select Installation Option: 6  Install Package(s)
+  
+ STEP 6.  Install OSI*4.0*3...
+  
+ Select INSTALL NAME: OSI*4.0*3       Loaded from Distribution  
+ 10/23/03@10:09:26
+      => OSI*4*3
+  
+ This Distribution was loaded on Oct 23, 2003@10:09:26 with header of 
+    OSI*4*3
+    It consisted of the following Install(s):
+       OSI*4.0*3
+ Checking Install for Package OSI*4.0*3
+ This Patch is for Version 4, you are running Version 3.2
+  
+ Want to continue installing this build? NO// YES
+ **NOTE:  YOU MAY SEE THE ABOVE MESSAGE -- ANSWER 'YES' TO CONTINUE THE
+ INSTALL.  AFTER INSTALLATION, YOUR PACKAGE FILE FOR PACKAGE OS-OPENM WILL 
+ BE UPDATED TO VERSION 4.0**
+  
+ Install Questions for OSI*4.0*3
+  
+ Want KIDS to INHIBIT LOGONs during the install? YES// NO
+ Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// NO
+  
+ Enter the Device you want to print the Install messages.
+ You can queue the install by enter a 'Q' at the device prompt.
+ Enter a '^' to abort the install.
+  
+ DEVICE: HOME// <-- RECOMMEND YOU PRESS <ENTER> AND *NOT* QUEUE THE
+                    INSTALLATION.  INSTALLATION TAKES LESS THAN 1 MINUTE.
+                                  
+ OSI*4.0*3                                    
+  
+  Install Started for OSI*4.0*3 : 
+                Oct 23, 2003@10:10:05
+  
+ Build Distribution Date: Oct 20, 2003
+  
+  Installing Routines:
+                Oct 23, 2003@10:10:05
+  
+  Running Post-Install Routine: ^NVS43POS
+  
+ Subtype: P-MESSAGE-HFS (record #98)
+ Done.
+  
+ Subtype: P-MESSAGE-HFS-MSM (record #114)
+ Done.
+  
+ **NOTE: ALL TERMINAL TYPES THAT CONTAIN P-MESSAGE WILL BE UPDATED.  THIS
+ IS TO MAKE CERTAIN THAT ANY YOU MAY BE USING ARE UPDATED.  YOU MAY WANT TO
+ REVIEW AFTER PATCH INSTALLATION (RECORD NUMBERS IN FILE 9.4 ARE PROVIDED
+ FOR YOUR REFERENCE).**
+  
+ Updating CURRENT VERSION field (#13)
+ in the PACKAGE file (#9.4) for the package
+ OS-OPENM (record #540) to 4.0...
+ Done.
+  
+ Processing Completed
+  
+  Updating Routine file...
+  
+  Updating KIDS files...
+  
+  OSI*4.0*3 Installed. 
+                Oct 23, 2003@10:10:06
+  
+  Install Message sent
+  
+ Install Completed
+  
+ **NOTE:  THE POST-INSTALL ROUTINE, ^NVS43POS, THAT ACTUALLY DOES THE 
+ UPDATE IS DELETED UPON COMPLETION OF THE INSTALLATION.**
+
+Routine Information:
+====================
+
+=============================================================================
+User Information:
+Entered By  : WANG,MARK                     Date Entered  : OCT 20, 2003
+Completed By: PALMER,MICHAEL                Date Completed: NOV 25, 2003
+Released By : GRAY,STEPHEN                  Date Released : DEC 02, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

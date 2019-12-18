@@ -1,0 +1,253 @@
+$TXT Created by HOUTCHENS,THOMAS at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 11/20/03 at 13:10
+=============================================================================
+Run Date: DEC 30, 2003                     Designation: DG*5.3*530
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #487                    Status: Released
+                  Compliance Date: JAN 30, 2004
+=============================================================================
+
+Associated patches: (v)DG*5.3*149  <<= must be installed BEFORE `DG*5.3*530'
+                    (v)DG*5.3*219  <<= must be installed BEFORE `DG*5.3*530'
+                    (v)DG*5.3*415  <<= must be installed BEFORE `DG*5.3*530'
+                    (v)DG*5.3*425  <<= must be installed BEFORE `DG*5.3*530'
+
+Subject: LOCKING PROBLEM, NULL SUBSCRIPT ERROR AND PTF TRANSMISSION PROBLEM
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch addresses problems with the VAFC BATCH UPDATE hanging,
+ a null subscript error when attempting to run the PTF Transmission
+ purge option and empty PTF Transmissions being reported to the 
+ Austin Automation Center.
+  
+ ASSOCIATED E3R(S):
+ ==================
+  
+ N/A
+  
+ ASSOCIATED NOIS:
+ ================
+  
+ 1. MAR-0203-21909     VAFC BATCH UPDATE HANGING 
+    Duplicate:
+       UNY-1003-12251  VAFC BATCH UPDATE
+       FAV-1103-71044  VAFC BATCH UPDATE job is HUNG
+ 2. HWH-0302-40610     $ZE= DELETE+4^VAFHPURG:2, %DSM-E-NULLSUBSCR,
+                       Null subscript
+ 3. ATG-0803-31354     Empty PTF Transmissions
+  
+ PARTICIPATING TEST SITES:
+ =========================
+  
+ Atlanta, GA
+ El Paso, TX
+ Fayetteville, AR
+ VISN2, Upstate NY
+  
+ NOIS OVERVIEW:
+ ==============
+  
+ 1. MAR-0203-21909   VAFC BATCH UPDATE HANGING 
+  
+   Problem:
+   --------
+   A backlog was observed on the VAFC BATCH UPDATE job at the 
+   Maryland HCS and other sites. After logging into the site and observing 
+   the production environment it was determined that Patients being edited 
+   were not unlocked when the user edited the next Patient data record.
+   
+   Resolution:
+   -----------
+   A check of the lock status in the VAFC BATCH UPDATE job was created
+   in routine VAFCMSG. If the Patient is locked the routine quits and 
+   continues to process the next Patient.
+  
+ 2. HWH-0302-40610   $ZE= DELETE+4^VAFHPURG:2, %DSM-E-NULLSUBSCR,
+                     Null subscript
+  
+   Problem:
+   --------
+   A null subscript occurs when the $O of the HL7 ADT PIVOT file purge 
+   routine (VAFHPURG) sets the date variable (VAFHX) equal to null and 
+   passes this null value to the next for loop.
+  
+   Resolution:
+   -----------
+   The most direct solution to the null subscript was to validate the date 
+   subscript and quit processing if the date is greater than the end date or
+   the value is a null a value.
+  
+      
+ 3. ATG-0803-31354   Empty PTF Transmissions
+  
+   Problem:
+   --------
+  
+   The Austin Automation Center reported 14 blank PTF messages for station
+   508, (Atlanta) on Tuesday 08/19/03. The site reported one Patient record
+   being released but did not transmit.
+  
+   Resolution:
+   -----------
+  
+   A routine DGPTFTR was modified to initialize a temporary storage array 
+   which controls the line count. This line count is determined by the
+   TRANSMISSION ROUTERS parameter and the transmission failure was caused by
+   not properly initializing the number of lines per transmission.
+  
+ TECHNICAL:
+ ==========
+ 1. MAR-0203-21900   VAFC BATCH UPDATE HANGING 
+  
+ Routine VAFCMSG was modified to continue broadcasting the ADT-A08 
+ messages if a Patient record is in a locked state.
+  
+  
+ 2. HWH-0302-40610  ZE= DELETE+4^VAFHPURG:2, %DSM-E-NULLSUBSCR,
+                     Null Subscript
+  
+ The routine VAFHPURG was modified at line tag EN+16 to include an existence
+ check of the date variable VAFHX of the 'B' cross-reference of the
+ VAT(391.71),(HL7/ADT PIVOT) file. If the VAFHX variable is a null value the
+ FOR loop will quit processing and not pass an invalid subscript to the next
+ FOR loop.
+  
+      Before:
+      -------
+  
+      F VAFHX=0:0 S VAFHX=$O(^VAT(391.71,"B",VAFHX)) Q:VAFHX>VAFHEDT  D
+      DELETE
+  
+      After:
+      ------
+  
+      F VAFHX=0:0 S VAFHX=$O(^VAT(391.71,"B",VAFHX)) Q:VAFHX>VAFHEDT!
+      (VAFHX="")  D DELETE
+  
+ 3. ATG-0803-31354  Empty PTF Transmissions
+  
+ This problem with empty PTF transmissions to the Austin Automation Center
+ was due to a unique set of conditions within the PTF TRANSMISSION file and
+ the TRANSMISSION ROUTER parameter file. The TRANSMISSION ROUTER file has a
+ 100 line limit for messages and in this case the first Patient in the batch
+ exceeded this limit. However, a required array failed to be initialized and
+ therefore a message was sent to AAC without data. To resolve this issue
+ routine DGPTFTR determined the existence of the transmission array and
+ if the array was not defined the array was created before attempting the
+ transmission subroutine.
+ A change in routine DGPTFTR was required to initialize the DGSTCNT("P",J) 
+ array if the line count exceeded the TRANSMISSION ROUTERS parameter for
+ number of lines per transmission.
+  
+  
+ DATA DICTIONARY CHANGES:
+ ========================
+  
+ N/A
+  
+ TEMPLATES:
+ ==========
+  
+ N/A
+  
+ ROUTINE SUMMARY:
+ ================
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+ 
+      <tab>;;5.3;Registration;**[patch list]**;Aug 13, 1993
+ 
+                             CHECK^XTSUMBLD results
+ Routine name      Before Patch          After Patch         Patch List
+ ============      ============          ===========         ==========
+ DGPTFTR                9571338              9692741         37,415,530
+ VAFCMSG                4228490              4629743         91,149,530
+ VAFHPURG               2430686              2480201         91,219,530 
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ This patch can be installed during business hours, but because the 
+ some options will be out of service during the installation 
+ process it is suggested that it be queued for non-peak hours. 
+ Installation will take less than 5 minutes.
+  
+  
+ 1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu. [Note:
+    TEXT PRINT/DISPLAY option in the PackMan menu will display the
+    patch text only].
+      
+ 2. From the Kernel Installation and Distribution System (KIDS)
+    menu, select the Installation menu.
+  
+ 3. From this menu, you may elect to use the following options:
+    (when prompted for INSTALL NAME, enter DG*5.3*543)
+     
+    a.  Backup a Transport Global - this option will create a backup
+        message of any routines exported with the patch.  It will
+        NOT backup any other changes such as DDs or templates.
+    b.  Compare Transport Global to Current System  - this option
+        will allow you to view all changes that will be made when
+        the patch is installed.  It compares all components of the
+        patch (routines, DDs, templates, etc.).
+    c.  Verify Checksums in Transport Global - this option will
+        allow you to ensure the integrity of the routines that are
+        in the transport global.
+    d.  Print Transport Global - this option will allow you to view
+        the components of the KIDS build.
+     
+ 4. Use the Install Package(s) option and select the package
+    DG*5.3*543
+     
+ 5. When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+    YES//', respond NO
+     
+ 6. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+    Protocols? YES//', respond YES
+  
+    When prompted to select the options you would like to place out 
+    of order, enter the following:
+  
+          DG PTF MENU               PTF menu
+          VAFH PIVOT PURGE          Purge PIMS HL7 PIVOT file
+  
+ 7. If routines were unmapped as part of step 2 (DSM for Open VMS sites
+    only), they should be returned to the mapped set once the installation 
+    has run to completion.
+
+Routine Information:
+====================
+
+Routine Name:
+  - VAFCMSG
+
+
+Routine Checksum:
+
+Routine Name:
+  - VAFHPURG
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGPTFTR
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : HOUTCHENS,THOMAS              Date Entered  : JUN 11, 2003
+Completed By: BAUMAN,HELENE                 Date Completed: DEC 23, 2003
+Released By : BURTS,WANDA                   Date Released : DEC 30, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

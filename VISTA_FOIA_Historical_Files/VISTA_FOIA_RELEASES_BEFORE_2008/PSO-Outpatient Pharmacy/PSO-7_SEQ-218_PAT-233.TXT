@@ -1,0 +1,427 @@
+$TXT Created by WHITE,ELAINE at CMNT.FO-BIRM.MED.VA.GOV  (KIDS) on Friday, 09/01/06 at 15:53
+=============================================================================
+Run Date: OCT 05, 2006                     Designation: PSO*7*233
+Package : PSO - OUTPATIENT PHARMACY           Priority: Mandatory
+Version : 7       SEQ #218                      Status: Released
+                  Compliance Date: NOV 05, 2006
+=============================================================================
+
+Associated patches: (v)PSO*7*127   <<= must be installed BEFORE `PSO*7*233'
+                    (v)PSO*7*148   <<= must be installed BEFORE `PSO*7*233'
+                    (v)PSO*7*149   <<= must be installed BEFORE `PSO*7*233'
+                    (v)PSO*7*176   <<= must be installed BEFORE `PSO*7*233'
+                    (v)PSO*7*195   <<= must be installed BEFORE `PSO*7*233'
+                    (v)PSO*7*227   <<= must be installed BEFORE `PSO*7*233'
+                    (v)PSO*7*244   <<= must be installed BEFORE `PSO*7*233'
+
+Subject: BAD ADDRESS PHARMACY ENHANCEMENTS
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Enhancement (Mandatory)
+  - Input Template
+
+Description:
+============
+
+ This patch enhances the usage of Application Program Interfaces (APIs) to
+ the Registration Package V. 5.3 to check the setting of the BAD ADDRESS
+ INDICATOR field (#.121) in the PATIENT file (#2) and to update the
+ permanent and temporary addresses. The BAD ADDRESS INDICATOR (referred to
+ as BAI in this description) is one of the fields presented when using the
+ API to update permanent address fields.
+  
+ Outpatient Pharmacy V. 7.0 options are modified to not print the 
+ patient's address if a bad address is indicated and to prompt to update
+ the patient's address when appropriate. If the patient has the BAD ADDRESS
+ INDICATOR field set and no active temporary address, this is referred to
+ as a BAI condition in this description.
+  
+ **********************Note**********************************************
+    1. With the release of Laser Labels Phase I (PSO*7*120), dot matrix 
+      label routines are no longer updated.
+  
+    2. Related changes for the Outpatient Pharmacy Automation Interface
+      (OPAI) and Consolidated Mail Outpatient Pharmacy (CMOP) will be done
+      in patches PSO*7*200 and PSX*2*54.
+ ************************************************************************
+  
+  
+ The following changes are made in this patch:
+  
+ 1. A new security key PSO ADDRESS UPDATE is added. Either the EDIT 
+ PATIENT DATA field (#.123) in the OUTPATIENT SITE file (#59) must be set
+ to "Yes" or the user must have this new security key in order to be
+ prompted to update the address (permanent and/or temporary addresses).
+  
+ 2. When selecting a patient name in the Patient Prescription Processing 
+ [PSO LM BACKDOOR ORDERS] option, if the patient's address is flagged with
+ a Bad Address Indicator, then a warning message is displayed. If the 
+ EDIT PATIENT DATA is set to Yes or the user holds the new
+ PSO ADDRESS UPDATE security key, he will be asked if he wants to update
+ the patient's address. If there is a valid temporary address, a message to
+ that effect is displayed before the prompt to update the address.
+  
+ Example:
+   OPPATIENT,ONE (000-00-0777)
+  
+         WARNING: The patient address is indicated as a bad
+                  address (UNDELIVERABLE).
+                  * Temporary address is active *
+ Do you want to update the address/phone? N// YES
+ Update (P)ermanent address, (T)emporary, or (B)oth: BOTH// 
+  
+ 3. In the Medication Profile [PSO P] option, the Patient Prescription 
+ Processing [PSO LM BACKDOOR ORDERS] option, and the Complete Orders from
+ OERR [PSO LMOE FINISH] option, the following changes were made:
+ a. When the medication profile is displayed, the letter "B" (for bad
+ address) is added to the status column if the last label activity for that
+ prescription indicated a BAI condition. If the address is corrected and
+ label reprinted, "B" no longer appears on the profile.
+  
+ Example:
+  
+                     Medication Profile Sorted by ISSUE DATE
+                                                          REF
+  Rx#         Drug                                     ST REM  Issued  
+ Last Fill
+ --------------------------------------------------------------------------
+ -----
+ $300920A     ACETIC ACID 2% OTIC SOL 15 ML            A>B  5 07-20-06 
+ 07-20-06
+      QTY: 1             SIG: INSTILL 2 DROPS AD AS NEEDED  
+ $100002514C  SIMVASTATIN 10 MG                           S   5 06-29-06 
+ 12-10-06
+      QTY: 90           SIG: TAKE 1 TABLET AT BEDTIME
+ $300927      UREA 10% LOTION                          AB   5 06-29-06 
+ 06-29-06
+      QTY: 1             SIG: APPLY SPARINGLY TO AFFECTED AREA AS NEEDED
+  
+ b. Previously, if no ending date existed for a temporary address, the 
+ fact that the address was temporary was not being displayed. This patch
+ adds the temporary information including the text "(no end date)" in this
+ situation. 
+  
+ Example:
+  
+ Disabilities:                                                             
+      
+       (Temp Address from AUG 28,2006 till (no end date))
+ ADDRESS LINE1                  
+ ANYTOWN                               PHONE: 555-1212
+ TEXAS  
+ 77379                                                                    
+  
+  
+ 4. The Input Template [PSO OUTPT] is modified to remove temporary
+ address update prompts. Instead, a new API to the Registration Package 
+ V. 5.3 is used for updating temporary address for the Update Patient
+ Record [PSO PAT] option and the Patient Record Update [PU] action (within
+ the patient profile). This option and action are also changed to check for
+ the user holding the PSO ADDRESS UPDATE security key or the EDIT PATIENT
+ DATA field is set to "Yes" before the user is prompted to update the
+ addresses.
+  
+ 5. The following changes are made to laser label printing:
+ a. If BAD ADDRESS INDICATOR is set and there is no active temporary
+ address, the Mailing label prints ** BAD ADDRESS INDICATED ** and does not
+ print the rest of the mailing address.
+ b. An additional label log entry added for bad address indicated at the
+ time the label printed.
+  
+ 6. In the Complete Orders from OERR [PSO LMOE FINISH] option, after the 
+ prompt to display the medication profile and after the patient name and 
+ social security number are shown, if the patient's address is flagged 
+ with a Bad Address Indicator, a warning message is displayed. If the 
+ temporary address is active, that information is displayed. The user
+ will not be prompted to update the address.
+  
+ Example:
+ Do you want to see Medication Profile? Yes// NO
+  
+           OPPATIENT,ONE (666-00-0777)
+  
+         WARNING: The patient address is indicated as a bad
+                  address (UNDELIVERABLE).
+                  * Temporary address is active *
+  
+ Press Return to continue: 
+  
+ 7. The Action Profile (132 COLUMN PRINTOUT) [PSO ACTION PROFILE] option 
+ is modified to display **BAD ADDRESS INDICATED-(REASON) where REASON is 
+ UNDELIVERABLE, HOMELESS, or OTHER.
+  
+ 8. Although the Transitional Pharmacy Benefits (TPB) options have been 
+ disabled, to keep the changes consistent, the routine to print TPB letters
+ is modified to look at the BAI condition and print "** BAD ADDRESS
+ INDICATED ** if applicable.
+  
+ 9. The Patient Address Changes Report [PSO ADDRESS CHANGE REPORT] option 
+ is modified to display additional mailing address-related fields from the
+ PATIENT file (#2) and some fields related to the mail setting from the
+ PHARMACY PATIENT file (#55). The user should use FileMan to turn 
+ on auditing for the following fields in order for them to be displayed 
+ in this report. (Fields added to this report by this patch are indicated
+ with a "*" in front of the field name).
+  
+ a. For the PATIENT file (#2), turn on auditing for:
+  
+ STREET ADDRESS [LINE 1] field (#.111)
+ ZIP+4 field (#.1112)
+ STREET ADDRESS [LINE 2] field (#.112)
+ STREET ADDRESS [LINE 3] field (#.113)
+ CITY field (#.114)
+ STATE field (#.115)
+ ZIP CODE field (#.116)
+ * BAD ADDRESS INDICATOR field (#.121)
+ * TEMPORARY ADDRESS ACTIVE? field (#.12105)
+ TEMPORARY STREET [LINE 1] field (#.1211)
+ TEMPORARY ZIP+4 field (#.12112)
+ TEMPORARY STREET [LINE 2] field (#.1212)
+ TEMPORARY STREET [LINE 3] field (#.1213)
+ TEMPORARY CITY field (#.1214)
+ TEMPORARY STATE field (#.1215)
+ TEMPORARY ZIP CODE field (#.1216)
+ * TEMPORARY ADDRESS START DATE field (#.1217)
+ * TEMPORARY ADDRESS END DATE field (#.1218)
+  
+ b. For the PHARMACY PATIENT file (#55), turn on auditing for:
+ * MAIL field (#.03)
+ * MAIL STATUS EXPIRATION DATE field (#.05)
+  
+ 10. By request of a pharmacy workgroup, two new codes were added to the
+ PRESCRIPTION file (#52) HOLD REASON field (#99):
+                                 '7' FOR BAD ADDRESS; 
+                                 '8' FOR PER PATIENT REQUEST; 
+  
+  
+ 11. A Bad Address Reporting Main Menu [PSO BAI REPORT] option is added 
+ under the Output Reports [PSO OUTPUTS] option which includes the
+ following:
+ a. Bad Address Suspended List [PSO BAI SUSPENDED] option
+ This option identifies prescriptions for veterans with a BAI Condition
+ that when Printed or Pulled Early from Suspense, would be unable to be
+ mailed. This gives the opportunity for the users to be proactive in trying
+ to correct the address before the suspense labels print.
+  
+ b. List Prescriptions Not Mailed [PSO BAI NOT MAILED] option  
+ This option provides a report of prescriptions with a routing of Mail that
+ were not mailed due to a bad address. This is based on the last label
+ activity entry being flagged as a bad address and a route other than
+ "WINDOW". If the address is corrected and a label reprinted, this
+ prescription would no longer show on the report.
+  
+ 12. The View Prescriptions [PSO VIEW] option is changed to show Bad 
+ Address Indicated if BAI flag is set and no active temporary address. 
+ Example:
+ VIEW PRESCRIPTION:    713449A     ACETAMINOPHEN 325MG TAB  
+  
+                          
+ Rx View (Active)              Aug 30, 2006@18:44:09          Page:    1 
+ of    5 
+ OPPATIENT,ONE ** BAD ADDRESS INDICATED-(UNDELIVERABLE)
+   PID: 666-00-0146                                 Ht(cm): _______ 
+ (______)   
+   DOB: DEC 00,1953 (52)                             Wt(kg): _______ 
+ (______)   
+  
+  
+  ASSOCIATED NEW SERVICE REQUEST (NSR):
+  ====================================
+  20031001
+  
+  ASSOCIATED REMEDY TICKETS:
+  =========================
+  HD144627
+  
+  ASSOCIATED E3R:
+  ==============
+  N/A
+  
+  TEST SITES:
+  ==========
+  DURHAM, NC
+  MONTANA HCS
+  NEW YORK HARBOR HCS
+  OKLAHOMA CITY, OK
+  
+  
+  Documentation Retrieval:
+  ========================
+  Sites will retrieve VISTA documentation from the following FTP
+  addresses.  The preferred method is to FTP the files from
+  download.vista.med.va.gov. This transmits the files from the first
+  available FTP server. Sites may also elect to retrieve documentation
+  directly from a specific server as follows:
+  
+  OI FIELD OFFICE  FTP ADDRESS               DIRECTORY
+  
+  Albany           ftp.fo-albany.med.va.gov  anonymous.software
+  Hines            ftp.fo-hines.med.va.gov   anonymous.software
+  Salt Lake City   ftp.fo-slc.med.va.gov     anonymous.software
+  
+   FILE NAME                            DESCRIPTION
+  PSO_7_P233_RN.PDF             Bad Address Indicator Project Release Notes
+                             
+  PSO_7_P233_TM_CP.pdf          Outpatient Pharmacy V. 7.0 Technical Manual
+                                  Change Pages
+  
+  PSO_7_P233_UM_CP.pdf          Outpatient Pharmacy V. 7.0 User Manual
+                                  Change Pages
+  
+  
+  Once released, documentation can also be retrieved from VISTA
+  Documentation Library (VDL) on the Internet at the following address,
+  http://www.va.gov/vdl
+  
+  INSTALLATION INSTRUCTIONS:
+  =========================
+  Outpatient pharmacy users should not be on the system at the time of
+  installation.
+  
+  Installation will take about 5 minutes.  
+  
+   1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu.  
+  
+   2. From the Kernel Installation & Distribution System menu, select 
+      the Installation menu.  
+  
+   3. From this menu, you may select to use the following options: 
+      (when prompted for INSTALL NAME, enter PSO*7.0*233) 
+  
+     a. Backup a Transport Global - this option will create a backup 
+        message of any routines exported with the patch. It will NOT 
+        backup any other changes such as DDs or templates.  
+  
+     b. Compare Transport Global to Current System - this option will 
+        allow you to view all changes that will be made when the patch 
+        is installed. It compares all components of the patch (routines, 
+        DDs, templates, etc.).  
+  
+     c. Verify Checksums in Transport Global - this option will ensure 
+        the integrity of the routines that are in the transport global.  
+  
+     d. Print Transport Global - this option will allow you to view the
+        components of the KIDS build.
+  
+   4. Use the Install Package(s) option and select the package PSO*7.0*233.
+  
+   5. When Prompted "Want KIDS to Rebuild Menu Trees Upon Completion of 
+      Install? YES//" respond NO.
+  
+   6. When Prompted "Want KIDS to INHIBIT LOGONs during the install? 
+      YES//" respond NO.  
+  
+   7. When Prompted "Want to DISABLE Scheduled Options, Menu Options, and 
+      Protocols? YES//" respond NO.  
+  
+   8. Use FileMan to turn auditing on for the fields described in item 9 
+      of the patch description.
+  
+   9. If the site wants to allow only certain pharmacy personnel to be
+      able to update the patient address, ensure that the EDIT PATIENT DATA
+      field (#.123) in the OUTPATIENT SITE file (#59) is set to "No" and
+      assign the new PSO ADDRESS UPDATE security key to the people who 
+      should be able to update address information.
+  
+  
+  ROUTINE SUMMARY:
+  ===============
+  The second line now reads as follows: 
+  
+    <TAB>;;7.0;OUTPATIENT PHARMACY;**[patch list]**;DEC 1997 
+  
+  CHECK^XTSUMBLD results: 
+  
+  Routine     Before Patch    After Patch    Patch List 
+  ====================================================================
+  PSOADDR         31921361       33396572    127,233
+  PSOBAI           N/A            3471177    233
+  PSOBAIR2         N/A           10274523    233
+  PSOBAIRP         N/A           13568689    233
+  PSODEM          10653293       10899663    5,19,233
+  PSOLBL4         23610846       24378250    26,70,156,244,233
+  PSOLBLN         20550431       21202498    16,36,71,107,110,117,135,233
+  PSOLLL1         20776652       21851540    120,141,135,162,161,233
+  PSOLMPAT         2797419        2186259    15,117,149,233
+  PSOORUT1        28018011       27710318    1,14,30,46,132,148,233
+  PSOORUT2        15024628       15342826    11,146,132,182,233 
+  PSOP1           15550762       15886454    15,46,103,132,148,233
+  PSOPAT           4260954        3628069    74,117,149,233
+  PSORX1          21148661       21249936    7,22,23,57,62,46,74,71,90,95
+                                             115,117,146,139,135,182,195,233
+  PSORXVW         29862432       31226487    14,35,46,96,103,88,117,131,
+                                             146,156,185,210,148,233
+  PSOSD1          27434249       27752841    2,17,19,22,40,49,66,107,
+                                             110,132,233
+  PSOSD2          17407939       17212378    2,19,107,110,176,233
+  PSOSD3          21796621       21601060    2,19,107,110,132,233
+  PSOSDP          19202168       19154338    2,17,19,107,110,155,176,233
+  PSOTPCLP        14444878       14924446    145,227,233
+   
+  Total number of routines: 20
+  Total number of new routines: 3
+  Total number of routines modified: 17
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PSOADDR
+    Before: B59755103  After: B66739832  **127,233**
+Routine Name: PSOBAI
+    Before:       n/a  After:  B9247866  **233**
+Routine Name: PSOBAIR2
+    Before:       n/a  After: B20289266  **233**
+Routine Name: PSOBAIRP
+    Before:       n/a  After: B25852563  **233**
+Routine Name: PSODEM
+    Before: B13668048  After: B13922974  **5,19,233**
+Routine Name: PSOLBL4
+    Before: B52469710  After: B55680785  **26,70,156,244,233**
+Routine Name: PSOLBLN
+    Before: B31960484  After: B33988152  **16,36,71,107,110,117,135,233**
+Routine Name: PSOLLL1
+    Before: B61663989  After: B68811499  **120,141,135,162,161,233**
+Routine Name: PSOLMPAT
+    Before:  B3678258  After:  B2889666  **15,117,149,233**
+Routine Name: PSOORUT1
+    Before: B65051729  After: B66632962  **1,14,30,46,132,148,233**
+Routine Name: PSOORUT2
+    Before: B23696740  After: B24070552  **11,146,132,182,233**
+Routine Name: PSOP1
+    Before: B25363822  After: B26993923  **15,46,103,132,148,233**
+Routine Name: PSOPAT
+    Before:  B5159102  After:  B4414039  **74,117,149,233**
+Routine Name: PSORX1
+    Before: B46792556  After: B48416353  **7,22,23,57,62,46,74,71,90,95,
+                                          115,117,146,139,135,182,195,233**
+Routine Name: PSORXVW
+    Before: B58205807  After: B61807519  **14,35,46,96,103,88,117,131,
+                                          146,156,185,210,148,233**
+Routine Name: PSOSD1
+    Before: B47474708  After: B49042577  **2,17,19,22,40,49,66,107,110,
+                                          132,233**
+Routine Name: PSOSD2
+    Before: B32008884  After: B31994464  **2,19,107,110,176,233**
+Routine Name: PSOSD3
+    Before: B40259023  After: B40297338  **2,19,107,110,132,233**
+Routine Name: PSOSDP
+    Before: B31757521  After: B31980684  **2,17,19,107,110,155,176,233**
+Routine Name: PSOTPCLP
+    Before: B62400881  After: B65137821  **145,227,233**
+
+=============================================================================
+User Information:
+Entered By  : WHITE,ELAINE                  Date Entered  : DEC 21, 2005
+Completed By: HSI,TUAN                      Date Completed: OCT 03, 2006
+Released By : BARRON,LUANNE                 Date Released : OCT 05, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

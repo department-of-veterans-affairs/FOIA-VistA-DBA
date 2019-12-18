@@ -1,0 +1,253 @@
+$TXT Created by NAPOLIELLO,GREG at DAYT17.FO-BAYPINES.MED.VA.GOV  (KIDS) on Monday, 05/22/06 at 14:17
+=============================================================================
+Run Date: JUN 27, 2006                     Designation: PSO*7*232
+Package : PSO - OUTPATIENT PHARMACY           Priority: Mandatory
+Version : 7       SEQ #213                      Status: Released
+                  Compliance Date: JUL 28, 2006
+=============================================================================
+
+Associated patches: (v)PSO*7*152   <<= must be installed BEFORE `PSO*7*232'
+                    (v)PSO*7*156   <<= must be installed BEFORE `PSO*7*232'
+                    (v)PSO*7*158   <<= must be installed BEFORE `PSO*7*232'
+
+Subject: CORRECT OPAI DO NOT MAIL ISSUE
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ This patch will address 4 issues.  
+ 1.  Correct an issue with Outpatient Pharmacy Automation Interface (OPAI)
+     for prescriptions flagged as "Do Not Mail".
+ 2.  Correct the length of DISPENSE DNS PORT field (#2007) in the
+     OUTPATIENT SITE file (#59).
+ 3.  Correct an undefined variable when starting the Bingo Board.
+ 4.  Correct the AMIS reports to include automated released prescriptions
+     that have no release time.
+  
+  
+ Remedy/Nois Overview:
+ =====================
+ 1. HD115232  Optifill Interface Problem
+  
+ Problem:
+ --------
+ If the MAIL field (#.03) of the PHARMACY PATIENT file (#55) is set to
+ "Do Not Mail", it sends, as Certified Mail, in the OPAI HL7 message, when
+ route of "Mail" is selected instead of route of "Window".
+  
+ Resolution:
+ -----------
+ Change the existing code to check for all 5 possible values for the MAIL 
+ field (#.03) in the PHARMACY PATIENT file (#55).
+  
+  
+ 2. HD121813  DNS Port field length
+  
+ Problem:
+ --------
+ The DISPENSE DNS PORT field (#2007) in the OUTPATIENT SITE file (#59) is 
+ currently set to length of 4 and should be set to length of 5.
+  
+ Resolution:
+ -----------
+ Change the Data Dictionary to length 5 and a max value of 65535 for this 
+ field.
+  
+  
+ 3. HD100355   <SUBSCRIPT>XEC^DIK1
+  
+ Problem:
+ --------
+ When the Bingo Board is first started, a null subscript error is received 
+ for an entry involving the cross reference "ATIC", which is used for 
+ Bingo Boards that are displayed in Ticket order.  The Bingo Board 
+ initialization software, when first started, goes out and looks for 
+ entries older than the current day and purges them.  Some of the entries 
+ in the PATIENT NOTIFICATION (Rx READY) #52.11 (Bingo Board file), are 
+ corrupted with partial zero nodes.  These corrupted zero nodes have an 
+ "ATIC" cross reference pointing to them, which causes the error when 
+ accessed.
+  
+ Resolution:
+ -----------
+ Change the Data Dictionary for the Add and Kill logic for the cross 
+ reference "ATIC" to check if the subscript is null and if it is null 
+ because the key fields in the zero node of this file are gone, then kill 
+ the cross reference and the bad zero node and any other cross references 
+ that reference this bad zero node.
+  
+  
+ 4. HD128423  Prescription Counts not matching
+  
+ Problem:
+ --------
+ The AMIS reports often times do not agree with Prescription Counts report 
+ or the Drug Costs reports. It was determined that the External Dispense
+ machine Optifill when filling and releasing prescriptions, does not send
+ back the time with the date for the Release Date/Time field in the HL7 RXD
+ segment.  The AMIS compiler routines Code was designed to start on a 
+ given day, but skipped over all records with no times.  These times were 
+ not considered as 0's but as null.
+  
+ Resolution:
+ -----------
+ Alter the AMIS compiler routines to begin searching immediately after the 
+ last entry on the previous day to the given start date, which would 
+ include any time on that given start date.  In this case, that means a 
+ null time would be seen and included in the compiles.
+  
+  
+  
+ Associated Remedy Tickets:
+ ===========================
+ HD115232  Optifill Interface Problem
+      Duplicates: HD131010
+ HD121813  DNS Port field length
+ HD100355   <SUBSCRIPT>XEC^DIK1
+ HD128423  Prescription Counts not matching
+  
+ Associated E3R(s):
+ ==================
+ N/A
+  
+ Data Dictionary:
+ ================
+  
+ Before look at the OUTPATIENT SITE file (#59),
+ DISPENSE DNS PORT field (#2007)
+  
+   FIELD NAME:       DISPENSE DNS PORT
+  
+   FLD NUMBER:       2007            FLD TITLE:
+   NODE;PIECE:       8;6            HELP FRAME:
+  
+       ACCESS:       RD:    DEL:    WR:
+    DATA TYPE:       Numeric
+   INPUT TRANSFORM:  K:+X'=X!(X>9999)!(X<1)!(X?.E1"."1.N) X
+   PROMPT MESSAGE:   Type a number between 1 and 9999, 0 Decimal Digits
+  
+   DESCRIPTION:      ENTER THE DNS PORT NUMBER ASSOCIATED WITH THE 
+                     AUTOMATED DISPENSE MACHINE  FOR THIS OUTPATIENT
+                     PHARMACY SITE DIVISION.
+  
+   TECH DESCRIPTION: YOUR IRM DEPARTMENT SHOULD HAVE THE INFORMATION OF 
+                     THE PORT NUMBER FOR THE AUTOMATED DISPENSE MACHINE
+                     ATTACHED TO THIS OUTPATIENT PHARMACY SITE DIVISION.
+  
+ After DD change:
+  
+   FIELD NAME:       DISPENSE DNS PORT
+  
+   FLD NUMBER:       2007            FLD TITLE:
+   NODE;PIECE:       8;6            HELP FRAME:
+  
+       ACCESS:       RD:    DEL:    WR:
+    DATA TYPE:       Numeric
+   INPUT TRANSFORM:  K:+X'=X!(X>65535)!(X<1)!(X?.E1"."1.N) X
+   PROMPT MESSAGE:   Type a number between 1 and 65535, 0 Decimal Digits
+  
+   DESCRIPTION:      ENTER THE DNS PORT NUMBER ASSOCIATED WITH THE 
+                     AUTOMATED DISPENSE MACHINE FOR THIS OUTPATIENT
+                     PHARMACY SITE DIVISION.
+  
+   TECH DESCRIPTION: YOUR IRM DEPARTMENT SHOULD HAVE THE INFORMATION OF 
+                     THE PORT NUMBER FOR THE AUTOMATED DISPENSE MACHINE
+                     ATTACHED TO THIS OUTPATIENT PHARMACY SITE DIVISION.
+  
+  
+ Test Sites:
+ ===========
+ Grand Junction, CO
+ Oklahoma City, OK
+ Puget Sound HCS 
+  
+ Installation Instructions:
+ ==========================
+ It is recommended that this patch be installed after normal business 
+ hours while no Outpatient Pharmacy users are processing orders.
+  
+ Installation will take less than 2 minutes.
+  
+ 1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+  
+ 2. From the Kernel Installation & Distribution System menu, select the 
+    Installation menu.
+  
+ 3. From this menu, you may select to use the following options: (when     
+    prompted for INSTALL NAME, enter PSO*7.0*232)
+  
+      a.  Verify Checksums in Transport Global - This option will allow
+          you to ensure the integrity of the routines that are in the
+          transport global.
+      
+      b.  Print Transport Global - This option will allow you to view
+          the components of the KIDS build.
+      
+      c.  Compare Transport Global to Current System - This option will
+          allow you to view all changes that will be made when this 
+          patch is installed.  It compares all components of this patch
+          (routines, DD's, templates, etc.).
+      
+      d.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will not
+          backup any other changes such as DD's or templates.
+  
+  
+ 4. Use the Install Package(s) option and select the package      
+    PSO*7.0*232. 
+  
+ 5. When Prompted "Want KIDS to INHIBIT LOGONs during the install? 
+    YES//" respond NO. 
+  
+ 6. When Prompted "Want to DISABLE Scheduled Options, Menu Options, and 
+    Protocols? YES//" respond NO.
+  
+ Routine Summary
+ ===============
+ The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;7.0;OUTPATIENT PHARMACY;**[patch list]**;DEC 1997
+  
+   Using new logic for Integrity Checking tools:
+  
+                          CHECK^XTSUMBLD results
+ Routine name    Before Patch     After Patch        Patch List
+ ============    ============     ===========    ======================
+ PSOAMIS0            28979316        29310094     17,25,158,232
+ PSOBGMGR            26216425        26940406     12,232
+ PSOBINGO            30215243        30730053     12,28,56,125,152,232
+ PSOHLDS1            15899094        15713688     156,232
+  
+           Total number of routines - 4
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PSOAMIS0
+    Before: B54680818  After: B57481603  **17,25,158,232**
+Routine Name: PSOBGMGR
+    Before: B52938533  After: B61535737  **12,232**
+Routine Name: PSOBINGO
+    Before: B56797156  After: B61437280  **12,28,56,125,152,232**
+Routine Name: PSOHLDS1
+    Before: B45320539  After: B47619875  **156,232**
+
+=============================================================================
+User Information:
+Entered By  : NAPOLIELLO,GREG               Date Entered  : DEC 09, 2005
+Completed By: CROSSMAN,PAM                  Date Completed: JUN 26, 2006
+Released By : PARRIS,CHRIS                  Date Released : JUN 27, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

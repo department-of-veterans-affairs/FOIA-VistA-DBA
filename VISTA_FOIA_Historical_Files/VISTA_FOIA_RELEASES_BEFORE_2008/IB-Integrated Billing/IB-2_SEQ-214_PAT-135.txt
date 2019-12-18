@@ -1,0 +1,306 @@
+
+=============================================================================
+Run Date: OCT 10, 2003                     Designation: IB*2*135
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #214                      Status: Released
+                  Compliance Date: NOV 10, 2003
+=============================================================================
+
+
+Subject: EDI LOCKBOX - IB CHANGES
+
+Category: 
+  - Data Dictionary
+  - Routine
+  - Other
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ INTRODUCTION
+ ============
+  
+ The software for this patch, IB*2*135, and associated patch
+ PRCA*4.5*173, are not being distributed through the National
+ Patch Module.  These patches are being distributed as a single KIDS
+ software distribution (host file).  This patch contains the informational
+ portion of IB*2*135 only.  Refer to the patch documentation for patch
+ PRCA*4.5*173 for the instructions on how to acquire, install, and 
+ implement the patch software.
+   
+ Patch IB*2*135 contains the Integrated Billing software changes that 
+ support the Third Party EDI Lockbox initiative where third party payers
+ will be sending electronic funds transfers (EFT) to the V.A.'s Lockbox
+ bank in place of paper checks currently sent to the sites.  They will also
+ be sending Explanation of Benefit (EOB) statements electronically as
+ Electronic Remittance Advices (ERA) in place of the paper EOBs they
+ currently send to AR at the sites.  These electronic EOBs will be stored
+ in the Integrated Billing EXPLANATION OF BENEFITS file #361.1 and are
+ available to be viewed in TPJI under the Bill Charges action.
+  
+ An additional piece of functionality indirectly affecting the Integrated
+ Billing software is the addition of a call to A/R to auto-audit a bill.  
+ This can occur if the IB system receives and files an electronic bill
+ status message, the bill is currently not audited in AR, the rate type of
+ the bill has been set up to allow auto-audit (an AR function) and the
+ relay status code of the return message is one of a pre-determined set
+ that indicates the bill has either been sent to the clearinghouse's print
+ shop or sent electronically to the payer.
+  
+   
+ TECHNICAL DESCRIPTION
+ =====================
+  
+ 1.  New Fields:
+  
+         File: EXPLANATION OF BENEFITS (#361.1)
+               CLAIM STATUS CODE (#.21)
+               TRANSFERRED IN (#7.01)
+               PAYER CONTACT NAME (#25.01)
+               CONTACT NUMBER 1 (#25.02)
+               CONTACT TYPE 1 (#25.03)
+               CONTACT NUMBER 2 (#25.04)
+               CONTACT TYPE 2 (#25.05)
+               CONTACT NUMBER 3 (#25.06)
+               CONTACT TYPE 3 (#25.07)
+               MESSAGE CHECKSUM (#100.05)
+               Subfile (exists): 835 LINE LEVEL ADJUSTMENTS (#361.115)
+                                 SERVICE DATE TO (#.17)
+                                 PROCEDURE TYPE (#.18)
+                                 LINE ITEM REMARK CODE (#3.01)
+                                 LINE ITEM REMARK CODE TEXT (#3.02)
+               Subfile (new): AR AMOUNTS DISTRIBUTION (#361.18)
+                              BILL # (#.01)
+                              AMOUNT (#.02)
+                              BILL REFERENCE (#.03)
+  
+         File: RATE TYPE (#399.3)
+               BILL RESULTING FROM (#.11)
+  
+  
+ 2.  Modified Fields:
+  
+         File: EXPLANATION OF BENEFITS (#361.1)
+               EOB TYPE (#.04) - added output transform
+               ENTRY DATE/TIME (#.05) - modified description
+               EOB DATE/TIME (#.06) - modified description
+               MESSAGE STORAGE ERRORS (#.20) - changed to no wrap mode
+               Subfile: 835 LINE LEVEL ADJUSTMENTS (#361.115)
+                        AMOUNT PAID (#.03) - added negative numbers
+                        PROCEDURE (#.04) - changed the field from pointer
+                                           to free text
+                        SERVICE DATE FROM (#.16) - modified name
+                        Subfile: ADJUSTMENTS (#361.1151)
+                                 Subfile: REASONS (#1)
+                                        AMOUNT (#.02) - added negative 
+                                                        numbers
+                        Subfile: PAID MODIFIERS (#361.1152)
+                                 PAID MODIFIERS (#.01) - changed to free 
+                                                         text
+               Subfile: 835 CLAIM LEVEL ADJUSTMENTS (#361.11)
+                        Subfile: REASONS (#1)
+                                 AMOUNT (#.02) - added negative numbers
+  
+ 3.  MODIFIED FILE ENTRIES:
+  
+    There are 2 entries in file 364.7 that have been included to correct
+    a problem where electronic institutional (UB92) bills could not output
+    more than 1 modifier for a procedure.
+  
+    These are internal entries #181 and #182 and will be automatically
+    updated on your system.
+  
+ 4.  PRE-INSTALLATION:
+    
+    The patch contains a pre-installation routine IBY135PR that deletes the
+    data dictionary entry for the PROCEDURE field (#.04) in the EXPLANATION
+    OF BENEFITS FILE (#361.1), field 835 LINE LEVEL ADJUSTMENTS (field #15,
+    subfield #361.115). This is necesssary because the build contains this
+    field and changes its type from pointer to free text.  The kids build
+    does not fully clean up the DD entry when this type of change is made,
+    so the field must first be deleted in the pre-install and then re-added
+    in the main part of the installation to prevent DD corruption.
+  
+ 5.  ROUTINE SUMMARY:
+  
+    This patch consists of a total of 16 routines, including
+    7 new routines and 9 existing routines that have been modified.
+  
+    The following is a list of the routine(s) included in this patch. 
+    The second line of each of these routine(s) will look like:
+  
+      <tab>;;2.0;INTEGRATED BILLING;**[patch list]**;21-MAR-94
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  IBCE835               10852630              9078490           137,135
+  IBCE835A                   N/A              2956626             135
+  IBCECSA5               9356045             14446600           137,135
+  IBCECSA6              13453792             23185880           137,135
+  IBCECSA7                   N/A              3424677             135
+  IBCEF22               20703815             20740762         51,137,135
+  IBCEMU1                    N/A               737802             135
+  IBCEOB                19814300             16335907           137,135
+  IBCEOB0                    N/A             23853864             135
+  IBCEOB1               19375262             13686445           137,135
+  IBCEOBAR                   N/A               925727             135
+  IBCEST                14403471             15507818       137,189,197,135
+  IBECEA                 5007735              5087914           199,135
+  IBJTBA                14480346             13378794      39,80,51,137,135
+  IBJTBA1                    N/A              8893946             135
+  IBY135PR                   N/A               802599             135
+  
+ Number of Routines = 16
+  
+  
+ 4. PRE-REQUISITE PATCHES
+  
+    This software distribution requires the following patches be 
+    installed prior to installation.  KIDS will verify the patches are 
+    installed:
+   
+    For patch PRCA*4.5*173:
+      PRCA*4.5*98
+      PRCA*4.5*107
+      PRCA*4.5*149
+      PRCA*4.5*167
+      PRCA*4.5*176
+      PRCA*4.5*207
+  
+    For patch IB*2.0*135:
+      IB*2.0*197
+      IB*2.0*199
+      IB*2.0*210
+  
+  
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+  
+ Software and Documentation Retrieval
+ ------------------------------------
+ The software for this patch is being distributed in a host file.  The 
+ host file will contain two KIDS builds.  The first build will be for 
+ the Accounts Receivable patch, PRCA*4.5*173, the second build will
+ be for the Integrated Billing patch, IB*2.0*135.
+  
+ Please refer to the 'Software and Documentation Retrieval' section of the
+ PRCA*4.5*173 patch description for instructions on how to acquire the 
+ patch software and documentation.
+  
+ After the patch is installed successfully, you can delete the 
+ pre-install routine IBY135PR.
+
+Routine Information:
+====================
+
+Routine Name:
+  - IBCECSA5
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCECSA6
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCEOB1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCEOB
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCEOB0
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCEOBAR
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBECEA
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCEST
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBJTBA
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBJTBA1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCE835
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCE835A
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCEMU1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCECSA7
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCEF22
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBY135PR
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : KOPP,TERRY M                  Date Entered  : JUN 06, 2000
+Completed By: TORRANCE,LORI                 Date Completed: OCT 10, 2003
+Released By : BOTTINI,STEVE                 Date Released : OCT 10, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

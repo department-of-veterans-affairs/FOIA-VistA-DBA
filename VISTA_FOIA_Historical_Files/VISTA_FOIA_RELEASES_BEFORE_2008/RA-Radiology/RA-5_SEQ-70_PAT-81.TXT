@@ -1,0 +1,320 @@
+$TXT Created by BRODNIANSKY,PAVEL at DEV.DEV.FO-HINES.MED.VA.GOV  (KIDS) on Wednesday, 04/25/07 at 11:14
+=============================================================================
+Run Date: JUN 13, 2007                     Designation: RA*5*81
+Package : RA - RADIOLOGY/NUCLEAR MEDICINE     Priority: Mandatory
+Version : 5        SEQ #70                      Status: Released
+                  Compliance Date: JUL 14, 2007
+=============================================================================
+
+
+Subject: MULTIPLE ACCESSIONS BOUND TO ONE REPORT
+
+Category: 
+  - Routine
+  - Enhancement (Mandatory)
+  - Data Dictionary
+
+Description:
+============
+
+ Associated patches: (v)RA*5*82     <<= must be installed BEFORE `RA*5*81'
+                     (v)HL*1.6*132  <<= must be installed BEFORE `RA*5*81'
+  
+  
+  
+ The Radiology 5.0 application has business rules established for a report 
+ being shared by multiple cases and for registering multiple cases at the 
+ same exam date/time:  
+  - cases from different orders should have their own separate reports 
+ (single orders)
+  - cases from a parent procedure order should share the same report 
+ (printset)
+  - cases from a parent procedure cannot be registered at the same time 
+ with cases from other orders
+  - cases from more than one parent procedure cannot be registered at the 
+ same time
+  
+  
+  
+ These business rules are not always followed by radiology departments 
+ when using voice recognition (VR) systems.  The VR system, contrary to 
+ legacy VistA Radiology business rules, may allow the user to group two or 
+ more cases from separate orders (printset on the fly) and dictate one 
+ report for these cases, even though these cases were not defined to share 
+ the same report.  VR would send the data from this one dictated report as 
+ separate OBR segments within one HL7 message, one OBR segment for each 
+ case, to the Vista Radiology application.  In the past, the Radiology 
+ application only accepted the first of this group of OBR segments and 
+ ignored the remaining OBR segments without sending back reject HL7 
+ messages to notify the sending VR system that some of their OBR segments 
+ were not accepted by Radiology.
+  
+  
+ This patch will modify the Radiology application's processing of an 
+ incoming HL7 message with multiple OBR segments from VR, to account for 
+ deviation from business rules:
+  
+ -  If VR sends an HL7 message with multiple OBR segments for one dictated 
+ report based upon cases from separate orders, the Radiology application
+ will make a separate record in the RAD/NUC MED REPORTS file (#74) for each
+ case.  The report text and impression would be identical in these separate
+ records in file #74.
+  
+ -  If VR sends an HL7 message with multiple OBR segments for one dictated 
+ report based upon cases from separate orders AND a parent procedure
+ (printset), the Radiology application will make a separate record in the
+ RAD/NUC MED REPORTS file (#74) for each of the cases from separate orders,
+ but only one report record in file #74 for all the cases within the parent
+ procedure (printset).  The report text and impression would be identical
+ in these separate records in file #74.
+  
+ - If VR sends an HL7 message with multiple OBR segments for one dictated 
+ report based upon cases from 2 or more parent procedures, the Radiology
+ application will make a separate record in the RAD/NUC MED REPORTS file
+ (#74) for each printset, but not for each case (printsets). The report
+ text and impression would be identical in these separate records in file 
+ #74.
+  
+ -  If VR sends an HL7 message with multiple OBR segments for the same 
+ addendum based upon cases from separate orders, the Radiology 
+ application will put the addendum into each of the existing report records
+ for
+ each case that is expected to have a separate report.
+  
+ -  If VR sends an HL7 message with multiple OBR segments for the same 
+ addendum based upon cases from separate orders and a parent procedure, the
+ Radiology application will put the addendum into each of the existing
+ report records for the cases that are expected to have separate reports,
+ and the same addendum into the shared report record for the cases that are
+ expected to share a report (printset).
+  
+ -  If VR sends an addendum that is identical to the existing verified
+ report in the VistA database, the Radiology application will reject this
+ message.
+  
+  
+  
+ -  When a HL7 report is received by the Radiology application, the 
+ Radiology application files the report and broadcasts out the HL7 report 
+ message to all known subscribers. This allows all subscribers (including 
+ the original VR sender) to be updated with the same report
+  This patch will prevent the Radiology application from broadcasting the
+ HL7 report message back to the original sender.
+ This functionality will be conditional. If site for whatever reason wants 
+ the report to be returned back to the Sender , there is the flag which may
+ be set as the indication to do so.
+ The flag is field:  79.7211 Return HL7 to Sender. The file is:79.7  
+ RAD/NUC MED HL7 APPLICATION EXCEPTION
+ The Sender is represented as Entry from Application Parameter file #771.
+ Example of setting the flag to indicate desire to return Report to sender:
+ D Q^DI   
+ Select OPTION: 1  ENTER OR EDIT FILE ENTRIES
+ INPUT TO WHAT FILE: // 79.7  RAD/NUC MED HL7 APPLICATION EXCEPTION
+ EDIT WHICH FIELD: ALL// 
+ Select RAD/NUC MED HL7 APPLICATION EXCEPTION HL7 APPLICATION NAME: 
+ ??      
+         You may enter a new RAD/NUC MED HL7 APPLICATION EXCEPTION, if you 
+ wish
+         RAD HL7 Application name, the exceptions are set.
+     
+    Choose from:
+    RA-CLIENT-IMG        ACTIVE
+    RA-CLIENT-TCP        INACTIVE           
+    RA-PSCRIBE-TCP        ACTIVE
+    RA-SEND-TCP        ACTIVE
+    RA-SERVER-IMG        ACTIVE
+    RA-TALK2        ACTIVE
+    RA-TALKLINK-TCP        ACTIVE
+    RA-VOICE-SERVER        ACTIVE
+    RADIOLOGY        ACTIVE
+     
+ Select RAD/NUC MED HL7 APPLICATION EXCEPTION HL7 APPLICATION NAME: 
+ RA-TALKLINK-TCP
+   Are you adding 'RA-TALKLINK-TCP' as 
+     a new RAD/NUC MED HL7 APPLICATION EXCEPTION (the 1ST)? No// Y  (Yes)
+ Select Message Type: ORU       Observ result/unsolicited
+   Are you adding 'ORU' as a new Message Type (the 1ST for this RAD/NUC 
+ MED HL7 A PPLICATION EXCEPTION)? No// Y (Yes)
+   Select Event Type: R01       ORU/ACK-Unsolicited transmission of an 
+ observation message
+   Are you adding 'R01' as a new Event Type (the 1ST for this Message 
+ Type)? No// Y (Yes)
+     Select HL7 Version: 2.3
+      1   2.3       HEALTH LEVEL SEVEN
+      2   2.3.1       HEALTH LEVEL SEVEN
+ CHOOSE 1-2: 1  2.3     HEALTH LEVEL SEVEN
+   Are you adding '2.3' as a new HL7 Version (the 1ST for this Event 
+ Type)? No// Y (Yes)
+       Return HL7 to Sender: YES  Yes
+       Inbound Segment coding.: 
+       Outbound Segment coding.: 
+       Select HL7 Field Exceptions name: 
+ Select Message Type:
+  
+  
+  
+  
+ REMEDY TICKETS
+ ==============
+ 136139
+ 172606
+  
+ DISTRIBUTION
+ =============
+ The KIDS build is linked to this message. 
+  
+ DOCUMENTATION
+ =============
+ Documentation updates for this patch can be downloaded from 
+ the following [ANONYMOUS.SOFTWARE] directories:
+  
+                                  PREFERRED ADDRESS
+                                  -------------------------
+     First available ftp server   download.vista.med.va.gov
+  
+     SPECIFIC FIELD OFFICE        FTP ADDRESS
+     ---------------------        ------------------------
+     Albany                       ftp.fo-albany.med.va.gov
+     Hines                        ftp.fo-hines.med.va.gov
+     Salt Lake City               ftp.fo-slc.med.va.gov
+  
+ The documentation updates include:
+  
+  
+  
+ File Name                              Description
+  
+ =========                              ===========
+  
+  
+  
+   RA5_0RN_P81.PDF                      Release Notes in Adobe PDF 
+  
+   RA5_0RN_P81.DOC                      Release Notes in Word format
+  
+   RA5_0TM.PDF                          Technical Manual in Adobe PDF
+  
+   RA5_0TM.DOC                          Technical Manual in Word format
+  
+  
+  
+ Once released, documentation may also be retrieved from the VistA
+  
+ Documentation Library (VDL) on the Internet at the following address:
+  
+ http://www.va.gov/vdl
+  
+  
+  
+  
+  
+  
+ Test Sites
+ ==========                                   
+    1.San Antonio
+    2.Charleston
+    3.Atlanta
+  
+ The second line of the routine now looks like:
+ ;;5.0;Radiology/Nuclear Medicine;**[Patch List]**;Mar 16, 1998
+  
+ Integrity checking tools:
+  
+                       CHECK^XTSUMBLD
+ Name          Before Patch       After Patch       Patch List
+ ------------------------------------------------------------------
+ RAHLO3          4224512           7334907         4,81
+ RAHLO4         10319255          10578445         4,8,81
+ RAHLRPC         6544423           5885283         12,25,54,71,82,81
+ RAHLRPT        23604842          23788116         2,12,10,25,81
+ RAHLRU          5677635           8608876         10,25,81
+ RAHLTCPB       15533156          18840568         12,17,25,51,71,81
+  
+  
+  
+ INSTALLATION INSTRUCTIONS
+  
+ =========================
+           
+ This patch must be installed when all Radiology users are off the system 
+ and the Radiology HL Logical Links have been shutdown.  Install time will 
+ be less than 2 minutes.
+      
+  1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu. [Note:
+     TEXT PRINT/DISPLAY option in the PackMan menu will display the
+     patch text only].
+      
+  2. From the Kernel Installation and Distribution System (KIDS)
+     menu, select the Installation menu.
+      
+  3. From this menu, you should use the following options.  And you 
+     must use the 'Backup a Transport Global' to save the routines 
+     that are affected by this patch.
+  
+     (When prompted for INSTALL NAME, enter RA*5.0*81).  
+      
+     a. 'Print Transport Global' - this option will allow you to view
+         the components of the KIDS build.
+  
+     b.  'Verify Checksums in Transport Global' - this option will
+         allow you to ensure the integrity of the routines that are
+         in the transport global.
+  
+     c.  'Compare Transport Global to Current System'  - this option
+         will allow you to view all changes that will be made when
+         the patch is installed.  It compares all components of the
+         patch (routines, DDs, templates, etc.).
+  
+     d.  'Backup a Transport Global' - this option will create a backup
+         message of any routines exported with the patch.  It will
+         NOT backup any other changes such as DDs or templates.
+      
+  4. Shut down all Radiology HL logical links 
+     'Start/Stop Links [HL START]'.
+  
+  5. Use the 'Install Package(s)' option and select the package
+     RA*5.0*81.
+      
+  6. When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+     YES//', respond NO
+      
+  7. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+     Protocols? YES//', respond NO.
+  
+  8. Verify that the patch installation completed correctly by using the
+     KIDS Utilities '[XPD UTILITY]' option 'Install File Print' [XPD PRINT
+     INSTALL FILE] and selecting this patch (RA*5.0*81).
+  
+  9. Start up the Radiology HL logical links that were shutdown in step
+     four 'Start/Stop Links [HL START]'.
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: RAHLO3
+    Before:  B8588948  After: B20660605  **4,81**
+Routine Name: RAHLO4
+    Before: B39683908  After: B41347235  **4,8,81**
+Routine Name: RAHLRPC
+    Before: B16016942  After: B13841696  **12,25,54,71,82,81**
+Routine Name: RAHLRPT
+    Before: B65391180  After: B70016688  **2,12,10,25,81**
+Routine Name: RAHLRU
+    Before: B11355538  After: B28042615  **10,25,81**
+Routine Name: RAHLTCPB
+    Before: B57781715  After: B61371898  **12,17,25,51,71,81**
+
+=============================================================================
+User Information:
+Entered By  : BRODNIANSKY,PAVEL             Date Entered  : OCT 17, 2006
+Completed By: MARTINI,SUE                   Date Completed: JUN 12, 2007
+Released By : BLACK,KATHLEEN                Date Released : JUN 13, 2007
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

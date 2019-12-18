@@ -1,0 +1,446 @@
+
+=============================================================================
+Run Date: OCT 20, 2004                     Designation: IB*2*223
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #260                      Status: Released
+                  Compliance Date: NOV 20, 2004
+=============================================================================
+
+Associated patches: (v)IB*2*13     <<= must be installed BEFORE `IB*2*223'
+                    (v)IB*2*115    <<= must be installed BEFORE `IB*2*223'
+                    (v)IB*2*137    <<= must be installed BEFORE `IB*2*223'
+                    (v)IB*2*183    <<= must be installed BEFORE `IB*2*223'
+                    (v)IB*2*202    <<= must be installed BEFORE `IB*2*223'
+                    (v)IB*2*245    <<= must be installed BEFORE `IB*2*223'
+                    (v)IB*2*247    <<= must be installed BEFORE `IB*2*223'
+
+Subject: SUPPORT FOR NCPDP BILLING
+
+Category: 
+  - Data Dictionary
+  - Routine
+  - Informational
+
+Description:
+============
+
+ PATCH OVERVIEW
+ ---------------
+  
+ The Healthcare Insurance Portability and Accountability Act National 
+ Council for Prescription Drug Programs (HIPAA NCPDP) initiative, whose 
+ ultimate goal is to provide functionality allowing electronic 
+ transmission of Outpatient Pharmacy (OP) prescription claims to payers 
+ and the receipt of claim responses (including drug utilization review 
+ responses and warnings) on a real-time basis, is being developed and 
+ introduced in a phased implementation strategy. This deployment strategy 
+ was utilized due to the complexity of the functionality and the number of 
+ product line dependencies.
+  
+ The first release of this two part implementation is BPS*1.0, comprised of
+ the new Electronic Claims Management Engine (ECME) package (in the BPS 
+ namespace), plus the patches PSS*1*81, IB*2.0*223, IB*2.0*251, and 
+ PRCA*4.5*202, which are listed here in order of installation.The patches
+ are combined in host file BPS_1_0.KID in order to simplify installation.
+ BPS*1.0 is a dormant release that only allows each site to perform
+ preliminary setup work and to confirm that the software does not adversely
+ affect other packages.
+  
+ There are two main areas addressed by BPS*1.0:
+  
+ a. Registration of the Pharmacy with the Vitria BusinessWare IE.
+ b. The Insurance Matching of Group Plans with Pharmacy Plans
+  
+ Following the installation of BPS*1.0, each site must register their 
+ pharmacy with Vitria and match applicable insurance group plans using the 
+ insurance matching screens. These processes are detailed in the HIPAA 
+ NCPDP CONNECTION FOR EDI PHARMACY (Dormant Release) INSTALLATION GUIDE and
+ the E-PHARMACY CLAIMS INSURANCE PROCESS document. Both of these documents
+ are located on the anonymous directory. It is very important that the IRM
+ or person installing the patch at each facility provide a copy of these
+ documents to its ADPAC(s) and any other relevant staff who will be
+ responsible for registering their pharmacy with Vitria and completing the
+ insurance matching process.
+  
+ At a later date, additional HIPAA NCPDP patches will be released to 
+ activate all of the HIPAA NCPDP functionality. Until that time, sites 
+ will not be able to electronically submit claims utilizing this new 
+ functionality.
+  
+ The HIPAA NCPDP project was created in response to a Chief Business 
+ Office (CBO) request for modifications to several Veterans Health 
+ Information Systems and Technology Architecture (VistA) software 
+ applications in accordance with HIPAA Electronic Data Interchange (EDI) 
+ transactions and NCPDP mandated format standards, specifically the NCPDP 
+ Telecommunication Standard v.5.1.
+  
+ The specific functionality for this patch is listed below.
+  
+  
+ Functional Description
+ ----------------------
+ This patch adds the necessary enhancements to the Integrated Billing 
+ package to support NCPDP (National Council for Prescription Drug Programs)
+ billing of pharmacy claims via the Outpatient Pharmacy package.
+  
+ The features are:
+   
+ 1. When a patient is issued medication via Outpatient Pharmacy, 
+ Outpatient Pharmacy will check with Integrated Billing (IB) to determine 
+ if the prescription is NCPDP billable to a third party payer. The patient
+ must have active, reimbursable insurance that covers prescriptions as
+ specified in the patient's group policy coverage limitations.  The 
+ prescription must not be for OTC or research medications and must not be 
+ related to SC (Service Connected), AO (Agent Orange), IR (Ionizing
+ Radiation), EC (Environmental Contaminants), HNC (Head/Neck Cancer), CV
+ (Combat Veteran), or MST (Military Sexual Trauma).
+  
+ 2.  A check will be done to see if the site's Claims Tracking module is 
+ turned on for prescriptions.  When it is, the appropriate information 
+ will be entered into that module in IB.  To ensure that the Autobiller 
+ does not bill the prescription on a paper claim until the electronic 
+ transmission can be processed, the EARLIEST AUTOBILL DATE will be set for 
+ 60 days into the future.  If the claim is not processed or resolved in 
+ pharmacy within 60 days, then a paper claim will be automatically 
+ generated.
+  
+ 3.  If the bill for the prescription is approved by the third party 
+ insurance carrier for payment, Outpatient Pharmacy will make a second 
+ call to IB.  At that time, IB will create a bill in the BILL/CLAIMS 
+ (#399) file for the amount of the total charge.  The bill will be 
+ automatically authorized and passed to Accounts Receivable (AR).  IB will 
+ have AR automatically audit the receivable and post a decrease adjustment 
+ so that the amount of the outstanding receivable will be equal to the 
+ amount of payment expected from the payer.
+  
+ 4.  If a prescription bill is rejected, Outpatient Pharmacy will make a 
+ second call to IB.  Assuming Claims Tracking is active for prescriptions, 
+ IB will check to make sure the prescription is in Claims Tracking.  The 
+ Claims Tracking entry will be picked up by the Autobiller to ensure 
+ proper follow-up is done.
+  
+ 5.  If a prescription bill is reversed in Outpatient Pharmacy, both the 
+ bill and receivable will be cancelled.
+  
+ 6.  To support claims other than Reimbursable Insurance for Veterans, IB 
+ will ask for both the Administrative Fee and Dispensing Fee when a rate 
+ schedule adjustment is entered.  These are optional and will be sent in 
+ the NCPDP transmission.
+  
+ 7.  To assist with the posting of payments, the API used to look 
+ up bills to post payments in the Accounts Receivable package has 
+ been updated to allow for input of the ECME number.
+  
+  
+ Technical Description
+ ---------------------
+ IB20P223 is an environment check to ensure that the site has 4 national 
+ rate types defined.  If the rate types are not defined, a site will need 
+ to defined them prior to install.  The 4 rate types are:
+          CHAMPUS (or TRICARE)
+          CHAMPUS REIMB. INS. (or TRICARE REIMB. INS.)
+          CHAMPVA
+          CHAMPVA REIMB. INS.
+ If your site does not have the exact spelling as shown above, you should 
+ contact EVS for assistance.  Your site may have them defined but the 
+ names may have been changed.
+  
+ This routine also has a post install that will add two reasons not 
+ billable.  They are:
+          HEAD/NECK CANCER
+          COMBAT VETERAN
+  
+ IBCRCC has an optional parameter in the RATECHG line tag of FEE.  If this 
+ parameter is passed by reference, the API will return any Administrative 
+ Fee and Dispensing Fee amounts for the Rate Schedule.
+  
+ IBCREE has been modified to capture the Administrative Fee and Dispensing 
+ Fee, if appropriate.  The Rate Schedule adjustment must have an amount 
+ added in the calculation of the adjustment for the fee questions to be 
+ asked.
+  
+ IBCRU3 has been modified to add a new entry point to look up the event 
+ pointer based on a rate type.
+  
+ IBJTCA1 is included to add enhancements to the Third Party Joint Inquiry 
+ to display new information that relates to ECME claims.
+  
+ IBNCPDP is the main API routine to be used by Outpatient Pharmacy.  All 
+ new APIs will be supported with this routine.
+  
+ IBNCPDP1 will handle the initial call by Outpatient Pharmacy.  This 
+ routine will load the prescription information to Claims Tracking, look 
+ up insurance information, verify active pharmacy coverage and return the 
+ necessary billing information so that a NCPDP claim can be produced.
+  
+ IBNCPDP2 will handle all response information sent from Outpatient 
+ Pharmacy.  This routine will create bills, authorize bills, audit bills, 
+ adjust bills, cancel bills and ensure that the claims are updated in 
+ Claims Tracking.
+  
+ IBNCPDP3 will handle Average Wholesale Pricing updates.
+  
+ IBNCPCPU will be a utility routine for all the NCPDP billing needs in IB.
+  
+ IBRFN has been updated to allow for input of an ECME number when posting 
+ payments in the Accounts Receivable package.  The API for AR will now 
+ return the type of lookup found.
+  
+ IBRUTL is being included to suppress the third party billing bulletin when
+ a first party bill goes on hold for third party billing and the bill has
+ already been billed using the ECME software.
+  
+ IBTUTL1 has been modified to accept an additional optional parameter in 
+ the REFILL line tag for the EARLIEST AUTOBILL DATE.  If the new parameter 
+ is specified in the call, that date will be used instead of the existing 
+ functionality.
+  
+     
+ COMPONENTS SENT WITH PATCH
+ --------------------------
+  The following is a list of the routine(s) included in this patch.  
+  The second line of each of these routine(s) will look like:
+     
+    <tab>;;2.0;INTEGRATED BILLING;**[patch list]**;21-MAR-94
+    
+                   CHECK^XTSUMBLD results
+     
+    Routine     Before Patch  After Patch  Patch List
+    -------     ------------  -----------  ----------
+  * IB20P223           N/A        2185163  223
+    IBCRCC         7424137        7476482  52,80,106,138,245,223
+    IBCREE        20456836       21593159  52,106,115,223
+    IBCRU3         5450420        6652039  52,106,223
+    IBJTCA1       16164807       16640403  39,80,106,137,223
+    IBNCPDP            N/A         355298  223
+    IBNCPDP1           N/A       13353250  223
+    IBNCPDP2           N/A       16386559  223
+    IBNCPDP3           N/A         758252  223
+    IBNCPDPU           N/A        8111193  223
+    IBRFN          4021093        6787815  52,130,183,223
+    IBRUTL         3925983        4993649  70,82,132,142,176,179,202,223
+    IBTUTL1        5460777        6092014  13,223
+  
+       Total number of routines - 13
+  
+  
+    * NOTE: THIS ROUTINE WILL BE AUTOMATICALLY DELETED AFTER INSTALL.
+  
+                         
+                         Data Dictionary Changes:
+  
+                                          UP    SEND  DATA                USER
+                                          DATE  SEC.  COMES  SITE   RSLV  OVER
+ FILE #      NAME                         DD    CODE  W/FILE DATA   PTS   RIDE
+ ------------------------------------------------------------------------------
+  
+ 361.1       EXPLANATION OF BENEFITS      YES   NO    NO                 NO
+ Partial DD: subDD: 361.1      fld: .14
+  
+   DATA SCREEN:
+  
+ 363         RATE SCHEDULE                YES   NO    NO                 NO
+ Partial DD: subDD: 363        fld: 1.01
+                               fld: 1.02
+   DATA SCREEN: 
+  
+ 399         BILL/CLAIMS                  YES   NO    NO                 NO
+ Partial DD: subDD: 399        fld: 460
+                               fld: 461
+   DATA SCREEN: 
+  
+  
+  
+  
+ Test Sites:
+ ===========
+ NEW YORK HARBOR HCS
+ NORTH TEXAS HCS
+ ANN ARBOR, MI       
+ BATTLE CREEK, MI     
+ DETROIT, MI
+ IRON MOUNTAIN, MI
+  
+  
+  
+ SOFTWARE AND DOCUMENTATION RETRIEVAL
+ ====================================
+ The software for this patch is being distributed in host file 
+ BPS_1_0.KID.  The host file will contain four patches and one package 
+ release. 
+  
+ The builds contained in the BPS 1.0 multi-package distribution are:
+  
+      Package                    Patches/Package
+      -------                    ----------------------
+      ECME                       BPS*1.0
+      Pharmacy Data Management   PSS*1.0*81
+      Integrated Billing         IB*2.0*223, IB*2.0*251
+      Accounts Receivable        PRCA*4.5*202
+  
+  
+  
+ Please refer to the 'Software and Documentation Retrieval' section of the 
+ BPS*1.0 build description for instructions on how to acquire the patch 
+ software and documentation.
+  
+  
+ INSTALLATION INSTRUCTIONS
+ ==========================
+  
+ 1. Use VA FileMan to add the new domain, EPHARMACY.VITRIA-EDI.AAC.VA.GOV, 
+ to the DOMAIN file (#4.2). The installation instructions are included in 
+ the patch description for the XM*DBA*160 patch. This domain must be in 
+ place before the installation of the IB*2*251 patch that is included in 
+ the BPS 1.0 Master Build.
+  
+ 2. Download the KIDS file BPS_1_0.KID via FTP. This file needs to be 
+ retrieved in ASCII format.
+  
+ 3. Review mapped sets for the PSS*, IB*, and PRCA*namespaces.  If the 
+ routines are mapped, they should be removed from the mapped set at this 
+ time.
+   
+ 4. From the Kernel Installation & Distribution System menu, select the 
+ Installation menu.
+  
+ 5.  From this menu, select the Load a Distribution option. When prompted 
+ for a file name, enter 
+ the directory name where you FTPd the build, followed by BPS_1_0. In our 
+ example, the file name is USER$:[ANONYMOUS]BPS_1_0.KID. Determine the 
+ location where you stored your build to decide the correct file name 
+ entry.
+  
+ 6. At the "Want to Continue with Load? YES//" prompt, enter YES.
+  
+ 7. At the "Want to RUN the Environment Check Routine: YES//" prompt, 
+ answer YES.
+  
+ 8. From this menu, the installer may select to use the following options:
+  
+ (When prompted for INSTALL NAME, enter BPS 1.0)
+  
+     a. Backup a Transport Global - This option will create a backup 
+ message of any routines exported with the patch. It will NOT backup any 
+ other changes such as DDs or templates.
+  
+     b. Compare Transport Global to Current System - This option will 
+ allow you to view all changes that will be made when the patch is 
+ installed. It compares all components of the patch (routines, DDs, 
+ templates, etc.).
+  
+     c. Verify Checksums in Transport Global - This option will ensure the 
+ integrity of the routines that are in the transport global.
+  
+ 9. At the "Select Installation Option:" prompt, enter 6 Install Package(s)
+  
+ 10. At the "Select INSTALL NAME:" prompt, enter BPS 1.0.
+  
+ 11. When prompted, "Want KIDS to Rebuild Menu Trees Upon Completion of 
+ Install? YES//" respond NO.
+  
+ 12. When prompted, "Want KIDS to INHIBIT LOGONs during the install? 
+ YES//" respond NO.
+  
+ 13. When prompted, "Want to DISABLE Scheduled Options, Menu Options, and 
+ Protocols? YES//" respond NO.
+  
+ 14. When prompted, "Device:Home//" respond with the correct device and DO 
+ NOT queue this to P-Message.
+  
+ 15. If routines were unmapped as part of step 3, they should be returned 
+ to the mapped set once the installation has run to completion. 
+
+Routine Information:
+====================
+
+Routine Name:
+  - IB20P223
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCRCC
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCREE
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBNCPDP
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBNCPDP1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBNCPDP2
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBNCPDP3
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBNCPDPU
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBTUTL1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCRU3
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBJTCA1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBRFN
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBRUTL
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : ZEIGLER,EDWARD L              Date Entered  : JUN 17, 2003
+Completed By: TORRANCE,LORI                 Date Completed: OCT 18, 2004
+Released By : BOTTINI,STEVE                 Date Released : OCT 20, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

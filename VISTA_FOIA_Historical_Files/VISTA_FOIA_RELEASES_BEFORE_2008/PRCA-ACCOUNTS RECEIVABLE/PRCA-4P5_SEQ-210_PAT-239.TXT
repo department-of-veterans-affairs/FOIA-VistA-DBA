@@ -1,0 +1,600 @@
+$TXT Created by MINARDI,CHRISTOPHER PAUL at DEVFEY.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 12/29/05 at 15:53
+=============================================================================
+Run Date: JAN 19, 2006                     Designation: PRCA*4.5*239
+Package : PRCA - ACCOUNTS RECEIVABLE          Priority: EMERGENCY
+Version : 4.5       SEQ #210                    Status: Released
+                  Compliance Date: JAN 23, 2006
+=============================================================================
+
+Associated patches: (v)PRCA*4.5*184<<= must be installed BEFORE `PRCA*4.5*239'
+                    (v)PRCA*4.5*215<<= must be installed BEFORE `PRCA*4.5*239'
+
+Subject: BAD DEBT REPORT MODIFICATIONS
+
+Category: 
+  - Routine
+  - Enhancement ()
+
+Description:
+============
+
+ This patch changes the Bad Debt Reporting process.  Please be sure
+ that your Revenue Office and Financial staff receive a copy of this 
+ patch description.
+  
+  
+ The Office of Business Oversight was asked to conduct a management
+ review to determine whether the VistA Accounts Receivable (AR)
+ application contributed to the conditions that required adjustments
+ to be made to certain standard general ledger accounts for the Medical
+ Care Collection Fund (36 5287).  In response to this request, the
+ Software Quality Assurance Service conducted an audit and made several
+ recommendations for changes to AR.  The Office of the Chief Financial
+ Officer (CFO) concurs with the recommendations, which are implemented
+ in this patch.
+  
+  
+ Nearly all of the recommended changes involve the Bad Debt Report.  At
+ a high level, the changes to the Bad Debt Report include:
+  
+    o  Modifying the transaction amount sent to the Financial Management
+       System (FMS) to include only the current Allowance Estimate.
+  
+    o  Transmitting the Allowance Estimate on the third to the last
+       business day of the month, along with the Summary Receivable
+       Balance Standard Voucher (SV) and summary Write Off (WR)
+       documents, without allowing these estimates to be modified
+       by local accounting staff.
+  
+    o  Breaking out the Allowance Estimates for medication co-payment
+       and all other third party (excluding Reimbursable Health
+       Insurance and Tort Feasor) receivables.
+  
+  
+ The specific changes that were made to AR follow:
+  
+ 1. Accounts Receivable Data Collector
+  
+    The Accounts Receivable Data Collector (ARDC) is queued to run
+    on the third to the last business day of the month by the 
+    Accounts Receivable Nightly Process Background Job (PRCA NIGHTLY
+    PROCESS).  This job queues the ARDC to run under the TaskMan
+    job description of 'AR Data Collector'.
+  
+    The following changes were made to the ARDC:
+  
+    a. Creation of Summary Receivable Balance SV Documents
+  
+       The patch resolves one problem with the generation of the 
+       Summary Receivable Balance SV documents.  Currently, the
+       receivable balance for any receivable (regardless of fund)
+       that was activated after the site's Medicare Remittance
+       Advice (MRA) Implementation Date is reported to Standard
+       General Ledger (SGL) account 13H1 or 13N1 in FMS.  This
+       patch corrects this problem by only reporting Reimbursable
+       Health Insurance receivables activated after the site's
+       MRA Implementation Date to SGL 13H1 or 13N1.
+  
+    b. Modification of the Bad Debt Transaction Amounts
+  
+       Currently, the actual Bad Debt transaction amount, for any
+       subset of receivables, consists of the sum of the following
+       two components:
+   
+         o  Actual Accrued Bad Debt:  This is the sum of all actual
+            write-off (or contractual adjustment) transactions, for
+            a specific subset of receivables, that have been
+            recorded since February 1, 1998.
+  
+         o  Allowance Estimate:  The Allowance Estimate is equal to
+            the Summary Receivable Balance for a specific subset of
+            receivables, multiplied times the historical write-off
+            percentage for that subset of receivables.  The write-
+            off percentage is calculated by identifying all receivables
+            within a subset that were activated within the last 12
+            months and no longer have an outstanding balance, and
+            dividing the total payments received by the total
+            principal amount of those receivables, and subtracting
+            that fraction from one.
+  
+       The Bad Debt transaction amount has been changed to be equal
+       to the Allowance Estimate only.  The actual accrued bad debt
+       component will no longer be transmitted to FMS.
+  
+    c. Breakout of the Allowance Estimate for Medication Co-payment
+       and Other Third Party receivables
+  
+       Currently, a single transaction is used to report the Bad Debt
+       amount for first party (excluding Long Term Care) and third
+       party (excluding Reimbursable Health Insurance and Tort Feasor)
+       receivables.  This amount is sent to FMS and reported to SGL
+       1319 under fund 528703.  This transaction will be broken into
+       three transactions to report a separate Allowance Estimate for
+       Medication Co-payment (SC and NSC) receivables, under fund
+       528701, and Other Third Party (Crimes of Personal Violence,
+       Medicare, No Fault Auto, and Workman's Compensation) receivables,
+       under fund 528704.  All three transaction amounts will be 
+       reported to SGL 1319 under their respective funds.
+  
+    d. Transmission of the Allowance Estimate to FMS
+  
+       Currently, the Bad Debt Allowance is computed on the third
+       to the last business day of the month and stored within AR.
+       Staff have that business day to change the Allowance Estimate
+       component, before the sum of the Allowance Estimate and actual
+       accrued bad debt are transmitted to FMS on the second to the 
+       last business day of the month.
+  
+       This functionality has been changed so that the Bad Debt
+       Allowance (consisting only of the Allowance Estimate) will be
+       transmitted to FMS on the third to the last business day
+       of the month.  Local accounting staff will no longer be able
+       to modify the Allowance Estimate before it is transmitted
+       to FMS.
+  
+    e. Change in the Transaction Type for the summary Write Off (WR)
+       documents
+  
+       The monthly summary WR documents for accrued receivables debit
+       the same general ledger accounts that the Bad Debt Allowance
+       Estimate transactions credit.  Since the Bad Debt Allowance
+       Estimate transactions will be modified to no longer include
+       the actual accrued bad debt from February 1998, the WR documents
+       no longer need to debit the accounts that were credited by the
+       allowance estimate transactions.  The crosswalk from the old
+       to the new transaction type is:
+  
+       Old WR Transaction Type   New WR Transaction Type
+       =======================   =======================
+       WR 04                     WR 37
+       WR 06                     WR 38
+       WR 07                     WR 4N
+       WR 23                     WR 39
+  
+       Please note that the WR 08 transaction, which is used to report
+       contractual adjustments for actual MRA receivables (which should
+       be infrequent), is not being replaced with a new transaction.
+       Also, note that these new transaction types will be displayed on
+       the AR Data Collector report that is transmitted to the
+       recipients of the RC AR DATA COLLECTOR mailgroup.
+   
+ 2. Bad Debt Report  (tasked job)
+  
+    The Bad Debt Report is queued to run on the second to the last
+    business day of the month by the Accounts Receivable Nightly
+    Process Background Job (PRCA NIGHTLY PROCESS).  This job queues
+    the Bad Debt Report to run under the TaskMan job description of
+    'Bad Debt Report'.  The Bad Debt Report builds the SV documents
+    and transmits them to FMS.
+  
+    The Bad Debt Report task will no longer be queued to run.  The ARDC
+    will build the Bad Debt SV documents and transmit them to FMS after
+    it calculates all of the Bad Debt Allowance Estimates.
+  
+ 3. Bad Debt Accrual Over-Ride [PRCA NRNR BAD DEBT ACCR. EDIT]
+  
+    The option Bad Debt Accrual Over-Ride is used to modify the Bad
+    Debt Allowance Estimate component for a specific bad debt 
+    transaction.  The edited Allowance Estimate would be added to
+    the actual accrued bad debt and transmitted to FMS.
+  
+    This option has been modified to no longer allow the user to
+    modify the Allowance Estimates.  Upon selection by the user,
+    the option displays the following message:
+  
+       This option will no longer allow you to over-ride the current
+       month Bad Debt Allowance Estimates.  These estimates are
+       automatically transmitted to FMS when they are calculated
+       by the AR Data Collector on the third to the last business
+       day of the month.
+  
+ 4. Bad Debt Report [PRCA NR BAD DEBT ACCR. REPORT]
+  
+    The option Bad Debt Report, located under the Supervisor's
+    AR Menu [PRCAF SUPERVISOR MENU], is used to print the Bad Debt
+    Allowance Estimates that AR stores for one month.  The report
+    layout has been re-designed to display a more concise summary
+    that includes the two new Bad Debt Transactions and only the
+    Allowance Estimate.  A mock-up of the new Bad Debt Report is
+    shown below.
+  
+  
+                              Bad Debt Report
+           Allowance for Bad Debt and Contract Adjustment Report
+                         for the month of SEP 2005
+  
+                       Medical Care Collection Fund
+                 Funds 528701; 528703; 528704; and 528709
+                       ----------------------------
+  
+                                                    Contract          EOM
+ FUND - SGL Account   Collection%   Write-Off%   Adjustment%    Allowance
+  
+ 528701 - 1319              92.64         7.36          0.00   250,000.00
+ 528703 - 1319              92.64         7.36          0.00    50,000.00
+ 528704 - 1319              62.81        37.19          0.00   100,000.00
+ 528704 - 1339              30.66         0.00         69.34   500,000.00
+ 528704 - 133N              47.98         0.00         52.02 2,500,000.00
+ 528704 - 1338              93.29         6.71          0.00    10,000.00
+ 528709 - 1319              88.03        11.97          0.00    25,000.00
+  
+ SGL Definitions
+  
+ 1319 - Allowance for Bad Debt
+ 1338 - Allowance for Tort Feasors
+ 1339 - Allowance for Contract Adjustments pre-MRA
+            (Medicare Remittance Advice)
+ 133N - Allowance for Contract Adjustments post-MRA
+  
+ Only members in the facility's local RC AR DATA COLLECTOR mail group
+ will receive this report.
+  
+    Please note that this new version of the report will also be sent
+    to the recipients of the RC AR DATA COLLECTOR mail group by the
+    ARDC when it sends the Bad Debt SV documents to FMS on the third
+    to the last business day of the month.
+  
+ 5. Monthly NDB, SV and WR Regenerate [PRCA FMS NDB,SV,WR REGEN]
+   
+    The option Monthly NDB, SV and WR Regenerate [PRCA FMS NDB,SV,WR 
+    REGEN]is used to re-run the ARDC for a specific month, and 
+    re-transmit to FMS any documents for the selected month that have 
+    not been identified in AR as having been positively acknowledged 
+    by FMS.  On certain days within the monthly accounting cycle, this 
+    option may recalculate the Bad Debt Allowance Estimates, but does 
+    not re-transmit the Bad Debt SV documents to FMS.
+  
+    This option has been changed to both recalculate the Bad Debt
+    Allowance Estimates and transmit them to FMS via the SV document.
+    However, the option will prompt the user to perform this action
+    only if the Bad Debt SV documents for the selected month have not
+    been identified as accepted by FMS.
+  
+ 6. Bad Debt Estimate Code Sheet Regen [PRCA FMS BDE REGEN]
+  
+    The option Bad Debt Estimate Code Sheet Regen [PRCA FMS BDE REGEN]
+    is currently used to transmit the Bad Debt SV documents to FMS, if 
+    the documents for the selected month have not been identified as 
+    accepted by FMS.
+  
+    This option has been modified to no longer allow the user to
+    re-transmit the Bad Debt SV documents to FMS, since that
+    function will now be combined with the Bad Debt Allowance
+    Estimate recalculation that is performed by the option
+    Monthly NDB, SV and WR Regenerate [PRCA FMS NDB,SV,WR REGEN].  
+    Upon selection by the user, the option Bad Debt Estimate Code 
+    Sheet Regen [PRCA FMS BDE REGEN] now displays the following 
+    message:
+  
+       This option may no longer be used to retransmit the Bad Debt
+       allowance estimates to FMS.
+  
+       Please use the option 'Monthly NDB, SV and WR Regenerate' 
+       [PRCA FMS NDB,SV,WR REGEN] to recalculate the allowance 
+       estimates and transmit them to FMS.
+  
+  
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+ There is no NSR associated with this patch.
+  
+  
+ This patch addresses the following NOIS/Remedy Ticket(s):
+ ---------------------------------------------------------
+ There are no NOIS/Remedy tickets associated with this patch.
+  
+  
+ COMPONENTS SENT WITH PATCH
+ --------------------------
+  
+ The following is a list of the routines included in this patch.  
+  
+ The second line of each of these routines now looks like: 
+   
+      ;;4.5;Accounts Receivable;**[patch list]**;Mar 20, 1995
+  
+                            CHECK^XTSUMBLD result
+  
+ Routine name     Before Patch         After Patch        Patch List
+ ============     ============         ===========        ==========
+ RCRJR                 5343560             5162091    101,103,78,153,191
+                                                              239
+ RCRJRBD              14222687            13759335    101,139,170,193,203
+                                                        215,220,138,239
+ RCRJRBDE              6378471             6478409      101,191,184,239
+ RCRJRBDR             24572724            24489338    101,139,170,191,203
+                                                        215,220,138,239
+ RCRJRBDT              9957389            14665355    101,170,191,138,239
+ RCRJRCO              17728871            17142327    96,106,101,103,147
+                                                      156,169,170,174,191
+                                                            203,239
+ RCRJRCOC             18034082            17312684    156,170,182,203,220
+                                                            138,239
+ RCRJRCOR             16801899            16789856     68,96,139,103,156
+                                                      170,174,191,220,138
+                                                              239
+ RCXFMSSV             13052745            13053125     96,101,135,139,98
+                                                      156,170,191,203,220
+                                                          138,184,239
+  
+ Total number of routines - 9
+  
+  
+                            CHECK1^XTSUMBLD result
+  
+ Routine name     Before Patch         After Patch        Patch List
+ ============     ============         ===========        ==========
+ RCRJR                19015855            19437277    101,103,78,153,191
+                                                              239
+ RCRJRBD              65206172            64259374    101,139,170,193,203
+                                                        215,220,138,239
+ RCRJRBDE             12066139            14335641      101,191,184,239
+ RCRJRBDR             73367814            75826184    101,139,170,191,203
+                                                        215,220,138,239
+ RCRJRBDT             25318421            54449549    101,170,191,138,239
+ RCRJRCO              60587667            61342220    96,106,101,103,147
+                                                      156,169,170,174,191
+                                                            203,239
+ RCRJRCOC             59061042            56544530    156,170,182,203,220
+                                                            138,239
+ RCRJRCOR             67310039            67290990     68,96,139,103,156
+                                                      170,174,191,220,138
+                                                              239
+ RCXFMSSV             54145302            57335503     96,101,135,139,98
+                                                      156,170,191,203,220
+                                                          138,184,239
+  
+ Total number of routines - 9
+  
+  
+ There are no additional components to this patch. 
+  
+ 
+ ================Documentation Retrieval =================
+ 
+ The PRCA*4.5*239 documentation is available on the ANONYMOUS.SOFTWARE
+ directory at one of the Office of Information (OI) Field Offices.
+ 
+ The documentation provides the changed pages from the Accounts 
+ Receivable User and Technical Manuals.  
+ 
+ *These files should be downloaded in BINARY format.*
+ 
+ Sites may retrieve documentation in one of the following ways:
+ 
+ 1.  The preferred method is to FTP the files from 
+     download.vista.med.va.gov, which will transmit 
+     the files from the first available FTP server.
+ 
+ 2.  Sites may also elect to retrieve documentation directly 
+     from a specific server as follows:
+ 
+     Albany                    ftp.fo-albany.med.va.gov
+     Hines                     ftp.fo-hines.med.va.gov
+     Salt Lake City            ftp.fo-slc.med.va.gov
+ 
+ The documentation includes:
+ 
+      File Name                        Description
+      ---------                        -----------
+      PRCA_45_P239_TM.PDF              Technical Manual
+      PRCA_45_P239_UM.PDF              User Manual
+ 
+ =========================================================
+ 
+ 
+ Test Sites:
+ -----------
+ Salisbury VAMC
+ VISN 2
+ Wilmington VAMC
+ Central Alabama
+ Fresno VAMC
+  
+  
+ Pre/Post Installation Overview
+ ------------------------------
+ This patch contains no pre or post installation routines.
+  
+  
+        ================INSTALLATION INSTRUCTIONS =================
+  
+ It is recommended that the following selection(s) in the OPTION (#19)
+ file be disabled to prevent possible conflicts while running the 
+ KIDS Install. Other VISTA users will not be affected.
+  
+   Accounts Receivable Nightly Process Background Job
+     [PRCA NIGHTLY PROCESS]
+   Bad Debt Accrual Over-Ride  [PRCA NRNR BAD DEBT ACCR. EDIT]
+   Bad Debt Report  [PRCA NR BAD DEBT ACCR. REPORT]
+   Monthly NDB, SV and WR Regenerate  [PRCA FMS NDB,SV,WR REGEN]
+   Bad Debt Estimate Code Sheet Regen  [PRCA FMS BDE REGEN]
+  
+ Install Time - less than 5 minutes
+  
+  
+ 1.  LOAD TRANSPORT GLOBAL 
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the 
+     INSTALL/CHECK MESSAGE PackMan option.  
+              
+ 2.  START UP KIDS 
+     -------------
+     Start up the Kernel Installation and Distribution System Menu 
+     [XPD MAIN]: 
+    
+          Edits and Distribution ...  
+          Utilities ...  
+          Installation ...  
+    
+ Select Kernel Installation & Distribution System Option: INStallation 
+                                                          ---
+          Load a Distribution 
+          Print Transport Global 
+          Compare Transport Global to Current System 
+          Verify Checksums in Transport Global 
+          Install Package(s) 
+          Restart Install of Package(s) 
+          Unload a Distribution 
+          Backup a Transport Global 
+    
+ Select Installation Option: 
+    
+ 3.  Select Installation Option: 
+     ---------------------------
+     NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+            NAME, enter PRCA*4.5*239):
+       
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when this patch
+         is installed.  It compares all components of this patch
+         (routines, DD's, templates, etc.).
+     c.  Verify Checksums in Transport Global - This option will allow
+         you to ensure the integrity of the routines that are in the
+         transport global.
+      
+ 4.  Select Installation Option: Install Package(s) 
+                                 ------------------
+     **This is the step to start the installation of this KIDS patch: 
+  
+     a.  Choose the Install Package(s) option to start the patch
+         install.
+     b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+         YES//' answer NO
+     c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+         Options, and Protocols? YES//' answer YES
+     d.  When prompted 'Enter options you wish to mark as 'Out Of
+         Order':'  Enter the following options:
+   
+         Accounts Receivable Nightly Process Background Job
+            [PRCA NIGHTLY PROCESS]
+         Bad Debt Accrual Over-Ride  [PRCA NRNR BAD DEBT ACCR. EDIT]
+         Bad Debt Report  [PRCA NR BAD DEBT ACCR. REPORT]
+         Monthly NDB, SV and WR Regenerate  [PRCA FMS NDB,SV,WR REGEN]
+         Bad Debt Estimate Code Sheet Regen  [PRCA FMS BDE REGEN]
+  
+     e.  When prompted 'Enter protocols you wish to mark as 'Out Of
+         Order':' press <return>.
+ 
+ 
+ 
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: RCRJR
+    Before: B19015855  After: B19437277  **101,103,78,153,191,239**
+ Description of Changes:
+  No longer queues the job to transmit to FMS the Bad Debt SV
+  documents on the second to the last business day of the month. 
+
+Routine Name: RCRJRBD
+    Before: B65206172  After: B64259374  **101,139,170,193,203,215,220,
+                                          138,239**
+ Description of Changes:
+  Includes a new API to calculate the standard general ledger account
+  for a receivable.
+  Invokes the new SGL API when calculating actual bad debt and
+  collecting total principal and payment amounts.
+  Files Bad Debt data for the new SGLs 1319.3 (fund 528701) and
+  1319.4 (fund 528704).
+  Routine no longer generates the Bad Debt Report that is sent to users
+  via MailMan.
+  Routine now invokes RCXFMSSV to transmit the Bad Debt SV documents to FMS.
+
+Routine Name: RCRJRBDE
+    Before: B12066139  After: B14335641  **101,191,184,239**
+ Description of Changes:
+  Routine no longer allows the edit of the Bad Debt allowance estimates.
+  The routine displays a message on the screen informing users that
+  the over-ride option no longer allows user edit, and that the
+  allowance estimates are automatically sent to FMS.
+
+Routine Name: RCRJRBDR
+    Before: B73367814  After: B75826184  **101,139,170,191,203,215,220,
+                                          138,239**
+ Description of Changes:
+  Routine now invokes RCRJRBDT to create the new Bad Debt Report.
+  The old code has been preserved, but cannot be invoked.
+
+Routine Name: RCRJRBDT
+    Before: B25318421  After: B54449549  **101,170,191,138,239**
+ Description of Changes:
+  Routine no longer allows the user to re-transmit the Bad Debt SV
+  documents to FMS.  The routine displays a message on the screen
+  informing users that another option must be used to re-transmit
+  the documents.
+  The routine comments out certain lines of code (that calls routine
+  RCXFMSSV) to assure that it cannot be invoked.
+  A new module is added (invoked by RCRJRBDR) that generates the new
+  Bad Debt Report.
+
+Routine Name: RCRJRCO
+    Before: B60587667  After: B61342220  **96,106,101,103,147,156,169,
+                                          170,174,191,203,239**
+ Description of Changes:
+  The screen description for the re-generation of the Bad Debt Report
+  was changed.  Code was added to only allow the re-generation of
+  the Bad Debt Report if the Bad Debt SV document was not
+  accepted by FMS.
+
+Routine Name: RCRJRCOC
+    Before: B59061042  After: B56544530  **156,170,182,203,220,138,239**
+ Description of Changes:
+  Under line tag CURRENT:
+    The SV document type is only set to 2F or 2L for Reimbursable
+    Health Insurance bills.
+    The new SGL API in RCRJRBD is invoked to set the receivable's
+    SGL to capture outstanding balances for Bad Debt Report processing.
+  Under line tag WRITEOFF:
+    The following new document types were implemented:  37 (replaces 04),
+    39 (replaces 23), 38 (replaces 06), and 4N (replaces 07).
+
+Routine Name: RCRJRCOR
+    Before: B67310039  After: B67290990  **68,96,139,103,156,170,174,191,
+                                          220,138,239**
+ Description of Changes:
+  Modified to continue to print sub-totals on the ARDC report for
+  the WR 37 transaction by fund.
+
+Routine Name: RCXFMSSV
+    Before: B54145302  After: B57335503  **96,101,135,139,98,156,170,191,
+                                          203,220,138,184,239**
+ Description of Changes:
+  In STARTSV, modified the call to BUILDSV to pass the new fourth
+  parameter ("00") which is the document lookup key suffix.
+  Changed line tag BUILDSV to accept the new fourth parameter.
+  In BUILDSV, changed the call to SETKEY^GECSSTAA to build the
+  lookup key using the "key suffix" parameter.
+  Introduced variable FMAMOUNT as the positive amount that is
+  sent to FMS.
+  Made code change to set LINE-ACTION to "D" if AMOUNT is
+  less than zero.
+  Changed setting of DOCTOTAL so that value is not negative.
+  Changed line tag BADDEBT to accept the date of the last day
+  of the accounting month from routine RCRJRBD.
+  This module no longer News tha variable RCRJDATE.
+  The module BADDEBT now extracts two new records (1319.3 and 1319.4)
+  from file 348.1 and sets the TMP global so the data from these
+  records are sent to FMS in the Bad Debt SV document.
+  The bad debt allowance amount that is sent to FMS for all seven records
+  now consists of only the allowance estimate (field .08 in file 348.1).
+
+
+=============================================================================
+User Information:
+Entered By  : MINARDI,CHRISTOPHER P         Date Entered  : OCT 31, 2005
+Completed By: KUREK,STANLEY M               Date Completed: JAN 12, 2006
+Released By : MARSHALL,FALENCIA B.          Date Released : JAN 19, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

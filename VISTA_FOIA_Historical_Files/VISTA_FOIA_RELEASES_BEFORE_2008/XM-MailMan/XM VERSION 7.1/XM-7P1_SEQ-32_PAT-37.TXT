@@ -1,0 +1,242 @@
+$TXT Created by BEUSCHEL,GARY at REL.MAILMAN.ISC-SF.VA.GOV  (KIDS) on WEDNESDAY, 02/12/97 at 07:25
+=============================================================================
+Run Date: MAR 04, 1997                     Designation: XM*7.1*37
+Package : XM - MAILMAN                         Priority: Mandatory
+Version : 7.1        SEQ #32                    Status: Released
+=============================================================================
+
+
+Subject: Message Purge Improvement
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description: 
+============
+
+  We recommend that you run option XMAUTOPURGE daily to purge your system of
+  unreferenced messages.  It runs approximately 40 minutes per 100,000 messages.
+  Your mileage may vary.
+  
+  Option XMSTAT will show you the results of the last 20 purges: purge type,
+  when they were run and how long they took, and how many messages were purged.
+  
+  MailMan patch XM*7.1*37 contains the following enhancements and bug fixes:
+  
+  NOIS:  LAK-0396-31177
+  Rtns:  ^XMA32,^XMA32A
+  These "date purge" routines have been changed to
+  - improve efficiency
+  - make the coding clearer
+  - recognize more internet date formats
+  - purge messages which think they are responses but really aren't
+  - purge responses which think they are original messages but really aren't
+  - recognize and comply with a task stop request
+  
+  NOIS:  NYN-0996-10302
+  Rtns:  ^XMA3
+  DD:    file 4.3, field #4.304, 'MESSAGES NOT TO PURGE WEEKDAYS'
+  Makes the documentation in the routine and DD match the code in the routine.
+  
+  NOIS:  MIN-0195-40075
+  Rtns:  ^XMA3,^XMA30,^XMA31
+  Make sure that messages within the no-purge-days buffer aren't deleted.
+  
+  NOIS:  WBP-0996-22202
+  Rtns:  ^XMA3,^XMA30,^XMA31
+  DD:    file 4.3, new field #142, 'NO-PURGE DAYS BUFFER'
+  Lets the site specify the no-purge number of days.
+  Routines are modified to improve efficiency and clarity.
+  
+  STANDARD DATA DICTIONARY #4.3 -- KERNEL SITE PARAMETERS FILE   11/1/96  PAGE 127
+  STORED IN ^XMB(1,  (1 ENTRY)   SITE: MAILMAN RELEASED   UCI: REL,NMM (VERSION 7.
+  1)   
+  
+  DATA          NAME                  GLOBAL        DATA
+  ELEMENT       TITLE                 LOCATION      TYPE
+  -------------------------------------------------------------------------------
+  4.3,142       NO-PURGE DAYS BUFFER   .14;2 NUMBER
+  
+                INPUT TRANSFORM:  K:+X'=X!(X>10)!(X<1)!(X?.E1"."1N.N) X
+  
+                LAST EDITED:      OCT 08, 1996 
+                HELP-PROMPT:      Type a Number between 1 and 10, 0 Decimal 
+                                  Digits 
+                DESCRIPTION:      This field is used during the
+                                  un-referenced-messages purge to avoid purging
+                                  the last few messages in the message file,
+                                  according to their send date.
+                                  We subtract the NO-PURGE DAYS BUFFER from
+                                  today's date, giving a 'no-purge date'.  Local
+                                  messages which were created on or after that
+                                  date are not subject to purge.  Messages from
+                                  other sites are not affected by this buffer.  
+                                  If this field is not filled in, it defaults to
+                                  7 days.  One day is probably all that is
+                                  needed, however.  
+                                  One situation in which this buffer may be
+                                  useful is in the case of a message sent only to
+                                  a remote site.  Such a message is unreferenced
+                                  and would otherwise be subject to purge.  If a
+                                  reply came from the remote site after the
+                                  original message had been purged, the sender
+                                  would have access only to the reply and not to
+                                  the original message.  The NO-PURGE DAYS BUFFER
+                                  could be set to a reasonable number of days to
+                                  allow for a reply.
+  
+  NOIS:  WBP-0596-21011
+  Rtns:  ^XMDIRSND,^XMDIRRCV
+  Delete Server messages from Postmaster's Mailbox after processing them.
+  
+  NOIS:  MCM-1295-51144
+  Rtns:  ^XMA3
+  While cleaning out Postmaster's ARRIVING basket, deletes any message which
+  is still arriving after 'NO-PURGE DAYS BUFFER' number of days.
+  
+  NOIS:  None
+  Rtns:  ^XMADJF1B,^XMYPOST7
+  This problem was revealed during testing of this patch.  MailMan does not
+  use FileMan to add messages to a user's basket; he does it himself, and that
+  includes updating the zero node.  Up 'til now, when MM delivered a message to
+  a user's basket, he put the message number (not the number of messages) into
+  piece 4 of the zero node of the message multiple.  This patch corrects that
+  mistake.  ^XMYPOST7 goes through all message multiples of everyone's mailbox
+  and corrects the message multiple zero nodes.
+  
+  NOIS:  DAY-0196-41801
+  Rtns:  ^XMA30
+  The user status report now includes 'last sign on', as well as 'last mail use'.
+  
+  ===========================================================================
+  This patch should be installed after hours, when user activity is at a
+  minimum.  You should put the XMUSER Option out of order.  No one should be
+  using MailMan.  The filers (mail delivery tasks) should not be running.
+  
+  The post-install routine, ^XMYPOST7, will run about 3 minutes per
+  1000 mailboxes.  See the description above about what it will be doing.
+  *NOTE*:  It will try to lock ^XMB(3.7).  If it cannot lock it, it will not
+  run, and you will have to run it manually at a future time.  So if you see
+  that ^XMYPOST7 stopped running as soon as it started, then you know it could
+  not get a lock. 
+  
+  ^XMYPOST8 will not run.  Do not run it.
+  ===========================================================================
+   
+  INSTALLATION:
+  1.  This routine is usually mapped on systems that allow mapping,
+      so you will need to disable mapping for the affected routine.
+  2.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This
+      option will load the KIDS package onto your system.
+  3.  The patch has now been loaded into a Transport global on your
+      system. You now need to use KIDS to install the Transport global.
+  4.  On the KIDS menu, under the 'Installation' menu, use the following
+      options:
+         Verify Checksums in Transport Global
+         Print Transport Global
+         Compare Transport Global to Current System
+         Backup a Transport Global
+         Install Package(s)
+  5.  MSM Sites - Answer YES to the question 'Want to MOVE routines to
+      other CPUs?'. Enter the names of your Compute and Print server(s).
+  6.  AXP Sites, after patch has installed, rebuild your map set.
+  ============================================================================ 
+    
+  ROUTINES:
+  The second line of the routine now looks like:
+         ;;7.1;MailMan;**[patch list]**;Jun 02, 1994
+   
+                Before          After
+  Name          Checksum        Checksum        Patch List
+  ----------------------------------------------------------
+  XMA3          11195689        14547045         37
+  XMA30          5617809         7561526         37
+  XMA31          2140577            1080         27,37
+  XMA32         13342847        12437801         37
+  XMA32A        11841830         9601895         27,37
+  XMADJF1B       4665477         4754529         10,16,37
+  XMDIRRCV       1862431         1909690         37
+  XMDIRSND       1508027         1583505         37
+  XMYPOST7       **new**          959425         37
+  XMYPOST8       **new**          649189         37
+  
+  ============================================================================
+
+Routine Information:
+====================
+
+Routine Name:
+  - XMA32
+
+
+Routine Checksum:
+7820316
+
+Routine Name:
+  - XMA32A
+
+
+Routine Checksum:
+9095181
+
+Routine Name:
+  - XMA3
+
+
+Routine Checksum:
+
+Routine Name:
+  - XMA30
+
+
+Routine Checksum:
+
+Routine Name:
+  - XMA31
+
+
+Routine Checksum:
+
+Routine Name:
+  - XMDIRRCV
+
+
+Routine Checksum:
+
+Routine Name:
+  - XMDIRSND
+
+
+Routine Checksum:
+
+Routine Name:
+  - XMYPOST7
+
+
+Routine Checksum:
+
+Routine Name:
+  - XMADJF1B
+
+
+Routine Checksum:
+
+Routine Name:
+  - XMYPOST8
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : BEUSCHEL,GARY                  Date Entered : SEP 26, 1996
+Completed By: DIMICELI,RON                  Date Completed: FEB 12, 1997
+Released By : MROWCZYNSKI,EDWARD            Date Released : MAR 04, 1997
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

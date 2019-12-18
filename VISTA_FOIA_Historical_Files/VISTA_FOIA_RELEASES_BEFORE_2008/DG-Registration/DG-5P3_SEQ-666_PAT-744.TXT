@@ -1,0 +1,547 @@
+$TXT Created by THEROUX,JOHN at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 06/26/07 at 14:04
+=============================================================================
+Run Date: JUN 28, 2007                     Designation: DG*5.3*744
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #666                    Status: Released
+                  Compliance Date: JUL 29, 2007
+=============================================================================
+
+Associated patches: (v)DG*5.3*375  <<= must be installed BEFORE `DG*5.3*744'
+                    (v)DG*5.3*510  <<= must be installed BEFORE `DG*5.3*744'
+                    (v)DG*5.3*606  <<= must be installed BEFORE `DG*5.3*744'
+                    (v)DG*5.3*701  <<= must be installed BEFORE `DG*5.3*744'
+                    (v)DG*5.3*704  <<= must be installed BEFORE `DG*5.3*744'
+                    (v)DG*5.3*725  <<= must be installed BEFORE `DG*5.3*744'
+
+Subject: PTF ISSUES
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch corrects DRG reports, PTF record search reports, the PTF close 
+ out edit for surgical codes, replaces a system error with  
+ an error bulletin, and determines the proper variable to use
+ when doing certain ICD9 code lookups. 
+  
+ ASSOCIATED REMEDY TICKETS:
+ ==========================
+  
+ 1) HD170406  FY 07 National Average Section on Rpts
+    duplicate:
+    HD173634
+    HD175193
+  
+ 2) HD172124  Problem with Diagnostic Code Search
+  
+ 3) HD167395  PTF close-out Error
+    duplicate:
+    HD127098  
+  
+ 4) HD138034  <UNDEFINED>EXIT+2^VAFCCCAP
+    duplicate:
+    HD168633
+  
+ 5) HD168138  DX 585.9, 707.00 - 707.09 NON-SELECTABLE 801 
+    duplicate:
+    HD164320
+    HD175219
+    HD131877
+    HD186140
+  
+ ASSOCIATED E3R(s):
+ ==================
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ UPSTATE NY
+ RICHMOND
+ BAY PINES
+ ERIE,PA.
+  
+ REMEDY OVERVIEW:
+ ===============
+  
+ 1) HD170406  FY 07 National Average Section on Rpts
+  
+ Problem:
+ ========
+ The DRG reports under PTF Menu/PTF Output Menu are missing the
+ relative weights and average length of stay (ALOS) for FY 2007 cases.
+ These values from the DRG file #80.2 are normally updated each year
+ as part of the annual DRG Grouper update.  Patch ICD*18*24 stated:
+  
+   II. The finalized values for DRG relative weights and average length of 
+   stay (ALOS) promised in the August 18 issue (p. 47964) were not
+   received. Therefore, all DRGs will continue to use last year's values 
+   and the new DRGs will have none. 
+  
+ Solution:
+ =========
+ The DRG reports were modified to use last year's (2006) values
+ by changing routines DGPTOD1, DGPTOD2 and DGPTODI3, but new DRGs 560
+ thru 579 will still have none. 
+  
+ 2) HD172124  Problem with Diagnostic Code Search
+  
+ Problem:
+ ========
+ Patches DG*5.3*669 and DG*5.3*704 changed the diagnostic code
+ lookups to use the Lexicon file instead of the ICD9 file (#80),
+ but when using the 'Diagnostic Code PTF Record Search' option,
+ inactive codes cannot be selected.
+ For example, diagnosis 288.0 became inactive Oct. 1, 2006
+ and was replaced by 288.00 and others. But 288.0 cannot be
+ specified when requesting a report.
+  
+ The same is true when using the 'Surgical Code PTF Record Search' option.
+ For example, operation/procedure code 68.4 became inactive Oct. 1, 2006
+ and was replaced by 68.41 and 68.49.  But 68.4 cannot be specified
+ when requesting a report.
+  
+ Solution:
+ =========
+ The lookups have been changed to offer both active and inactive
+ codes, and the screening of inactive codes was disabled.
+ Routine DGPTFIC was modified.
+  
+ 3) HD167395  PTF close-out Error
+  
+ Problem:
+ ========
+ When entering surgical codes (from OPERATION/PROCEDURE FILE #80.1)
+ in the Load/Edit PTF Data [DG PTF SCREEN] option, users are unable 
+ to close out the PTF record under the following conditions:
+ a) the surgical episode is prior to Oct. 1
+ b) the discharge date is after Oct. 1 
+ c) a surgical code which became inactive on Oct. 1 cannot be used,
+    i.e., 68.4
+ d) so a surgical code which became valid on Oct. 1 is used, 
+    i.e., 68.49
+  
+ Error code 451 is received because, in the process of verifying that 
+ the patient is of the proper gender for the surgical code, the system
+ checks that the code was valid as of the date of the surgical episode.
+  
+ Solution:
+ =========
+ The close out edit has been modified to check that the code is valid
+ as of the discharge date.
+ Routine DGPTAE04 was modified.
+  
+ 4) HD 138034  <UNDEFINED>EXIT+2^VAFCCCAP                       
+  
+ Problem:
+ ========
+ When building the HL7/ADT segments for outpatient visits,
+ the above system error can occur because the variable ERR is not set
+ to the value returned from the call to PIVNW^VAFHPIVT.
+ If that call was not successful, for example, if a lock cannot
+ be secured on the MAS PARAMETERS file #43 in routine VAFHPIV2,
+ then no pivot number can be obtained which was the error shown 
+ in the system table.
+ Research at sites showed that a pivot number could not be 
+ obtained because a user was already using the MAS PARAMETERS 
+ file in an unsupported way, i.e., using a locally developed 
+ "edit" type option or the Fileman ENTER OR EDIT FILE ENTRIES option,
+ both of which lock the file, instead of the MAS Parameter Entry/Edit 
+ [DG PARAMETER ENTRY] supported option which does not lock the file.
+  
+ Solution:
+ =========
+ Routine VAFCCCAP will be modified to set ERR so that the already
+ existing bulletin VAFH ADT/HL7 ERROR will now be sent to users of 
+ the VAFH ADT/HL7 mail group instead of generating a system error.
+ To prevent bulletins for these cases, care should be taken 
+ not to lock the MAS PARAMETERS file #43, or to use only the 
+ MAS Parameter Entry/Edit [DG PARAMETER ENTRY] supported option.
+  
+ 5) HD168138  DX 585.9, 707.00 - 707.09 NON-SELECTABLE 801
+  
+ Problem:
+ ========
+ Using the PTF Load/Edit option, certain ICD9 diagnostic codes
+ which can be used on the 501 and 701 screens cannot be used on
+ the 801 screen.
+  
+ Solution:
+ =========
+ Routine DGPTF5 was modified to properly determine the IEN of
+ the Patient Treatment file (#45) record before passing it 
+ to the $$GETDATE^ICDGTDRG() API when doing the code lookup on the Lexicon.
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+  
+ This patch may be installed with users on the system.
+  
+ 1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu to unload
+     the KIDS distribution included with this message.
+     NOTE:  If the required patches are not installed, the transport global
+            will be removed.  If the transport global is removed you will
+            need to repeat this step.
+  
+ 2.  From the Kernel Installation and Distribution System Menu, select
+     the Installation menu.
+  
+ 3.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter DG*5.3*744):
+     a.  Compare Transport Global to Current System  - this option will
+         allow you to view all changes that will be made when the patch
+         is installed.  It compares all components of the patch (routines,
+         DDs, templates, etc.).
+     b.  Verify Checksums in Transport Global - this option will
+         allow you to ensure the integrity of the routines that are in
+         the transport global.
+     c.  Print Transport Global - this option will allow you to view the
+         components of the KIDS build.
+     d.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+  
+ 4.  Use the Install Package(s) option and select the package DG*5.3*744.
+  
+ 5.  When prompted 'Want KIDS to Rebuild Menu Trees Upon Completion of 
+     Install? YES//' respond NO.
+  
+ 6.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+     YES//', respond NO.
+  
+ 7.  When prompted,'Want to DISABLE Scheduled Options, Menu Options, and 
+     Protocols? NO//', respond Yes.
+     When prompted,'Enter options you wish to mark as 'Out Of Order':',
+     enter:
+  
+             PTF Menu  [DG PTF MENU] 
+  
+     When prompted,'Enter protocols you wish to mark as 'Out Of Order':', 
+     press enter.
+  
+  ROUTINE SUMMARY:
+  ================
+   The following is a list of the routine(s) included in this patch.  The
+   second line of each of these routine(s) will look like:
+   
+       <tab>;;5.3;Registration;**[patch list]**;Aug 13, 1993
+   
+                              CHECK^XTSUMBLD results
+   Routine name      Before Patch          After Patch         Patch List
+   ============      ============          ===========         ==========
+   DGPTAE04               3842098              4739757           510,744
+   DGPTF5                 1790946              2017718         669,701,744
+   DGPTFIC               19417083             16593352      510,559,599,669
+                                                               704,744
+   DGPTOD1                6646435              7470164      158,238,375,744
+   DGPTOD2               16009735             16743038          375,744
+   DGPTODI3              16604859             16141758       51,158,164,375
+                                                                606,744
+   VAFCCCAP              10366629             10408687       91,179,553,582
+                                                            568,585,662,725
+                                                                   744
+ USING NEW CHECK:
+  
+   
+                              CHECK1^XTSUMBLD results
+   Routine name      Before Patch          After Patch         Patch List
+   ============      ============          ===========         ==========
+   DGPTAE04               7860126              9304291          510,744
+   DGPTF5                 2939565              3360965        669,701,744
+   DGPTFIC               27579936             23609839      510,559,599,669
+                                                                  744
+   DGPTOD1                8491742              9627005      158,238,375,744
+   DGPTOD2               19633748             20941670          375,744
+   DGPTODI3              21618176             21808131       51,158,164,375
+                                                                606,744
+   VAFCCCAP              23061055             23484935       91,179,553,582
+                                                            568,585,662,725
+                                                                   744
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.3;Registration;**[Patch List]**;Aug 13, 1993;Build 5
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: DGPTAE04
+    Before:  B7860126   After:  B9304291  **510,744**
+ Description of Changes:
+  DGPTAE04.INT.1
+   +2         ;;5.3;Registration;**510,744**;Aug 13, 1993
+  ...................
+  |"PATVEE"|DGPTAE04.INT.1
+   +2         ;;5.3;Registration;**510**;Aug 13, 1993
+  ---------------------------------------
+  DGPTAE04.INT.1
+   +47        ; DG*744 - check against discharge date
+   +48        ;I DGPTTMP=-1!('$P(DGPTTMP,U,10)) S DGPTERC=451 Q
+   +49        I DGPTTMP=-1!('$P(DGPTTMP,U,10)) S DGPTERC=451 N DGPTDAT S 
+  DGPTDAT=
+  +$G(^DGPT(PTF,70)) I DGPTDAT S DGPTTMP=$$ICDOP^ICDCODE(DGPTOPP,DGPTDAT) I
+   $P(DGPTTMP,U,10)=1 S DGPTERC=0
+   +50        I DGPTERC=451 Q
+  ...................
+  |"PATVEE"|DGPTAE04.INT.1
+   +47        I DGPTTMP=-1!('$P(DGPTTMP,U,10)) S DGPTERC=451 Q
+
+Routine Name: DGPTF5
+    Before:  B2939565   After:  B3360965  **669,701,744**
+ Description of Changes:
+  DGPTF5.INT.1
+   +2         ;;5.3;Registration;**669,701,744**;Aug 13, 1993
+  ...................
+  |"PATVEE"|DGPTF5.INT.1
+   +2         ;;5.3;Registration;**669,701**;Aug 13, 1993
+  ---------------------------------------
+  DGPTF5.INT.1
+   +21        ; DG*5.3*701 (movement)
+  ...................
+  |"PATVEE"|DGPTF5.INT.1
+  ---------------------------------------
+  DGPTF5.INT.1
+   +23        ; DG*5.3*744 (801 screen)
+   +24        E  I DA'=$G(PTF),$D(^DGPT(PTF)) D 
+  CONFIG^LEXSET("ICD",,$$GETDATE^IC
+  DGTDRG($G(PTF)))
+  ...................
+  |"PATVEE"|DGPTF5.INT.1
+
+Routine Name: DGPTFIC
+    Before: B27579936   After: B23609839  **510,559,599,669,704,744**
+ Description of Changes:
+  DGPTFIC.INT.1                 |"PATVEE"|DGPTFIC.INT.1  
+  **************************************************************************
+  *****
+  DGPTFIC.INT.1
+   +2         ;;5.3;Registration;**510,559,599,669,704,744**; Aug 13, 
+  1993;Build 
+  1
+  ...................
+  |"PATVEE"|DGPTFIC.INT.1
+   +2         ;;5.3;Registration;**510,559,599,669,704**; Aug 13, 1993
+  ---------------------------------------
+  DGPTFIC.INT.1
+   +4   EN    K DG1 S DIC="^ICD9("   ;;S DIC("S")="I 
+  $$ISVALID^ICDGTDRG(+Y,DGDAT,
+  9)" G RANGE
+   +5           G RANGE
+  ...................
+  |"PATVEE"|DGPTFIC.INT.1
+   +4   EN    K DG1 S DGDAT=DT,DIC="^ICD9(" S DIC("S")="I 
+  $$ISVALID^ICDGTDRG(+Y,D
+  T,9)" G RANGE
+  ---------------------------------------
+  DGPTFIC.INT.1
+   +17        S DIC="^ICD0("   ;;S DIC("S")="I 
+  $$ISVALID^ICDGTDRG(+Y,DGDAT,0)" G 
+  RANGE
+   
+            
+   +18        G RANGE
+  ...................
+  |"PATVEE"|DGPTFIC.INT.1
+   +16        S DIC="^ICD0(" S DIC("S")="I $$ISVALID^ICDGTDRG(+Y,DT,0)" G 
+  RANGE
+  ---------------------------------------
+  DGPTFIC.INT.1
+   +34        Q:'$D(^UTILITY($J,"DG",D0,"A"))  S J=^("A") F I=10,16:1:24 S 
+  K=$P(J
+  ,U,I) I K]"" W !?DGZJ,$S(I=10:"PRINCIPAL DIAGNOSIS",1:"ICD "_(I-14)),?DGZ
+  J+23,K I DG5 S DJ=$S($D(DJ):DJ,1:0)+1,DTOT=1
+  ...................
+  |"PATVEE"|DGPTFIC.INT.1
+   +32        Q:'$D(^UTILITY($J,"DG",D0,"A"))  S J=^("A") F I=10,16:1:24 S 
+  K=$P(J
+  ,U,I) I K]"" W !?DGZJ,$S(I=10:"DXLS",1:"ICD "_(I-14)),?DGZJ+23,K I DG5 S 
+  DJ=$S($D(DJ):DJ,1:0)+1,DTOT=1
+  ---------------------------------------
+  DGPTFIC.INT.1
+   +45        S DIC("A")="Start with "_DG7_" code: "
+   +46        ;I DG7="Diagnosis" S DIC(0)="XMQZ",PROMPT="Start with "_DG7_" 
+  code:
+   " D ICDEN1^DGPTF5 Q:X=""  S X="`"_+Y D ^DIC G Q:Y'>0 S DG1=$P(Y(0),U,1)_
+  " "
+   +47        ;E  S DIC("A")="Start with "_DG7_" code: " D ^DIC G Q:Y'>0 S 
+  DG1=$P
+  (Y(0),U,1)_" "
+   
+            
+   +48        D ^DIC G Q:Y'>0 S DG1=$P(Y(0),U,1)_" "
+   +49  F     ;I DG7="Diagnosis" S PROMPT="Go to "_DG7_" code: " D 
+  ICDEN1^DGPTF5 
+  Q:X=""  S X="`"_+Y D ^DIC G Q:Y'>0 S DG6=$P(Y(0),U,1)_"! " I DG6']DG1 W !
+  ,"Must be after start code",! G F
+   +50        ;E  S DIC("A")="Go to "_DG7_" code: " D ^DIC G Q:Y'>0 S 
+  DG6=$P(Y(0)
+  ,U,1)_"! " I DG6']DG1 W !,"Must be after start code",! G F
+   +51        S DIC("A")="Go to "_DG7_" code: " D ^DIC G Q:Y'>0 S 
+  DG6=$P(Y(0),U,1
+  )_"! " I DG6']DG1 W !,"Must be after start code",! G F
+  ...................
+  |"PATVEE"|DGPTFIC.INT.1
+   +43        I DG7="Diagnosis" S DIC(0)="XMQZ",PROMPT="Start with "_DG7_" 
+  code: 
+  " D ICDEN1^DGPTF5 Q:X=""  S X="`"_+Y D ^DIC G Q:Y'>0 S DG1=$P(Y(0),U,1)_"
+   "
+   +44        E  S DIC("A")="Start with "_DG7_" code: " D ^DIC G Q:Y'>0 S 
+  DG1=$P(
+  Y(0),U,1)_" "
+   +45  F     I DG7="Diagnosis" S PROMPT="Go to "_DG7_" code: " D 
+  ICDEN1^DGPTF5 Q
+  :X=""  S X="`"_+Y D ^DIC G Q:Y'>0 S DG6=$P(Y(0),U,1)_"! " I DG6']DG1 W !,
+  "Must be after start code",! G F
+   +46        E  S DIC("A")="Go to "_DG7_" code: " D ^DIC G Q:Y'>0 S 
+  DG6=$P(Y(0),
+  U,1)_"! " I DG6']DG1 W !,"Must be after start code",! G F
+   
+            
+  ---------------------------------------
+  DGPTFIC.INT.1
+   +54  E     ;I DG7="Diagnosis" S DIC(0)="XMQZ",PROMPT="Enter "_DG7_" Code 
+  to se
+  arch for: " D ICDEN1^DGPTF5 Q:X=""  S X="`"_+Y D ^DIC G Q:Y'>0 S DG1=U_+Y
+  _U D DHD G Q:'$D(X),@("E"_$E(DIC,5))
+   +55        ;E  S PROMPT="Enter "_DG7_" Code to search for: " D ^DIC G 
+  Q:Y'>0 S
+   DG1=U_+Y_U D DHD G Q:'$D(X),@("E"_$E(DIC,5))
+   +56        D ^DIC G Q:Y'>0 S DG1=U_+Y_U D DHD G Q:'$D(X),@("E"_$E(DIC,5))
+  ...................
+  |"PATVEE"|DGPTFIC.INT.1
+   +49  E     I DG7="Diagnosis" S DIC(0)="XMQZ",PROMPT="Enter "_DG7_" Code 
+  to sea
+  rch for: " D ICDEN1^DGPTF5 Q:X=""  S X="`"_+Y D ^DIC G Q:Y'>0 S DG1=U_+Y_
+  U D DHD G Q:'$D(X),@("E"_$E(DIC,5))
+   +50        E  S PROMPT="Enter "_DG7_" Code to search for: " D ^DIC G 
+  Q:Y'>0 S 
+  DG1=U_+Y_U D DHD G Q:'$D(X),@("E"_$E(DIC,5))
+  **************************************************************************
+
+Routine Name: DGPTOD1
+    Before:  B8491742   After:  B9627005  **158,238,375,744**
+ Description of Changes:
+  DGPTOD1.INT.1
+   +2         ;;5.3;Registration;**158,238,375,744**;Aug 13, 1993
+  ...................
+  |"PATVEE"|DGPTOD1.INT.1
+   +2         ;;5.3;Registration;**158,238,375**;Aug 13, 1993
+  ---------------------------------------
+  DGPTOD1.INT.1
+   +25  WWU   S 
+  (DGLO,DGHI,DGALOS,DGWWU,DGBE,DGMBE)="",%=$S($D(^ICD(+DGDRG,"FY",D
+  GFY2K,0)):(^(0)),1:"") I %="",DGFY2K="3070000" N DGFY2KSV,DGFY2KYR S DGFY
+  2KSV=DGFY2K,DGFY2KYR=$E(DGFY2K,1,3)-1,DGFY2K=DGFY2KYR_"0000" G WWU 
+   +26        I $G(DGFY2KSV) S DGFY2K=DGFY2KSV
+   
+            
+   +27        S 
+  DGHI=$P(%,U,4),DGLO=$P(%,U,3),DGALOS=$P(%,U,9),DGWWU=$P(%,U,2)
+  ...................
+  |"PATVEE"|DGPTOD1.INT.1
+   +25  WWU   S 
+  (DGLO,DGHI,DGALOS,DGWWU,DGBE,DGMBE)="",%=$S($D(^ICD(+DGDRG,"FY",D
+  GFY2K,0)):(^(0)),1:""),DGHI=$P(%,U,4),DGLO=$P(%,U,3),DGALOS=$P(%,U,9),DGW
+  WU=$P(%,U,2)
+
+Routine Name: DGPTOD2
+    Before: B19633748   After: B20941670  **375,744**
+ Description of Changes:
+  DGPTOD2.INT.1
+   +2         ;;5.3;Registration;**375,744**;Aug 13, 1993
+  ...................
+  |"PATVEE"|DGPTOD2.INT.1
+   +2         ;;5.3;Registration;**375**;Aug 13, 1993
+  ---------------------------------------
+  DGPTOD2.INT.1
+   +36        I DGWGT="",DGFY2K="3070000" S 
+  DGWGT=$S($D(^ICD(DGDRG,"FY",DGFY2K,0)
+  ):(^(0)),1:"")
+   +37        I DGWGT="",DGFY2K="3070000" N DGFY2KSV,DGFY2KYR S 
+  DGFY2KSV=DGFY2K,D
+  GFY2KYR=$E(DGFY2K,1,3)-1,DGFY2K=DGFY2KYR_"0000" G CASEMIX
+   +38        I $G(DGFY2KSV) S DGFY2K=DGFY2KSV
+
+Routine Name: DGPTODI3
+    Before: B21618176   After: B21808131  **51,158,164,375,606,744**
+ Description of Changes:
+  DGPTODI3.INT.1
+   +2         ;;5.3;Registration;**51,158,164,375,606,744**;Aug 13, 1993
+  ...................
+  |"PATVEE"|DGPTODI3.INT.1
+   +2         ;;5.3;Registration;**51,158,164,375,606**;Aug 13, 1993
+  ---------------------------------------
+  DGPTODI3.INT.1
+   +25  HDR   W @IOF,!,"DRG INDEX FOR DRG ",DRG,?30,"Weight: "
+   +26  HD1       S %=$S($D(^ICD(DRG,"FY",DGFY2K,0)):(^(0)),1:"")
+   +27        I %="",DGFY2K="3070000" N DGFY2KSV,DGFY2KYR S 
+  DGFY2KSV=DGFY2K,DGFY2
+  KYR=$E(DGFY2K,1,3)-1,DGFY2K=DGFY2KYR_"0000" G HD1
+   +28        I $G(DGFY2KSV) S DGFY2K=DGFY2KSV
+   +29        W $P(%,"^",2),?46,"Low Trim: " S 
+  DGLO=$P(%,"^",3),DGHI=$P(%,"^",4),
+  DGAL=$P(%,"^",9) W DGLO,?60,"High Trim: ",DGHI,?76,"Avg LOS: ",DGAL
+   
+            
+  ...................
+  |"PATVEE"|DGPTODI3.INT.1
+   +25  HDR   W @IOF,!,"DRG INDEX FOR DRG ",DRG,?30,"Weight: " S 
+  %=$S($D(^ICD(DRG
+  ,"FY",DGFY2K,0)):(^(0)),1:"") W $P(%,"^",2),?46,"Low Trim: " S DGLO=$P(%,
+  "^",3),DGHI=$P(%,"^",4),DGAL=$P(%,"^",9) W DGLO,?60,"High Trim: ",DGHI,?7
+  6,"Avg LOS: ",DGAL
+
+Routine Name: VAFCCCAP
+    Before: B23061055   After: B23484935  **91,179,553,582,568,585,662,
+                                           725,744**
+ Description of Changes:
+  VAFCCCAP.INT.1                |"PATVEE"|VAFCCCAP.INT.1  
+  **************************************************************************
+  *****
+  VAFCCCAP.INT.1
+   +2         ;;5.3;Registration;**91,179,553,582,568,585,662,725,744**;Jun 
+  06, 1
+  996;Build 1
+  ...................
+  |"PATVEE"|VAFCCCAP.INT.1
+   +2         ;;5.3;Registration;**91,179,553,582,568,585,662,725**;Jun 06, 
+  1996;
+  Build 12
+  ---------------------------------------
+  VAFCCCAP.INT.1
+   +40        ..I +HLD=-1 S ERR=HLD
+  ...................
+  |"PATVEE"|VAFCCCAP.INT.1
+  ---------------------------------------
+  VAFCCCAP.INT.1
+   +47        .S HLD="",STOP="N"
+  ...................
+  |"PATVEE"|VAFCCCAP.INT.1
+   +46        .S HLD="",STOP="N",ERR=""
+   
+            
+  ---------------------------------------
+  VAFCCCAP.INT.1
+   +58        ..I +$G(THLD)=-1 S ERR=THLD
+  ...................
+  |"PATVEE"|VAFCCCAP.INT.1
+  **************************************************************************
+
+ 
+Routine list of preceding patches: 606, 701, 704, 725
+
+=============================================================================
+User Information:
+Entered By  : THEROUX,JOHN                  Date Entered  : JAN 18, 2007
+Completed By: REA,WILLIAM M                 Date Completed: JUN 27, 2007
+Released By : ALEXANDER,DIANNE              Date Released : JUN 28, 2007
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

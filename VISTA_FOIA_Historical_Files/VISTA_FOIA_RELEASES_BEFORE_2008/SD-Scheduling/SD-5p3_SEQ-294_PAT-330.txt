@@ -1,0 +1,341 @@
+$TXT Created by LUNDEN,JOHN at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 02/19/04 at 10:33
+=============================================================================
+Run Date: JUN 02, 2004                     Designation: SD*5.3*330
+Package : SD - SCHEDULING                     Priority: Mandatory
+Version : 5.3       SEQ #294                    Status: Released
+                  Compliance Date: JUL 03, 2004
+=============================================================================
+
+Associated patches: (v)SD*5.3*106  <<= must be installed BEFORE `SD*5.3*330'
+                    (v)SD*5.3*185  <<= must be installed BEFORE `SD*5.3*330'
+                    (v)SD*5.3*213  <<= must be installed BEFORE `SD*5.3*330'
+                    (v)SD*5.3*281  <<= must be installed BEFORE `SD*5.3*330'
+                    (v)SD*5.3*303  <<= must be installed BEFORE `SD*5.3*330'
+
+Subject: REMOVE FORM FEED FROM SCHEDULING LETTERS, ABREVIATED STATE ON LETTERS.
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ The purpose of this patch is to remove a form feed before each patient 
+ appointment letter prints. This will stop the waste of paper and will 
+ bring this routine into compliance with the Programming Standards and 
+ Conventions(2.8.3).
+  
+ The scheduling letters may be printed through the "PRINT SCHEDULING 
+ LETTERS" option and when answering "YES" to the "PRINT SCHEDULING LETTERS 
+ NOW" prompt in the "CANCEL CLINIC AVAILIBILITY" option.
+  
+ NOTE: - Using the "slave" printer may not work. You need to specify the 
+ printer by its name. This insures that the correct printer driver is used.
+  
+ This patch also changes the printed address to use the 2 letter state 
+ abbreviation.
+  
+  
+  
+ ASSOCIATED E3R(S):
+ =================
+ N/A
+  
+ ASSOCIATED NOIS:
+ ================
+ AUG-1103-31915  When printing scheduling letters an extra page prints
+ Duplicates:
+    LOU-1103-41704  Blank page before appointment letters
+    PRO-1100-11585  APPT LIST - BLANK PAGES
+ CLA-0903-22092 POST OFFICE/WEST VIRGINIA
+  
+ PARTICIPATING TEST SITES:
+ =========================
+  
+ El Paso, TX
+ N. Chicago, IL 
+ Louisville, KY
+ Portland, OR
+  
+ SUCCESS CRITERIA:
+ ================= 
+  
+ The patch can be considered successfully tested when each site has verified 
+ that the problem(s) detailed in the patch description is not occurring and 
+ that no other functionality has been affected. 
+  
+ NOIS OVERVIEW:
+ ==============
+ 1. AUG-1103-31915  When printing scheduling letters an extra page prints 
+  
+ PROBLEM:
+ --------
+ When printing scheduling letters by patient under the menu option "PRINT 
+ SCHEDULING LETTERS" an extra blank page is fed through the printer before 
+ each letter. This causes a waste of paper and more work for the person 
+ printing the letters.
+  
+ RESOLUTION:
+ -----------
+ There is a hard Form Feed in the code each time a letter is printed. This
+ needs to be executed only if there are more than one letter printing and 
+ only AFTER the first letter has printed. 
+  
+ 2. CLA-0903-22092 POST OFFICE/WEST VIRGINIA
+  
+  
+ PROBLEM:
+ --------
+ The US Postal Service requires that the state comply with the two letter
+ abbreviation for Postal delivery.
+  
+ RESOLUTION:
+ -----------
+ The two letter state abbreviation can be found in the State file (#5) and 
+ can be used rather than the full name. A minor modification to the 
+ Scheduling letter routine was required to meet this specification.
+  
+  
+ TECHNICAL:
+ ==========
+ Create a "flag" to determine if the letter being printed is the first or 
+ not. If it is the first then do not execute the form feed.
+  
+  
+ SDL1:
+ BEFORE:
+ ------
+ LST     F L=0:0 S L=$O(^UTILITY($J,L)) Q:'L  F A=0:0 S __
+              A=$O(^UTILITY($J,L,A)) Q:'A  S SDLET=L D ^SDLT,APP
+  
+ AFTER:
+ ------
+ LST     N SDFIRST S SDFIRST=1
+         F L=0:0 S L=$O(^UTILITY($J,L)) Q:'L  D
+         .F A=0:0 S A=$O(^UTILITY($J,L,A)) Q:'A  D
+         ..S SDLET=L D ^SDLT,APP
+         D NO,END,CLOSE^DGUTQ Q
+  
+ SDLT
+ BEFORE:
+ -------
+ PRT     S Y=DT D DTS^SDUTL W @IOF,!,?65,Y,!,?65,$$LAST4(A),!!!!
+  
+ AFTER:
+ ------
+ PRT     S Y=DT D DTS^SDUTL
+         I $G(SDFIRST)=0 W @IOF ;SD*5.3*330 Form feed only after letter #1
+         K SDFIRST 
+         W !,?65,Y,!,?65,$$LAST4(A),!!!!
+  
+ BEFORE:
+ -------
+ ADDR+3  D ADD^VADPT D
+        
+  
+ AFTER:
+ ------
+ ADDR+3  D ADD^VADPT D
+         .;CHANGE STATE TO ABBR.
+         .N SDIENS,X
+         .I $D(^UTILITY("VAPA",$J,5)) S SDIENS=+^UTILITY("VAPA",$J,5)_
+            ",",X=$$GET1^DIQ(5,SDIENS,1),$P(^UTILITY("VAPA",$J,5),U,2)=X
+         .K SDIENS Q
+  
+  
+ SDC0
+  
+ BEFORE:
+ -------
+ EN+4    I ALS="N" W !,"NO LETTERS ARE ASSIGNED TO THE ",$P(^SC(SC....
+  
+ AFTER:
+ ------
+ EN+4    N SDFFFF
+         I ALS="N"!(ANS="Y") S SDFFFF=1
+         I ALS="N" W !,"NO LETTERS ARE ASSIGNED TO THE ",$P(^SC(SC....
+  
+  
+ BEFORE:
+ -------
+ END+2   K DIW,DIWF,DIWL,DIWR,DIWT,DN,DUPE,J2,MESS,NDATE,SDADD,SDC,SDCL,SD,
+            DAT,SDDIF,SDFORM,SDHX,SDINP,SDIV,SDLET,SDNODE,SDRT,SDSOH,
+            SDST,SDT0,TST,SDV 1 D CLOSE^DGUTQ Q
+  
+ AFTER:
+ ------
+ END+2   K SDFFFF,DIW,DIWF,DIWL,DIWR,DIWT,DN,DUPE,J2,MESS,NDATE,SDADD,SDC,
+             SDCL,SD,DAT,SDDIF,SDFORM,SDHX,SDINP,SDIV,SDLET,SDNODE,SDRT,
+             SDSOH,SDST,SDT0,TST,SDV 1 D CLOSE^DGUTQ Q
+  
+  
+ BEFORE:
+ -------
+ BEG1    I $D(SDLT) S SDARRAY=$S('VAUTC:"VAUTC",1:"^SC"),ANS="N",ALS="Y" ..
+  
+ AFTER:
+ -----
+ BEG1    N SDFIRST
+         I $D(SDLT) S SDARRAY=$S('VAUTC:"VAUTC",1:"^SC"),ANS="N",ALS="Y" ..
+         S SDFIRST=$S($G(SDFFFF)=1:0,1:1)
+  
+ BEFORE:
+ APP     F GDATE=CDATE:0 S GDATE=$N(^SC(+SC,"S",GDATE)) ...
+  
+ AFTER:
+ -----
+ APP     I $G(SDFFFF)=1 S SDFIRST=0
+         F GDATE=CDATE:0 S GDATE=$N(^SC(+SC,"S",GDATE)) ... 
+ ************
+  
+  
+ SDN1:
+ BEFORE:
+ -------
+ LST     F SDLET=0:0 S SDLET=$N(^UTILITY($J,"SDLT",SDLET)) ...
+  
+ AFTER:
+ ------
+ LST     N SDFIRST S SDFIRST=1
+         F SDLET=0:0 S SDLET=$N(^UTILITY($J,"SDLT",SDLET))...
+ ***********
+  
+ SDCNL:
+ BEFORE:
+ -------
+ PR      S SDLET="" F A0=0:0 S SDLET=$O(^UTILITY($J,SDLET))...
+  
+ AFTER:
+ PR      N SDFIRST S SDFIRST=1
+         S SDLET="" F A0=0:0 S SDLET=$O(^UTILITY($J,SDLET))
+  
+  
+ It should be noted that ^XINDEX will display "errors" of UNDEFINED 
+ FUNCTION due the use of the $N intrinsic function (a deprecated function).
+ However, since this is working as is and since this package is currently
+ being re-hosted VMP will not address this at this time.
+  
+  
+ DATA DICTIONARY CHANGES:
+ =======================
+ N/A
+  
+ TEMPLATES:
+ ==========
+ N/A
+  
+ DBIA(S):
+ ========
+ NEW - 4318 - covers the calls to ^DGUTQ.
+ EXISTING - 10056 - covers inquiring of the state file with GET1^DIQ.
+  
+  
+   ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;5.3;Scheduling;**[patch list]**;Aug 13, 1993
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  SDC0                  14674200             14834584           303,330
+  SDCNL                 14997623             14989938             330
+  SDL1                   8110575              8116242           106,330
+  SDLT                   5918418              6542760       185,213,281,330
+  SDN1                  15925636             15916123             330
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ This patch can be installed during business hours, but because some 
+ options will be out of service during the installation process it is 
+ suggested that it be queued for non-peak hours.
+ Installation will take less than 5 minutes.
+  
+ 1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu. [Note: TEXT 
+    PRINT/DISPLAY option in the PackMan menu sill display the patch text
+    only].
+  
+ 2. From the Kernel Installation and Distribution System (KIDS) menu,
+    select the Installation menu.
+  
+ 3. From this menu, you may elect to use the following options:
+    (when prompted for INSTALL NAME enter SD*5.3*330)
+    
+    a. Backup a Transport Global - this option will create a backup message
+       of any routines exported with the patch. It will NOT backup any 
+       other changes such as DDs or templates.
+    b. Compare Transport Global to Current System - this option will allow
+       you to view all changes that will be made when the patch is 
+       installed. It compares all components of the patch (routines, DDs, 
+       templates, etc.).
+    c. Verify Checksums in Transport Global - this option will allow you
+       to ensure the integrity of the routines that are in the Transport
+       Global.
+    d. Print Transport Global - this option will allow you to view the
+       components of the KIDS build.
+  
+ 4. Use the Install Package(s) option and select the package SD*5.3*330.
+  
+ 5. When prompted 'Want KIDS to INHIBIT LOGONs during the install?YES//', 
+    respond NO
+  
+ 6. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+    Protocols? YES//', respond YES.
+  
+    When prompted to select the options you would like to place out of
+    of order, enter the following:
+  
+         PRINT SCHEDULING LETTERS
+         CANCEL CLINIC AVAILIBILITY
+  
+ 7. If routines were unmapped as part of step 2 (DSM for Open VMS sites
+    only), they should be returned to the mapped set once the installation
+    has run to completion.
+
+Routine Information:
+====================
+
+Routine Name:
+  - SDLT
+
+
+Routine Checksum:
+
+Routine Name:
+  - SDL1
+
+
+Routine Checksum:
+
+Routine Name:
+  - SDC0
+
+
+Routine Checksum:
+
+Routine Name:
+  - SDN1
+
+
+Routine Checksum:
+
+Routine Name:
+  - SDCNL
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : LUNDEN,JOHN                   Date Entered  : DEC 01, 2003
+Completed By: BAUMAN,HELENE                 Date Completed: JUN 02, 2004
+Released By : FITCH,DONNA                   Date Released : JUN 02, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

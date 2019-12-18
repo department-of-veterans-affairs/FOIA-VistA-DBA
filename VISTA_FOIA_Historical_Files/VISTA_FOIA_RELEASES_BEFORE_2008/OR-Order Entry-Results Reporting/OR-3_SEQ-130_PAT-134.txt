@@ -1,0 +1,206 @@
+$TXT Created by NABER,DAVID A at DEVCUR.FO-SLC.MED.VA.GOV  (KIDS) on THURSDAY, 03/28/02 at 12:36
+=============================================================================
+Run Date: APR 24, 2002                     Designation: OR*3*134
+Package : OR - ORDER ENTRY/RESULTS REPORTING Priority: EMERGENCY
+Version : 3       SEQ #130                       Status: Released
+=============================================================================
+
+Associated patches: (v)OR*3*110    <<= must be installed BEFORE `OR*3*134'
+                    (v)OR*3*129    <<= must be installed BEFORE `OR*3*134'
+                    (v)PSJ*5*70    <<= must be installed BEFORE `OR*3*134'
+                    (v)PSO*7*100   <<= must be installed BEFORE `OR*3*134'
+
+Subject: OUTPT MED, IV FIXES
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+ This patch corrects three problems in the CPRS/Pharmacy interface, with
+ outpatient medication and IV orders.
+  
+ PROBLEMS and Related NOIS:
+ ==========================
+ 1. V02-1201-N1957  OP RX NOT CONVERTING CORRECTLY ON RENEWAL
+ Prior to the Pharmacy Ordering Enhancements (POE) project, any changes 
+ made to an outpatient medication order by the pharmacist that did not 
+ trigger a new order were not saved with the order in the Orders file #100 
+ or reflected on the Orders tab in CPRS; one of the values that could be 
+ changed without a new order was the dispense drug.  When one of these 
+ orders is now renewed, the original (now incorrect) dispense drug is 
+ being carried over into the new order by CPRS, confusing pharmacists and 
+ providers and creating the potential for errors.  This patch adds a check 
+ to the renewal of a prescription, and will prevent it if the dispense 
+ drugs in CPRS and Outpatient Pharmacy do not match.
+ NOTE:  Patch PSO*7*96 is also required for this functionality to be 
+ implemented; it is not, however, required for installation of this patch.
+  
+ 2. POR-0102-50827  Where is rate information stored for IV orders?
+ A recent Kernel patch added the ADDITIONAL PREFIXES multiple to the 
+ Package file #9.4; entries in this multiple are also included in the "C" 
+ cross reference on package namespace, which CPRS uses to find specific 
+ entries in this file.  This multiple has now been populated with entries 
+ PSG and PSIV for the Inpatient Medications package, but that can cause 
+ CPRS to come up with the wrong value when trying to find the pointer for 
+ the IV Medications (PSIV) package.  This patch fixes the lookup on the 
+ "C" cross reference to make sure it is finding the correct entry and not 
+ the Additional Prefix entry.
+  
+ 3. TOG-0102-12405  SERVICE CONNECTED CONDITION CHECK BOX NOT SHOW IN GUI
+ The Medication Copay changes released in OR*3*116 inadvertently omitted 
+ the display of the patient's current service connection data with the 
+ prompt "Is this order for treatment related to a service connected 
+ condition".  Also, the copay questions were not being asked at all in the 
+ List Manager interface if the order was being delayed for discharge.  
+ Both of these issues are now resolved with this patch.
+  
+ 4. ISB-0202-30541  Renewing an order after a NDF update
+ Prior to this patch, inpatient medication orders with a now inactive 
+ orderable item could not be renewed; patch PSJ*5*70 will now return a 
+ replacement item to CPRS when available, and this patch will use the new 
+ item and allow the renewal order to be placed.
+  
+ 5. BIR-0202-30805  0..5 IN ORDER
+ This patch contains a fix that will stop the incorrect "on the fly" 
+ conversion of fractional doses for pre-POE orders.  In addition, a 
+ post-init will identify all currently active orders that have a SIG that 
+ contains 0..
+  
+ The post-init will go through the AC xref, which is all active orders
+ along with orders that are still on the list due to the active orders
+ context hours parameter.  A list of all problematic orders will be sent to
+ the initiator along with all holders of the PSNMGR key.  A pharmacist will
+ have to take the appropriate action on the order.  A guideline is included
+ in the post-init message which suggests how the problems may be fixed.
+  
+ 6. Renewal of complex outpatient order produces incorrect SIG
+ Currently, if you renew a complex outpatient medication order in the GUI,
+ the SIG for the renewal will build incorrectly.  Patch PSO*7*101 will 
+ clean up any currently existing incorrect SIGs created as a result of 
+ this problem.
+  
+ ROUTINE SUMMARY:
+ ================
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+  
+  <tab>;;3.0;ORDER ENTRY/RESULTS REPORTING;**[patch list]**;Dec 17, 1997
+  
+                            CHECK^XTSUMBLD results
+ Routine name      Before Patch      After Patch        Patch List
+ ============      ============      ===========        ==========
+ ORCACT01              24300331         24522351        94,116,134
+ ORCDPS3               11393634         11569462        94,116,134
+ ORCSIGN               24577650         24838735  7,56,48,79,108,110,134
+ ORMPS1                16425464         16641737     86,92,94,116,134
+ ORMPS2                10171264         10179181      94,116,129,134
+ ORWDXR                 8709944          7225925     10,85,125,131,134 
+ ORY134                     N/A         10021450            134
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ Users may be on the system during installation of this patch, though this
+ patch should be loaded during non-peak hours to minimize disruption to
+ users.  Installation will take less than 1 minute.
+  
+ NOTE: This patch contains a post-init.
+  
+ The post-init will go through the AC xref, which is all active orders
+ along with orders that are still on the list due to the active orders
+ context hours parameter.  A list of all problematic orders will be sent to
+ the initiator along with all holders of the PSNMGR key.  A pharmacist will
+ have to take the appropriate action on the order.  A guideline is included
+ in the post-init message which suggests how the problems may be fixed.
+  
+ 1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+  
+ 2.  Review your mapped set.  If any of the routines listed in the
+     ROUTINE SUMMARY section are mapped, they should be removed
+     from the mapped set at this time.
+  
+ 3.  From the Kernel Installation and Distribution System Menu, select
+     the Installation menu.
+  
+ 4.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter OR*3.0*134):
+         a.  Backup a Transport Global
+         b.  Compare Transport Global to Current System
+         c.  Verify Checksums in Transport Global
+  
+ 5.  Use the Install Package(s) option and select the package OR*3.0*134.
+  
+ 6.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? YES//',
+     you may respond NO.
+  
+ 7.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+     Protocols? YES//', respond YES.  When prompted to select the options
+     you would like to place out of order, enter the following:
+  
+         OR OE/RR MENU CLINICIAN          CPRS Clinician Menu
+         OR OE/RR MENU NURSE              CPRS Nurse Menu
+         OR OE/RR MENU WARD CLERK         CPRS Ward Clerk Menu
+  
+ 8.  When prompted 'Delay Install (Minutes):  (0-60): 0//; respond '0'.
+  
+ 9.  If routines were unmapped as part of step 2, they should be returned
+     to the mapped set once the installation has run to completion.
+
+Routine Information:
+====================
+
+Routine Name:
+  - ORCACT01
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORMPS1
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORMPS2
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORCDPS3
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORCSIGN
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORWDXR
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORY134
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : BUECHLER,MELANIE K            Date Entered : JAN 31, 2002
+Completed By: EBERT,AL                      Date Completed: APR 24, 2002
+Released By : SCOTT,JEAN M                 Date Released : APR 24, 2002
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

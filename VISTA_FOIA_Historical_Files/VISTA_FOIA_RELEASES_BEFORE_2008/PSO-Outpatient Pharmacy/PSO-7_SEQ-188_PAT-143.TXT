@@ -1,0 +1,564 @@
+
+=============================================================================
+Run Date: AUG 31, 2005                     Designation: PSO*7*143
+Package : PSO - OUTPATIENT PHARMACY           Priority: Mandatory
+Version : 7       SEQ #188                      Status: Released
+                  Compliance Date: OCT 01, 2005
+=============================================================================
+
+Associated patches: (v)PSO*7*119   <<= must be installed BEFORE `PSO*7*143'
+                    (v)PSO*7*132   <<= must be installed BEFORE `PSO*7*143'
+                    (v)PSO*7*133   <<= must be installed BEFORE `PSO*7*143'
+                    (v)PSO*7*157   <<= must be installed BEFORE `PSO*7*143'
+                    (v)PSO*7*181   <<= must be installed BEFORE `PSO*7*143'
+                    (v)PSO*7*185   <<= must be installed BEFORE `PSO*7*143'
+
+Subject: CLINICAL INDICATOR DATA CAPTURE (CIDC) - OUTPATIENT PHARMACY
+
+Category: 
+  - Enhancement (Mandatory)
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ This patch is part of the Clinical Indicator Data Capture (CIDC) Master 
+ Build and should be installed in conjunction with Computerized Patient 
+ Record System (CPRS) Version 25.  There are no NOIS messages or E3Rs
+ associated with this patch.
+  
+ OVERVIEW
+ ======== 
+  
+ **************************** N O T E *****************************
+ Outpatient Pharmacy has no interface with CoreFLS and can be safely
+ installed on all VistA accounts.
+ ******************************************************************
+  
+                  ----------- N O T E ----------------- 
+ Note: If your site uses the Composite Health Care Systems (CHCS) External
+ Interface which is an interface between a Department of Defense (DoD) CHCS
+ system and VistA that is used to process prescriptions prescribed by
+ Non-VA providers, it is suggested that you test the external order process
+ before installing this patch in the live account.  The order segments
+ passed to and from CPRS have changed as noted below in the technical
+ description section.  While testing was performed, none of the test sites
+ use this function.
+                   --------------------------------
+  
+ This patch modifies Outpatient Pharmacy to collect and store required data
+ elements not currently being collected for clinical indicator data 
+ capture (I.e., ICD-9 diagnosis code, Service Connected (SC) 0-100%, and
+ Environmental Indicators (EI)).  The application must capture all data
+ elements to track clinical indicator determination.
+  
+ Functional Description
+ ======================
+  
+ ICD-9 Diagnosis Code Entry:
+  
+ During backdoor orders, a new diagnosis code prompt will ask for up 
+ to eight ICD-9 codes.  The prompts will be displayed during the
+ following functions:
+  
+ 1.  After the drug is entered during a new order.
+ 2.  If the drug or orderable item is edited during a copy of a
+     prescription.
+ 3.  If an orderable item or drug is edited.
+ 4.  If the Verification parameter in the OUTPATIENT SITE file (#59) is on,
+     the new diagnosis prompt will also be displayed during verification
+     should the user choose to edit the orderable item or drug during the
+     verification process in the Patient Prescription Processing option
+     [PSO LM BACKDOOR ORDERS].
+  
+ These new ICD-9 diagnosis code prompts will only be asked when the person
+ entering the prescription holds the PROVIDER key and when the IBB 
+ CIDC Insurance and Switch API (CIDC^IBBAPI) indicates to do so.  The ICD-9
+ diagnosis prompts are not required entry.  The prompt will allow the user
+ to inquire into the ICD DIAGNOSIS file (#80) by typing a question mark at
+ the prompt to find a desired diagnosis code, by typing a partial code, or
+ by typing a partial name.  Data entered into this field will be stored in
+ the Outpatient Pharmacy package within the new ICD nodes defined in
+ PRESCRIPTION file (#52) and PENDING OUTPATIENT ORDERS file (#52.41).
+  
+ In the existing circumstance where a CPRS alert is sent due to the nature 
+ of order being verbal or telephone, the user will be required to 
+ enter ICD-9 diagnosis codes during the CPRS sign order process.
+  
+ When prescriptions are copied, edited or renewed, the ICD-9 Diagnosis 
+ codes from the prescription that these functions are performed on will be 
+ carried forward as default answers. 
+  
+  
+ Service Connected and Environmental Indicators:
+  
+ All users will be prompted for SC 0-100% and EI's based on the veteran's
+ information in the Enrollment package. The prompts for SC/EI will remain
+ in it's current location and will remain as mandatory fields. The EI 
+ prompts will be asked regardless of the response to the SC question and 
+ without affecting copayment (copay) functionality. The prompts have been
+ changed to the following format:
+  
+          Was treatment for a Service Connected condition?
+          Was treatment related to Combat Vet?
+          Was treatment related to Agent Orange exposure?
+          Was treatment related to Ionizing Radiation exposure?
+          Was treatment related to Environmental Contaminant exposure?
+          Was treatment related to Military Sexual Trauma?
+          Was treatment related to Head and/or Neck Cancer?
+  
+ For prescriptions that are copied or renewed, the SC/EI's from the
+ prescription that these functions are performed on will be carried
+ forward as default answers.
+  
+ When SC/EI's are modified using the Reset Copay Status/Cancel Charges 
+ [PSOCP RESET COPAY STATUS] option, the new ICD node will be modified to 
+ reflected the changes to these fields using this option.  
+  
+ CPRS/Order Entry Results Reporting (OERR)/Outpatient Pharmacy 
+ Application Program Interface (API):
+  
+ Outpatient Pharmacy has been modified to tell OERR to ask all SC/EI's
+ based on the veteran's enrollment.  This change is evident in the sign 
+ order process within OERR in Vista.
+  
+ Data passed back and forth between Outpatient Pharmacy and CPRS has been
+ modified to pass ICD-9 Diagnosis Codes, SC, and EI's in a new format.  
+ This processing occurs in the background.  
+  
+ When prescriptions are signed in the CPRS Graphical User Interface (GUI),
+ the ICD-9 codes are required entry before e-sig.  Once the prescription is
+ signed, a new transaction will be sent to Outpatient Pharmacy to update
+ the DIAGNOSIS multiple (#52311) with the new ICD-9 Diagnosis Codes, SC and
+ EI's.  Also, if the copay status changes from copay to no copay as a
+ result of edited SC/EI information and the prescription has been released,
+ the copay charges are automatically cancelled in the background and are
+ notated in the copay activity log as RX EDITED.  No additional action to
+ the current process is taken if the copay status is changed from no copay
+ to copay.
+  
+ For transactions passed from CPRS to Outpatient Pharmacy, an activity log
+ entry will be defined on the prescription after the update has been
+ completed. This entry will be an EDIT showing the date and time that the
+ prescription was updated from CPRS.  The second entry below is an example
+ of the comment that will be displayed:
+  
+   Activity Log: 
+   #   Date        Reason         Rx Ref         Initiator Of Activity
+   =====================================================================
+   1   05/18/04    X-INTERFACE    ORIGINAL       
+   Comments: Label sent to external interface.
+   2   05/18/04    EDIT           ORIGINAL 
+   Comments: Clinical Indicators were updated from a CPRS Edit at 10:55.
+  
+  
+ Currently, CPRS only allows for four ICD-9 Diagnosis Codes, and 
+ Outpatient Pharmacy allows for up to eight.  CPRS will import only the 
+ first four ICD-9 diagnosis codes.
+  
+ TECHNICAL DESCRIPTION
+ =====================
+  
+ ICD-9 Diagnosis Codes:
+  
+ The ICD-9 Diagnosis prompts will be asked when the user holds the 
+ PROVIDER key and the IBB API call indicates that the questions should be 
+ asked.  The IBB API call (CIDC^IBBAPI) evaluates whether the CIDC switch 
+ is on/off and evaluates the patient's insurance to determine whether the 
+ diagnosis questions should be asked.  It returns either 1 to ask the 
+ question or 0 to not ask the diagnosis questions.
+  
+ Storage of diagnosis codes will be in the ICD DIAGNOSIS sub-field (#.01)
+ of the DIAGNOSIS multiple (#52311) of PRESCRIPTION file (#52) and in the
+ DIAGNOSOS sub-field (#.01) of the new ICD DIAGNOSIS multiple (#311) of the
+ PENDING OUTPATIENT ORDERS file (#52.41). The first node will always be the
+ primary diagnosis code and all others secondary.
+  
+  
+ Service Connected and Environmental Indicators:
+  
+ For SC<50%, data will continue to be stored on the IBQ node and copay
+ functionality will remain as is.  SC and EI's must be associated with
+ ICD-9 diagnosis codes.  This along with the necessity of not affecting
+ copay processing, SC 0-100% and all EI's that apply will be stored with
+ each ICD-9 diagnosis code entered in the new DIAGNOSIS multiple (#52311)
+ of PRESCRIPTION file (#52) and in the new ICD DIAGNOSIS multiple (#311) in
+ the PENDING OUTPATIENT ORDERS file (#52.41).  Only when SC<50%, will
+ SC/EI's be stored on the existing IBQ nodes in both of the files. If no
+ ICD-9 diagnosis code is entered, one entry in the new ICD node will be
+ stored and will contain any SC/EI information.  On this single node, the
+ ICD DIAGNOSIS sub-field (#.01) of the PRESCRIPTION file (#52) and the
+ DIAGNOSIS sub-field (#.01) of the PENDING OUTPATIENT ORDERS file (#52.41)
+ will be null, and there will be no cross-references defined for these
+ multiples until an ICD-9 diagnosis code is entered.  Copay functionality
+ has not been changed in this patch.
+  
+ When the SC/EI flags are changed using the Reset Copay Status/Cancel
+ Charges [PSOCP RESET COPAY STATUS] option, the ICD node in the
+ prescription file will be updated to reflect those changed answers.  No 
+ changes were made to the existing copay functionality.
+  
+ CPRS/Outpatient Pharmacy API:
+  
+ For CPRS orders, the ICD-9 diagnosis codes, Environmental Indicators,
+ and Service Connection will continue to be passed into the PENDING
+ OUTPATIENT ORDERS file (#52.41) and will be stored in the manner stated 
+ above. 
+  
+ The API's between Outpatient Pharmacy and CPRS has been modified to use
+ the new DG1 and ZCL Health Level 7 (HL7) segments.  These segments replace
+ the ZSC segment.  The DG1 segment is used to send/receive ICD-9 diagnosis
+ codes and the ZCL segment is used to send/receive SC and EI's as well as
+ the linkage to the DG1 segment.  There can be up to eight DG1 segments and
+ there will be a set of ZCL segments for each DG1 segment.  The following
+ is an example of the new segments:
+  
+   Definition:
+  
+     DG1|Sequence#||ICD IEN^ICD Name^file#^ICD Code#^Name^ICD9|||||||||||||
+  
+          Where: DG1 = Identifies the segment as DG1 for diagnosis codes
+                 Sequence # = sequence of 1-8 order of ICD-9 codes
+                 ICD IEN = Internal entry number (IEN) from the file the
+                             ICD-9 code was retrieved
+                 ICD Name = Diagnosis name/description
+                 File# = File number that Diagnosis information came from
+                 ICD Code# = Code for the diagnosis
+                 Name = Diagnosis name/description
+                 ICD9 - literal
+   Example:
+  
+     DG1|1||80^CLONORCHIASIS^80^121.1^CLONORCHIASIS^ICD9|||||||||||||
+  
+   There will be seven ZCL segments per DG1 segment, and piece 
+   one of both segments is the Set ID which links the set of ZCL segments
+   to the DG1 segment. The Set Id in the ZCL segment will be the same as
+   the Sequence# in the DG1 segment.
+  
+   Definition:
+  
+      ZCL|Set ID|Clinical Indicator Code (CIC)|Clinical Indicator Response
+  
+          Where:  ZCL = identifies the segment as ZCL
+                  Set ID = linkage to the DG1 segment
+                  CIC = code that identifies SC/EI's
+                  Clinical Indicator Response - 1=yes, 0=no, or null=not
+                                    asked/doesn't apply
+  
+   Example:
+  
+      ZCL|1|1|1   where CIC 1 = Agent Orange   
+      ZCL|1|2|0   where CIC 2 = Ionizing Radiation
+      ZCL|1|3|1   where CIC 3 = Service Connected
+      ZCL|1|4|0   where CIC 4 = Environmental Contaminants
+      ZCL|1|5|0   where CIC 5 = Military Sexual Trauma
+      ZCL|1|6|0   where CIC 6 = Head and/or Neck Cancer
+      ZCL|1|7|0   where CIC 7 = Combat Veteran
+  
+ A new API (PSOHLNE3) between CPRS and Outpatient Pharmacy has been 
+ added to update the Prescription file (#52) when SC/EI/ICD's are 
+ edited during the e-sig process in the CPRS GUI.  Any previously entered
+ ICD/SC/EI data entered will be replaced with the new data.  Also,
+ if the copay status changes from copay to no copay as a result of
+ edited SC/EI information and the prescription has been released, the copay
+ charges are automatically cancelled in the background.  All prescriptions
+ with a copay change will always state RX EDITED in the copay activity log
+ and will reflect the user name who made the change in the CPRS GUI.  No
+ additional action to the current process is taken if the copay status is
+ changed from no copay to copay.
+  
+ This patch addresses the following New Service Request (NSR):
+ =============================================================
+ There is no NSR associated with this patch.
+  
+ This patch addresses the following NOIS/Remedy Ticket(s):
+ =========================================================
+ There are no NOIS/Remedy tickets associated with this patch. 
+  
+ Associated E3Rs:
+ ================
+ N/A 
+  
+ TEST SITES:
+ ==========
+ LOMA LINDA, CA
+ CLEVELAND, OH
+ DAYTON, OH
+ BOSTON, MA
+ MEMPHIS, TN
+ CHARLESTON, SC
+  
+ ROUTINE SUMMARY
+ ===============                    
+ The second line now reads as follows:
+  
+    <TAB>;;7.0;OUTPATIENT PHARMACY;**[patch list]**;DEC 1997
+  
+ CHECK^XTSUMBLD results:
+  
+ Routine    Before Patch  After Patch   Patch List
+ ==========================================================================
+ PSOBKDED     31015882      31060350    11,46,91,78,99,117,133,143
+ PSOCP        20178669      21661953    20,46,71,85,137,157,143
+ PSOCPA       13674694      15060347    9,71,85,137,143
+ PSOCPB       29777446      31027202    72,71,85,185,143
+ PSOCPC       25365048      25435754    10,9,71,85,114,157,143
+ PSODIAG           N/A      21941710    143
+ PSOHLINC      5229499       5362858    111,143
+ PSOHLNE1     24431194      25813314    46,71,98,111,117,131,157,181,143
+ PSOHLNE3          N/A      20707004    143
+ PSOHLNEW     35562858      36071257    98,111,124,117,131,146,132,143
+ PSOHLSN1     32008887      32112613    55,46,71,101,99,121,139,157,181,143
+ PSOHLSN2          N/A       2427990    143
+ PSOHLSNC     17086440      18875016    111,157,143
+ PSOMLLD2          N/A      13355955    143
+ PSOMLLDT     33319253      35516592    71,157,143
+ PSON52       23311220      23955816    71,111,124,117,131,139,157,143
+ PSONEW1       6699671       6918067    46,104,117,143
+ PSONEW2      13009435      12525042    32,37,46,71,94,124,139,157,143
+ PSONEWF      12417539      23064279    71,157,143
+ PSONEWG      10932930      12548314    71,157,143
+ PSOORED6     21213128      21715596    78,104,117,133,143
+ PSOOREDT     26416171      28006347    27,37,57,46,78,102,104,119,143
+ PSOORNEW     33900028      33951326    32,55,46,71,90,94,106,131,133,143
+ PSOPTPST     14412045      14424813    7,71,88,146,157,143
+ PSORENW1     23659551      25063940    20,37,51,46,71,117,157,143
+ PSORN52      27909127      28512387    27,37,46,79,71,100,117,157,143
+ PSORN52D          N/A      26941168    143
+  
+ DATA DICTIONARY SUMMARY
+ =======================
+  
+                                       UP    SEND  DATA                USER
+                                       DATE  SEC.  COMES  SITE   RSLV  OVER
+ FILE #     NAME                       DD    CODE  W/FILE DATA   PTS   RIDE
+ --------------------------------------------------------------------------
+  
+ 52         PRESCRIPTION               YES   NO    NO                  NO
+ Partial DD: subDD: 52.052311
+   DATA SCREEN: 
+  
+ 52.41      PENDING OUTPATIENT ORDERS  YES   NO    NO                  NO
+ Partial DD: subDD: 52.41311
+   DATA SCREEN: 
+  
+ SOFTWARE AND DOCUMENTATION RETRIEVAL
+ ====================================
+  
+ The software for this patch is being distributed in host file 
+ PX_CLINICAL_INDICATOR_DATA_CAPTURE.KID.  The host file will contain six 
+ KIDS builds. The builds contained in the CIDC multi-package distribution
+ are:
+  
+       Package                         Patch
+       -------                          ---------
+       PCE PATIENT CARE ENCOUNTER      PX*1.0*124
+       INTEGRATED BILLING              IB*2.0*260
+       RADIOLOGY/NUCLEAR MEDICINE      RA*5.0*41
+       SURGERY                         SR*3.0*119
+       PROSTHETICS                     RMPR*3.0*78
+       OUTPATIENT PHARMACY             PSO*7.0*143
+   
+ Please refer to the 'Software and Documentation Retrieval' section of the 
+ PX*1.0*124 patch description for instructions on how to acquire the patch 
+ software and install instructions.
+  
+      The documentation for this patch can be found in the following
+      [ANONYMOUS.SOFTWARE] directories:
+    
+                                    Preferred Address
+                                    -------------------------
+       First available FTP server   download.vista.med.va.gov
+    
+       Specific Field Office        FTP Address
+       ---------------------        ------------------------
+       Albany                       ftp.fo-albany.med.va.gov
+       Hines                        ftp.fo-hines.med.va.gov
+       Salt Lake City               ftp.fo-slc.med.va.gov
+  
+    
+       File Name             Description              Format  FTP Protocol
+       --------------        -------------             ------  -----------
+       PX_CLINICAL_INDICATOR_DATA_CAPTURE.KID             KIDS      ASCII
+       PSO_7_P143_RN.PDF     Release Notes                 PDF      Binary
+       PSO_7_P143_UM_CP.PDF  User Manual Change Pages      PDF      Binary
+       PSO_7_P143_TM_CP.PDF  Technical Manual Change Pages PDF      Binary
+
+Routine Information:
+====================
+
+Routine Name:
+  - PSON52
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSORN52
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSONEW1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSONEW2
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSONEWF
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSONEWG
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOHLNEW
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOHLSNC
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOBKDED
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOHLSN1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOHLSN2
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOCP
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOORED6
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOORNEW
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOOREDT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOHLNE1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOPTPST
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSORENW1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOCPB
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOMLLDT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSORN52D
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOHLINC
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOHLNE3
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOMLLD2
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSODIAG
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOCPC
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOCPA
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : ELLZEY,LINDA                  Date Entered  : MAY 29, 2003
+Completed By: LYNCH,MARY F.                 Date Completed: AUG 30, 2005
+Released By : CONSENTINO,ALBERT             Date Released : AUG 31, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

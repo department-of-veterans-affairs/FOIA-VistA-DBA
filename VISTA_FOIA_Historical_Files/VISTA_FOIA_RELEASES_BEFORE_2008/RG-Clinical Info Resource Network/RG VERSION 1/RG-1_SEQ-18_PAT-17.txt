@@ -1,0 +1,309 @@
+$TXT Created by CEBELINSKI,GREG at DEVCRN.ISC-ALBANY.VA.GOV  (KIDS) on TUESDAY, 06/05/01 at 11:05
+=============================================================================
+Run Date: JUN 19, 2001                     Designation: RG*1*17
+Package : RG - CLINICAL INFO  NETWORKPriority: Mandatory
+Version : 1        SEQ #18                      Status: Released
+=============================================================================
+
+Associated patches: (v)RG*1*8     <<= must be installed BEFORE `RG*1*17'
+                    (v)RG*1*14     <<= must be installed BEFORE `RG*1*17'
+                    (v)RG*1*15     <<= must be installed BEFORE `RG*1*17'
+
+Subject: INVALID DATE LAST TREATED EXCEPTION MESSAGES & HL7 MESSAGE ROUTING ENHANCEMENT
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Enhancement (Mandatory)
+
+Description: 
+============
+
+  RG*1.0*8, RG*1.0*14 and RG*1.0*15 are required builds for patch
+  RG*1*17.
+  
+  Note:  At this time, the DATE LAST TREATED (#.03) information in the
+  TREATING FACILITY LIST (#391.91) file is not to be regarded as pristine.
+  A future RG patch will synchronize all TREATING FACILITY LIST (#391.91)
+  files within the Veterans Health Administration (VHA) network.
+   
+  After the release of patches RG*1*14 and RG*1*15, "invalid date"
+  exception messages were generated to the CIRN EXCEPTION MGT mail group on
+  FORUM. The reason this occurred was because under certain circumstances,
+  the logic in RGADT1 was hit twice. Registration and Scheduling name
+  spaced variables existed that triggered the inpatient and outpatient
+  logic. This patch provides the foundation for proper message routing
+  upon patient admissions, discharges and clinic checkout events.
+  
+  To correct these issues, RG*1.0*17 exports the following routines:
+  ==================================================================
+  (1.) RGADT1 as well as two new protocols: RG ADT INPATIENT ENCOUNTER
+  DRIVER and RG ADT OUTPATIENT ENCOUNTER DRIVER. RGADT1 has been refined
+  to execute the proper logic based on the event experienced by the
+  patient. If the patient has an appointment event (Scheduling),
+  appointment event logic is executed in RGADT1. If the patient has a
+  movement event (Registration), the movement event logic in RGADT1 is
+  executed. The certainty of the events encountered are insured by flag
+  variables set in the ENTRY ACTION (#20) field on the PROTOCOL (#101) file
+  for protocols RG ADT OUTPATIENT ENCOUNTER DRIVER and RG ADT INPATIENT
+  ENCOUNTER DRIVER. Other additions to RGADT1 include the assigning of a
+  local Integration Control Number (ICN) to any patient, currently without
+  an ICN, experiencing an appointment event or a movement event. The
+  Local/Missing ICN Resolution Background Job [MPIF LOC/MIS ICN RES]
+  process will send patients with a local ICN to the Master Patient Index
+  (MPI) for national ICN assignment. RGADT1 builds the VistA Health Level
+  Seven (HL7) messages used to pass patient event information from facility
+  to facility. Treating facility information has been added to the HL7 PV1
+  segment in order to achieve robust messaging capability.
+  
+  (2.) RGRSDYN has been modified to identify the patient by the assigned
+  ICN, instead of the patient's DFN variable. This change was
+  implemented due to the instability of the DFN variable.
+  
+  (3.) RGADTUT has been exported to determine if VistA HL7 messages should
+  be built. If a patient has a national ICN and experiences a patient
+  treatment event, but is not shared, a VistA HL7 message is built. This
+  procedure can be avoided by determining prior to the building of the
+  VistA HL7 message if the patient is shared with another facility.
+  This routine also performs checks on the SUBSCRIPTION CONTROL (#774)
+  file. If the patient is not shared, but the host site is not the Clinical
+  Information Resource Network (CIRN) Master of Record (CMOR), the
+  SUBSCRIPTION CONTROL file is updated and the TREATING FACILITY LIST
+  (#391.91) file is updated with the appropriate VistA HL7 message.
+  
+  (4.) RGADT2 was added to utilize a $G on the variable RGPARSE(.12). This
+  variable is used to obtain STATUS (#.12) field data for a particular
+  OUTPATIENT ENCOUNTER (#409.68). The "ADFN" cross-reference, used to link
+  the patient to an outpatient encounter date, is traversed and the
+  outpatient encounter record internal entry number (IEN) is obtained.
+  This value is passed into the SDOE utilities to return data on the
+  outpatient encounter.  In some cases, the "ADFN" cross-reference is
+  corrupted; it is set, but there is no corresponding outpatient encounter
+  record IEN. In these cases, the call to the SDOE utilities fails to set
+  RGPARSE(.12). The $G eliminates the possibility of an error by having
+  RGPARSE(.12) evaluate as null.
+  
+  (5.) RGADT has been exported as part of an overhaul of the routing logic
+  for the RG CIRN ADT HL7 application parameter. If the site is the CMOR,
+  all the subscriber sites are updated. If the site is not the CMOR, then
+  the VistA HL7 message is sent to the CMOR who then broadcasts out the
+  same message to all subscribers. Delivery from the CMOR ensures data
+  consistency with all subscribing facilities. RGADT, because of VistA HL7
+  message format changes in RGADT1, now checks for the new message format
+  in the processing logic of the software. If it finds a message in the
+  new format, an attempt to record data in the TREATING FACILITY LIST
+  (#391.91) file is made.
+  
+  As noted earlier, the DATE LAST TREATED (#.03) information in the
+  TREATING FACILITY LIST (#391.91) file is not to be regarded as pristine,
+  at this time. A future RG patch will synchronize all TREATING FACILITY
+  LIST (#391.91) files within the Veterans Health Administration (VHA)
+  network.
+  
+  Data Dictionary Changes:
+  ========================
+  The MPI/PD DATE LAST TREATED (#14) field in the CIRN SITE PARAMETER
+  (#991.8) file is used to ensure that the data comparison process runs
+  only once at a facility.  This field will be used when TREATING FACILITY
+  LIST (#391.91) files within the VHA network are synchronized in a future
+  RG patch.
+  
+  Protocols:
+  ==========
+  The following five protocols are also included in RG*1.0*17.
+  MOVEMENT EVENTS v 5.0 [DGPM MOVEMENT EVENTS]
+  Appointment Event Driver [SDAM APPOINTMENT EVENTS]
+  CIRN ADT Data Capture [RG ADT ENCOUNTER DRIVER]
+  CIRN ADT Inpatient Data Capture [RG ADT INPATIENT ENCOUNTER DRIVER]
+  CIRN ADT Outpatient Data Capture [RG ADT OUTPATIENT ENCOUNTER DRIVER]
+   
+  CIRN ADT Data Capture [RG ADT ENCOUNTER DRIVER], which currently
+  resides at the host sites, will be removed as an ITEM protocol from
+  the Appointment Event Driver [SDAM APPOINTMENT EVENTS] and MOVEMENT
+  EVENTS v 5.0 [DGPM MOVEMENT EVENTS] event drivers.  Additionally, 
+  CIRN ADT Data Capture [RG ADT ENCOUNTER DRIVER] will be deleted from
+  the PROTOCOL (#101) file.
+   
+  Two new protocols support the CPRS REMOTE DATA VIEWS project.
+  (1.)  CIRN ADT Inpatient Data Capture [RG ADT INPATIENT ENCOUNTER
+  DRIVER] will be added as an ITEM protocol under MOVEMENT EVENTS
+  v 5.0 [DGPM MOVEMENT EVENTS].  The addition of the CIRN ADT Inpatient
+  Data Capture [RG ADT INPATIENT ENCOUNTER DRIVER] protocol will allow
+  tracking of patient admissions and discharges on the Registration
+  (PIMS) side.  This protocol builds Health Level Seven (HL7) messages
+  that update the TREATING FACILITY LIST (#391.91) file, tracking the
+  DATE LAST TREATED (#.03) and ADT/HL7 EVENT REASON (#.07) fields for
+  a particular patient at a given facility.
+  (2.)  CIRN ADT Outpatient Data Capture [RG ADT OUTPATIENT ENCOUNTER
+  DRIVER] will be added as an ITEM protocol under Appointment Event
+  Driver [SDAM APPOINTMENT EVENTS].  The addition of the CIRN ADT
+  Outpatient Data Capture [RG ADT OUTPATIENT ENCOUNTER DRIVER] protocol
+  will allow the tracking of patient information during clinic checkout
+  events initiated by the Scheduling (PIMS) module.  This protocol builds
+  HL7 messages that update the TREATING FACILITY LIST (#391.91) file,
+  tracking the DATE LAST TREATED (#.03) and ADT/HL7 EVENT REASON (#.07)
+  fields for a particular patient at a given facility.
+   
+  Test Sites:
+  ===========
+  Augusta, GA 
+  Bay Pines, FL
+  Boston HCS
+  Charleston, SC
+  Illiana HCS
+  Manchester, NH
+  Miami, FL
+  Washington, DC
+  Connecticut HCS
+  White River Junction, VT
+   
+  Associated NOIS:
+  ================
+  AUG-0101-32072
+  
+  Routine Summary:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+   
+  <TAB>;;1.0;CLINICAL INFO RESOURCE NETWORK;**[Patch List]**;30 Apr 99
+  CHECK^XTSUMBLD results:
+   
+  Routine       Before Patch       After Patch       Patch List
+  --------      ------------       ------------      ----------
+  RGADT           4992850            4640730         4,8,14,17
+  RGADT1          6412813            7312696           4,14,17
+  RGADT2          6140297            6152981              4,17
+  RGADTUT             N/A            4554777                17
+  RGRSDYN         2266134            2326884            4,8,17
+  
+  Installation Instructions:
+  ==========================
+  This patch may be loaded with users on the system.  You may wish
+  to install it during non-peak hours.  Since the VAFC BATCH
+  UPDATE option is to be re-scheduled to run twenty minutes after the
+  installation of RG*1.0*17, it is suggested that the queuing of this
+  installation take place the same day; either early in the morning or
+  late in the afternoon.  This is to avoid a build up of outgoing
+  VistA HL7 messages in the VAFC BATCH UPDATE message queue.
+  
+  The installation will take approximately five minutes.
+   
+  1.  Using the TaskMan option Schedule/Unschedule Options [XUTM SCHEDULE],
+      reschedule the following option:
+        VAFC BATCH UPDATE          UPDATE BATCH JOB FOR HL7 v2.3
+      If you choose to queue the build, which is suggested, reschedule
+      the VAFC BATCH UPDATE option to start twenty minutes after the build
+      queue time.  This allows the build to be queued later in the evening
+      without having to manually reschedule VAFC BATCH UPDATE.
+    
+      If you choose not to queue the build, reschedule the option to run
+      twenty minutes from the install time of the build.  This allows the
+      VAFC BATCH UPDATE process to run soon after the installation of
+      RG*1.0*17.  Delays in rescheduling will cause messages to backup in
+      the ADT/HL7 PIVOT (#391.71) file.
+   
+      In either case (whether you queue or do not queue the build, the
+      RESCHEDULING FREQUENCY for the VAFC BATCH UPDATE option should
+      remain at 10 minutes (600 seconds).  It should be noted that
+      multiple iterations of this job will not be tasked because the
+      routine checks to see if a job is currently running.  If it
+      detects an active process, it will simply reschedule another one
+      for 10 minutes (600 seconds) later until it doesn't detect any
+      active processes.
+   
+  2.  Use the INSTALL/CHECK MESSAGE option on the Packman menu.  [Note: 
+      TEXT PRINT/DISPLAY option in the PackMan menu will display the 
+      patch text only.]
+   
+  3.  None of the routines in the CIRN Patient Demographics package
+      have been recommended for routine mapping.
+   
+  4.  From the Kernel Installation and Distribution System Menu, select
+      the Installation menu.
+   
+  5.  From this menu, you may elect to use the following options (when
+      prompted for the INSTALL NAME, enter RG*1.0*17).
+   
+      (a)  Backup a Transport Global - this option will create a backup
+           message of any routines exported with the patch.  It will NOT
+           backup any other changes such as DDs or templates.
+   
+      (b)  Compare Transport Global to Current System - this option will
+           allow you to view all changes that will be made when the
+           patch is installed.  It compares all components of the patch
+           (routines, DDs, templates, etc.).
+   
+      (c)  Verify Checksums in Transport Global - this option will allow
+           you to ensure the integrity of the routines that are in the
+           transport global.
+   
+      (d)  Print Transport Global - this option will allow you to view the
+           components of the KIDS build.
+   
+  6.  Use the Install Package(s) option and select the package RG*1.0*17.
+   
+  7.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? YES//',
+      respond NO.
+   
+  8.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols? YES//', respond YES.  At the prompt, 'Enter protocols
+      you wish to Mark as out of Order:' enter the RG ADT ENCOUNTER
+      DRIVER protocol.  (Note: RG ADT ENCOUNTER DRIVER will be deleted
+      after installation of RG*1.0*17)
+   
+  9.  It is recommended that the installation be queued to begin during
+      the off-hours.
+           Enter the Device you want to print the Install messages.
+           You can queue the install by enter a 'Q' at the device prompt.
+           Enter a '^' to abort the install.
+           
+           DEVICE: HOME//Q             << Enter Q.
+           DEVICE:                     << Select a device.
+           Request Start Time:  NOW//  << Enter date/time.
+
+Routine Information:
+====================
+
+Routine Name:
+  - RGADT1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RGRSDYN
+
+
+Routine Checksum:
+
+Routine Name:
+  - RGADTUT
+
+
+Routine Checksum:
+
+Routine Name:
+  - RGADT2
+
+
+Routine Checksum:
+
+Routine Name:
+  - RGADT
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : DAVIS,PAULETTE                 Date Entered : MAR 09, 2001
+Completed By: CARBY,DIANA                   Date Completed: JUN 06, 2001
+Released By : CARLSON-GOTTS,NANCY           Date Released : JUN 19, 2001
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

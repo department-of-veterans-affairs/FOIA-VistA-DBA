@@ -1,0 +1,265 @@
+$TXT Created by KOPECKY,STEVE at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on THURSDAY, 06/27/02 at 09:06
+=============================================================================
+Run Date: JUN 27, 2002                     Designation: EAS*1*14
+Package : EAS - ENROLLMENT APPLICATION Priority: Mandatory
+Version : 1        SEQ #11                      Status: Released
+=============================================================================
+
+Associated patches: (v)EAS*1*3     <<= must be installed BEFORE `EAS*1*14'
+                    (v)EAS*1*12    <<= must be installed BEFORE `EAS*1*14'
+
+Subject: MEANS TEST LETTERS 0-DAY FLAG
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+ This patch addresses the following NOIS's:
+  
+ SLC-0502-51019
+ BAC-0502-41276 
+  
+ Test Sites:
+ ===========
+ Battle Creek VAMC
+ Salt Lake City VAMC
+ Heartland-East
+  
+  
+ Functional Overview:
+ ====================
+ This patch fixes the undefined errors that occur under the following 
+ conditions: when jumping from the Letters sub-menu to the DG LOAD/EDIT 
+ menu item; when answering "NO" to the 'Add patient to the Patient Status 
+ File' prompt when setting a letter prohibit flag.  
+  
+ This patch also adjusts the veteran address lookup to use the Temporary 
+ Address as the mailing address if the temporary address is active.
+  
+ When the Search For MT Anniversary Dates is run, any test patients found 
+ will be excluded from being added to the EAS MT Patient Status file, a 
+ test patient being defined as any patient with 5 leading zero's in their 
+ social security number.
+  
+ The 0-day letters Flag-to-Print field is not being correctly set when the 
+ 30-day letter is printed.  This patch corrects this flagging issue.  This 
+ patch also provides a post-installation routine that can be run from 
+ programmer mode.  This routine will check for any 0-day letters that are 
+ not currently flagged correctly and will update the Flag-to-Print field 
+ appropriately.  This update will only apply to entries in the EAS MT 
+ Letter Status file for which a means test has not already been 
+ returned.    
+  
+ Technical Overview:
+ ===================
+ This patch will install updated routines for the means test letter's 
+ functionality.  
+  
+ The veteran's mailing address is determined by the VADPT patient 
+ information API.  The code calling this API has been updated to retrieve 
+ a temporary address if the temporary address is in effect; otherwise the 
+ permanent address is used.  
+  
+ Currently, any patient whose SSN begins with five leading zero's is 
+ considered a test patient.  Most software applications will recognize 
+ this test patient and handle the patient activity accordingly.  The means 
+ test letter search functionality has been updated to recognize a test 
+ patient and will NOT include that patient when building the list of 
+ veterans requiring a means test reminder letter.
+  
+ One of the test sites recently noticed that their 0-day letters were not 
+ printing.  It was determined that the 0-day Flag-to-Print field was not 
+ being set when the 30-day letter printed.  The correct field is now being 
+ updated.  In addition, a post-install routine (see post installation 
+ instructions below) will allow you to scan for and update any 0-day flags 
+ that were not marked correctly.  The search criteria checks for the 
+ following conditions:
+  
+         Means Test Returned   = NO
+         30-Day Letter Printed = YES
+          0-Day Flag to Print  = NO
+          0-Day Letter Printed = NO
+  
+ If these conditions are met then the 0-Day Flag to Print is set to YES.  
+ This will allow for the printing of these letters when the Zero-Day print 
+ option is selected.
+   
+  
+ Routine Summary:
+ ================
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+  
+     <tab>;;1.0;ENROLLMENT APPLICATION SYSTEM;**[patch list]**;MAR 15,2001
+  
+                            CHECK^XTSUMBLD results
+ Routine name      Before Patch          After Patch         Patch List
+ ============      ============          ===========         ==========
+ EAS114PT                   N/A              2192165             14
+ EASMTL2                5128451              5320556           3,12,14
+ EASMTL6                9156246              9156351            3,14
+ EASMTL6A               5560639              5526850            3,14
+ EASMTUTL               6116353              6245891            3,14 
+  
+ Installation Instructions:
+ ==========================
+ This patch can be loaded with users on the system; however, it should be 
+ installed during non-peak hours to minimize disruption to scheduling 
+ users.  Installation will take less than 5 minutes.
+  
+ 1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu.  [Note: TEXT 
+ PRINT/DISPLAY option in the PackMan menu will display the patch text 
+ only.]
+  
+ 2. Review your mapped set.  If any of the routines listed in the Routine 
+ Summary section of this guide are mapped, they should be removed from the 
+ mapped set at this time.
+  
+ 3. Check for the following scheduled tasks:
+      EAS MT LETTERS BG PRINT
+      EAS MT LETTERS BG SEARCH
+ If these tasks are scheduled, unscheduled them before installing this 
+ patch.
+  
+ 4. From the Kernel Installation and Distribution System Menu, select the 
+ Installation menu.  
+  
+ 5. From this menu, you may elect to use the following options (when 
+ prompted for INSTALL NAME, enter EAS*1.0*14):
+  
+     a) Backup a Transport Global - this option will create a 
+        backup message of any routines exported with the patch.  It
+        will NOT backup any other changes such as DDs or templates.
+  
+     b) Compare Transport Global to Current System  - this option 
+        will allow you to view all changes that will be made when 
+        the patch is installed.  It compares all components of the
+        patch (routines, DDs, templates, etc.).
+  
+     c) Verify Checksums in Transport Global - this option will 
+        allow you to ensure the integrity of the routines that are 
+        in the transport global.
+  
+     d) Print Transport Global - this option will allow you to view 
+        the components of the KIDS build.
+  
+ 6. Use the Install Package(s) option and select the package EAS*1.0*14.
+  
+ 7. When prompted 'Want KIDS to INHIBIT LOGONs during the install? YES//', 
+ respond NO.
+  
+ 8. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and 
+ Protocols? YES//', respond NO.
+  
+ 9. If routines were unmapped as part of Step 2, they should be returned 
+ to the mapped set once the installation has run to completion.
+  
+ 10. If the following tasks were unscheduled, reschedule them now.
+      EAS MT LETTERS BG PRINT
+      EAS MT LETTERS BG SEARCH
+  
+  
+ Post Installation:
+ ==================
+ 1. Run the post-install routine from the programmer prompt to scan for any
+ 0-day letters that are not correctly flagged to print.  The default prompt
+ for this action is "YES", taking the default will run the post-install
+ routine in a scan mode ONLY.  This mode is will only provide a count of
+ the number of records found which meet the criteria outlined in the
+ Technical  Overview above.  This number is for your information to 
+ provide some scope of the letters which will be reflagged when the 
+ post-install is run in the update mode. This mode WILL NOT update the
+ 0-Day print flag at this time.
+  
+ 2.  After running the post-install routine in the scan mode, re-run the 
+ answering "NO" to the prompt this time.  This will run the post-install
+ routine in the update mode which will re-flag all the the 0-Day letters 
+ to print.
+  
+ NOTE: Information from several of the test sites indicates that they were 
+ experiencing run times of about 30 seconds for approximately 3,000
+ records. Times will vary from site to site, but you may use this in 
+ gauging a rough estimate for your site.  This post-install scans the EAS
+ MT LETTER STATUS File, #713.2, doing an inquire on that file will provide
+ you with the current number of records to use in your estimate.
+  
+ 3.  Running the post-install:
+  
+   >D EN^EAS114PT
+  
+    Pre-scan for un-flagged 0-day letters? YES//  [Enter "YES"]
+  
+    Beginning scan for un-flagged 0-day letters
+    ...SORRY, LET ME PUT YOU ON 'HOLD' FOR A SECOND...
+    .
+       191 records scanned
+       19 records will have the 0-day flag set to print 
+   >
+  
+ After running the post install routine from the "YES" prompt and 
+ reviewing the numbers, re-run the post install routine again, only 
+ answering "NO to the prompt this time to begin the actual updates to the
+ print flag.
+  
+   >D EN^EAS114PT
+  
+    Pre-scan for un-flagged 0-day letters? YES// NO  [Enter "NO" to run
+                                                      the update]
+  
+    Beginning scan for un-flagged 0-day letters
+    ...HMMM, JUST A MOMENT PLEASE...
+    .
+      191 records scanned
+      19 records had the 0-day flag set to print
+   >
+  
+ This completes the post installation.  You may delete the EAS114PT 
+ routine at this time if you desire.
+
+Routine Information:
+====================
+
+Routine Name:
+  - EASMTL2
+
+
+Routine Checksum:
+
+Routine Name:
+  - EASMTL6
+
+
+Routine Checksum:
+
+Routine Name:
+  - EASMTL6A
+
+
+Routine Checksum:
+
+Routine Name:
+  - EASMTUTL
+
+
+Routine Checksum:
+
+Routine Name:
+  - EAS114PT
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : KOPECKY,STEPHEN C             Date Entered : JUN 03, 2002
+Completed By: MULLER,RICHARD                Date Completed: JUN 27, 2002
+Released By : KOVACH,STUART                 Date Released : JUN 27, 2002
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

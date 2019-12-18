@@ -1,0 +1,270 @@
+$TXT Created by WANG,CHI at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 02/03/04 at 17:40
+=============================================================================
+Run Date: MAR 02, 2004                     Designation: PRCA*4.5*214
+Package : PRCA - ACCOUNTS RECEIVABLE          Priority: Mandatory
+Version : 4.5       SEQ #183                    Status: Released
+                  Compliance Date: APR 02, 2004
+=============================================================================
+
+Associated patches: (v)PRCA*4.5*173<<= must be installed BEFORE `PRCA*4.5*214'
+
+Subject: $ AMT. OF DEPOSIT NOT EQUAL BILL DETAIL
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ **************************** NOTE ************************************
+ * CoreFLS sites must coordinate the installation of this patch with  *
+ * the  AR-CoreFLS development team.                                  * 
+ **********************************************************************
+  
+ This patch addresses two issues. The first issue is regarding the payment
+ amount listed in the Electronic Remittance Advices (ERA) messages that is
+ not equal to the amount for the Electronic Funds Transfer (EFT). The EFT
+ can be used as reference for the ERA payment.
+ The second issue concerns an undefined error during processing an EDI 
+ LOCKBOX receipt.
+  
+ Associated E3R(s):
+ ------------------
+ N/A
+  
+ Associated NOIS:
+ ----------------
+ 1. ECH-0104-51126
+ 2. TNV-0104-31951
+ Duplicate:
+    PUG-1203-50644
+    NHM-0204-10630
+    ELP-0204-70636
+    JAC-0204-70715
+    SBY-0204-31541
+  
+ PARTICIPATING TEST SITES:
+ -------------------------
+ Denver, DSM
+ North Hampton, MA, CACHE, NT
+ Tennessee Valley, DSM
+ Fresno, CA, Cache VMS
+ El Paso, TX, Cache NT
+ Lexington, KY, DSM
+ Portland, CACHE, VMS
+  
+ NOIS OVERVIEW
+ -------------
+    1. ECH-0104-51126       $ Amt. of deposit not equal bill detail
+      
+       Problem
+       -------
+       Site reported that an entry in the Electronic Remittance Advice file
+       (#344.4) has a negative amount for a line item. The total of the 
+       line items in the Electronic Remittance Advice (ERA) does not
+       not equal the deposit amount in the EDI 3rd party EFT receipt detail
+       record.
+  
+       Resolution
+       ----------
+       The problem occurs when an adjustment is sent for a claim previously
+       paid and the claim # reported by the payer does not exist in the 
+       site's A/R.  Only the take-back part is recorded.  The new payment 
+       information is being ignored. This patch will insure that even
+       if the claim # is invalid, all parts of the adjustment are still
+       included on the ERA.  This same problem will occur if there are
+       2 or more EOBs (Electronic Explanation of Benefits) are included in
+       the ERA.
+       An additional problem was discovered when researching this problem. 
+       If more than one EFT is retransmitted to a site, there may be a
+       problem with the EFT # being duplicated in a second entry.  This
+       patch corrects this by adding a DINUM to the.01 field of the 
+       EDI LOCKBOX DEPOSIT file (#344.3).
+  
+       A PRE-INIT routine will be used to correct the entry of the EFTs in
+       the EDI LOCKBOX DEPOSIT file (#344.3) and a POST-INIT routine will
+       produce a list of the ERAs with invalid payment adjustments.  This
+       list can then be used to assist the site in asking for the ERA's 
+       to be retransmitted to them.
+       
+    2. TNV-0104-31951       ERROR IN PROCESS EDI LOCKBOX RECEIPT
+       
+       Problem
+       -------
+       While processing an EDI LOCKBOX receipt, if an ACH# has been
+       sent on the EFT, the variable DA is not set and a "%DSM-E-UNDEF,
+       undefined variable DA" error occurs at line DIE+4^DIE:1.
+   
+       Resolution
+       ----------
+       Modified routine to set the variable DA with the entry number from
+       the AR BATCH PAYMENT file (#344), thus avoiding the problem.
+  
+    3. An environment check routine will be used to check if site has a
+       CoreFLS version of software and recommend not to install this patch
+       unless an accompanying update is made to the AR-CoreFLS software
+       immediately after installation of this patch.
+  
+ ROUTINE SUMMARY 
+ ---------------
+ The following is a list of the routines included in this patch.  
+ The second line of each of these routines now looks like:
+  
+       ;;4.5;Accounts Receivable;**[patch list]**;Mar 20, 1995
+  
+  
+                      CHECK^XTSUMBLD results
+  
+        Routine      Before Patch     After Patch     Patch List 
+       ---------     ------------     -----------     ----------
+      *PRCAP211      n/a              3359130         211,196,214
+       PRCAP214      n/a              2031118         214
+       RCDPESR1      13660919         13663696        173,214
+       RCDPESR3      14475318         14552359        173,214
+       RCDPESR6      12803094         12828623        173,214
+       RCDPURE1      19523828         19647418        114,148,153,169,
+                                                      204,173,214
+  
+      *This routine will have a previous checksum if it was not deleted
+       with the released patch PRCA*4.5*196.
+  
+       Total number of routines = 6
+  
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+ It is recommended this patch be installed outside of normal business 
+ hours to avoid any complications resulting from users on the system.
+ Installation will take less than 5 minutes.
+  
+  1.   Choose the PackMan message containing this patch and invoke the 
+       INSTALL/CHECK MESSAGE PackMan option.  
+  
+  2.   (DSM for Open VMS sites only) Disable routine mapping on all systems
+       for the routines listed in the Routine Summary.  
+  
+       NOTE:  If the routines included in this patch are not currently in
+       your mapped routine set, please skip this step.
+  
+  3.   Start up the Kernel Installation and Distribution System Menu 
+       [XPD MAIN]: 
+  
+            Edits and Distribution ...  
+            Utilities ...  
+            Installation ...  
+  
+  Select Kernel Installation & Distribution System Option: Installation 
+                           ---
+            Load a Distribution 
+            Print Transport Global 
+            Compare Transport Global to Current System 
+            Verify Checksums in Transport Global 
+            Install Package(s) 
+            Restart Install of Package(s) 
+            Unload a Distribution 
+            Backup a Transport Global 
+  
+  Select Installation Option: 
+  
+  4.   From this menu, you may elect to use the following options
+       (When prompted for the INSTALL NAME, enter PRCA*4.5*214):
+  
+       a.  Backup a Transport Global - This option will create a backup
+           message of any routines exported with this patch. It will not
+           backup any other changes such as DD's or templates.
+       b.  Compare Transport Global to Current System - This option will
+           allow you to view all changes that will be made when this patch
+           is installed. It compares all components of this patch
+           (routines, DD's, templates, etc.).
+       c.  Verify Checksums in Transport Global - This option will allow
+           you to ensure the integrity of the routines that are in the
+           transport global.
+  
+  5.   Use the Install Package(s) option and select the package
+       PRCA*4.5*214.
+  
+       NOTE: If you are a CoreFLS test site you will be asked:
+       Do you have the corresponding update to the AR-CoreFLS that is
+       associated with this patch? (Note: Entering "No" here will stop
+       the installation of this patch) Y/N//
+  
+       a.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+           YES//', answer NO (unless otherwise indicated).
+       b.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+           Options, and Protocols? YES//', answer YES.
+       c.  When prompted 'Enter options you wish to mark as 'Out Of
+           Order':', enter the following options:
+  
+       [RCDPE EDI LOCKBOX SERVER] EDI Lockbox EFT/ERA/EEOB Processing Server
+       [RCDP RECEIPT PROCESSING] Receipt Processing
+       [RCDPE EDI LOCKBOX WORKLIST] EEOB Worklist
+       
+       d.  When prompted 'Enter protocols you wish to mark as 'Out Of
+           Order':', press <return>.
+  
+  6.   (DSM for Open VMS sites only) Optional - Include the routines
+       distributed with this patch in the mapped routine set.
+  
+       NOTE: This step is only necessary if you performed step 2 or if you
+       wish to include the routines in your mapped set.
+  
+  7.   DELETE PRE-INIT/POST-INIT/ENVIRONMENT CHECK ROUTINE
+       ---------------------------------------------------
+       You may delete the PRCAP211 & PRCAP214 routines from your system 
+       after successful installation of this patch.
+ 
+ 
+ 
+
+Routine Information:
+====================
+
+Routine Name:
+  - RCDPURE1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PRCAP211
+
+
+Routine Checksum:
+
+Routine Name:
+  - PRCAP214
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPESR1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPESR3
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPESR6
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : WANG,CHI                      Date Entered  : JAN 20, 2004
+Completed By: ANDERSON,MAXINE               Date Completed: FEB 27, 2004
+Released By : BARRICK,DENISE                Date Released : MAR 02, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

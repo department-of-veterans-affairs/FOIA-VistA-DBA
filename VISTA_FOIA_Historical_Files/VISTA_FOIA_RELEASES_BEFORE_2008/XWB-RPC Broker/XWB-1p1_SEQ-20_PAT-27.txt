@@ -1,0 +1,186 @@
+$TXT Created by ANDREASSEN,LARRY J at PAT-XWB.FO-OAKLAND.MED.VA.GOV  (KIDS) on TUESDAY, 03/12/02 at 14:36
+=============================================================================
+Run Date: MAR 15, 2002                     Designation: XWB*1.1*27
+Package : XWB - RPC BROKER                    Priority: Mandatory
+Version : 1.1        SEQ #20                    Status: Released
+=============================================================================
+
+
+Subject: Remote Data Request Processing
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+ Test sites:      San Diego, Seattle, and El Paso
+  
+ NOIS:            None
+  
+ Required builds: XWB*1.1*22
+  
+ PATCH DESCRIPTION
+  
+ When using the graphical user interface (GUI) Computerized Patient Record
+ System (CPRS), "remote data views" are available to the user showing
+ patient information collected real-time from remote sites.  The collection
+ of real-time data from remote sites also occurs from other sites such as
+ the Government Computer-based Patient Record (GCPR), and other packages
+ such as Bar-code Medication Administration (BCMA), and Integrated Billing
+ (IB).  This data collection occurs as the result of calls to a Remote 
+ Procedure Call (RPC) Broker - Health Level Seven (HL7) bridge routine.
+  
+ When calls for remote site data are made by these packages to the 
+ HL7 package, the requests are placed in a message queue awaiting
+ processing. A background job processes the entries in the message queue,
+ collects the data from the remote site, and makes the remote site's data
+ available to local users.
+  
+ Presently, there is only one message queue to a given site.  When users
+ make multiple calls to the same remote site, the messages are processed
+ in the order they were queued, each one finishing before the next request
+ is started and processed.  If any of the requests in a processing queue
+ take a long time to process, or if there are a large number of requests
+ waiting processing, inordinately high delays are seen before the remote
+ data is available to local users.
+  
+ Prior to this patch, processing of requests to the HL7 package for
+ remote data made by GCPR and CPRS, was performed synchronously - in order
+ of time of request - each job finishing before the next job started. This
+ patch enables asynchronous processing - multiple jobs running at the same
+ time.
+  
+  
+ REQUEST TIMEOUTS
+  
+ When requests are made to remote sites for data, there is a limit to how
+ long the calling procedure will wait for a reply.  When a request for
+ remote data is not returned within the length of time specified in the
+ ACK TIMEOUT field of the logical link used for the remote request, the
+ call fails.  If your site experiences this problem, you may need to 
+ increase the value of the ACK TIMEOUT field for the involved logical
+ link in increments of 30 to 60 seconds until the problem stops. (VACIO
+ is one link that has shown a need for a longer timeout.)  Refer to 'How
+ to edit Links', section 2.2 in the Health Level Seven Site Manager &
+ Developer manual, for additional help in editing links.
+  
+  
+ The routines XWB2HL7 and XWB2HL7C are included in this patch.  The first
+ and second lines of these routines are shown below.
+  
+     XWB2HL7   ;ISF/RWF - Remote RPC via HL7 ;8/27/01  09:31
+                ;;1.1;RPC BROKER;**12,18,20,22,27**;Mar 28, 1997
+     XWB2HL7C  ;ISF/RWF - Remote RPC via HL7 ;12/27/01 15:33
+                ;;1.1;RPC BROKER;**27**;Mar 28, 1997
+  
+ The VA Kernel checksums for the routines included in this patch
+ (calculated using CHECK^XTSUMBLD) are listed below.
+  
+                 Checksum        Checksum
+   Routine Name  Before Patch    After Patch     Patch List
+   ============  ============    ===========     =====================
+   XWB2HL7       10783627        10960487        12,18,20,22,27
+   XWB2HL7C      --------         1022701        27
+  
+ Sites should use CHECK^XTSUMBLD to verify checksums after patch
+ installation.
+  
+  Installation Instructions:
+  ==========================
+    1.  Do not run any RPC Broker-based Remote Data View (RDV) software
+        (e.g., CPRS, PCMM) during the installation of this patch, and do
+        do not allow any incoming HL7 RDV messages. To identify these jobs,
+        check the system status, locating all running XWBTCPC (Broker
+        Handler) routines. If any XWBTCPC routines are running,
+        notify the users associated with the running routines to log off.
+        If it is not possible to contact users, it will be necessary to
+        stop the jobs manually, using a utility such as FORCEX on VMS
+        systems, or RESJOB on Cache systems. (Users may get NOSOURCE or
+        CLOBBER error messages if this patch is installed while they are
+        working.)
+  
+    2.  Stop the Broker Listener on the server.  Check the system status
+        and verify if the XWBTCPL routine is running. (i.e., Broker
+        Listener).  If it is running, stop it using the command shown
+        below.
+  
+        From the M prompt, enter:
+  
+          >D STOP^XWBTCP(LISTENER-PORT)
+  
+        When stopping the listener using the above command, substitute
+        the actual port number for 'LISTENER-PORT'.  Typically, the
+        listener port is 9200.  (If the listener port is 9200, the
+        actual command would be 'D STOP^XWBTCP(9200)'.)
+  
+    3.  AXP/DSM SITES:  Review your mapped routine set.  If any of the
+        routines patched by XWB*1.1*27 are mapped, they should be
+        removed from the mapped set at this time.
+  
+    4.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu to
+        load the KIDS package onto your system.
+  
+    5.  Step 4 loads a transport global on your system. Before actually
+        installing the software contained in this transport global, you
+        should take the time to review what will happen when the
+        software is installed, and take other actions such as backing
+        up the software that is about to be overwritten.  The menu options
+        shown below should be used when performing review and backup tasks.
+  
+           Verify Checksums in Transport Global
+           Print Transport Global
+           Compare Transport Global to Current System
+           Backup a Transport Global
+  
+    6.  Patch XWB*1.1*27 is now loaded into a transport global on your
+        system.  The next step is to use KIDS to install the
+        transport global.  This is done using the 'Installation' menu's
+        'Install Package(s) [XPD INSTALL BUILD]' menu option.  When
+        using this menu option to install the patch build, you will be
+        asked several questions.  The questions, and the answers you
+        should supply, are shown below.
+  
+        INSTALL NAME:  <XWB*1.1*27>
+        Want KIDS to INHIBIT LOGONS during the install?  <NO>
+        Want to DISABLE Scheduled Options, Menu Options,
+          and Protocols?  <NO>
+  
+    7.  AXP/DSM SITES: After the patch has been installed, rebuild
+        your map set, if necessary.
+  
+    8.  Restart the Broker Listener on the Server.  From the M prompt,
+        enter the following command:
+  
+              >D STRT^XWBTCP(LISTENER-PORT)
+  
+        Remember to substitute the actual port number for
+        'LISTENER-PORT'.  (See step #2 above.)
+
+Routine Information:
+====================
+
+Routine Name:
+  - XWB2HL7
+
+
+Routine Checksum:
+
+Routine Name:
+  - XWB2HL7C
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : ANDREASSEN,LARRY               Date Entered : DEC 26, 2001
+Completed By: HERREN,CATHRYN                Date Completed: MAR 14, 2002
+Released By : PALMER,MICHAEL                Date Released : MAR 15, 2002
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

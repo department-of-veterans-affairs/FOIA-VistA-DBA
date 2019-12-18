@@ -1,0 +1,373 @@
+$TXT Created by OSHRIN,RON at IIV.FELIX.PROXY-HC-LAB.COM  (KIDS) on Monday, 03/05/07 at 16:21
+=============================================================================
+Run Date: APR 11, 2007                     Designation: IB*2*345
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #332                      Status: Released
+                  Compliance Date: MAY 12, 2007
+=============================================================================
+
+Associated patches: (v)IB*2*149    <<= must be installed BEFORE `IB*2*345'
+                    (v)IB*2*240    <<= must be installed BEFORE `IB*2*345'
+                    (v)IB*2*249    <<= must be installed BEFORE `IB*2*345'
+                    (v)IB*2*299    <<= must be installed BEFORE `IB*2*345'
+                    (v)IB*2*300    <<= must be installed BEFORE `IB*2*345'
+
+Subject: SOURCE OF INFO CODES & EIV FIXES/MINOR ENHANCEMENTS
+
+Category: 
+  - Enhancement (Mandatory)
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ This patch updates the Integrated Billing (IB) application to provide 
+ Additional Source of Information (SOI) Codes, as well as, several items 
+ related to the electronic Insurance Verification (eIV) functionality 
+ that were identified as problems or concerns. 
+   
+   
+ Overview of Patch Items: 
+ ------------------------ 
+   
+ 1) Additional Source of Information (SOI) Codes. 
+ ------------------------------------------------ 
+ Currently, the SOI codes are defined in VistA Data Dictionaries as a 
+ Set-of-Codes data type. For national reporting roll-up, the existing 
+ SOI Field definition has been changed to a pointer and a new SOURCE OF 
+ INFORMATION (#355.12) file has been created. The new file contains the 
+ original five SOI codes and four new ones. New codes include: HMS 
+ (services from HMS used to identify third party ins), MEDICARE (Medicare
+ eligibility extract), ICB CARD READER (insurance entered via 
+ DSS insurance card scanner) and CONTRACT SERVICES (insurance entered 
+ via temporary clerks or other contracted services). 
+   
+   
+ 2) Modifications to and renaming of the Pre-Registration Report. 
+ ---------------------------------------------------------------- 
+ The existing Pre-Registration report has been modified to remove the 
+ hard coding and allow the user to select any or all of the CODEs (#.01) 
+ of the SOURCE OF INFORMATION (#355.12) file for reporting purposes. This 
+ report has been renamed to SOURCE OF INFORMATION REPORT [IB OUTPUT PRE-REG 
+ SOURCE REPT]. 
+   
+   
+ 3) Missing Patient Name. (HD64597)
+ --------------------------------
+ Prior to this patch some eIV HL7 message responses processed in VistA 
+ created a buffer entry without the patient's name. This is due to VMS 
+ level HL7 processing and additional audit checks performed on sensitive 
+ patients.  Modifications have been made to Integrated Billing (IB) 
+ routines to check for these errors and be corrected at the time the 
+ buffer entry is created from the IIV RESPONSE (#365) file. 
+   
+   
+ 4) Reduce Number of Blank Inquiries via Remote Query. 
+ ----------------------------------------------------- 
+ An excess number of blank inquiries are created by the current eIV 
+ software. Before submitting blank requests, the system needs to check 
+ if the patient travels to other VAMCs via the Remote Query utility. 
+ If the patient never travels to other VAMCs, then blank inquiries will 
+ not be created to check for other insurance from the cache. 
+   
+   
+ 5) Populate Patient Insurance File with patient's SSN & DOB. (HD136134)
+ -------------------------------------------------------------------- 
+ VistA will auto populate the INSURED'S SSN (#3.05) and INSURED'S DOB 
+ (#3.01) fields in the INSURANCE TYPE (#2.312) subfile of the PATIENT 
+ (#2) file with the SOCIAL SECURITY NUMBER (#.09) and DATE OF BIRTH (#.03) 
+ from the PATIENT (#2) file when a buffer entry is accepted. This only 
+ occurs when the patient's WHOSE INSURANCE (#6) in the PATIENT INSURANCE 
+ (#2.312) subfile of the PATIENT (#2) file is the veteran with the SOCIAL 
+ SECURITY NUMBER (#.09) and DATE OF BIRTH (#.03) from the PATIENT (#2) file. 
+   
+   
+ 6) Replace the Payer ID with the Payer Name in the buffer entry. 
+ ---------------------------------------------------------------- 
+ Currently, the Payer ID (i.e. 'VA1') is displayed instead of the actual 
+ full name of the Payer in the expanded buffer entry of a detailed eIV 
+ Response. The full name of the Payer will now be displayed. This is a 
+ cosmetic change that will greatly improve information to the user. 
+   
+   
+ 7) Incorrect totals for companies without National Payer ID. (HD161024)
+ ------------------------------------------------------------ 
+ The total shown for Insurance companies without National Payer ID is 
+ incorrect in the eIV Statistical Report. The report currently shows a 
+ total for Centers for Medicare and Medicaid Services (CMS) ID's. It 
+ should reflect the total of VA NATIONAL ID's (#.02) rather than the CMS 
+ NATIONAL ID (#.03) from the PAYER (#365.12) file. 
+   
+   
+ 8) Ghost Buffer Issue. (HD64005)
+ -------------------------------- 
+ When a buffer entry was ACCEPTED before the actual response was 
+ returned, it caused a ghost buffer entry to be created when the 
+ actual response came in. The software should not create a new buffer 
+ entry when the response comes in after the entry has been ACCEPTED. 
+ Changes have been made for the response code to recognize the previously 
+ accepted buffer entry and bypass the new buffer creation. 
+   
+   
+ 9) Chief Business Office (CBO) Extract Source of Information issue. 
+ ------------------------------------------------------------------- 
+ The CBO extract was modified to transmit SOI codes with a value greater 
+ than '4' without resetting them to a value of '1' (Interview). 
+   
+  
+ 10) Modifications to Response Report
+ ------------------------------------
+ Benefit status/info needs to be displayed for each benefit. Currently
+ the status (Active/Inactive) is not reported. Additionally the notes
+ for each benefit need to be displayed.
+  
+   
+ This patch addresses the following New Service Request (NSR): 
+ ------------------------------------------------------------- 
+ 20060512 - Additional Source of Information Codes. 
+   
+   
+ This patch addresses the following Remedy Ticket(s): 
+ ---------------------------------------------------- 
+ 1. HD64597  - Patient Name Missing from Insurance Buffer file. 
+ 2. HD64005  - Ghost Buffer Entries created in the Insurance Buffer.
+ 3. HD136134 - SSN & DOB not populated when WHOSE INSURANCE is VETERAN. 
+ 4. HD161024 - Incorrect totals for companies without National Payer ID. 
+   
+   
+ Components Sent With Patch 
+ -------------------------- 
+ The following is a list of the routines included in this patch. 
+ The second line of each of these routines now looks like: 
+   
+      ;;2.0;Integrated Billing;**[patch list]**;21-MAR-94 
+   
+   
+                     CHECK^XTSUMBLD results 
+   
+ Routine      Before Patch     After Patch     Patch List 
+ -------      ------------     -----------     ---------- 
+ IBCNBAR          10601059        10995960     82,240,345 
+ IBCNBES           2685785         2701412     82,184,345 
+ IBCNBLL          21368471        21272888     82,149,153,183,184,271,345 
+ IBCNBMI          11831080        12219781     82,184,246,251,299,345 
+ IBCNEDE2         14306986        14323773     184,271,249,345 
+ IBCNEDE6          7090431         7497072     184,271,345 
+ IBCNEHL1          6279892         6260036     300,345 
+ IBCNEHL2          8008115         7889441     300,345 
+ IBCNERP8          7975648         8025440     184,271,345 
+ IBCNERPA          7528479         7742250     184,271,345
+ IBCNEUT4         13828500        13883115     184,271,345 
+ IBCOPR            9160627        11010567     75,345 
+ IBCOPR1          11362671        11756084     75,345 
+ IBRFN2            3909122         3798195     75,80,345 
+ IBY345PS              n/a          477586     (post install routine)
+ IBY345PR              n/a          635404     (pre install routine)
+   
+ Total number of routines - 16 
+  
+  
+                     CHECK1^XTSUMBLD results 
+ Routine      Before Patch     After Patch     Patch List 
+ -------      ------------     -----------     ---------- 
+ IBCNBAR          18172525        18909068     82,240,345 
+ IBCNBES           5591654         5872961     82,184,345 
+ IBCNBLL          59623585        58797432     82,149,153,183,184,271,345 
+ IBCNBMI          48902486        52789552     82,184,246,251,299,345 
+ IBCNEDE2         62755710        63218575     184,271,249,345 
+ IBCNEDE6         27396831        30305878     184,271,345 
+ IBCNEHL1         32619299        32996551     300,345 
+ IBCNEHL2         48954965        48625538     300,345 
+ IBCNERP8         54393232        55076349     184,271,345 
+ IBCNERPA         29062798        29790461     184,271,345
+ IBCNEUT4         49767116        50608524     184,271,345 
+ IBCOPR           24610097        34320642     75,345 
+ IBCOPR1          31375069        32793618     75,345 
+ IBRFN2           11587183        11408951     75,80,345 
+ IBY345PS              n/a          830341     (post install routine) 
+ IBY345PR              n/a          567144     (pre install routine)
+   
+ Total number of routines - 16 
+   
+   
+ The following is a list of files included in this patch: 
+   
+                                      UP    SEND  DATA 
+                                      DATE  SEC.  COMES  SITE   RSLV 
+ FILE #  NAME                         DD    CODE  W/FILE DATA   PTS 
+ -------------------------------------------------------------------- 
+ 355.12   SOURCE OF INFORMATION FILE  YES   YES   YES 
+ 355.33   INSURANCE BUFFER            YES   NO    NO 
+ 2        PATIENT                     YES   NO    NO 
+   
+   
+ The following is a list of fields included in this patch: 
+   
+ Field Name (Number)                File Name (Number) 
+ -------------------                ------------------ 
+ SOURCE OF INFORMATION (.03)        INSURANCE BUFFER (355.33) 
+ SOURCE OF INFORMATION (2.312,1.09) PATIENT (2) 
+   
+   
+ The following is a list of the options included in this patch: 
+   
+ Name                             Type         New or Modified
+ ----                             ----         ----------------
+ SOURCE OF INFORMATION REPORT     Routine      Modified
+ [IB OUTPUT PRE-REG SOURCE REPT] 
+   
+   
+ Test Sites: 
+ ----------- 
+ LEXINGTON
+ LOUISVILLE
+ TENNESSEE VALLEY HCS
+   
+   
+        ================INSTALLATION INSTRUCTIONS ================= 
+ If installed during the normal workday, it is recommended that the 
+ following selection(s) in the OPTION (#19) file, and all of their 
+ descendants be disabled to prevent possible conflicts while running the 
+ KIDS Install. Other VISTA users will not be affected. 
+   
+        Outputs for Preregistration       [DGPRE PRE-REGISTER OUTPUTS] 
+        Management Reports (Billing) Menu [IB OUTPUT MANAGEMENT REPORTS] 
+        Process Insurance Buffer          [IBCN INSURANCE BUFFER PROCESS] 
+   
+   
+ In addition, the IIV EC HL7 Logical Link must be stopped using 
+ the Start/Stop Links [HL START] option prior to performing the 
+ install and restarted once the installation process has completed.  This 
+ is required as the routines that perform response processing have been 
+ altered in this patch. 
+   
+   
+ Install Time - less than 5 minutes 
+   
+   
+ 1.  LOAD TRANSPORT GLOBAL 
+     --------------------- 
+     Choose the PackMan message containing this patch and invoke the 
+     INSTALL/CHECK MESSAGE PackMan option. 
+   
+ 2.  START UP KIDS 
+     ------------- 
+     Start up the Kernel Installation and Distribution System Menu 
+     [XPD MAIN]: 
+   
+          Edits and Distribution ... 
+          Utilities ... 
+          Installation ... 
+   
+ Select Kernel Installation & Distribution System Option: INStallation 
+                                                          --- 
+          Load a Distribution 
+          Print Transport Global 
+          Compare Transport Global to Current System 
+          Verify Checksums in Transport Global 
+          Install Package(s) 
+          Restart Install of Package(s) 
+          Unload a Distribution 
+          Backup a Transport Global 
+   
+ Select Installation Option: 
+   
+ 3.  Select Installation Option: 
+     --------------------------- 
+     NOTE:  The following are OPTIONAL - (When prompted for the INSTALL 
+            NAME, enter IB*2.0*345): 
+   
+     a.  Backup a Transport Global - This option will create a backup 
+         message of any routines exported with this patch. It will not 
+         backup any other changes such as DD's or templates. 
+     b.  Compare Transport Global to Current System - This option will 
+         allow you to view all changes that will be made when this patch 
+         is installed.  It compares all components of this patch 
+         (routines, DD's, templates, etc.). 
+     c.  Verify Checksums in Transport Global - This option will allow 
+         you to ensure the integrity of the routines that are in the 
+         transport global. 
+   
+ 4.  Select Installation Option: Install Package(s) 
+                                 ------------------ 
+     **This is the step to start the installation of this KIDS patch: 
+   
+     a.  When prompted 'Want KIDS to Rebuild Menu Trees Upon Completion of 
+         Install? YES//'  answer YES unless your system does this in a 
+         nightly TaskMan process 
+     b.  Choose the Install Package(s) option to start the patch 
+         install. 
+     c.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+         YES//' answer NO (unless otherwise indicated) 
+     d.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+         Options, and Protocols? YES//' answer YES (unless otherwise 
+         indicated) 
+     e.  When prompted 'Enter options you wish to mark as 'Out Of 
+         Order':'  Enter the following options: 
+   
+          Outputs for Preregistration       [DGPRE PRE-REGISTER OUTPUTS] 
+          Management Reports (Billing) Menu [IB OUTPUT MANAGEMENT REPORTS] 
+          Process Insurance Buffer          [IBCN INSURANCE BUFFER PROCESS] 
+   
+     f.  When prompted 'Enter protocols you wish to mark as 'Out Of 
+         Order':' press <return>. 
+     g.  Remember to restart the IIV EC HL7 Logical Link after this 
+         install is compete.
+ 
+ 
+ 
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: IBCNBAR
+    Before: B18172525  After: B18909068  **82,240,345**
+Routine Name: IBCNBES
+    Before:  B5591654  After:  B5872961  **82,184,345**
+Routine Name: IBCNBLL
+    Before: B59623585  After: B58797432  **82,149,153,183,184,271,345**
+Routine Name: IBCNBMI
+    Before: B48902486  After: B52789552  **82,184,246,251,299,345**
+Routine Name: IBCNEDE2
+    Before: B62755710  After: B63218575  **184,271,249,345**
+Routine Name: IBCNEDE6
+    Before: B27396831  After: B30305878  **184,271,345**
+Routine Name: IBCNEHL1
+    Before: B32619299  After: B32996551  **300,345**
+Routine Name: IBCNEHL2
+    Before: B48954965  After: B48625538  **300,345**
+Routine Name: IBCNERP8
+    Before: B54393232  After: B55076349  **184,271,345**
+Routine Name: IBCNERPA
+    Before: B29062798  After: B29790461  **184,271,345**
+Routine Name: IBCNEUT4
+    Before: B49767116  After: B50608524  **184,271,345**
+Routine Name: IBCOPR
+    Before: B24610097  After: B34320642  **75,345**
+Routine Name: IBCOPR1
+    Before: B31375069  After: B32793618  **75,345**
+Routine Name: IBRFN2
+    Before: B11587183  After: B11408951  **75,80,345**
+Routine Name: IBY345PR
+    Before:       n/a  After:   B567144  **345**
+Routine Name: IBY345PS
+    Before:       n/a  After:   B830341  **345**
+ Description of Changes:
+  ------------------------ 
+
+
+=============================================================================
+User Information:
+Entered By  : NAM,ELLEN                     Date Entered  : APR 25, 2006
+Completed By: KUREK,STANLEY M               Date Completed: APR 11, 2007
+Released By : GANUS,MAUNETTE                Date Released : APR 11, 2007
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

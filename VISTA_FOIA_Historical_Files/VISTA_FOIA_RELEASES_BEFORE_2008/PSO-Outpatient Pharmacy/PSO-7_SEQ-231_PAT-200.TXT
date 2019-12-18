@@ -1,0 +1,503 @@
+$TXT Created by WHITE,ELAINE at CMNT.FO-BIRM.MED.VA.GOV  (KIDS) on Wednesday, 03/21/07 at 15:20
+=============================================================================
+Run Date: APR 16, 2007                     Designation: PSO*7*200
+Package : PSO - OUTPATIENT PHARMACY           Priority: Mandatory
+Version : 7       SEQ #231                      Status: Released
+                  Compliance Date: MAY 17, 2007
+=============================================================================
+
+Associated patches: (v)PSO*7*211   <<= must be installed BEFORE `PSO*7*200'
+                    (v)PSO*7*214   <<= must be installed BEFORE `PSO*7*200'
+                    (v)PSO*7*233   <<= must be installed BEFORE `PSO*7*200'
+                    (v)PSO*7*247   <<= must be installed BEFORE `PSO*7*200'
+                    (v)PSO*7*255   <<= must be installed BEFORE `PSO*7*200'
+                    (v)PSO*7*259   <<= must be installed BEFORE `PSO*7*200'
+
+Subject: OUTPATIENT AUTOMATION CHANGES FOR NEW WARNING SOURCE
+
+Category: 
+  - Routine
+  - Enhancement (Mandatory)
+  - Data Dictionary
+  - Other
+
+Description:
+============
+
+  This patch contains the FY 2007 Quarter 2 Outpatient Pharmacy V. 7.0
+ enhancements. 
+  
+  
+ ***** NOTE TO SITES USING AUTOMATED FILLING EQUIPMENT *****
+ Please ensure that your vendor is aware of the changes being made by this 
+ patch. There are changes (described below) that affect both the HEALTH 
+ LEVEL SEVEN (HL7) messages (content of fields only - no new fields are
+ added) and the laser label stream.
+  
+ If you are using automated dispensing equipment that relies on 
+ the data stream sent to the laser labels port, you have 2 options:
+   1. Implement the Outpatient Automation Interface (OPAI) (available with
+      released patch PSO*7*156) or 
+   2. Contact your vendor to make adjustments based on the new data stream.
+  
+  
+ Outpatient Pharmacy Automation Interface (OPAI) enhancements: 
+ -------------------------------------------------------------
+ 1. Modified to use the new commercial warning label source to send the
+ warning label text to the automated filling equipment. The OPAI WARNING
+ LABEL SOURCE field (#16.2) in the PHARMACY SYSTEM file (#59.7) must be set
+ to "N" for "New" to send the warning labels from the new commercial data
+ source to OPAI. It can be set by using the Pharmacy System Parameters Edit
+ [PSS SYS EDIT] option.
+  Example:
+  
+ Select OPTION NAME: PSS SYS EDIT       Pharmacy System Parameters Edit
+ Pharmacy System Parameters Edit
+  
+ PMIS PRINTER: L8150$PRT// 
+ PMIS LANGUAGE: English// 
+ WARNING LABEL SOURCE: NEW// 
+ CMOP WARNING LABEL SOURCE: NEW//
+ OPAI WARNING LABEL SOURCE: ?
+      Enter "N" for NEW to use commercial data source for OPAI warning 
+ labels.
+      Choose from: 
+        N        NEW
+ OPAI WARNING LABEL SOURCE: N  NEW
+  
+    a. The warning text is sent as one record per warning.
+    b. The text is sent in English or Spanish depending on the patient's
+       other language settings. 
+    c. If the DEA, SPECIAL HDLG field (#3) in the DRUG file (#50) begins
+       with numbers 1,2,3,4, or 5, the NO TRANSFER warning text from the RX
+       CONSULT file (#54) entry number 20 is automatically sent as one of
+       the first 5 warnings when the OPAI WARNING LABEL SOURCE is set to 
+       "New".
+  
+  
+ 2. If the BAD ADDRESS INDICATOR (BAI) field (#.121) of the PATIENT file
+ (#2) is set, the text "VAB" concatenated with the BAI code is sent in the
+ Address field of the PID segment of the HL7 message to the filling
+ equipment.
+  
+ Here are some examples of this field:
+  
+ When the permanent address is active:
+ PADD-1~PADD-2~SPRING~TX~77379~~P~PADD-3~201^~~""~""~~~N||""|||||||||||||||
+ |||
+  
+ When the temporary address is active:
+ PADD-1~PADD-2~SPRING~TX~77379~~P~PADD-3~201^~~""~""~~~N^TADD-1~TADD-2 
+ TADD-3~PLANO~TX~12345~~C~~""~~~
+  
+ When the address is flagged as BAI:
+ PADD-1~PADD-2~SPRING~TX~77379~~VAB1~PADD-3~201^~~""~""~~~N||""||||||||||||
+ ||||||
+  
+ "VAB1" - indicates Bad Address Indicator and 1 is for UNDELIVERABLE (2 for
+ HOMELESS, 3 for OTHER)
+  
+  
+ Laser Label enhancements:
+ -------------------------
+ 1. Print the last 4 digits of the Social Security Number (SSN) instead of
+ the last 6 digits.
+  
+ 2. Change the name on the mailing label back to Last name,First name
+ format.
+  
+ 3. On the Pharmacy Fill Card portion of the label, replace the text 
+ "Mfr ___________________" with:
+    a. NDC/MFR_______________ for non-ePharmacy sites
+    b. NDC nnnnn-nnnn-nn for ePharmacy sites 
+  
+ 4. Signature log enhancements:
+    a. Print current date at top
+    b. Do not print user name (if more than 1 prescription was included to
+       be signed, the user name could be different for each one).
+    c. Correct the spacing and continuation paging issues if one or more 
+       of the prescriptions has been discontinued before printing the 
+       signature log.
+    d. Add a barcode to enable scanning to remove the patient's name from 
+       the Bingo Board.
+    e. Add as much of the drug name as will fit on the label.
+    f. Add hidden action "RS" for Reprint Signature log to the prescription
+       profile screen.
+    g. While printing original labels (not reprint of the signature log), 
+       if all of the fills have a routing of mail, the signature log will
+       not be printed.
+    h. The line "Relationship_________________ Counseled? _____" is changed
+       to "Relation_____ Counseling Refused__ Accepted__".
+  
+  
+ 5. When a fill is released, if the BAI is no longer set or there is an 
+ active temporary address, the "B" is removed from the status column of 
+ the patient profile. (This is removed by making an additional entry in 
+ the label log. The "B" comes from the "last" entry having a bad address 
+ condition at the time the label printed).
+  
+  
+  
+ To address E3R 19820 and Remedy ticket 68810, the following code changes
+ are included in this patch:
+  
+ 1. Add the capability to tie a ScripTalk printer to regular Pharmacy
+ label printer(s) to control where the ScripTalk labels print for
+ multi-divisional sites. The new SCRIPTALK PRINT DEVICE MAPPING multiple
+ (#47) in PHARMACY SYSTEM file (#59.7) has been created to store this
+ information in Pharmacy Data Management patch PSS*1*122. The multiple
+ contains LABEL PRINTER TO BE MAPPED field (#.01) and SCRIPTALK DEVICE
+ field (#.02).
+  
+ The added functionality works in conjunction with the existing ScripTalk 
+ divisional functionality, so a divisional ScripTalk device must be
+ defined.  If no mapping is defined in the new fields, ScripTalk labels
+ will continue to print on the printer defined for the division.  If
+ a pharmacy printer is mapped to a ScripTalk printer, the ScripTalk label
+ will automatically be printed on the mapped ScripTalk printer.
+  
+  
+ 2. Modify the ScripTalk Device Definition Enter/Edit [PSO SCRIPTALK
+ DEVICE DEF'N] option to allow definition of printer mapping for 
+ ScripTalk devices.  The user will be prompted to define the ScripTalk 
+ printer by division or by printer mapping.  After selecting D for 
+ division, the divisional definition has not changed.  After selecting 
+ P for printer mapping, the user will be prompted "LABEL PRINTER TO BE
+ MAPPED". The device entered into this field corresponds to the label
+ printer selected during Pharmacy login and/or the printer selected during
+ print from suspense functions. Next, "SCRIPTALK DEVICE" will be prompted,
+ and this field should contain the ScripTalk printer to be mapped to the
+ regular label printer.
+  
+  
+ MISCELLANEOUS ENHANCEMENTS:
+ ---------------------------
+ 1. A new field FINISH DATE/TIME field (#38.3) is added to the
+ PRESCRIPTION file (#52).
+  
+ 2. When using the Print from Suspense File [PSO PNDLBL] option, if the
+ routing is not WINDOW and the BAD ADDRESS INDICATOR (#.121) field of the
+ PATIENT file (#2) is set (value of 1=UNDELIVERABLE, 2=HOMELESS, 3=OTHER)
+ and the patient does not have an active temporary address, the
+ prescription fill will not be sent to automated filling equipment and/or
+ to the label printer. Also, if the fill's routing is mail and the 
+ patient's MAIL field (#.03) in the PHARMACY PATIENT file (#55) is set to
+ "DO NOT MAIL" and the current date is before the MAIL STATUS EXPIRATION
+ DATE field (#.05) in the PHARMACY PATIENT file (#55), the label will not
+ print and the fill will not be sent to the automated filling equipment.
+  
+ The first time a prescription is not sent/label printed, a MailMan message
+ will be generated to the user who queued the print from suspense and the
+ members of the PSO EXTERNAL DISPENSE ALERTS mail group. An entry will also
+ be set in the PRESCRIPTION file (#52) activity log.
+  
+ Example activity log entry:
+ ---------------------------
+ Activity Log:
+ #   Date        Reason         Rx Ref           Initiator Of Activity
+ =====================================================================
+ 1   02/19/07    SUSPENSE       ORIGINAL         OPPHARMACIST,ONE
+ Comments: RX not printed from suspense due to BAD ADDRESS INDICATOR
+  
+ - or -
+ Comments: RX not printed from suspense due to DO NOT MAIL
+  
+ Example MailMan message:
+ ------------------------
+ Subj: 500 BAD ADDRESS SUSPENSE NOT PRINTED  [#169828] 02/26/07@07:30  11
+ lines
+ From: OUTPATIENT PHARMACY PACKAGE  In 'IN' basket.   Page 1
+ --------------------------------------------------------------------------
+ The following prescriptions with a routing of mail were not printed/sent 
+ to external interface due to the BAD ADDRESS INDICATOR being set and
+ no active temporary address or patient has an active MAIL status of DO NOT
+ MAIL:
+  
+ OPPATIENT,ONE   000001234   (BAD ADDRESS INDICATOR)
+   100002608  (1)  A AND Z OINTMENT
+   100002609  (0)  ASPIRIN 325MG TABS
+  
+ OPPATIENT,FOUR   000004321   (DO NOT MAIL)
+   100002654A  (0)  BACITRACIN OINTMENT 1OZ
+  
+  
+ 3. Modify the report from the Bad Address Suspended List [PSO BAI 
+ SUSPENDED] option to allow printing by more than one division and also 
+ include prescriptions suspended for Consolidated Mail Outpatient Pharmacy 
+ (CMOP). This report was also changed to not prompt for a start date.
+  
+ Example:
+ --------
+ Select OPTION NAME: PSO BAI SUSPENDED     Bad Address Suspended List
+ Bad Address Suspended List
+  
+ This option shows unprinted suspended prescriptions for patients who have
+ the BAD ADDRESS INDICATOR set in the PATIENT file and no active temporary 
+ address.
+  
+  
+ Ending suspense date: T+3  (MAR 01, 2007)
+ Outpatient Pharmacy software - Version 7.0
+  
+ Division:    EXT  500  
+  
+           You are logged on under the EXT division.
+  
+ Select LABEL PRINTER: HOME//   GENERIC INCOMING TELNET
+  
+ OK to assume label alignment is correct? YES// 
+  
+ Bingo Board Display: OUTPATIENT//   
+  
+    You are logged in under the EXT division.
+  
+ Print only those Rx's suspended for this division? Yes// NO
+ DEVICE: HOME//   GENERIC INCOMING TELNET
+  
+  
+ Suspense bad address report - division = ALL                       PAGE: 1
+ for suspense dates through MAR 01, 2007
+ --------------------------------------------------------------------------
+  
+ OPPATIENT,TEN   (00-0187)      
+ MAR 01, 2007    Rx#: 301054     CIMETIDINE 200MG TAB
+ MAR 01, 2007    Rx#: 301055     COAL TAR 5% GEL 3 OZ TUBE
+  
+ OPPATIENT,FIVE   (00-0773)        
+ FEB 27, 2007    Rx#: 100002655  BACITRACIN OINTMENT 1OZ
+  
+ End of Report.
+ Press Return to continue: 
+  
+ 4. As per the request of Computerized Patient Record System (CPRS)
+ package the following were added to the Applications Program Interface
+ (API) PSOHCSUM:
+    a. PLACER ORDER # field (#39.3) of the PRESCRIPTION file (#52).
+    b. Letter "R" when the original fill is returned to stock.
+ For more details please see the IA (Integration Agreement) #330.
+  
+ 5. Patch PSO*7*42 was entered in error, so the 2nd line of the routine 
+ PSOHCSUM was modified to remove that patch number.
+  
+  
+  
+ Associated New Service Request (NSR):
+ =====================================
+ 20011109
+ 20031001
+  
+ Associated Remedy Ticket(s):
+ ============================
+  68810
+  92882
+  93034
+  94011
+  94759
+  95190
+  95972
+ 102027
+ 109491
+ 125439
+ 151219
+ 162554
+ 166718
+ 171152
+ 177906
+  
+ Associated E3Rs:
+ ================
+ 19498
+ 19735
+ 19820
+  
+ TEST SITES:
+ ===========
+ DURHAM, NC
+ IRON MOUNTAIN, MI
+ LOUISVILLE, KY 
+ NEW YORK HARBOR HCS
+ OKLAHOMA CITY, OK 
+  
+  Documentation Retrieval:
+  ========================
+  Sites will retrieve VISTA documentation from the following FTP
+  addresses.  The preferred method is to FTP the files from
+  download.vista.med.va.gov. This transmits the files from the first
+  available FTP server. Sites may also elect to retrieve documentation
+  directly from a specific server as follows:
+  
+  OI FIELD OFFICE  FTP ADDRESS               DIRECTORY
+  
+  Albany           ftp.fo-albany.med.va.gov  anonymous.software
+  Hines            ftp.fo-hines.med.va.gov   anonymous.software
+  Salt Lake City   ftp.fo-slc.med.va.gov     anonymous.software
+  
+   FILE NAME                            DESCRIPTION
+  PSO_7_TM_R0407.PDF            Outpatient Pharmacy V. 7.0 Technical
+                                  Manual / Security Guide
+  PSO_7_P200_TM_CP.PDF         Outpatient Pharmacy V. 7.0 Technical
+                                  Manual / Security Guide Change Pages
+  
+  PSO_7_UM_R0407.PDF            Outpatient Pharmacy V. 7.0 User Manual
+  PSO_7_P200_UM_CP.PDF         Outpatient Pharmacy V. 7.0 User Manual 
+                                  Change Pages
+  
+  PSO_7_P200_RN.PDF              Pharmacy FY07 Q2 Release Notes
+  
+  Once released, documentation can also be retrieved from VISTA
+  Documentation Library (VDL) on the Internet at the following address,
+  http://www.va.gov/vdl
+  
+  
+  Installation Instructions:
+  ==========================
+  If your site uses automated filling equipment using the Outpatient 
+  Pharmacy Automation Interface (OPAI) or the label stream for the 8.5x14 
+  laser labels, your vendor may need to make changes to utilize the 
+  features added/changed by this patch.
+  
+  Before installing this patch, use List Tasks [XUTM INQ] option on the
+  Taskman Management [XUTM MGR] menu to list currently running
+  tasks. Do not install this patch while Outpatient Pharmacy users are
+  using the software. Installation will take no longer than 5 minutes.
+  
+  Suggested time to install: non-peak requirement hours.
+  
+  
+  1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+  
+  2. From the Kernel Installation & Distribution System menu, select
+     the Installation menu.
+  
+  3. From this menu, you may select to use the following options
+     (when prompted for INSTALL NAME, enter PSO*7.0*200):
+    a. Backup a Transport Global - this option will create a backup
+       message of any routines exported with the patch. It will NOT
+       backup any other changes such as DDs or templates.
+    b. Compare Transport Global to Current System - this option will
+       allow you to view all changes that will be made when the patch
+       is installed. It compares all components of the patch (routines,
+       DDs, templates, etc.).
+    c. Verify Checksums in Transport Global - this option will ensure
+       the integrity of the routines that are in the transport global.
+  
+  4. Use the Install Package(s) option and select the package PSO*7.0*200.
+  
+  5. When prompted "Want KIDS to INHIBIT LOGONs during the install? YES//"
+     respond NO.
+  
+  6. When prompted "Want to DISABLE Scheduled Options, Menu Options, and
+     Protocols? YES//" respond NO.
+  
+  7. Add users to the PSO EXTERNAL DISPENSE ALERTS mail group who should 
+     receive a MailMan message if the Print from Suspense File [PSO PNDLBL]
+     option does not print for a patient's fills due to a routing of mail
+     and the BAD ADDRESS INDICATOR is set (and the patient does not have an
+     active temporary address) or the patient's MAIL status is set to DO
+     NOT MAIL.
+   
+  
+ Routine Summary:
+ ================
+ The following is a list of the routine(s) included in this patch.  The 
+ second line of each of these routine(s) will look like:
+  
+      <tab>;;7.0;OUTPATIENT PHARMACY;**[patch list]**;DEC 1997
+  
+                             CHECK^XTSUMBLD results
+  
+ Routine    Before Patch   After Patch   Patch List
+ ---------  ------------   -----------   ----------
+ PSOBAIR2    10274523      11980861      233,200
+ PSODISP     28760015      28783608      15,71,131,156,185,148,247,200     
+ PSODISPS    17430841      18280722      15,13,9,27,67,71,156,118,148,
+                                         247,200
+ PSOHCSUM    13693672      14337813      4,35,48,54,46,103,132,214,200
+ PSOHLDIS    19386387      19437750      156,189,193,209,148,259,200
+ PSOHLDS1    15798139      16298220      156,232,255,200
+ PSOHLDS2    21860350      21730677      156,198,255,200
+ PSOLLL1     21851540      21719700      120,141,135,162,161,233,200
+ PSOLLL2      7417442       8056007      120,138,141,161,200
+ PSOLLL3      4344688       4148492      120,161,148,200
+ PSOLLL5     17709399      17697666      120,161,230,200
+ PSOLLL7     13021476      13000713      120,161,200
+ PSOLLLH      8673900      10377595      161,148,244,200
+ PSOLLLHN         N/A       6009784      200
+ PSOLLLI     26568826      26297454      120,157,189,161,244,200
+ PSORN52C    24943182      25194041      1,7,11,27,46,75,87,100,111,124,
+                                         117,131,146,148,200
+ PSOSULB1    14214332      18007814      10,200
+ PSOSULBL    17851638      22651215      139,173,174,148,200
+ PSOTALK     18639245      19610200      135,182,211,200
+ PSOTALK3     6019862       7838530      135,200
+  
+ Total number of new routines: 1
+ Total number of routines modified: 19
+ Total number of routines: 20
+  
+ Note: Patch PSO*7*42 was entered in error, so the 2nd line of the routine 
+ PSOHCSUM was modified to remove that patch number.
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PSOBAIR2
+    Before: B20289266  After: B25644262  **233,200**
+Routine Name: PSODISP
+    Before: B54704509  After: B55029655  **15,71,131,156,185,148,247,200**
+Routine Name: PSODISPS
+    Before: B30402405  After: B34175351  **15,13,9,27,67,71,156,118,148,
+                                          247,200**
+Routine Name: PSOHCSUM
+    Before: B23286979  After: B24687274  **4,35,48,54,46,103,132,214,200**
+ Description of Changes:
+   
+
+Routine Name: PSOHLDIS
+    Before: B66788990  After: B67346410  **156,189,193,209,148,259,200**
+Routine Name: PSOHLDS1
+    Before: B46283720  After: B48302679  **156,232,255,200**
+Routine Name: PSOHLDS2
+    Before: B62343601  After: B62771501  **156,198,255,200**
+Routine Name: PSOLLL1
+    Before: B68811499  After: B67443546  **120,141,135,162,161,233,200**
+Routine Name: PSOLLL2
+    Before: B14143460  After: B16255333  **120,138,141,161,200**
+Routine Name: PSOLLL3
+    Before:  B8025943  After:  B7197716  **120,161,148,200**
+Routine Name: PSOLLL5
+    Before: B37280292  After: B37264779  **120,161,230,200**
+Routine Name: PSOLLL7
+    Before: B34188197  After: B34122114  **120,161,200**
+Routine Name: PSOLLLH
+    Before: B24123418  After: B33423186  **161,148,244,200**
+Routine Name: PSOLLLHN
+    Before:       n/a  After:  B9199678  **200**
+Routine Name: PSOLLLI
+    Before: B66394524  After: B65923392  **120,157,189,161,244,200**
+Routine Name: PSORN52C
+    Before: B48742207  After: B49841543  **1,7,11,27,46,75,87,100,111,
+                                          124,117,131,146,148,200**
+Routine Name: PSOSULB1
+    Before: B17301699  After: B25215096  **10,200**
+Routine Name: PSOSULBL
+    Before: B38582182  After: B61486377  **139,173,174,148,200**
+Routine Name: PSOTALK
+    Before: B76664087  After: B84758414  **135,182,211,200**
+Routine Name: PSOTALK3
+    Before: B14117081  After: B20856163  **135,200**
+
+=============================================================================
+User Information:
+Entered By  : WHITE,ELAINE                  Date Entered  : FEB 14, 2005
+Completed By: GREER,MIKE                    Date Completed: APR 12, 2007
+Released By : BARRON,LUANNE                 Date Released : APR 16, 2007
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

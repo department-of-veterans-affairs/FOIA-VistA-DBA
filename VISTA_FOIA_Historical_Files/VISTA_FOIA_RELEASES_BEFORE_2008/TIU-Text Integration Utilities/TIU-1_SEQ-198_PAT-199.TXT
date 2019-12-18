@@ -1,0 +1,273 @@
+$TXT Created by ROWLANDS,ELMER at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 06/12/06 at 10:50
+=============================================================================
+Run Date: JUN 26, 2006                     Designation: TIU*1*199
+Package : TIU - TEXT INTEGRATION UTILITIES    Priority: Mandatory
+Version : 1       SEQ #198                      Status: Released
+                  Compliance Date: JUL 27, 2006
+=============================================================================
+
+Associated patches: (v)TIU*1*158   <<= must be installed BEFORE `TIU*1*199'
+
+Subject: RE-INDEX ABBREVIATION FIELD IN FILE 8925.1 AND FIX ALERT PROBLEM
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ This patch address 2 issues:
+  
+ 1. The ACL cross-reference is incorrect as it was only partially rebuilt 
+ in a former patch. The partial rebuild did not include the Abbreviation
+ field. Therefore, you can not look up a document by the abbreviation in 
+ CPRS.
+  
+ 2. When using the TIU ALERT TOOL to search for Completed documents by
+ Additional Signers, the tool does not recognize when a surrogate signed 
+ for the additional signer. This cause the alerts to be sent for documents 
+ that need no more action to be taken.
+ A new menu option will also be included to allow users to mark 
+ documents that were signed prior to this patch as "Signed by Surrogate".
+ The menu option is called Mark Document as 'Signed by Surrogate'
+ and can be found under the TIU MAIN MENU MGR menu.
+  
+ ASSOCIATED E3R(S):
+ ==================
+ N/A
+  
+ ASSOCIATED REMEDY:
+ ==================
+ Problem 1:
+ ----------
+ HD71278 - SDC-0205-61071 Patch Released TIU*1*163 SEQ #170
+  
+ Problem 2:
+ ----------
+ HD93469 - TIU*1*157 functionality
+  
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Portland,OR
+ San Juan,PR
+ Tennessee Valley HCS
+  
+  
+ REMEDY OVERVIEW:
+ ================
+  
+ Problem 1:
+ ----------
+ Users are unable to look up documents in CPRS by the Abbreviation 
+ (Synonym). Patch TIU*1.0*163 re-indexed the ACL cross reference based on 
+ the .01 field. This, however, excludes the additional entries into this 
+ cross reference when the .02 field is re-indexed. Therefore, the entries 
+ in this cross reference used to look up by the abbreviation are now
+ missing.
+  
+ Resolution 1:
+ -------------
+ Include a post install routine that will re-index the .02 field. 
+ (POST199^TIU199).
+  
+  
+ Problem 2:
+ ----------
+ Patch TIU*1.0*157 allows a surrogate to sign notes for a person who is 
+ listed as an Additional Signer. However, the TIU ALERT TOOL does not 
+ recognize that a surrogate has signed the note and will generate a new 
+ alert even though the note has been properly signed.
+  
+ Resolution 2:
+ -------------
+ Create a field called SIGNED BY SURROGATE in the TIU MULTIPLE 
+ SIGNATURE file (8925.7) that will contain a 1 if the signer is a surrogate
+ for the the Additional Signer at the time of the signature or a 0 if not.
+ If the ACTUAL COSIGNER is different from the EXPECTED COSIGNER then the
+ TIU ALERT TOOL can use this field to see if it was signed by a surrogate.
+ This field will be set by a trigger on the ACTUAL COSIGNER field.
+  
+ NOTE: The SIGNED BY SURROGATE field can only be set in real time. There 
+ is no data stored whereby the system can determine its value at other 
+ times. Therefore, if you reindex the ACTUAL COSIGNER field you will lose 
+ the correct values for the SIGNED BY SURROGATE field.
+  
+ TECHNICAL:
+ ==========
+ DD CHANGES
+  
+ ^DD(8925.7,.05,0)=ACTUAL COSIGNER^P200'^VA(200,^0;5^Q
+ ^DD(8925.7,.05,1,0)=^.1
+ ^DD(8925.7,.05,1,1,0)=^^TRIGGER^8925.7^.09
+                    1)=D TRIGGER^TIU199
+                    2)=Q
+       "CREATE VALUE")=NO EFFECT
+       "DELETE VALUE")=NO EFFECT
+                 "DT")=3050706
+              "FIELD")=SIGNED BY SURROGATE
+ ^DD(8925.7,.05,3)=Please indicate the user who actually cosigned the 
+ document.
+ ^DD(8925.7,.05,21,0)=^.001^4^4^3050831^^
+ ^DD(8925.7,.05,21,1,0)=This field contains the person who actually signed 
+ for th
+ is Additional 
+ ^DD(8925.7,.05,21,2,0)=Signer. This field will trigger field .09 (Signed 
+ by Surr
+ ogate). That 
+ ^DD(8925.7,.05,21,3,0)=trigger will check if the Actual Co-signer is a 
+ surrogate
+  for the Expected
+ ^DD(8925.7,.05,21,4,0)=Signer. If so the .09 field will be set to 1. If 
+ not it w
+ ill be set to 0.
+ ^DD(8925.7,.05,"DT")=3050706
+  
+  
+ ^DD(8925.7,.09,0)=SIGNED BY SURROGATE^S^0:NO;1:YES;^0;9^Q
+ ^DD(8925.7,.09,5,1,0)=8925.7^.05^1
+ ^DD(8925.7,.09,21,0)=^^6^6^3050718^
+ ^DD(8925.7,.09,21,1,0)=This field is set by a trigger on the .05 field 
+ (ACTUAL C
+ OSIGNER). The 
+ ^DD(8925.7,.09,21,2,0)=trigger will check if the actual cosigner is a 
+ surrogate 
+ for the expected 
+ ^DD(8925.7,.09,21,3,0)=signer at the time of signing. If so this field 
+ will be s
+ et to 1. If 
+ ^DD(8925.7,.09,21,4,0)=not it will be set to 0. This will enable other 
+ processes
+  to know if the 
+ ^DD(8925.7,.09,21,5,0)=Additional Signer was signed by a surrogate as the 
+ assign
+ ment of the 
+ ^DD(8925.7,.09,21,6,0)=surrogate is temporary and cannot be checked at a 
+ later d
+ ate.
+ ^DD(8925.7,.09,"DT")=3050706
+ ======================================================================
+ NEW MENU ITEM OPTION 12
+  
+                           --- MIS Managers Menu ---
+  
+  
+    1      Individual Patient Document
+    2      Multiple Patient Documents
+    3      Print Document Menu ...
+    4      Search for Selected Documents
+    5      Statistical Reports ...
+    6      Unsigned/Uncosigned Report
+    7      Missing Text Report
+    8      Missing Text Cleanup
+    9      Signed/unsigned PN report and update
+    10     UNKNOWN Addenda Cleanup
+    11     Missing Expected Cosigner Report
+    12     Mark Document as 'Signed by Surrogate' <========
+  
+  
+  
+ DOCUMENTATION DISTRIBUTION:
+ =========================== 
+ Sites may retrieve the changes to the User Manual and Technical 
+ Manual directly via FTP (using BIN mode) from the ANONYMOUS.SOFTWARE
+ directory at:
+  
+ Albany:             ftp.fo-albany.med.va.gov
+ Hines:              ftp.fo-hines.med.va.gov
+ Salt Lake City:     ftp.fo-slc.med.va.gov
+  
+ File available:
+  
+ tiu_p199_um_changes.pdf
+  
+ The complete and updated manual will be posted to the VDL immediately
+ after the release of the patch.
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ This patch can be installed during business hours, but because some 
+ options will be out of service during the installation process, it is
+ suggested that it be queued for non-peak hours. Installation will take
+ less than 5 minutes. Users do not have to be off the system.
+  
+ 1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu. [Note: TEXT 
+    PRINT/DISPLAY option in the PackMan menu still display the patch text
+    only].
+  
+ 2. From the Kernel Installation and Distribution System (KIDS) menu,
+    select the Installation menu.
+  
+ 3. From this menu, you may elect to use the following options:
+    (when prompted for INSTALL NAME enter TIU*1.0*199)
+    
+    a. Backup a Transport Global - this option will create a backup message
+       of any routines exported with the patch. It will NOT backup any 
+       other changes such as DDs or templates.
+    b. Compare Transport Global to Current System - this option will allow
+       you to view all changes that will be made when the patch is 
+       installed. It compares all components of the patch (routines, DDs, 
+       templates, etc.).
+    c. Verify Checksums in Transport Global - this option will allow you
+       to ensure the integrity of the routines that are in the Transport
+       Global.
+    d. Print Transport Global - this option will allow you to view the
+       components of the KIDS build.
+  
+ 4. Use the Install Package(s) option and select the package TIU*1.0*199.
+  
+ 5. If prompted: ' Want KIDS to Rebuild Menu Trees Upon Completion of
+    Install? YES//', respond NO. 
+  
+ 6. When prompted 'Want KIDS to INHIBIT LOGONs during the install? YES//', 
+    respond NO.
+  
+ 7. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+    Protocols? YES//', respond YES.
+  
+ 8. When prompted to select the options you would like to place out of
+    of order, enter the following:
+  
+      TIU MAIN MENU MGR     Text Integration Utilities (MIS Manager)
+      TIU ALERT TOOLS       TIU Alert Tools
+  
+ 9. When prompted "Enter protocols you wish to mark as 'Out of Order':",
+    press <return>.
+  
+ ROUTINE SUMMARY:
+ ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;1.0;TEXT INTEGRATION UTILITIES;**[patch list]**;Jun 20, 1997
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  TIU199             N/A                   4422988             199
+  TIUAL1             23722905              23824619            158,199
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: TIU199
+    Before:       n/a  After: B15288294  **199**
+Routine Name: TIUAL1
+    Before: B87325543  After: B88079624  **158,199**
+
+=============================================================================
+User Information:
+Entered By  : LUNDEN,JOHN                   Date Entered  : JUN 30, 2005
+Completed By: BOWEN,MARY JANE               Date Completed: JUN 13, 2006
+Released By : MONTGOMERY,ALAN               Date Released : JUN 26, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

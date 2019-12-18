@@ -1,0 +1,452 @@
+Cache for Windows NT^INT^Patch 147 Pixel Representation Fix^~Format=Cache.S~
+%RO on 03 Mar 2014   8:19 AM
+MAGDDR2^INT^1^63249,29946^0
+MAGDDR2 ;WOIFO/PMK/DAC - Program to read a DICOM file ; 03 Mar 2014 8:14 AM
+ ;;3.0;IMAGING;**10,11,30,54,147**;MAR 19, 2002;Build 147.1;Mar 03, 2014
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
+ ;; +---------------------------------------------------------------+
+ ;; | Property of the US Government.                                |
+ ;; | No permission to copy or redistribute this software is given. |
+ ;; | Use of unreleased versions of this software requires the user |
+ ;; | to execute a written test agreement with the VistA Imaging    |
+ ;; | Development Office of the Department of Veterans Affairs,     |
+ ;; | telephone (301) 734-0100.                                     |
+ ;; | The Food and Drug Administration classifies this software as  |
+ ;; | a medical device.  As such, it may not be changed in any way. |
+ ;; | Modifications to this software may result in an adulterated   |
+ ;; | medical device under 21CFR820, the use of which is considered |
+ ;; | to be a violation of US Federal Statutes.                     |
+ ;; +---------------------------------------------------------------+
+ ;;
+ ; PACS Interface -- read DICOM files (routine #2)
+ ;
+ENTRY ; entry point to read the DICOM file
+ N BYTEORDR ;- byte order for message, always little endian
+ N DCMFILE ;-- Flag: file name ends in .DCM
+ N ELEMENT,EOF,EXPLICIT,GROUP,GROUP2,MSGNUMB,OFFSET,PREFIX,STATUS,STOP
+ N OWNERID ;- id number associated with the owner of a private group
+ N PIXBITS ;-- number of bits in a pixel
+ N PIXELREP ;- pixel representation, for determining signed or unsigned
+ N SEQEND ;--- Sequence end indicator array
+ N SEQIEND ;-- Sequence item end indicator array
+ N SEQNUMB ;-- nesting level of DICOM sequence; set in MSGINIT^MAGDFCNS
+ N SEQUENCE ;- DICOM nesting subscript sequence; set in MSGINIT^MAGDFCNS
+ N XFERUID ;-- transfer syntax UID
+ N XFERUIDN ;- transfer syntax UID name
+ N I
+ ;
+ S PIXELREP="" ; P147 DAC
+ S BYTEORDR="L" ; Little Endian
+ D SEQINIT^MAGDFCNS
+ D  ; check if it is a known DICOM file type
+ . N L
+ . S L=$L(QUEUEIN("FILE"))
+ . S DCMFILE=0
+ . I ($TR($E(QUEUEIN("FILE"),L-3,L),"DCM","dcm")=".dcm") S DCMFILE=1
+ . E  I $E(QUEUEIN("FILE"),L-8,L)="CSTORE.IN" S DCMFILE=1
+ . E  I $E(QUEUEIN("FILE"),L-11,L)="INCOMING.PDU" S DCMFILE=1
+ . Q
+ S EOF=0,MSGNUMB=0,STOP=0
+ K ^TMP("MAG",$J,"DICOM",INODE) ; target global
+ ; try OPEN three times - work around for a possible race condition
+ F I=1:1:3 S STATUS=$$OPEN^MAGOSFIL(QUEUEIN("FILE"),"B") Q:STATUS'<0  H 1
+ I STATUS<0 D
+ . N M
+ . S M="Could not open file """_QUEUEIN("FILE")_""" for Binary Read."
+ . W:$$USEPRIN^MAGOSFIL(1) !!!,M,!,STATUS
+ . S $EC=",U"_M_","
+ . Q  ; Error trap does not return
+ ; check for DICOM Part-10 header
+ S STATUS=$$USE^MAGOSFIL(QUEUEIN("FILE"))
+ S OFFSET=$$SEEK^MAGOSFIL(QUEUEIN("FILE"),128) ; skip file preamble
+ R PREFIX#4 ; read file prefix
+ I PREFIX="DICM" D  ; Part-10 DICOM file
+ . N DONE
+ . S EXPLICIT=1 ; explicit VR mode
+ . ; read Part 10 header and get transfer syntax for rest of message
+ . S DONE=0
+ . F GROUP2=1:1:11 D  Q:EOF!DONE!STOP  ; max of ten elements in Part 10
+ . . S STATUS=$$USE^MAGOSFIL(QUEUEIN("FILE"))
+ . . ; get byte offset to start of field
+ . . S OFFSET=$$GETOFSET^MAGOSFIL(QUEUEIN("FILE"))
+ . . I OFFSET'<FILESIZE S EOF=1,STATUS=$$USE^MAGDFCNS(ODEVTYPE,ODEVNAME) Q
+ . . D AT^MAGDDR0(.GROUP,.ELEMENT) ; read attribute tag
+ . . I GROUP'="0002" D  S DONE=1 Q
+ . . . S XFERUID=$$GETDATA^MAGDFCNS(INODE,"0002,0010",1,1)
+ . . . S XFERUIDN=$$GETNAME^MAGDUID2(XFERUID) ; get name
+ . . . I XFERUIDN="Implicit VR Little Endian" S EXPLICIT=0
+ . . . ; reset file pointer
+ . . . S OFFSET=$$SEEK^MAGOSFIL(QUEUEIN("FILE"),OFFSET)
+ . . . Q
+ . . D READGRP2^MAGDDR2A
+ . . Q
+ . Q
+ E  I 'DCMFILE D  Q
+ . S STATUS=$$CLOSE^MAGOSFIL(QUEUEIN("FILE"))
+ . I $$USEPRIN^MAGOSFIL(1)
+ . N MSG
+ . I '$D(FBSWITCH) N FBSWITCH S FBSWITCH="FOREGROUND" ; default
+ . S MSG(1)=""""_QUEUEIN("FILE")
+ . S MSG(1)=MSG(1)_""" is not a valid DICOM (Part-10) file."
+ . D MESSAGE^MAGDMLOG(2,0,.MSG,"B")
+ . Q
+ E  D  ; assume raw DICOM dataset, not Part-10 file
+ . N VR
+ . S STATUS=$$USE^MAGOSFIL(QUEUEIN("FILE"))
+ . S OFFSET=$$SEEK^MAGOSFIL(QUEUEIN("FILE"),4) ; check first VR field
+ . R VR#2 ; assume the file is explicit VR and read the VR field
+ . S EXPLICIT=VR?2A ; if alpha, then explicit, otherwise implicit
+ . S STATUS=$$USE^MAGOSFIL(QUEUEIN("FILE"))
+ . S OFFSET=$$SEEK^MAGOSFIL(QUEUEIN("FILE"),0) ; reset file pointer
+ . Q
+ I 'EOF F  D READITEM Q:EOF!STOP  ; read the rest of the message
+ S STATUS=$$CLOSE^MAGOSFIL(QUEUEIN("FILE"))
+ I $$USEPRIN^MAGOSFIL(1)
+ Q
+ ;
+READITEM ; read each item in the DICOM coded file
+ N DONE
+ I EXPLICIT S EXPLICIT=1 ; can be change to -1 for sequence items
+ S STATUS=$$USE^MAGOSFIL(QUEUEIN("FILE"))
+ ; get byte offset to start of field
+ S OFFSET=$$GETOFSET^MAGOSFIL(QUEUEIN("FILE"))
+ I OFFSET'<FILESIZE S EOF=1,STATUS=$$USE^MAGDFCNS(ODEVTYPE,ODEVNAME) Q
+ ;
+ ; pop explicit length sequence items and sequences off the stack
+ S DONE=0 F  D  Q:DONE!STOP  ; loop through nested sequences
+ . ; check for end of explicit length sequence item
+ . I $D(SEQIEND(SEQNUMB)),SEQIEND(SEQNUMB)'>OFFSET D SQIE^MAGDDR3
+ . ; check for end of explicit length sequence
+ . I $D(SEQEND(SEQNUMB)),SEQEND(SEQNUMB)'>OFFSET D SQE^MAGDDR3 Q
+ . S DONE=1 ; end the loop when all sequences have been popped off stack
+ . Q
+ ;
+ D AT^MAGDDR0(.GROUP,.ELEMENT) ; read attribute tag
+ D READGRP2^MAGDDR2A
+ Q
+ ;
+NEXTLINE ; format a new line of output
+ D NEWLINE Q:STOP
+ W $$HEX^MAGDDR0(OFFSET,6),":",GROUP,",",ELEMENT
+ Q
+ ;
+NEWLINE ; output a <carriage return> <line feed> with scrolling control
+ W ! Q:ODEVTYPE'="SCREEN"  Q:$Y<23
+ N I,X
+ W "more..." R X:DTIME F I=1:1:$X W $C(8,32,8)
+ S $Y=0 Q:X=""
+ S:$TR(X,"quitexnQUITEXN","^^^^^^^^^^^^^^")["^" STOP=1
+ Q
+
+MAGDDW2^INT^1^63249,29909^0
+MAGDDW2 ;WOIFO/PMK/DAC - Generate a DICOM message ; 03 Mar 2014 8:14 AM
+ ;;3.0;IMAGING;**10,30,51,54,53,147**;Mar 19, 2002;Build 147.1;Mar 03, 2014
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
+ ;; +---------------------------------------------------------------+
+ ;; | Property of the US Government.                                |
+ ;; | No permission to copy or redistribute this software is given. |
+ ;; | Use of unreleased versions of this software requires the user |
+ ;; | to execute a written test agreement with the VistA Imaging    |
+ ;; | Development Office of the Department of Veterans Affairs,     |
+ ;; | telephone (301) 734-0100.                                     |
+ ;; | The Food and Drug Administration classifies this software as  |
+ ;; | a medical device.  As such, it may not be changed in any way. |
+ ;; | Modifications to this software may result in an adulterated   |
+ ;; | medical device under 21CFR820, the use of which is considered |
+ ;; | to be a violation of US Federal Statutes.                     |
+ ;; +---------------------------------------------------------------+
+ ;;
+ Q
+ ; PACS interface -- PACS DICOM data output routine #3
+ ;
+ ; Transfer the data from ^TMP to the DICOM file
+ ;
+OUTPUT ; entry point from ^MAGDDW1 to output the file
+ N DEFAULT ;-- default value for an element
+ N GBLREF
+ N IPTR ;----- pointer to message template
+ N PIXELREP ;- pixel representation, for determining signed or unsigned
+ N OLDGROUP ;- current group number for a sequence
+ N PRIVATE ;-- array of a private group of elements
+ N SCUSCP ;--- service class user/provider element type value
+ N SEQMARK ;-- end of sequence marker
+ N SEQNUMB ;-- nesting level of DICOM sequence; set in SEQINIT^MAGDFCNS
+ N SEQUENCE ;- DICOM nesting subscript sequence; set in SEQINIT^MAGDFCNS
+ N STATUS ;--- return code from MAGOSFIL, etc.
+ N TAG ;----- the group and element number
+ ;
+ S PIXELREP="" ; P147 DAC
+ S BYTEORDR="L" ; EXPLICIT is set by calling program
+ ;
+ ; write the data to the temporary *.tmp file
+ ;
+ I "OPEN"[MULTIMSG D
+ . ; open the file for a single message or the first multiple message
+ . ; open the file with *.tmp name
+ . S STATUS=$$OPEN^MAGOSFIL(QUEUEOUT("FILE"),"W")
+ . I STATUS<0 D
+ . . N M
+ . . S M="Could not open file """_QUEUEOUT("FILE")_""" for Write."
+ . . W:$$USEPRIN^MAGOSFIL(1) !!!,M,!,STATUS
+ . . S $EC=",U"_M_","
+ . . Q  ; Error trap does not return
+ . Q
+ ;
+ D SEQINIT^MAGDFCNS K GPOFFSET,OLDGROUP,PRIVATE
+ ;
+ ; use subscript indirection to pass the dynamic or dictionary template
+ I FILEMODE="IMAGE DATASET" D  ; dynamic to reconstruct an image header
+ . S GBLREF="^TMP(""MAG"",$J,""DICOM"",""TEMPLATE"")"
+ . Q
+ E  D  ; dictionary template for a regular text message
+ . S GBLREF="^MAGDICOM(2006.52,TEMPLATE,1)"
+ . Q
+ ;
+ S IPTR=0 F  S IPTR=$O(@GBLREF@(IPTR)) Q:IPTR=""  D
+ . S X=@GBLREF@(IPTR,0),TAG=$P(X,"^"),SCUSCP=$P(X,"^",3)
+ . S DEFAULT=$P(X,"^",4),SEQMARK=$P(X,"^",5)
+ . D ELEMENT
+ . Q
+ ;
+ S STATUS=$$USE^MAGOSFIL(QUEUEOUT("FILE"))
+ ; output length of last group, if not done so already
+ I $D(GPOFFSET(SEQNUMB)) D PUTGPLEN
+ I FILEMODE'["IMAGE" D
+ . ; output length to end of message for multiple text msgs in a file
+ . S SEQNUMB="LENGTH TO END" D PUTGPLEN ; output length to end of msg
+ . Q
+ I $$USEPRIN^MAGOSFIL(1)
+ I "CLOSE"[MULTIMSG D
+ . ; close the file for a single message or the last multiple message
+ . S STATUS=$$CLOSE^MAGOSFIL(QUEUEOUT("FILE"))
+ . Q
+ Q
+ ;
+ELEMENT ; setup processing to output one element
+ N ELEMENT,GROUP,LENGTH,OWNER,VALUE
+ ; save DEFAULT value for later use in ^MAGDDW3
+ I DEFAULT["H" S DEFAULT=$$HEX2DEC^MAGOSMSC(DEFAULT) ; hex default
+ S GROUP=$P(TAG,","),ELEMENT=$P(TAG,",",2),OWNER=$P(TAG,",",3)
+ I $G(OLDGROUP(SEQNUMB))'=GROUP D  ;
+ . I $G(DEBUG)>1,GROUP'="FFFE" D MESSAGE^MAGDMLOG(1,0,GROUP_": ","V")
+ . S STATUS=$$USE^MAGOSFIL(QUEUEOUT("FILE"))
+ . I $D(OLDGROUP(SEQNUMB)) D  ;
+ . . D PUTGPLEN ; output correct length of previous group
+ . . K OLDGROUP(SEQNUMB) ; remove knowledge of the old group
+ . . Q
+ . I (GROUP="0000")!(GROUP="0002") D  ;
+ . . ; output the group length element & fill in length later
+ . . ; save current offset
+ . . S GPOFFSET(SEQNUMB)=$$GETOFSET^MAGOSFIL(QUEUEOUT("FILE"))
+ . . D PUTUSHOR^MAGDDW0($$HEX2DEC^MAGOSMSC(GROUP)) ; output group length
+ . . D PUTUSHOR^MAGDDW0(0)
+ . . I EXPLICIT  D
+ . . . D PUTASCII^MAGDDW0("UL")
+ . . . D PUTUSHOR^MAGDDW0(4)
+ . . . Q
+ . . E  D PUTULONG^MAGDDW0(4) ; implicit VR
+ . . D PUTULONG^MAGDDW0(0) ; initially, length=0
+ . . S OLDGROUP(SEQNUMB)=GROUP
+ . . Q
+ . I FILEMODE'["IMAGE",'$G(GPOFFSET("LENGTH TO END")) D
+ . . ; add length to end of message
+ . . ; get current offset
+ . . S GPOFFSET("LENGTH TO END")=$$GETOFSET^MAGOSFIL(QUEUEOUT("FILE"))
+ . . D PUTUSHOR^MAGDDW0(0) ; output group length
+ . . D PUTUSHOR^MAGDDW0(1)
+ . . I EXPLICIT  D
+ . . . D PUTASCII^MAGDDW0("UL")
+ . . . D PUTUSHOR^MAGDDW0(4)
+ . . . Q
+ . . E  D PUTULONG^MAGDDW0(4) ; implicit VR
+ . . D PUTULONG^MAGDDW0(0) ; initially, length=0
+ . . Q
+ . I $$USEPRIN^MAGOSFIL(1)
+ . Q
+ I "Xx"[$E(ELEMENT) D  ; output Private Group owners
+ . N NEXTSS0 ;-- next subscript in ^TMP at SS0 level
+ . N SS0 ;------ element subscript in ^TMP composed of g, e, and sequence
+ . ;
+ . ; don't generate a Private Group Owner unless there is a data element
+ . S SS0=$S(SEQUENCE="":TAG,1:SEQUENCE_"^"_TAG)
+ . S NEXTSS0=$O(^TMP("MAG",$J,"DICOM","OUT",SS0))
+ . I '$D(^TMP("MAG",$J,"DICOM","OUT",SS0)),$E(NEXTSS0,1,$L(SS0))'=SS0 Q  ; the element is not there
+ . ;
+ . I '$D(PRIVATE(SEQNUMB,GROUP,OWNER)) D  ; get BLOCK for the group
+ . . N BLOCK
+ . . S:$D(PRIVATE(SEQNUMB,GROUP))'=11 PRIVATE(SEQNUMB,GROUP)=15
+ . . S BLOCK=PRIVATE(SEQNUMB,GROUP)+1 ; first block is "10ee"
+ . . S PRIVATE(SEQNUMB,GROUP)=BLOCK
+ . . S PRIVATE(SEQNUMB,GROUP,OWNER)=$$DEC2HEX^MAGOSMSC(BLOCK)
+ . . ; Output the Private Group Owner
+ . . S STATUS=$$USE^MAGOSFIL(QUEUEOUT("FILE"))
+ . . D PUTUSHOR^MAGDDW0($$HEX2DEC^MAGOSMSC(GROUP))
+ . . S X="00"_PRIVATE(SEQNUMB,GROUP,OWNER)
+ . . D PUTUSHOR^MAGDDW0($$HEX2DEC^MAGOSMSC(X))
+ . . S VALUE=OWNER,LENGTH=$L(VALUE)
+ . . I LENGTH#2 S LENGTH=LENGTH+1,VALUE=VALUE_" "
+ . . I EXPLICIT D
+ . . . D PUTASCII^MAGDDW0("LO")
+ . . . D PUTUSHOR^MAGDDW0(LENGTH)
+ . . . Q
+ . . E  D PUTULONG^MAGDDW0(LENGTH) ; implicit VR
+ . . D PUTASCII^MAGDDW0(VALUE)
+ . . I $$USEPRIN^MAGOSFIL(1)
+ . . Q
+ . S $E(ELEMENT,1,2)=PRIVATE(SEQNUMB,GROUP,OWNER)
+ . Q
+ ;
+ I $G(DEBUG)>1,GROUP'="FFFE" D MESSAGE^MAGDMLOG(0,0,ELEMENT_" ","V")
+ D OUTPUT1^MAGDDW3
+ Q
+ ;
+PUTGPLEN ; Update the Group Length
+ N GRPLEN,OFFSET,PTR,X
+ S OFFSET=$$GETOFSET^MAGOSFIL(QUEUEOUT("FILE")) ; save current offset
+ S PTR=GPOFFSET(SEQNUMB) ; start of last group
+ S GRPLEN=OFFSET-PTR-12
+ I GRPLEN D  ; output valid group length
+ . ; reposition to Group Length
+ . S X=$$SEEK^MAGOSFIL(QUEUEOUT("FILE"),PTR+8,0)
+ . D PUTULONG^MAGDDW0(OFFSET-PTR-12) ; output the group length
+ . ; reposition to end of group
+ . S X=$$SEEK^MAGOSFIL(QUEUEOUT("FILE"),OFFSET,0)
+ . Q
+ E  D  ; group length is zero -- backup offset and overwrite
+ . ; reposition to beginning of field
+ . S X=$$SEEK^MAGOSFIL(QUEUEOUT("FILE"),PTR,0)
+ . Q
+ K GPOFFSET(SEQNUMB) ; make sure that you only update it once
+ Q
+ ;
+
+MAGDVRSN^INT^1^63249,29883^
+MAGDVRSN ;WOIFO/EdM/PMK - Version Number of VistA DICOM Gateway ; 03 Mar 2014 8:14 AM
+ ;;3.0;IMAGING;**1,7,9,26,21,10,36,3,11,30,5,51,50,52,69,75,102,103,54,53,66,49,99,123,118,147**;Mar 19, 2002;Build 147.1;March 03, 2014
+ ;; Per VHA Directive 2004-038, this routine should not be modified.
+ ;; +---------------------------------------------------------------+
+ ;; | Property of the US Government.                                |
+ ;; | No permission to copy or redistribute this software is given. |
+ ;; | Use of unreleased versions of this software requires the user |
+ ;; | to execute a written test agreement with the VistA Imaging    |
+ ;; | Development Office of the Department of Veterans Affairs,     |
+ ;; | telephone (301) 734-0100.                                     |
+ ;; | The Food and Drug Administration classifies this software as  |
+ ;; | a medical device.  As such, it may not be changed in any way. |
+ ;; | Modifications to this software may result in an adulterated   |
+ ;; | medical device under 21CFR820, the use of which is considered |
+ ;; | to be a violation of US Federal Statutes.                     |
+ ;; +---------------------------------------------------------------+
+ ;;
+ N A,D,DATETIME,HALT,LINE1,LINES,P,PACKAGE,PAGE,PATCHES,R,VERSION,X
+ ;
+ ; Follow VA SACC guidelines for notation of the version:
+ S X=$T(+2),VERSION=$P(X,";",3),PACKAGE=$P(X,";",4),PATCHES=$P(X,";",5)
+ S DATETIME=$P(X,";",8)
+ W !!,"This is """,PACKAGE," ",VERSION,""" created on ",DATETIME,"."
+ W:PATCHES'="" !,"Active patch(es): ",PATCHES
+ S R="MAG" F  S R=$O(^$R(R)) Q:$E(R,1,3)'="MAG"  D
+ . S X=$T(+2^@R) Q:$P(X,";",3)'=VERSION  Q:$P(X,";",4)'=PACKAGE
+ . S P=$TR($P(X,";",5),"*") Q:P=""
+ . S P=$P(P,",",$L(P,",")) Q:P=""
+ . S D=$P(X,";",8) S:D="" D="---??---"
+ . S P(P,D,R)=""
+ . Q
+ S PAGE=23,LINES=PAGE+1,HALT=0,A=0 D NEWLINE(0)
+ S P="" F  S P=$O(P(P)) Q:P=""  D
+ . D NEWLINE(1) Q:HALT
+ . W "Patch ",P,": " S X=$X
+ . S A=0,D="" F  S D=$O(P(P,D)) Q:D=""  D  Q:HALT
+ . . I A D NEWLINE(1) Q:HALT  W ?X
+ . . W D S A=1
+ . . Q
+ . Q
+ W !!
+ Q
+ ;
+NEWLINE(WAIT) N I,X
+ S LINES=LINES+1,X="" I LINES<PAGE W ! Q
+ D:WAIT  Q:HALT
+ . W !,"Press <Enter> to continue: " R X:$G(DTIME,300) E  S X="^"
+ . I X="^" S HALT=1
+ . Q
+ S LINES=2
+ W !!,"Installed patches:"
+ I A S LINES=3 W !,"Patch ",P,": "
+ Q
+ ;
+ ; VA Routine Check Sum
+ ;  Write $$CHK^MAGDVRSN(name_of_routine)
+ ; will return the check-sum that is used by the VA Kernel
+ ; for the routine in question, as it exists in the current
+ ; environment
+ ;
+CHK(R) N K,X,Y
+ S Y=0
+ F K=1:1 S X=$T(+K^@R) Q:X=""  S:K'=2 Y=Y+$$C(X)
+ Q Y
+ ;
+C(X) N F,I,Y
+ S Y=0
+ S F=$F(X," "),F=$S($E(X,F)'=";":$L(X),$E(X,F+1)=";":$L(X),1:F-2)
+ F I=1:1:F S Y=$A(X,I)*I+Y
+ Q Y
+ ;
+CHK2(R) N K,X,Y
+ S Y=0
+ F K=1:1 S X=$T(+K^@R) Q:X=""  S:K'=2 Y=Y+$$C2(X,K)
+ Q Y
+ ;
+C2(X,K) N F,I,Y
+ S Y=0
+ S F=$F(X," "),F=$S($E(X,F)'=";":$L(X),$E(X,F+1)=";":$L(X),1:F-2)
+ F I=1:1:F S Y=$A(X,I)*(I+K)+Y
+ Q Y
+ ;
+DCMVER N A,D,I,M,MD,MV,OK,P,VISTA,X,Y
+ I $$CALLRPC^MAGM2VCU("MAG DICOM GET VERSION","M",.VISTA)<0 D  Q
+ . W !!,"** WARNING **"
+ . W !,"Cannot obtain version information from VistA at this time."
+ . W !!,"Press <Enter> to continue: " R X:$G(DTIME,300)
+ . Q
+ S X=$TR($P($T(+2),";",5),"*")
+ F I=1:1:$L(X,",") S P=$P(X,",",I) I P,(","_VISTA)'[(","_P_",") S MV(P)=1
+ F I=1:1:$L(VISTA,",")-1 S P=$P(VISTA,",",I) I P,(","_X_",")'[(","_P_",") S MD(P)=1
+ S OK=1
+ ; Ignore VistA only patches:
+ F P=6,16,17,19,22,24,25,27,29 K MD(P)
+ ; Ignore DICOM only patches:
+ F P=26 K MV(P)
+ D:$D(MV)!$D(MD)
+ . W !!,"The DICOM Gateway and the VistA system do not have the same"
+ . W !,"list of patches installed:"
+ . S A=$C(13,10)_"The DICOM Gateway is missing: "
+ . S MD="" F  S MD=$O(MD(MD)) Q:MD=""  D
+ . . I A=", ",$O(MD(MD))="" S A=" and "
+ . . W A,MD S OK=0,A=", "
+ . . Q
+ . S A=$C(13,10)_"The VistA System is missing: "
+ . S MV="" F  S MV=$O(MV(MV)) Q:MV=""  D
+ . . I A=", ",$O(MV(MV))="" S A=" and "
+ . . W A,MV S OK=0,A=", "
+ . . Q
+ . Q
+ S X=$P(VISTA,"-",2),D=X#100,M=X\100#100,Y=X\10000+1700
+ S:D<10 D=0_D
+ S MV=D_"-"_$P("January February March April May June July August September October November December"," ",M)_"-"_Y
+ S MD=$P($T(+2),";",6)
+ D:MV'=MD
+ . S OK=0
+ . W !!,"The latest KIDS build on VistA was dated ",MV,"."
+ . W !,"The latest DICOM build was dated ",MD,"."
+ . Q
+ Q:OK
+ W !!,"*** WARNING ***"
+ W !,"The software on this DICOM Gateway may not be compatible"
+ W !,"with the software on the VistA system."
+ W !!,"Press <Enter> to continue: " R X:$G(DTIME,300)
+ Q
+ ;
+
+
+

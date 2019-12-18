@@ -1,0 +1,288 @@
+Verified XM*7.1*5 SEQ #5
+Extracted from mail message
+XMA02
+XMA02 ;(WASH ISC)/CAP/THM-Queued print ;10/15/90  11:56 ;
+ ;;7.1;MailMan;**4,5**;Jun 02, 1994
+ENT ;Queue Printing of NEW messages
+ D GETTIME Q:X=U  S XMLROU="ZTSK3^XMA02",ZTDESC="NEW message PRINT"
+ S ZTSAVE("XMDUZ")="" D QUE G EXIT
+EN1 ;Entry to queue for printing a single message
+ D GETTIME Q:X=U
+ S XMLROU="ZTSK1^XMA02"
+ F I="XMDISPI","XMZ","XMTYPE","DUZ","XMDUZ","XMK","XMKN" S ZTSAVE(I)=""
+ D QUE G EXIT
+EN2 ;Entry to queue for printing a selection of messages
+ D GETTIME Q:X=U  S XMLROU="ZTSK2^XMA02",%=Y*86400+$P(Y,",",2) I $H*86400+$P($H,",",2)-Y<90 S %=%+90,Y=%\86400_","_(%#86400)
+ F I="XMDISPI","XMTYPE","DUZ","XMDUZ","XMK","XMKN" S ZTSAVE(I)=""
+ D QUE S %=0
+E I $S('$D(XMBEG):1,XMBEG="":1,1:0) S %=$O(XMBEG("")) G EXIT:'% S XMBEG=XMBEG(%) K XMBEG(%)
+ F %0=0:0 G E:XMBEG="" S %=$P(XMBEG,","),XMBEG=$P(XMBEG,",",2,99) I % S %0=$O(^XMB(3.7,XMDUZ,2,XMK,1,"C",%,0)),XMC=XMC+1,^%ZTSK(ZTSK,1,XMC)=%0
+EXIT W "Task #"_ZTSK_" queued by request",! K %,%0,ZTSK,XMLROU
+ Q
+GETTIME ;
+READ R !,"Requested time to print: NOW// ",X:DTIME S:'$T X="^" I X="" S X="NOW"
+ I X["?" G SYNTAX
+ I X["^" S X="^" Q
+STRIP I $E(X)=" " S X=$E(X,2,255) G STRIP
+ S X=$TR(X,"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+ I $F(",N,NO,NOW,",","_$E(X,1,3)_",")>1 S Y=$H Q
+ I X'["@" S X="T@"_X
+ S %DT="TEX",%DT(0)=0 D ^%DT K %DT(0) I Y<0 G SYNTAX
+ S X=+Y D H^%DTC S Y=Y_"000",Y=%H_","_($E(Y,9,10)*60+$E(Y,11,12)*60)
+ Q
+SYNTAX W ! I X'["?" W !,?7,"I'm sorry, but I don't understand your answer. Please"
+ W !,"Enter: NOW, or press the RETURN key, if you want your selection"
+ W !,?7,"queued up to be printed out now, or",!
+ W !,"Enter: The TIME at which you want the printing to begin, i.e.:"
+ W !,?14,"10 (for 10am today), or"
+ W !,?14,"9:15PM, etc."
+ W !,?7,"You may also include a date, for example:"
+ W !,?14,"T@10 (for Today At 10AM), or"
+ W !,?14,"T+2@4:45PM (for 2 days from today), or"
+ W !,?14,"Jan 22@11:10AM, etc."
+ W !,?7,"In any case, you must specify a Time, either now or in the"
+ W !,?7,"future. Otherwise",!
+ W !,"Enter: ^ (up-arrow) to go back to a previous question.",!
+ W ! G READ
+QUE W ! S ZTDTH=Y X ^%ZOSF("UCI")
+ S %=$S($D(ION)#2:ION,1:IO) I $D(IOST)#2,IOST]"" S %=%_";"_IOST I $D(IOM)#2,IOM S %=%_";"_IOM I $D(IOSL)#2,IOSL S %=%_";"_IOSL
+ S ZTIO=% I $D(IOT),IOT="SPL" K ZTIO
+ S ZTRTN=XMLROU,ZTUCI=Y,ZTSAVE("XMP")="",ZTSAVE("XMA1P")=""
+ I '$D(ZTDESC) S ZTDESC="Queued print for "_$S($D(XMDUN):XMDUN,1:$P(^VA(200,DUZ,0),U))
+ D ^%ZTLOAD K ZTUCI,ZTDTH,ZTSAVE,ZTRTN,ZTDESC,ZTIO
+ Q
+ZTSK1 ;
+ S ZTREQ="@"
+ U IO D TOP^XMS2,ENTPRT^XMAP W !!! I $P(XMTYPE,";",5) D QE2^XMA5
+ Q
+ZTSK2 S (XMC,%)=0,XMT2=$P(XMTYPE,";",3) G Q:'$L(XMT2)
+Y S %=$O(^%ZTSK(ZTSK,1,0)) G Q:'% S XMZ=^(%) K ^(%)
+ G Y:XMZ=""
+ S XMR=^XMB(3.9,XMZ,0) I $TR($P(XMR,U,11),"y","Y")="Y",DUZ'=XMDUZ G Y
+ S XMC=XMC+1,XMRC=$O(^XMB(3.9,XMZ,1,"C",XMDUZ,0)) D @XMT2
+ G Y
+ZTSK3 G ZTSK^XMA0A
+Q W @IOF S ZTREQ="@" Q
+QU2 W !,"If YES the recipient list will be printed at the end.",! Q
+
+XMA2
+XMA2 ;(WASH ISC)/CAP/THM-MailMan SEND ;3/25/91  15:42 ;
+ ;;7.1;MailMan;**5**;Jun 02, 1994
+SEND ;LOAD-XMLOAD=1
+ D INIT^XMA20 I $D(XMNOSEND) G TWO^XMA1E
+ D SEN:'ER G EXIT^XMA20
+ Q
+SEN ;
+SEN0 S:'$D(XMZ) XMZ="" K XMQ D SS
+ I $D(XMSUB),XMSUB[U K XMLOAD Q
+ S XMZO=XMZ,(X1,XMR)="" D CONF^XMA1 Q
+SS D SUBJ Q:XMSUB[U  S:'$D(XMZ1) XMZ1=0
+ S XMRL=0,XMR=XMSUB_U_XMDUZ D ENT
+ I $G(XMA2BLOB),$O(^XMB(3.9,XMZ,2,0)) D ENTM^XMA0A,ADD^XMA2B K XMA2BLOB I $D(XMOUT) K XMOUT G K
+ D DESTXM^XMA21 I $D(XMLOAD),X'["^" D ^XMASEC
+ K XMLOAD,XMFG I X[U G KX:'$D(DTOUT),H
+ W ! D OK^XMA22 K XMKEY,XMKEYTRY I X[U D ENTD^XMA0A,KILL^XMA3 Q:'$D(DTOUT)  G H
+ D KX G K:'$O(^XMB(3.9,XMZ,2,.999)) I $D(XMA11B) D ^XMA11B
+ W:'$D(ZTQUEUED) "  Delivering ["_XMZ_"]... " D ENT1^XMAD1 W:'$D(ZTQUEUED) !,"  Sent" Q
+KX D ENTD^XMA0A Q
+SQ S XMSUB=Y Q
+SUBJ D ENTS^XMA20,SQ,GET:Y'=U Q
+XMZ ;Create stub/return error
+ S XMRETURN=1 D GET K XMRETURN Q
+GET ;Create stub
+ D G2 Q:$S($D(XMZ)[0:1,XMZ<0:1,1:0)
+G1 D NOW^%DTC
+G11 N %1,Y,%0 I $G(XMDUZ)=.6 N XMDUZ S XMDUZ=DUZ,%1=.6
+ S %1=$S($D(%1):%1,$D(DUZ)#10:DUZ,1:""),Y=$S($D(XMDUZ):XMDUZ,%1:%1,1:.5),%0=$S($D(^XMB(3.9,XMZ,0)):^(0),1:"") I $L(Y)>100 S Y="Internet_see_header"
+ ;Info Only / sent by Postmaster
+ I Y=.5,$S($G(XMDUZ):XMDUZ,$G(DUZ):DUZ,1:0)'=.5 S $P(%0,U,12)="y"
+ I XMSUB[U S XMSUB=$$ENCODEUP^XMCU1(XMSUB)
+ S $P(%0,U,1,4)=XMSUB_U_Y_U_%_U_$S(Y'=%1&+Y:%1,1:""),^(0)=%0
+ S:$L(XMSUB) ^XMB(3.9,"B",$E(XMSUB,1,30),XMZ)="" Q
+G2 S X=0 N %,%0
+G L +^XMB(3.9,0):9 K XMZ S X=X+1 I '$T H 0 G G:X<999 W:'$D(ZTQUEUED) !,"  Please try again later.",! G IQ:$D(XMRETURN),ERR^XMA20
+ S %0=^XMB(3.9,0)
+I S %=$P(%0,U,3)+1,$P(%0,U,3)=%,$P(^XMB(3.9,0),U,3,4)=%_U_($P(%0,U,4)+1)
+ G I:$D(^XMB(3.9,%)) I X<999 S X=X+1 G I:$O(^(%))?1.N S ^(%,0)="",XMZ=% G GQ
+ I '$D(XMRETURN) S XMZ=% D RECV^XMA25 G ERR^XMA20
+IQ H 1 S XMZ=-1
+GQ L -^XMB(3.9,0) Q
+ ;
+ENT G:$D(XMLOAD) ^XMP
+ D ENTM^XMA0A
+ENT1 ;WPS Edit
+ ;
+ ;PackMan message ?
+ S %=$P($G(^XMB(3.9,XMZ,2,0)),U,3) I % S Y=$S($E($G(^(2,%,0)))="$":1,1:0) D CHECK^XMP2A:Y=0 I Y>0 D PHELP^XMP2A
+ ;
+ ;DWPK and DWLW control wrap and the length of the lines
+ ;
+ S DWPK=1,DWLW=75,(DIA,DIC)="^XMB(3.9,"_$S($D(XMRCVR)&$G(XMZ2):XMZ2,1:XMZ)_",2,",DIA("P")=3.9,$P(^XMB(3.9,XMZ,2,0),U,2)="3.92A"
+ W !,$S($D(XMCOPY):"You may edit",1:"Enter the")," text of the message"
+ I '$O(^XMB(3.7,"AD",DUZ,0)) D ENTR^XMA0A
+ D EN^DIWE K DC,DIWEPSE G H:$D(DTOUT) D KX:'$D(^XMB(3.9,XMZ,2))
+EC S XMCNT=0 S:$D(^XMB(3.9,XMZ,2,0)) XMCNT=$P(^(0),U,3) Q
+ Q
+H K DTOUT G HALT^XMA20
+D2 S XMFF0=1 D DE2A^XMA21 K XMFF0,XMB Q:X[U
+ ;ENTRY TO FORWARD
+D2X D D S XMFF="" I XMDUZ'=$P(XMR,U,2) S XMFF=XMDUZ_U_$S($G(XMDUZ):XMDUZ)
+ S $P(XMFF,U)=$P(XMFF,U)_" "_Y
+ I "Yy"'[$E($P(XMR,U,12)_" "),'$P(XMR,U,12) S %=$O(^XMB(3.9,XMZ,1,"C",XMDUZ,0)) I %,$D(^XMB(3.9,XMZ,1,%,"T")),^("T")="I" S %="" F Y=0:0 S %=$O(^TMP("XMY",$J,%)) Q:%=""  S ^TMP("XMY",$J,%,1)="I"
+ D ENT^XMAD1 K XMFF Q
+1 S %=%+1,%1=%1+1,X=$S(+X'=X:X,'$D(^VA(200,X,0)):X,1:$P(^(0),U)) W:'(%1-1#4) ! I $X>40,$L(X)>19 S %1=%1+1 W:'(%1-1#4) !
+ W ?(%1-1#4*20),X I $L(X)>19 S %1=%1+1 W:'(%1-1#4) !
+ Q
+ENTF S XMR=$G(^XMB(3.9,XMZ,0)) Q:XMR=""
+ K ^TMP("XMYT",$J)
+ S %X="^TMP(""XMY"","_$J_",",%Y="^TMP(""XMYT"","_$J_"," D %XY^%RCR
+ D D2X
+ S %Y="^TMP(""XMY"","_$J_",",%X="^TMP(""XMYT"","_$J_"," D %XY^%RCR
+ Q
+D25 ;Show RCPTs
+ S I=$S($D(^XMB(3.9,XMZ,1,0)):$P(^(0),U,3),1:0)
+ I I<2,$O(^XMB(3.9,XMZ,1,"C",0))=XMDUZ G D3
+ S %2=I_"^any" D 2 G D5:X["^",D3:I<1 S XMDIC="^XMB(3.9,"_XMZ_",6,""B""," I '$O(^XMB(3.9,XMZ,6,0)) S $P(XMDIC,",",3,4)="1,""C"""
+ W !,"This message has been delivered to ",$S(I>24:I_" ",1:""),"recipient",$S(I=1:"",1:"s"),"." S %2=I_"^more",I="",(J,%,%1)=0
+Q1 S I=$O(@(XMDIC_"I)")) I I="" S DIWEPSE=1 G Q2
+ S XMA2Q1=I I '(%#24)&%,I'<0 D 2 G D3:I=""
+ S (I,X)=XMA2Q1 D 1 G Q1
+Q2 K XMDIC
+D3 K XMA2Q1 S:'$D(XMRCVR) XMZ1=XMZ
+ I '$D(XMCOPY) D GET S:XMZ1'=XMZ $P(^XMB(3.9,XMZ,0),U,8)=XMZ1
+ D ENT1,W I $D(DTOUT) D ENTR^XMA0A G H
+ S:'$D(XMRCVR) XMZ2=XMZ S X="^",XMZ=XMZ1
+ I $D(XMZ2),'$O(^XMB(3.9,XMZ2,2,0)),'$D(ZTQUEUED) G D4
+ I $O(^XMB(3.9,XMZ2,2,0)) D ^XMA22 K XMKEY,XMKEYTRY
+ I X'[U!$D(DTOUT) K XMZ1 G CHK^XMA20:XMZ2-XMZ'=0,ENT^XMAD1
+D4 D KX S XMZ=XMZ2
+ D K:'$O(^XMB(3.9,XMZ,1,0)) S XMZ=XMZ1 K XMZ1
+D5 I '$G(XMCOPY) W !!,"  No Response Sent !",*7,!
+ Q
+ ;DIWEPSE effects screen editor
+W K DIWEPSE Q
+UTM Q:XMSUB'["~U~"  S XMSUB=$$DECODEUP^XMCU1(XMSUB) G UTM
+2 Q:I<0
+ W !,"Do you want to see ",$P(%2,U,2)," of the *",+%2,"* recipients listed?  NO// " R X:DTIME
+ I "Yy"'[$E(X_" ") S I="",J=1
+ S %1=0 Q
+K Q:$D(XMRCVR)  G KILL^XMA3
+D D NOW^%DTC S X=% K %
+ S Y=$E(X,6,7)_" "_$P("Jan^Feb^Mar^Apr^May^Jun^Jul^Aug^Sep^Oct^Nov^Dec",U,$E(X,4,5))_" "_$E(X,2,3) S:X\1'=X %=$P(X,".",2)_"0000",Y=Y_" "_$E(%,1,2)_":"_$E(%,3,4)
+ Q
+
+XMADGO
+XMADGO ;(WASH ISC)/CAP-MailMan START DELIVERY (3.7 File) ;9/19/92  15:31 ;
+ ;;7.1;MailMan;**5**;Jun 02, 1994
+ ;
+GO Q:$P($G(^XMB(1,1,0)),U,16)
+ I $D(XMDUZ) D KILL^XM I $D(XMCHAN) D KL^XMC I $D(XMBLOCK) D KILL^XML4CRC
+ I $D(^%ZOSF("TRAP")) S X="^%ET",@^("TRAP")
+ I $D(^%ZOSF("PRIORITY")) S X=$S(+$G(^XMB(1,1,.13)):+^(.13),1:5) X ^%ZOSF("PRIORITY")
+ I $D(ZTQUEUED) D KILL^%ZTLOAD
+ L +^XMBPOST("PGROUP"_$E(XMSTATT),$E(XMSTATT,2)):0 E  H 0 Q
+ ;
+ ;SET UP GENERAL VARIABLES
+ S U="^",DTIME=999 D NOW^%DTC S DT=$P(%,"."),W=0,Z="Z" K %I,%H,%
+ D HANG K XMADH G ^XMADJF1A
+ ;
+ZTSK ;START Delivery Background Processes
+ ;
+ ;Quit if Background Filer Stop Flag
+ Q:$P(^XMB(1,1,0),U,16)
+ ;
+ ;Check each queue w/messages
+ N %,X,Y,Z S X=""
+X S X=$O(^XMBPOST(X)) Q:X=""  S Y=""
+Y S Y=$O(^XMBPOST(X,Y)) G X:'Y,Y:$O(^(Y,""))=""
+ ;
+ ;If node locked, there is already one running
+ L +^XMBPOST(X,Y):1 E  G Y
+ ;
+ S %=$E(X,$L(X)),XMSTATT=%_Y,ZTDESC="MailMan "_$S(%="M":"Message",1:"Response")_" Queue #"_Y
+ ;
+ S ZTRTN="^XMADGO",ZTSAVE("XMSTATT")=""
+ ;
+ ;Start a job, Give TaskMan a chance to start it (hang)
+ D GOJOB H 0 L -^XMBPOST(X,Y) G Y
+ ;
+GOJOB N X,Y,ZTSK,ZTQUEUED,ZTCPU,ZTDTH,ZTIO
+ I '$D(ZTCPU),$D(^XMB(1,1,0)) S X=$P(^(0),U,12) I X'="" S ZTCPU=$P(X,",",2)
+ S ZTIO="",ZTDTH=$H D ^%ZTLOAD
+ Q
+JOB ;Start background filer when TaskMan can't
+ ;J JOBGO^XMADGO Q
+ ;
+JOBGO S IO="",IO(0)="" D DT^DICRW G XMADGO
+ ;
+ ;Start Queue processors
+QUEUE S ZTDESC="MailMan Delivery "_$P(XMADLOCK,"_",2),ZTSAVE("XMHANG")=""
+ N XMHANG D HANG
+ I XMADGO=1 S ZTRTN="^XMADJF0"
+ I XMADGO=999 S ZTRTN="^XMADJ999"
+ G GOJOB
+ ;Set up variable to determine Hangtime of delivery modules
+HANG N X
+ S X=$S($D(^XMB(1,1,0)):^(0),1:""),XMHANG=$S($P(X,U,13):$P(X,U,13),1:5)
+ Q
+
+XMAH
+XMAH ;(WASH ISC)/CAP-LOCAL HELP PROCESSING ;4/12/93  17:12 ;
+ ;;7.1;MailMan;**5**;Jun 02, 1994
+R S XQH="XMR-MESS-RANGE" G QQ
+QQ D EN^XQH Q
+ENT0 W *7,!,"Option not available with secured package." G C1^XMA1
+ENT1 W !,*7,"You may not read this message." G C1^XMA1
+ENT2 S XQH="XMR-MESSAGE" D EN^XQH G GD2^XMA0
+ ;
+ ;FROM XMA0 (RANGE PROCESSING) Y=^XMB(3.9,XMZ,0)
+ ;
+ENT3 W !,"The message (SUBJECT: ",$P(Y,U),") "
+ W:$X>50 ! W "is   CLOSED.  It was NOT forwarded !!",*7 G D3^XMA0
+ENT4 W !,"The message (SUBJECT: ",$P(Y,U),")" S %=$P(XMTYPE,";")
+ W !,"is   CONFIDENTIAL.  It was NOT ",%,$S($E(%,$L(%))="e":"",1:"e"),"d !!",*7 G D3^XMA0
+ENT5 W !,"Answer 'Y'es to delete the specified messages from this basket"
+ G DEL^XMAH0
+ENT6 W !,"This message is confidential."
+ W !,"A surrogate may not read confidential mail.",!
+ Q:'$D(XMKS)  G GD2^XMA0
+ENT7 I $E(X,1,2)="??" S XQH="XMS-RECIPIENT" G EN^XQH
+ W !,"Enter the name(s) of the recipient(s) of this message"
+ W !,"in any of the following formats:"
+ W !!,"   Lastname,first  -   for a user at this site"
+ W !,"   LASTNAME,FIRST@REMOTE-SITE  for a user at another site"
+ W !,"   G.<group-name>  -   for a group of users"
+ ;W !,"   D.<device-name> -   to send a message to a device.",!
+ W !!,"   Prefix any user address with;  'I:' to send Information only."
+ W !,"                                  'C:' to send Carbon copy."
+ ;W !,"                                  'T:' to send Thru."
+ W !!,"PLEASE ENTER '??' FOR DETAILED HELP",!
+ Q
+ENT8 ;FROM PRN^XMA0 & E1^XMA1
+ N XMP W !,"Enter 'O' or 0 (zero) for 'O'riginal Message"
+ I $P(XMTYPE,";")'="" W " or a response number." Q
+ I $D(^XMB(3.9,XMZ,3,0)) W " THRU Response number ",+$P(^(0),U,3)
+ S XMP=0 W "." D ENTR^XMAP Q
+ENT9 ;FROM XMA0 (RANGE GIVES NILL RESULT)
+ W !!,"INVALID RANGE:  No messages or too many messages were chosen.",*7
+ K X,X1 G TQ^XMA0
+GO ;FROM XMA0
+ I $E(X,1,3)="???" G ENT2
+ S %=X,X=$TR($E(X,2,5),"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ"),J=X,X=%
+ I J="HELP" G ENT2
+ G ^XMAL0
+ENTB W !,"The message (SUBJECT: ",$P(Y,U),")"
+ W !,"is a   SPOOLED DOCUMENT.  It can only be deleted.  Deletion can occur"
+ W !,"only one at a time from the 'Message Action' prompt.",*7
+ G D3^XMA0
+SPOOL ;FROM XMA1 - HANDLE SPOOLED DOCUMENT INTERFACE
+ I '$F(":D:d:L:l:N:n",":"_$E(X)_":") S X="^" W !!,"SPOOLER messages may be DELETEd, NEWed or LATERed at this time.",*7,!! Q
+ Q:"Dd"'[$E(X_" ")
+ S DIR("A")="This a SPOOLER message.  Do you really want to delete it "
+ S DIR(0)="Y",DIR("B")="YES" D ^DIR K DIR,DIRUT
+ I X["^"!("Nn"[$E(X_" ")) S X="^" W !!,"NOT Deleted !!",*7 Q
+ D DEL^ZISPL S X="D"
+ Q
+
+
+

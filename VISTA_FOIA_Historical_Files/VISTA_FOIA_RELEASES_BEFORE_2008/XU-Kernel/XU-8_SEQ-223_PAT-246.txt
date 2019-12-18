@@ -1,0 +1,387 @@
+
+=============================================================================
+Run Date: NOV 26, 2002                     Designation: XU*8*246
+Package : XU - KERNEL                          Priority: Mandatory
+Version : 8       SEQ #223                       Status: Released
+=============================================================================
+
+Associated patches: (v)XU*8*217    <<= must be installed BEFORE `XU*8*246'
+                    (v)XU*8*218    <<= must be installed BEFORE `XU*8*246'
+
+Subject: ADDRESS INDEXING FOR GMT
+
+Category: 
+  - Data Dictionary
+  - Routine
+  - Enhancement (Mandatory)
+
+Description: 
+============
+
+  This patch implements the basic infrastructure required to support the
+  Geographic Means Testing project.  
+  
+  >>> WARNING<<<
+  ****************************************************************************
+   THIS PATCH WILL ADD A NEW GLOBAL. SEE PRE-INSTALL INSTRUCTIONS FOR DETAILS. 
+  ****************************************************************************
+  
+  The following functionality is included in this patch:
+  
+  1. The POSTAL CODE (#5.12) file is being introduced with this patch to
+     maintain an up to date listing of Postal Codes.  Current postal code
+     data is being distributed with this file structure.  The new file
+     structure is outlined in the Data Dictionary changes section of this
+     patch description.
+  
+  2. The COUNTY CODE (#5.13) file is being added to maintain an up-to-date
+     listing of counties and county codes within the United States.  Current
+     County Code data is being distributed with this file structure. The new
+     file structure is outlined in the Data Dictionary changes section of the
+     patch description.
+  
+  3. Programmer APIs will be added to obtain data from the POSTAL CODE
+     (#5.12) and COUNTY CODE (#5.13) files.  The following new APIs have
+     been added in the ^XIPUTIL routine (see DBIA #3618 for details):
+  
+       POSTAL^XIPUTIL(PCODE,XIP) ; return all data related to a postal code
+                                                                    
+       $$FIPS^XIPUTIL(PCODE) ; return the FIPS code associated with the
+                               postal code
+  
+       CCODE^XIPUTIL(FIPS,XIPC) ; return all data associated with a FIPS
+                                  county code
+  
+       $$FIPSCHK^XIPUTIL(FIPS) ; does this FIPS code exist?
+  
+  4. The existing MFN~M05 messaging process (currently utilized for
+     Institution file updates) is being modified to allow incremental updates
+     of the Postal and County Code files on a quarterly basis.  These updates
+     will not require user intervention and should be completely automatic.
+  
+  5. Seven missing County Codes will be added to the County sub-file(#5.01)
+     of the State (#5) file (if they do not already exist on your system). 
+     This process will occur during the pre-install of patch XU*8*246, and
+     addresses the issue identified in NOIS UNY-0602-12657.
+  
+  
+  DATA DICTIONARY MODIFICATIONS
+  =============================
+  New File: #5.12 - POSTAL CODE  ^XIP(5.12
+  
+   #5.12 FILE LAYOUT:
+   ------------------
+    FIELD NAME     DATA TYPE         LENGTH    FLD#   NODE;PIECE
+    ==========     =========         ======    ====   ==========
+    Code           Free Text         12        .01       0;1
+    City           Free Text         28         1        0;2
+    County         Pointer to #5.13  N/A        2        0;3
+    State          Pointer to #5     N/A        3        0;4
+    Inactive Date  Date              N/A        4        0;5
+  
+   #5.12 FIELD DESCRIPTIONS:
+   -------------------------
+   CODE (#.01) - This field will store the Postal Code related to the
+                 geographic area described by the city, state, and county
+                 fields as recognized by worldwide postal organizations.
+  
+   CITY (#1)   - This field will store the City associated with this postal
+                 code.
+  
+   COUNTY (#2) - This field will store a pointer to the County Code file
+                 (#5.13) entry associated with this postal code. 
+  
+   STATE (#3)  - This field will store a pointer to the State file (#5) entry
+                 associated with this postal code.
+  
+   INACTIVE    
+   DATE (#4)   - This field will store the Date on which this postal code
+                 became inactive in the system.  This will prevent the need for
+                 a conversion immediately following the inactivation of a
+                 postal code.
+  
+  New File: #5.13 - COUNTY CODE  ^XIP(5.13
+  
+   #5.13 FILE LAYOUT:
+   ------------------
+    FIELD NAME     DATA TYPE         LENGTH    FLD#   NODE;PIECE
+    ==========     =========         ======    ====   ==========
+    FIPS Code      Free Text           5        .01       0;1
+    County Name    Free Text          25         1        0;2
+    State          Pointer to #5     N/A         2        0;3
+    Inactive Date  Date              N/A         3        0;4
+  
+   #5.13 FIELD DESCRIPTIONS:
+   -------------------------
+   FIPS CODE (#.01) - This field will store the 5 Digit FIPS County Code
+                      associated with the geographic area described by county
+                      and state name.  The data in this field will follow the
+                      standard described in Federal Information Processing
+                      Standard Publication (FIPSPUB) 6-4.
+  
+   COUNTY NAME (#1) - This field will store the County Name associated with
+                      the FIPS County Code.
+  
+   STATE (#2)  -      This field will store a pointer to the State file (#5)
+                      entry associated with this county code.
+  
+   INACTIVE DATE (#3) - This field will store the Date on which this FIPS
+                        County Code became inactive in the system.  This will
+                        prevent the need for a data conversion immediately
+                        following the inactivation date.
+  
+  NOIS #UNY-0602-12657
+  ====================
+  Seven missing County Codes will be added to the County sub-file(#5.01)
+  of the State (#5) file (if they do not already exist on your system). 
+  This process will occur during the pre-install of patch XU*8*246.
+  
+  List of Test Sites:
+  ===================
+  Sioux Falls, SD
+  Bay Pines, FL
+  Altoona, PA
+  
+  Blood Bank Team Coordination:
+  =============================
+  Blood Bank Clearance - November 20, 2002 
+  
+  ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;8.0;KERNEL;**[patch list]**;Jul 10, 1995
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  XIPUTIL                    N/A              3728069             246
+  XU8P246                    N/A              4426878             246
+  XUMF512F                   N/A              5069932             246
+  XUMFP                  1862290              2070953         206,217,246
+  XUMFP512                   N/A              5724043             246
+  XUMFP513                   N/A              5571793             246
+  
+  
+  SOFTWARE AND DOCUMENTATION RETRIEVAL
+  ====================================  
+  Due to the amount of data being distributed with this patch, the software
+  and data are being distributed in a host file.  
+    
+      Host file name: XU_8_P246.KID
+    
+  Sites may FTP the software and documentation directly from the 
+  ANONYMOUS.SOFTWARE directory at the following OI Field Offices:
+   
+              Albany:  ftp.fo-albany.med.va.gov
+               Hines:  ftp.fo-hines.med.va.gov 
+      Salt Lake City:  ftp.fo-slc.med.va.gov
+    
+    
+     * Note: Use ASCII mode when transferring the .KID file.
+             Use Binary mode when transferring the .PDF file.  The .PDF 
+             files can be read on a PC using the Adobe Acrobat Reader 
+             program.  The VistA Documentation Library [VDL] contains
+             all end-user manuals.
+  
+  PRE-INSTALLATION INSTRUCTIONS
+  =============================
+  
+  1. Create the ^XIP global
+     This patch brings in a new global, ^XIP. This global will contain the
+     Postal Code file (#5.12), and the County Code file (#5.13). These files
+     are relatively static, since they are only updated quarterly. 
+  
+     Please note that this distribution contains approximately 3775 global
+     blocks (Approx. 3.8 MB) of data that will be loaded into the new ^XIP
+     global upon installation of this patch.  As new zip codes are added (on
+     a quarterly basis), it is estimated that an additional 1 kilobyte will be
+     needed for each additional zip code and/or county code entry.  On average
+     the file will grow at a rate of approximately 100 kilobytes per quarter
+     (based on the last 2 quarterly update files).
+  
+     Place the ^XIP global in an appropriate volume set on your system.
+     Translate ^XIP across all CPUs.
+  
+  2. Global Protection, Translation, and Journaling
+  
+                    Protection:
+                     DSM for      Protection:
+     Global Name     OpenVMS       MSM-DOS       Translate?    Journal?
+     ^XIP          System: RWP     All: RWD         Yes        Optional
+                    W/G/U: RW
+  
+     Ensure that the protection on ^XIP is set as described above for
+     all levels. This allows writing to the ^XIP global during the
+     installation.
+  
+     DSM for OpenVMS
+     >D ^%GLOMAN <RET>
+     (Manage globals in which UCI?)
+     ^XIP
+                 System World Group UCI
+     Protection: RWP    RW    RW    RW
+  
+     MSM-DOS
+     >D ^%GCH <RET>
+     (Set Protection)
+     ^XIP
+                 System World Group User
+     Protection: RWD    RWD   RWD   RWD
+  
+     Cache systems
+     >D ^PROTECT <RET>
+     Directory:: (change to desired directory)
+     (Set the protection codes of globals
+  
+     Owner:  RWD=>
+     Group:    N=> RW  
+     World:    N=> RW
+     Network:RWD=>
+  
+     All Globals? No => No
+     Global ^XIP
+     1 item selected from
+     428 available globals
+     Global ^
+     Global ^XIP No change
+     More?? No => No
+  
+  
+  3. Set top-level protection to ensure that the global will not be deleted
+     accidentally.
+  
+  
+  Installation Instructions
+  =========================
+  
+      * * * * * * * *  A  T  T  E  N  T  I  O  N  * * * * * * * * * * * *
+    
+     It is recommended this patch be installed outside of normal business 
+     hours to avoid any complications resulting from users on the system.
+     Installation will take less than 10 minutes.
+  
+      * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+  
+  1. Follow the Pre-installation Instructions about creating global 
+     ^XIP prior to continuing with the Installation.  
+  
+  2. Download the KIDS file XU_8_P246.KID from the ANONYMOUS.SOFTWARE
+     directory of either Albany, Hines, or the Salt Lake CIOFO to the
+     appropriate directory on your system.
+    
+  3. Use the 'LOAD A DISTRIBUTION' option on the KIDS INSTALLATION 
+     menu, and enter:  XU_8_P246.KID
+  
+     **NOTE:  If the ^XIP global was not created prior to this step, then 
+              you will see this warning message:
+      
+               *******************************************************
+                        WARNING:  ^XIP global not initialized!
+  
+                 Please see the Pre-installation Instructions in the
+                   patch description for initialization instructions.
+              
+                           >>>> Installation aborted <<<<
+                     
+               *******************************************************
+  
+              The distribution global will not be unloaded, but the
+              installation cannot continue until the global is
+              appropriately placed by following the pre-installation
+              instructions in this patch description.
+  
+  4. Review your mapped set.  If any of the routines listed in the 
+     ROUTINE SUMMARY section of this patch description are mapped, they should
+     be removed from the mapped set at this time.
+  
+     DSM/AXP sites: These routines are not usually mapped, so you will
+                    probably not have to disable mapping.
+    
+  5. From the 'Kernel Installation & Distribution System' menu, select 
+     the Installation menu.
+    
+  6. From this menu, you may elect to use the following options (when
+     prompted for INSTALL NAME, enter XU*8.0*246).
+    
+       a. Backup a Transport Global - This option will create a backup
+          message of any routines exported with the patch.  It will NOT 
+          backup any other changes such as DDs or templates.
+    
+       b. Compare Transport Global to Current System - This option will 
+          allow you to view all changes that will be made when the patch 
+          is installed.  It compares all components of the patch 
+          (routines, DDs, templates, etc.).
+    
+       c. Verify Checksums in Transport Global - This option will allow
+          you to ensure the integrity of the routines that are in the 
+          transport global.
+    
+       d. Print Transport Global - This option will allow you to view the
+          components of the KIDS build.
+          
+  7. Use the Install Package(s) option and select XU*8.0*246.
+  
+  8. When prompted 'Want KIDS to INHIBIT Logon's during the install? 
+     YES//', it is recommended you answer NO.
+    
+  9. When prompted 'Want to DISABLE Scheduled Options, Menu Options, 
+     and Protocols? YES//', respond NO.
+  
+ 10. If routines were unmapped as part of Step 4, they should be 
+     returned to the mapped set once the installation has run to 
+     completion.  The new routines included with this patch do not 
+     need to be mapped.
+
+Routine Information:
+====================
+
+Routine Name:
+  - XIPUTIL
+
+
+Routine Checksum:
+
+Routine Name:
+  - XUMF512F
+
+
+Routine Checksum:
+
+Routine Name:
+  - XUMFP
+
+
+Routine Checksum:
+
+Routine Name:
+  - XUMFP512
+
+
+Routine Checksum:
+
+Routine Name:
+  - XUMFP513
+
+
+Routine Checksum:
+
+Routine Name:
+  - XU8P246
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : MORGAN,BRIAN                   Date Entered : JUL 23, 2002
+Completed By: MURPHY,MINAO J               Date Completed: NOV 26, 2002
+Released By : TILLIS,LEWIS                  Date Released : NOV 26, 2002
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

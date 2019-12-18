@@ -1,0 +1,302 @@
+$TXT Created by BEUSCHEL,GARY at SUPPORT.FO-OAKLAND.MED.VA.GOV  (KIDS) on TUESDAY, 01/08/02 at 07:00
+=============================================================================
+Run Date: JAN 11, 2002                     Designation: AFJX*5.1*31
+Package : AFJX - NETWORK HEALTH EXCHANGE     Priority: Mandatory
+Version : 5.1        SEQ #26                    Status: Released
+=============================================================================
+
+Associated patches: (v)AFJX*5.1*29 <<= must be installed BEFORE `AFJX*5.1*31'
+                    (v)AFJX*5.1*30 <<= must be installed BEFORE `AFJX*5.1*31'
+
+Subject: DON'T TALK TO CLOSED SITES
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Enhancement (Mandatory)
+
+Description: 
+============
+
+ Patch AFJX*5.1*31
+  
+ NOIS TUC-1001-60741, TUC-1001-60737, HUN-0701-22217, DAY-0797-41839,
+      HVH-1000-12729, HOU-0801-70115, COA-1201-22358, WPB-1201-31089
+ Test Site: Huntington, WV; Houston, TX
+  
+ This patch does the following:
+  
+ - Prevents NHE from accepting requests from or sending requests to closed
+ sites.  (See NOIS TUC-1001-60741, TUC-1001-60737, COA-1201-22358,
+ WPB-1201-31089, and HUN-0701-22217.)  Any closed sites in file 537025,
+ NHE AUTHORIZED SITES file, will be ignored, and will not be selectable
+ when requests are being created.
+  
+ - Solves the undefined BOLD variable problem by no longer "bolding" output
+ on the menu.  (See NOIS DAY-0797-41839.)
+  
+ - Solves the problem which occurred when Hudson Valley HCS changed option
+ S.AFJXSERVER to use a resource device to limit it to running only one job
+ at a time.  (See NOIS HVH-1000-12729.)
+  
+ Additionally,
+ - Routines are rewritten to incorporate good programming practices.
+ - Routine AFJXVER is modified to check both the B and C xrefs in file 4.2,
+ instead of just the B xref, when looking up a domain name.
+ - Routine AFJXPNHX is modified to use MailMan APIs to delete messages from
+ the NHE user's mailbox, instead of using direct global edits.
+ - The Identifiers in file 537000 are changed to "Write" Identifiers.  The
+ Post-Init, ^AFJXPRE, will effect the change.
+ - The DDs of fields in files 537000 and 537025, which are free-text domain
+ names, are changed to pointer-type fields, pointing to file 4.2.  The DD
+ of the field in file 537010 which points to file 537025 is changed to
+ point to file 4.2.  It is necessary to do this because domain names can,
+ and do, change. The Post-Init, ^AFJXPRE, will go through the records in
+ those files and change the data in the affected fields to pointers to file
+ 4.2.  It will take approximately 1/2 hour for every 400,000 records in file
+ ^AFJ(537010.  Here are the new definitions for the affected fields:
+  
+ STANDARD DATA DICTIONARY #537000 -- VAMC NETWORK HEALTH EXCHANGE FILE
+ STORED IN ^AFJ(537000,                                  (VERSION 5.1)
+ DATA       NAME                  GLOBAL        DATA
+ ELEMENT    TITLE                 LOCATION      TYPE
+ ---------------------------------------------------------------------------
+ 537000,8   REQUESTING PLACE       1;1 POINTER TO DOMAIN FILE (#4.2)
+            LAST EDITED:      NOV 15, 2001
+            HELP-PROMPT:      Enter the domain where the request originated.
+            DESCRIPTION:
+                              FACILITY REQUESTING DATA
+            CROSS-REFERENCE:  537000^C
+                              1)= S ^AFJ(537000,"C",$E(X,1,30),DA)=""
+                              2)= K ^AFJ(537000,"C",$E(X,1,30),DA)
+                              REQUESTING PLACE FOR PATIENT DATA
+  
+ STANDARD DATA DICTIONARY #537010 -- VAMC NETWORK PATIENT FILE
+ STORED IN ^AFJ(537010,                          (VERSION 5.1)
+ DATA         NAME                  GLOBAL        DATA
+ ELEMENT      TITLE                 LOCATION      TYPE
+ ---------------------------------------------------------------------------
+ 537010,3      Records Available At   1;0 POINTER Multiple #537010.04
+  
+ 537010.04,.01   Records Available At   0;1 POINTER TO DOMAIN FILE (#4.2)
+              LAST EDITED:      NOV 15, 2001
+              HELP-PROMPT:      Enter a domain which has records on the
+                                patient.
+              CROSS-REFERENCE:  537010.04^B
+                              1)= S ^AFJ(537010,DA(1),1,"B",$E(X,1,30),DA)=""
+                              2)= K ^AFJ(537010,DA(1),1,"B",$E(X,1,30),DA)
+  
+ STANDARD DATA DICTIONARY #537025 -- VAMC NETWORK HEALTH AUTHORIZED SITES FILE   
+ STORED IN ^AFJ(537025,                                        (VERSION 5.1)
+ DATA        NAME              GLOBAL        DATA
+ ELEMENT     TITLE             LOCATION      TYPE
+ ---------------------------------------------------------------------------
+ 537025,.01  NAME               0;1 POINTER TO DOMAIN FILE (#4.2)
+                                 (Required)
+             INPUT TRANSFORM:  S DIC("S")="I $P(^(0),U,2)'[""C""" D ^DIC
+                                  K DIC S DIC=DIE,X=+Y K:Y<0 X
+             LAST EDITED:      NOV 15, 2001 
+             HELP-PROMPT:      Enter the name of an authorized site. 
+             DESCRIPTION:      Enter the name of the sites that you will send
+                               data requests to and receive data from. 
+                               (Include your own site).  
+             SCREEN:           S DIC("S")="I $P(^(0),U,2)'[""C"""
+             EXPLANATION:      You may not select closed domains.
+             CROSS-REFERENCE:  537025^B 
+                               1)= S ^AFJ(537025,"B",$E(X,1,30),DA)=""
+                               2)= K ^AFJ(537025,"B",$E(X,1,30),DA)
+  
+ NOTE: This patch should be installed during off hours, when user activity
+ is at a minimum.  It requires patch AFJX*5.1*29 and *30.
+ The post-init for this patch will take approximately 1/2 hour for every
+ 400,000 records in file ^AFJ(537010.
+ ==========================================================================
+  
+ ROUTINES:
+ The second line of the routine now looks like:
+        ;;5.1;Network Health Exchange;**[patch list]**;Jan 23, 1996
+  
+              Before        After
+ Name       Checksum     Checksum     Patch List
+ -----------------------------------------------------------------
+ AFJXALRT   14041415     12200940     6,15,17,23,31
+ AFJXPATL    6030128       295973     31
+ AFJXPATS    3869099       299773     23,31
+ AFJXPNHA    3165623      3584849     31
+ AFJXPNHT    8297725      3201383     1,2,31
+ AFJXPNHX    5367061      3073916     1,6,11,17,20,24,31
+ AFJXPRE     2315825      8018806     30,31
+ AFJXREW     9153487         2406     15,17,18,23,26,29,31
+ AFJXSFAL    1759052      2271216     31
+ AFJXTEMA    2294720       369080     31
+ AFJXTRF    11122176      4969582     17,18,23,26,31
+ AFJXVER    19085828      9198043     26,31
+ AFJXWCBP   11230472         2912     1,31
+ AFJXWCP1   11042104      6240335     1,31
+ AFJXWCPB   10734470         2898     1,2,31
+ AFJXWCPM    4871774      1802119     6,22,31
+ AFJXWCPY   10927672         3082     1,31
+ * Checksums produced by CHECK^XTSUMBLD
+  
+ This patch introduces no new routines.
+ ==========================================================================
+  
+ INSTALLATION:
+ NOTE: This patch should be installed during off hours, when user activity
+ is at a minimum.  It requires patch AFJX*5.1*29 and *30.
+ The post-init for this patch will take approximately 1/2 hour for every
+ 400,000 records in file ^AFJ(537010.
+ 1.  Users may be on the system during installation of this patch.
+ 2.  DSM Sites: If any of these routines is mapped, disable mapping for the
+     affected routine(s).  
+ 3.  On the PackMan menu, use the 'INSTALL/CHECK MESSAGE' option.
+     This loads the patch into a Transport Global on your system.  
+ 4.  You do not need to stop TaskMan or the background filer.
+     Users may be on the system.
+ 5.  On the KIDS:Installation menu, use the following options to install
+     the Transport Global.
+        Verify Checksums in Transport Global
+        Print Transport Global
+        Compare Transport Global to Current System
+        Backup a Transport Global
+        Install Package(s)
+  Select INSTALL NAME:   AFJX*5.1*31   Loaded from Distribution <date/time>
+                         ===========
+  Install Questions:
+  Want KIDS to INHIBIT LOGONs during the install? YES// NO
+                                                        ==
+  Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// NO
+                                                                        ==
+  Enter the Device you want to print the Install messages.
+  You can queue the install by enter a 'Q' at the device prompt.
+  Enter a '^' to abort the install.
+  
+  DEVICE: HOME// <It's up to you.  You may queue it if you wish.>
+                 ------------------------------------------------
+ 
+ 6.  DSM Sites: After patch has installed, rebuild your map set, if
+     necessary.
+ 
+ 7. To determine whether the post-init finished properly, you may review
+ the Install File Print, under KIDS:Utilities.  If you see the statement,
+ 'Change identifiers in file 537000 to write identifiers.',
+ the post-init has finished properly.
+ ==========================================================================
+
+Routine Information:
+====================
+
+Routine Name:
+  - AFJXALRT
+
+
+Routine Checksum:
+
+Routine Name:
+  - AFJXPNHX
+
+
+Routine Checksum:
+
+Routine Name:
+  - AFJXVER
+
+
+Routine Checksum:
+
+Routine Name:
+  - AFJXWCBP
+
+
+Routine Checksum:
+
+Routine Name:
+  - AFJXWCP1
+
+
+Routine Checksum:
+
+Routine Name:
+  - AFJXWCPB
+
+
+Routine Checksum:
+
+Routine Name:
+  - AFJXWCPM
+
+
+Routine Checksum:
+
+Routine Name:
+  - AFJXWCPY
+
+
+Routine Checksum:
+
+Routine Name:
+  - AFJXPATL
+
+
+Routine Checksum:
+
+Routine Name:
+  - AFJXPATS
+
+
+Routine Checksum:
+
+Routine Name:
+  - AFJXPNHA
+
+
+Routine Checksum:
+
+Routine Name:
+  - AFJXPNHT
+
+
+Routine Checksum:
+
+Routine Name:
+  - AFJXPRE
+
+
+Routine Checksum:
+
+Routine Name:
+  - AFJXREW
+
+
+Routine Checksum:
+
+Routine Name:
+  - AFJXSFAL
+
+
+Routine Checksum:
+
+Routine Name:
+  - AFJXTEMA
+
+
+Routine Checksum:
+
+Routine Name:
+  - AFJXTRF
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : BEUSCHEL,GARY                  Date Entered : OCT 29, 2001
+Completed By: SCHRAM,JACK D                Date Completed: JAN 11, 2002
+Released By : SCOTT,JEAN M                 Date Released : JAN 11, 2002
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

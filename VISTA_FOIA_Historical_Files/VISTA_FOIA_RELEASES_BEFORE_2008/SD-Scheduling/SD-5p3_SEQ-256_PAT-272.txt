@@ -1,0 +1,371 @@
+$TXT Created by SHER,JOEL at BAY.FO-ALBANY.MED.VA.GOV  (KIDS) on THURSDAY, 04/10/03 at 13:14
+=============================================================================
+Run Date: APR 15, 2003                     Designation: SD*5.3*272
+Package : SD - SCHEDULING                      Priority: Mandatory
+Version : 5.3       SEQ #256                     Status: Released
+                  Compliance Date: APR 25, 2003
+=============================================================================
+
+Associated patches: (v)SD*5.3*278  <<= must be installed BEFORE `SD*5.3*272'
+                    (v)XM*DBA*151  <<= must be installed BEFORE `SD*5.3*272'
+
+Subject: PCMM PROVIDER WORKLOAD TRANSMISSION TO AAC
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Enhancement (Mandatory)
+
+Description: 
+============
+
+  
+ *****************************  NOTE  ************************************
+  
+   Due to the national interest in VAMC capacity to care for veterans this 
+   patch has a shortened installation compliance date. Installing this
+   patch as soon as possible is necessary to transmit workload data which 
+   will facilitate national care capacity analysis.
+  
+ **************************************************************************
+  
+ Transmission of Provider Workload to AAC
+  
+ This patch will provide for transmission of provider workload to AAC.
+ Entering and editing PRIMARY CARE FTEE EQUIVALENT data in PCMM will 
+ trigger the HL7 event. The message is generated at the same time
+ current PCMM HL7 messaging is run. This is usually a nightly scheduled
+ task PCMM HL7 Transmission [SCMC PCMM HL7 TRANSMIT].
+  
+ A post installation routine will review existing active providers with 
+ FTEE workload information and trigger those records for transmission.
+  
+ A pre installation routine will set up a new code 'B02' in the 
+ HL7 event file(# 779.001)
+  
+ CODE: B02                          DESCRIPTION: PCMM Workload Transmission
+ VERSION: 2.4
+  
+ It will also set a PMU entry in the HL7 MESSAGE TYPE file (#771.2)
+ ABBREVIATED NAME: PMU                   FULL NAME: Workload Message
+ VERSION: 2.4
+  
+ Protocols Transported
+  
+ SCMC LE DESELECT PATIENT   Select Record(s) for Retransmit
+ SCMC LE RETRANSMIT PATIENT Deselect Record(s) for Retransmit 
+  
+    These protocols are utilized in PCMM Transmission Error Processing and
+    have been renamed for enhanced capability of handling new HL7
+    transmissions which are not Patient centric.
+        
+ SCMC SEND CLIENT WORKLOAD   PCMM SEND CLIENT FOR WORKLOAD                
+ SCMC SEND SERVER WORKLOAD   PCMM SEND SERVER FOR WORKLOAD
+    Used for sending Message and receiving acknowledgments
+  
+ Mailgroup
+  
+ A new mailgroup is transported in this package PCMM WORKLOAD FTEE MAIL 
+ GROUP. It requires that XXX@Q-NPD.MED.VA.GOV be included as a remote 
+ member to receive HL7 messages.
+ Local users may be added to this group, if they wish to receive and 
+ monitor the messages.
+  
+  
+ File Changes
+  
+ PCMM HL7 TRANSMISSION LOG (#404.471) 
+  
+   Added new fields WORKLOAD EVENT POINTER (#.07) PRACTITIONER (#.08)
+   to track HL7 error messages.
+  
+ PCMM HL7 ERROR CODE  (#404.472)
+  
+   Additional codes for HL7 error messages 
+  008M        ZPT Segment Missing
+  007M        STF Segment Missing
+  006M        ORG segment missing
+  114M        EVN must be B02
+  502M        Invalid Staff Code
+  602M        Invalid Organization Unit Code
+  608M        Invalid Area of Specialization
+  702M        DIRECT PATIENT CARE FTEE INVALID
+  703M        MAXIMUM WORKLOAD INVALID
+  801M        Missing Field Separator
+  802M        Missing encoding character
+  809M        Missing Message Type
+  810M        Missing Message control ID
+  811M        Missing processing ID
+  812M        Missing version ID                       
+  
+ PCMM HL7 EVENT (#404.48)
+  
+   WORKLOAD (#.08) field added to differentiate workload messages
+                                
+ POSITION ASSIGNMENT HISTORY (#404.52)
+  
+   Crossreferences added to track practitioner and position changes.
+  
+ TEAM POSITION (#404.57)
+  
+   Crossreferences added to track maximum workload and primary care
+   position designations.                                
+  
+ TEAM POSITION HISTORY (#404.59)
+  
+    Crossreference to track team inactivation.
+  
+  
+ HL7 APPLICATION PARAMETER (#771)
+  
+    PCMM is transported to transmit HL7 messages to AAC. 
+  
+   NAME: PCMM                              ACTIVE/INACTIVE: ACTIVE
+   MAIL GROUP: PCMM WORKLOAD FTEE MAIL GROUP
+   COUNTRY CODE: USA
+  
+ HL LOGICAL LINK (#870)
+  
+   PCMM WORK is transported to transmit HL7 messages to AAC.
+   NODE: PCMM WORK                         LLP TYPE: MAILMAN
+   DEVICE TYPE: MailMan                  STATE: IDLE
+   AUTOSTART: Enabled
+  
+   Sites will need to insure that this HL LOGICAL LINK is started using the
+   Start/Stop Links option in the HL7 MAIN MENU.
+  
+  
+ The DOMAIN Q-NPD.MED.VA.GOV is required for this patch
+  
+ NAME: Q-NPD.MED.VA.GOV
+ If this domain is not on your system follow instructions in Mailman patch
+ XM*DBA*151 to enter this Domain.
+  
+ Transmission for a provider with multiple team position assignments in the
+ same facility will be combined, with values added into a single message.
+ Currently there is not a check in VistA to insure that total FTEE for a 
+ provider at multiple positions does not exceed 1.0. Messages sent with 
+ FTEE levels exceeding 1.0 will generate a 702M error that can be seen in 
+ the PCMM Transmission Error Processing option. When the FTEE level is 
+ corrected a new message will be transmitted.
+  
+     TEST SITES:
+   ================
+   Bay Pines, FL
+   Richmond, VA
+   Tampa, FL
+   El Paso, TX 
+   Boston, MA
+   Milwaukee, WI
+  
+ ROUTINE SUMMARY:
+ ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+           
+         <tab>;;5.3;Scheduling;**[patch list]**;May 01, 1999
+           
+                           CHECK^XTSUMBLD results
+      Routine name   Before Patch       After Patch         Patch List
+      ============   ============       ===========         ==========
+      SC53272P             N/A              3456663            272
+       ***NOTE*** SC5372P is used in the post installation and is deleted
+                  by the build after installation completion.
+      SCMCHL            3939986             5224073      177,204,224,272
+      SCMCHLA           3507352             3534163          210,272
+      SCMCHLA1          1817678             1918248          210,272
+      SCMCHLE           1843783             2063433      177,204,272
+      SCMCHLL           2656955             2968528         210,272
+      SCMCHLP               N/A             6730391            272
+      SCMCHLR2          5190738             5690282         210,272
+      SCMCHLR3          8635219             9139038         210,272
+      SCMCHLR4          6542102             6965545         210,272
+      SCMCHLR5          4810656             5230054         210,272
+      SCMCHLRR          4724525             5157972        210,224,272
+      SCMCHLX           1327200             1350620      177,264,272
+      SCMCHLX1          2585631             3217213       177,264,272
+      SCMCTSK           7753798             7759745        264,278,272
+  
+  
+ Installation Instructions:
+ ==========================
+ For additional patch information refer to the User Manual 
+ SD_53_272_UM.DOC which can be downloaded at the anonymous ftp site.
+  
+  
+    CIO FIELD OFFICE   FTP ADDRESS                 DIRECTORY
+    ----------------   -------------------------   --------------------
+    Albany             ftp.fo-albany.med.va.gov    [anonymous.software]
+    Hines              ftp.fo-hines.med.va.gov     [anonymous.software]
+    Salt Lake City     ftp.fo-slc.med.va.gov       [anonymous.software]
+  
+  
+  1.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This
+      option will load the KIDS package onto your system and will take 
+      less than 5 minutes.
+  
+  2.  Review your mapped set.  If any of the routines listed in the
+      ROUTINE SUMMARY section are mapped, they should be removed
+      from the mapped set at this time
+  
+  3.  The patch has now been loaded into a transport global on your system.
+      You now need to use KIDS to install the transport global. On the KIDS
+      menu, under the 'Installation' menu, use the following options:
+  
+          Verify Checksums in Transport Global
+          Print Transport Global
+          Compare Transport Global to Current System
+          Backup a Transport Global
+  
+  4.  On the KIDS menu, under the 'Installation' menu, use the following
+      option:
+  
+          Select Installation Option: Install Package(s)
+          Select INSTALL NAME: SD*5.3*272
+                               ==========
+  5. If you are installing for the first time you will be prompted.
+  
+     Incoming Mail Groups:
+  
+     Enter the Coordinator for Mail Group 'PCMM WORKLOAD FTEE MAIL GROUP':
+  
+     Enter a user who will coordinate the staff that will be reviewing PCMM
+     workload messages.
+  
+  6. Want KIDS to Rebuild Menu Trees Upon Completion of Install? YES// NO
+  
+  7. Do NOT inhibit users from login into the system.
+  
+  8.  Answer 'YES' to 'Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols?
+         
+      Disable the following options during installation
+           
+    SCMC PCMM HL7 TRANSMIT        PCMM HL7 Transmission
+    SCMC PATIENT ASSIGN/UNASSIGN  Primary Care Team/Posn Assign or Unassign
+    SCMC PCMM GUI WORKSTATION     PCMM GUI WORKSTATION
+  
+  9. A post-installation routine will run that will queue current
+     workload information for transmission.
+  
+ 10. If routines were unmapped as part of step 2, they should be  
+     returned to the mapped set once the installation has run to
+     completion.
+  
+ 11. Insure that XXX@Q-NPD.MED.VA.GOV is entered as a REMOTE USER for the 
+     mailgroup PCMM WORKLOAD FTEE MAIL GROUP. Local users may also be
+     assigned to this group to monitor transmission messages.
+  
+ 12. Using the Link Edit option in the Filer and Link Management Options 
+     menu make sure the AUTOSTART field of the PCMM WORK  HL7 LOGICAL LINK
+     is Enabled.
+  
+ 13. Using Start/Stop Links option in the Filer and Link Management 
+     Options menu start the PCMM WORK
+     receiver as a background job.
+
+Routine Information:
+====================
+
+Routine Name:
+  - SCMCHL
+
+
+Routine Checksum:
+
+Routine Name:
+  - SCMCHLE
+
+
+Routine Checksum:
+
+Routine Name:
+  - SCMCHLX
+
+
+Routine Checksum:
+
+Routine Name:
+  - SCMCHLX1
+
+
+Routine Checksum:
+
+Routine Name:
+  - SCMCTSK
+
+
+Routine Checksum:
+
+Routine Name:
+  - SCMCHLP
+
+
+Routine Checksum:
+
+Routine Name:
+  - SC53272P
+
+
+Routine Checksum:
+
+Routine Name:
+  - SCMCHLA1
+
+
+Routine Checksum:
+
+Routine Name:
+  - SCMCHLA
+
+
+Routine Checksum:
+
+Routine Name:
+  - SCMCHLR2
+
+
+Routine Checksum:
+
+Routine Name:
+  - SCMCHLR3
+
+
+Routine Checksum:
+
+Routine Name:
+  - SCMCHLRR
+
+
+Routine Checksum:
+
+Routine Name:
+  - SCMCHLR5
+
+
+Routine Checksum:
+
+Routine Name:
+  - SCMCHLR4
+
+
+Routine Checksum:
+
+Routine Name:
+  - SCMCHLL
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : SHER,JOEL                      Date Entered : NOV 26, 2002
+Completed By: OWEN,STEVEN W                Date Completed: APR 15, 2003
+Released By : CANNEDY,JOELLEN               Date Released : APR 15, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

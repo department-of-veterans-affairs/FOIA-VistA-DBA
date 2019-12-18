@@ -1,0 +1,547 @@
+Verified XM*7.1*8 SEQ #14
+Extracted from mail message
+XMCDNT
+XMCDNT ;(HINES ISC)/EEJ-NT COMMUNICATIONS DIAGNOSTICS ; 3/28/95 9:00 AM ;
+ ;;7.1;MailMan;**8**;Jun 02, 1994
+ ;EEJ,hines ISC.  Will test mailers in other domains for TCP/IP
+ W !,"TCP/IP tester"
+ W !!,"Enter the TCP/IP address of remote site: "
+ R ZHOST
+ O 56::10 E  W !,"Device 56 not open" Q
+ W !!,"Testing...",!
+ U 56::"TCP"
+ W /SOCKET(ZHOST,25)
+ U 56 R ZANSWER:10
+ I ZANSWER["220" U 0 W !,ZANSWER,"     Successful."
+ E  U 0 W !,"No answer from mailer at ",ZHOST
+ C 56
+ Q
+
+XMLTCP
+XMLTCP ;(WASH ISC)/CAP - TCP/IP TO MAILMAN ;11/30/89  10:09 ; [ 01/23/95  11:29 AM ]
+ ;;7.1;MailMan;**8**;Jun 02, 1994
+ ; modified to run with MSM NT and Protocol TCP/IP-MAILMAN (file 3.4)
+ ;
+SEND ;returns ER(0 OR 1), XMLER=number of "soft" errors
+ S X="ITRAP^XMCTRAP",@^%ZOSF("TRAP")
+ S %=XMSG I $L(%)>255 S ER=1,XMTRAN="Line too long" D TRAN Q
+ ;I %'?.ANP S %=$$STR^XMLUTL(%)
+ S XMSG=% I $G(XMINST) S Y=$$STAT^XMLSTAT(XMINST,1,XMSG,"TCP/IP-MailMan",1)
+ W XMSG,$C(13,10),!
+ Q
+ ;Receive a line (must keep buffer / lines divided by LF)
+REC N L
+ I $D(XMRG),$G(XMINST) S Y=$$STAT^XMLSTAT(XMINST,2,XMRG,"TCP/IP-MailMan",1)
+ I '$D(XMOS) S XMOS=^%ZOSF("OS") I XMOS["MSM" S XMOS("MSMVER")=$P($ZV," 4.0.",2) S:+XMOS("MSMVER")=0 XMOS("MSMVER")=8
+ S X="ITRAP^XMCTRAP",@^%ZOSF("TRAP")
+ ;Return line if read last time
+RE G R:XMLTCP[$C(10) S %=255-$L(XMLTCP) G R:%<1
+ ;Insure can clean up if line dropped, etc.
+ I $S(XMOS["VAX":1,+$G(XMOS("MSMVER"))<8:1,1:0) R X#$S(%:%,1:1):$S($G(XMSTIME):XMSTIME,1:160) G RE2
+ ;Compliant with M standard
+ R X:$S($G(XMSTIME):XMSTIME,1:60)
+ ;
+RE2 I '$T,"."_$C(10)'=XMLTCP S ER=1,XMRG="",XMTRAN="Rcvr timed out" D TRAN Q
+ I X="" S ER=ER+.1 S:ER=1 XMRG="" Q:ER=1  H 1 G RE
+ S XMLTCP=XMLTCP_X I XMLTCP'[$C(10) G RE
+R S %=$F(XMLTCP,$C(10))
+ ;
+ ;Strip out LF (and CR, if present)
+ S L=$L(XMLTCP)
+ I %,%<256 S XMRG=$E(XMLTCP,1,%-3+($A(XMLTCP,%-2)'=13)),XMLTCP=$E(XMLTCP,%,L) G RQ
+ ;
+ ;Line too long or doesn't contain a Line Feed, return first 255 chars.
+ S XMRG=$E(XMLTCP,1,255),XMLTCP=$E(XMLTCP,256,L)
+ ;
+RQ I $L(XMRG),$C(13,10)[$E(XMRG) S XMRG=$E(XMRG,2,$L(XMRG)) G RQ
+ Q
+TRAN Q:XM'["D"  D TRAN^XMC1
+ Q
+
+XMRINETD
+XMRINETD ;(WASH ISC)/LH-PROCESS MSM-NT TCP REQUEST
+ ;;7.1;MailMan;**8**;Jun 02, 1994
+GO O 56 U 56::"TCP" W /SOCKET("",25)
+ S X=^%ZOSF("VOL")
+CHK S CHECK=0 I $G(^%ZIS(14.5,"LOGON",X))=1 S CHECK=1 H 60
+ J GO^XMRINETD
+ I $G(CHECK) W "421 SMTP Service temporarily down.",$C(13,10),! C 56 Q
+ S %="MSM TCP "_$J G SOC25^XMRMSM
+
+XMRTCP
+XMRTCP ;(WASH ISC)/THM/CAP-SMTP RECEIVER [ARPANET RFC 821] ;7/16/93  08:57 ;
+ ;;7.1;MailMan;**8**;Jun 02, 1994
+ ;Modified for TCP/IP under INET_SERVERS of Wollongong
+ ;
+POLL ;Poll all domains with flags set
+ ;Fake TaskMan Env.
+ S U="^",X=^%ZOSF("ERRTN"),@^%ZOSF("TRAP")
+ K XM S IOP="NULL",%IS=0 D ^%ZIS I '$D(IOT) S IOT=""
+HANG S ZTQUEUED=$S($D(ZTQUEUED):ZTQUEUED,1:1),ZTSK=$S($D(ZTSK):ZTSK,1:"N/A"),XM="",XMLTCPT="" I $G(^TMP("XMRTCP",0)) S XMLTCPT=^(0) K ^(0)
+L Q:$P(^XMB(1,1,0),U,18)=1  H 9 S X="ERR^XMRTCP",@^%ZOSF("TRAP"),XMDUZ=.5
+ ;
+ ;Any queues flagged (x-ref is set by TCP/IP POLL FLAG in domain file)
+ S XMLTCPT=$O(^DIC(4.2,"ATCP",1,XMLTCPT)) G QQ:XMLTCPT=""
+ S (XMSCR,XMINST)=XMLTCPT
+ ;
+RQ ;Transmit messages / execute TURN command
+ ;
+ ;Job out, if all slots full wait and try again.
+ S %=$$CK(1) I '% S XMLTCPT=XMLTCPT-1 H 60 G L
+ D SETUP L +^XMBX("TCPCHAN",XMINST):3 E  L -^XMBX("TCPCHAN-COUNT",%) G L
+ ;
+ ;Are there messages to send ?
+ S XMZ=0,XMRTCP("CNT")=% D NEXT^XMS0
+ I XMZ'>0 L -^XMBX("TCPCHAN-COUNT",XMRTCP("CNT")),-^XMBX("TCPCHAN",XMINST) G L
+ ;
+ ;Change name (prevent dupe error), then JOB myself
+ Q:$E($G(XMRTCP("NAME")),1,6)="MM-FTP"
+ S XMRTCP("NAME")="MM-TCP-"_XMINST D REN^XMRFTP
+ S X="HALT^XMRTCP",@^%ZOSF("TRAP")
+ ;
+ ;Deliver messages
+ ;
+ ;INIT
+ S (XMSITE,XMSCRN)=$P(^DIC(4.2,XMINST,0),"^")
+ ;
+ ;Find and use TCP/IP channel script
+ F %=0:0 S %=$O(^DIC(4.2,XMSCR,1,%)) Q:'%  S Z=^(%,0) Q:$P(Z,U,4)="TCPCHAN"
+ Q:'%
+ S ZTIO=$S($L($P(Z,U,5)):$P(Z,U,5),1:$P(^DIC(4.2,XMSCR,0),U,17)),Y=$S(%:%,1:1)
+ S XMB("SCRIPT")=^DIC(4.2,XMSCR,1,Y,0)
+ S XMDIC="^DIC(4.2,"_XMSCR_",1,"_Y_",1," D ^XMC1 H 9 D KILL
+ G HALT
+ ;
+ ;Pause between POLLINGS
+QQ D KILL S X=$H*86400+$P($H,",",2) G:$O(^XMBX(4.2995,0)) FTP^XMRFTP
+ S X=22-($H*86400+$P($H,",",2)-X) I X>0 H X
+ G POLL
+ ;
+ ;Entry on dupe name
+DUPNAME S X="ERR^XMRTCP",@^%ZOSF("TRAP") H 15 G L
+ ;
+ ;Clean up before next transmission
+KILL D KL1^XMC K DIC,XMB,XMDT,ZTPAR
+ L  Q
+ ;
+SETUP ;Set up environment
+ N IO S IO="",IO(0)="" D DT^DICRW
+ Q
+ERR L  D @^%ZOSF("ERRTN") H 99
+ G L:'$F(":MM-TCP:MM-FTP:",":"_$E($G(XMRTCP("NAME")),1,6)_":")
+HALT L  ;Unlock all Locks
+ I ^%ZOSF("OS")["VAX" U IO:DISCONNECT
+ H
+ ;
+ ;Entry for Inet_servers interface RECEIVER
+ ;SMTP service request invokes MailMan
+ ;
+SOC25 S (XMRPORT,IO,IO(0))=%,X=$E(%_"-INETMM",1,15) D SETENV^%ZOSV
+ D DT^DICRW
+ S X="ERR^ZU",@^%ZOSF("TRAP"),ER=0
+ O IO:(SHARE,MAILBOX) U IO
+ S XMCHAN="TCP/IP-MAILMAN",XMNO220=""
+ D ENT^XMR0 G HALT
+ ;
+ ;Check if slot on TCP/IP to use
+CK(X) S I=$P(^XMB(1,1,0),"^",17)
+ F %=1:1 L +^XMBX("TCPCHAN-COUNT",%):1 Q:$T  Q:%=I
+ Q $S($T:%,1:0)
+JOB ;
+START G START^XMRTCPGO
+ERRSCRPT ;TRAP transmission errors
+ S ER=1
+ I ^%ZOSF("OS")["VAX DSM" S $ECODE=""
+ Q
+
+XMRTCPGO
+XMRTCPGO ;(WASH ISC)/THM/CAP-Start XMRTCP ;7/16/93  08:57 ;
+ ;;7.1;MailMan;**8**;Jun 02, 1994
+JOB ;Job itself out for TCPQUE.COM to use for polling TCPFLAG'd sites
+ ;
+ ;XMRTCP must have VMS context
+ ;The following code starts job w/o VMS context
+ ;N % S %="MM-TCP-Poller" I $G(XMINST) S ^TMP("XMRTCP",0)=XMINST
+ ;J POLL^XMRTCP:(NAME=%) Q
+ ;
+ ;Start job with VMS CONTEXT
+ G START^XMRTCPGO
+ Q
+START ;Start XMRTCP w/DCL context
+ I $G(XMINST) S ^TMP("XMRTCP",0)=XMINST
+ I ^%ZOSF("OS")["MSM" J POLL^XMRTCP Q
+ D SPN("XMRTCP","POLL^XMRTCP")
+ Q
+ ;Spawn out from VMS / run w/DCL context
+SPN(X,Y) ;X=Filename right-hand side / Y=Entry point
+ D DEL N % S F=X_".COM" O F:NEW U F S F=$ZIO
+ W "$DSM/UCI="_$P($ZU(0),",")_"/ENVIRONMENT="_$$OPTION^%SYSUTL("ENVIRONMENT")_" "_Y,!
+ S %="$run sys$system:loginout/input="_F_"/output=XMRTCP.log/detach/ast=300/buffer=40960/enqueu=300/file=99/io_buf=64/io_dir=64/job_tab=1024/maximum_work=1864/page=10240/queue_lim=10/work=900/subprocess=30/process=MM-TCP-Poller"
+ C F S %=$ZC(%SPAWN,%) I 1
+ Q
+DEL N %,X S X="DELER^XMRTCPGO",@^%ZOSF("TRAP")
+ Q:+$H=55738
+ S %=$ZC(%SPAWN,"DELETE XMRTCP.COM.*")
+ S %=$ZC(%SPAWN,"DELETE XMRTCP.LOG.*")
+DELER Q
+
+XMS
+XMS ;(WASH ISC)/THM/CAP-SMTP TRANSMITTER ;10/15/90  13:0 ;
+V ;;7.1;MailMan;**8**;Jun 02, 1994
+ ; XMVA=1 communicating to MailMan
+ ; $D(XMSLOCAL)=version# for MailMan AFTER 3.09
+ S:'$D(XMTURN) XMTURN=0 S XMDUZ=.5,ER=0 S:'$D(XMBT) XMBT=0 S $P(^XMBS(4.2999,XMINST,3),U,6)=IO_" "_XMPROT
+ S XMLST=$H*86400+$P($H,",",2)-.001 I '$D(DT) D DT^DICRW
+EN D XX G:'XMTURN QUIT Q
+XX S A=0 K XMBLOCK,XMTSUM,XMY D:'XMBT SYNCH Q:ER
+ S XMTLER=0 I $D(XMCHRS) G CHRS
+ I $D(XMST) G TST
+ D HELO L -^DIC(4.2,XMINST,"XMSSEND") Q:ER
+ S XMZ=0 D SEND Q:ER
+ Q:XMTURN  S XMTURN=1,$P(^XMBS(4.2999,XMINST,3),U,7)=$S($D(ZTQUEUED):ZTSK,1:"") Q:XMBT  G TURN^XMS0
+SYNCH X XMREC I '$D(XMRG) N XMRG S XMRG=""
+ S:'$D(XMVA) XMVA=0 S %=$P(XMRG," MailMan ",2) I %[" ready"!XMBT S XMVA=1+$S(+%>4:+%,1:0)
+ I ER!($E(XMRG)=2)!(A>5) Q
+ S A=A+1 S XMSG="NOOP" X XMSEN Q:ER
+ G SYNCH
+SEND D NEXT^XMS0 Q:XMZ'>0
+ L +^XMNET(XMINST,XMZ):0 E  S ER=1,XMER=1 G LOCKER^XMS0A
+ K XMER,XMTLER,XMJ,XMBLOCK,XMLIN
+ S %=$S($D(^XMBS(4.2999,XMINST,3))#10:^(3),1:""),$P(%,U,1,2)=$H_U_XMZ,$P(%,U,6)=IO,^(3)=%
+ D MAIL L -^XMNET(XMINST,XMZ) I ER S XMER=1 Q
+ D POST^XMS0 G SEND
+HELO ;ESTABLISH LINK
+ L +^DIC(4.2,XMINST,"XMSSEND"):0 E  S ER=1 S XMTRAN="Domain file locked (HELO^XMS)." D TRAN^XMC1 Q
+ S Y3=^DIC(4.2,XMINST,0) K XMSLOCAL
+H1 S XMSG="HELO "_^XMB("NETNAME")
+ I $P(Y3,U,15)'="" S XMSG=XMSG_"<"_$P(Y3,U,15)_">"
+ X XMSEN S:XMBT XMSLOCAL=+$P($T(V),";",3)
+ I ER S Y="HELO SEND failed ("_XMSG_")"
+ Q:ER!XMBT
+ X XMREC I ER S Y="HELO RECEIVE failed." Q
+ S Y=XMRG
+ I $E(Y)'=2 G HELONO^XMSERR
+ S:Y[">" Y=$P(Y,">",2) S Y=$P(Y,"[",2) I Y'="" S XMSLOCAL=Y
+ S J=$P($P(XMRG,"<",2),">") I $P(Y3,U,15)'="",+J<1000000 G VALBAD^XMSERR
+ ;Double set below prevents replicated ^DIC from
+ ;going out of synch when link is down.
+ S ^DIC(4.2,XMINST,0)=Y3,$P(Y3,U,15)=J,^(0)=Y3
+ K Y3 Q
+MAIL ;SEND MAIL
+ G ^XMSMAIL
+QUIT I $D(XMBLOCK) D KILL^XML4CRC
+ S XMSTIME=180,XMSG="QUIT" X XMSEN K XMSTIME H 3 Q:ER  X XMREC Q
+RESET ;
+ S XMSG="RSET" X XMSEN Q:ER!XMBT  X XMREC Q:ER  I $E(XMRG)'=2 S ER=1 Q
+TRASH ;CLEAN UP FOR SENT MESSAGE
+ S (XMKD,XMK)=1000+XMINST K XMDI
+ D KLQ^XMA1B H 1 K XMKD
+ Q
+CHRS ;Christen command
+ S XMSG="CHRS "_XMCHRS X XMSEN Q:ER  X XMREC Q:ER
+TST ;TEST LINK
+ S XMSG="ECHO" X XMSEN G:ER TP X XMREC G:ER TP D T U IO(0) G SHOW
+T S A=$H,(I,XMTLER,C,D,J)=0
+T1 S I=$O(^TMP("XMS",$J,"S",I)) G:+I<1 TE S XMSG=^(I) S J=J+1 X XMSEN G:ER TP
+ S C=C+(2*$L(XMSG)) X XMREC G:ER TP I XMRG'=XMSG U IO(0) S XMSG="*****Sent:  "_XMSG D TRAN^XMC1 S XMSG="*****Rec'd: "_XMRG S D=D+1 U IO
+ G T1
+TE S XMSG="." X XMSEN G:ER TP X XMREC Q
+TP S XMSG="****Physical link protocol error.  Unable to proceed" D TRAN^XMC1 Q
+SHOW S B=$H S XMSG=J_" Lines,"_C_" bytes transmitted. " D TRAN^XMC1 S XMSG=D_" unrecoverable, "_XMTLER_" recoverable error"_$S(XMTLER:"",1:"s")_" detected."
+ S XMSG=$J(C/($P(B,",",2)-$P(A,",",2)),0,1)_" Bytes/sec effective transmission rate." D TRAN^XMC1
+BAT ;BATCH DUMP
+ S:'$D(XMCHAN) XMCHAN="TAPE" G BGO^XMS3
+TASKER ;TASKMANAGER DUMP TO ANOTHER UCI
+ D SEND^XMS3 L  Q
+
+XMS0
+XMS0 ;(WASH ISC)/THM/CAP-SEND DATA ;3/18/92  12:40 ;
+ ;;7.1;MailMan;**13,8**;Jun 02, 1994
+GO ;
+ ;If VERSION 3.12 or later of VA MailMan:
+ ;  1. Send LOCAL ID of sender
+ ;  2. Process reply accordingly
+ ;
+ ;Send other Body parts
+ I $O(^XMB(3.9,XMZ,2005,0)) S XMBLOBER=0 D ^XMS0BLOB I XMBLOBER D RESET^XMS K XMBLOBER Q
+ ;
+ G Q:'$D(XMVA) I '$D(XMSLOCAL) G CHECK
+CONT G A:'$D(^XMB(3.9,XMZ,5)) S %=^(5) I %="" G ENTM^XMSM
+ G C:%?1.N.E,C:$P(%,"@")'?.E1".VA.GOV" S %=$P(%,"@",2)_"@"_$P(%,"@") G C
+A S %=$S($L($G(^XMB(3.9,XMZ,5))):^(5),1:XMZ_"@"_^XMB("NETNAME"))
+C S XMSG="MESS ID:"_% X XMSEN Q:ER  X XMREC Q:ER  G H:$E(XMRG,1,4)'="RSET"
+ S XMRZ=$P(XMRG,":",2),XMBT=0,XMSBT=$H*86400+$P($H,",",2),XMSG="DATA" X XMSEN Q:ER
+ I 'XMBT X XMREC Q:ER
+ S XMSG="" X XMSEN Q:ER
+ G D2^XMS0A
+ ;
+ ;SPECIAL MESSAGE CHARACTERISTICS
+H G Q:$G(XMR)="",Q:XMR=0
+ F J=6,7 D I:$P(XMR,U,J)'="" Q:ER
+ F J=5,9,11,12 D I:"Yy"[$E($P(XMR,U,J)_" ") Q:ER
+ Q:ER  G Q
+ ;
+I S ER=0,XMSG="MESS "_$P("^^^^CONFIRMATION^PRIORITY^TYPE^^CLOSED^^CONFIDENTIAL^INFO",U,J)_":"_$P(XMR,U,J)
+ X XMSEN Q:ER  X XMREC
+ Q
+Q G ^XMS0A
+ ;
+TURN ;TURN AROUND CHANNEL
+ K XMBLOCK,XMFROM,XMR,XMBCK
+ I $G(XMSDOM) S XMINST=XMSDOM
+ G Q:'$D(XMINST),Q:'$L(XMINST)
+ G QUIT:'($D(^XMBS(4.2999,XMINST,3))#10) S $P(^(3),U,1,6)="^^^^^"
+ S X=$P(^DIC(4.2,XMINST,0),U,16)
+ I $F("Yy",X)<2,'XMBT S XMSG="TURN" X XMSEN Q:ER  X XMREC Q:ER  I $E(XMRG)="2" S XMTRAN="Turning around receiver" D TRAN^XMC1 G INT^XMR
+ G QUIT
+ZTSK0 N XMDT,ZTSK S XMDT=ZTDTH D ZTSK0^XMBPOST
+ Q
+ZTSK ;TASK MANAGER COMES HERE TO SEND MESSAGE
+ K XMRDOM,XMSDOM
+ I $L(ION) S IOP=ION D ^%ZIS G REQ:POP S ZTIO(1)="D",ZTIO=ION D REQ^%ZTLOAD
+ S XM="",(XMINST,XMSCR)=XMB("XMSCR"),XMSCRN=XMB("XMSCRN"),XMZ=0
+ ;
+ ;Use correct script
+ S %=$G(XMB("SCRIPT",0))
+ S XMDIC="^DIC(4.2,XMSCR,1,"_$S(%:%,1:1)_",1,"
+ ;
+ S $P(^XMBS(4.2999,XMSCR,3),U,7)=ZTSK
+ I ZTSK'=$P(^XMBS(4.2999,XMSCR,0),U,2) N J S J=$P(^XMBS(4.2999,XMSCR,0),U,2) I J Q:$$CHK^XMS5(J)
+ I $D(XMB("XMIO")),XMIO="" S XMIO=XMB("XMIO")
+ D NEXT G:'$D(XMPOLL) KILL^XMB:XMZ'>0 ;DON'T PROCESS IF NOTHING IN QUEUE
+ I $D(XMB("SCRIPT")),$G(XMB("TRIES"))'<$P(XMB("SCRIPT"),U,3) S XMS0C=1
+ D ENT^XMC1 I $G(XMER) G REQ:'$D(XMPOLL),REQ:XMPOLL'="NOREQUE"
+ G KILL^XMB:'$O(^XMB(3.7,.5,2,XMINST+1000,1,0))
+ G REQ:'$D(XMPOLL),REQ:XMPOLL'="NOREQUE"
+ Q
+NEXT ;GET NEXT MESSAGE IN QUEUE
+ I $G(XMSDOM) S XMINST=XMSDOM
+ S I=$O(^XMB(3.7,.5,2,"AC",1,XMINST+1000,0))
+ I I,'$D(^XMB(3.7,.5,2,XMINST+1000,1,I)) K ^XMB(3.7,.5,2,"AC",1,XMINST+1000,I) S I="" G NEXT
+ S XMZ=$S(I:I,1:$O(^XMB(3.7,.5,2,XMINST+1000,1,XMZ))) G KILL^XMB:+XMZ=0
+ Q:$D(^XMB(3.9,XMZ,0))
+ S (XMKD,XMK)=XMINST+1000 D KLQ^XMA1B K XMKD G NEXT
+POST ;APPLY POSTAGE
+ Q:XMPOST=0
+ ;Set Postage here
+ Q
+REQ I '$D(ZTSK) G KILL^XMB
+ D KILL^%ZTLOAD
+ I '$D(XMB("TRIES")) S XMB("TRIES")=1
+ S XMB("TRIES",XMB("TRIES"))=$S($L($G(XMERMSG)):XMERMSG_" : ",1:"")_$S($D(XMB(4)):$E(XMB(4),1,245-$L($G(XMERMSG))),1:"UNKNOWN")
+ S Y=$P($H,",",2),X=Y+(300*$S($G(XMB("TRIES")):XMB("TRIES"),1:1)) I X-Y>999 S X=Y+600+$R(600)
+ S ZTDTH=$H+(X'<86400)_","_($P($H,",",2)+X#86400)
+ I $P($G(XMB("SCRIPT")),U,8)#$S($G(^XMB(1,1,"NETWORK")):^XMB(1,1,"NETWORK"),1:10)=0 D ENTE^XMSM
+ I $G(XMSDOM) S XMINST=XMSDOM K XMSDOM D ZTSK0 I $D(XMSITE) S XMTRAN=$S(XMSITE="":XMSCRN,1:XMSITE)_" Requeued" G TRAN^XMC1
+ S ZTREQ="" Q
+QUIT S XMSG="QUIT" X XMSEN Q:ER  X XMREC Q
+DATANO ;
+ I +XMRG=554 G R ;No Bulletin if 554 reject (duplicate)
+ I +XMRG=551 S XMRZ="Rejected - TOO LONG !" D ENT^XMSM1 G R
+ ;
+ ;BULLETIN - INTERFERES WITH PROPER SETTING OF RECIPIENT CHAIN STATUSES
+ ;
+ER S XMB="XMDATANO",XMB(1)=$P(^DIC(4.2,XMINST,0),U),XMB(2)=$P(^XMB(3.9,XMZ,0),U)_" ["_XMZ_"]"_$S($G(XMY)'="":"Recipient: "_XMY,1:""),XMB(3)=XMRG
+ S XMZHOLD=XMZ D TRASH^XMS,^XMB S XMZ=XMZHOLD K XMZHOLD
+R S XMTRAN=XMRG D TRAN^XMC1 G RESET^XMS
+ ;
+CHECK ;IF REMOTE SYSTEM CANNOT PASS MESSAGE QUALIFIERS
+ ;
+ I '$D(XMR) S XMR=^XMB(3.9,XMZ,0)
+ F I=5,9,11,12 I "Yy"[$E($P(XMR,U,I)_" ") G CQ
+ F I=6 I $P(XMR,U,I)'="" G CQ
+ G CONT:$D(XMSLOCAL),Q
+CQ S XMRG="Unable to accept messages with "_$P("^^^^CONFIRMATION REQUEST^PRIORITY^TYPE^^CLOSED status^^CONFIDENTIAL status^INFO status",U,I)_"."
+ S I=0 K XMY,XMY0,^TMP("XMY",$J),^TMP("XMY0",$J) D S G ER
+ ;
+S F I=0:0 S I=$O(XMJ(I)) Q:'I  D T K XMJ(I)
+ Q
+T Q:'$D(^XMB(3.9,XMZ,1,I,0))  N % S $P(^(0),U,6,7)=XMRG_U,%=$S('$D(^("F")):"",$L($P(^("F"),U,2)):$P(^("F"),U,2),1:"") I $L(%),%'["@",$O(^TMP("XMY",$J,""))="" S ^TMP("XMY",$J,%)=""
+ Q:$O(^TMP("XMY",$J,""))'=""  S X=$P(XMR,U,2) I +X=X S ^TMP("XMY",$J,X)=""
+ E  D WHOXM^XMA21
+ Q
+
+XMS1
+XMS1 ;(WASH ISC)/THM/CAP-NAME SERVER CALLS ;8/14/93  12:45 ;
+ ;;7.1;MailMan;**13,8**;Jun 02, 1994
+ N %Y S %Y=$E(Y,1,2) G TRAN:Y["@",DEV:%Y["D."!(%Y["d."),SER:%Y["S."!(%Y["s.")
+ W !,"Invalid recipient name" Q
+RES S XMZ=XMZ2,Y="" F I=0:0 S Y=$O(^TMP("XMY",$J,Y)) Q:Y=""  D TRAN
+ S XMZ=XMZ1 Q
+TRAN I ^TMP("XMY",$J,Y)="" S (X,XMHOLD)=Y D WHOXM^XMA21 Q:Y<1  S Y=XMHOLD K XMHOLD
+ S XMINST=^TMP("XMY",$J,Y) G Q:'XMINST S XMSITE=$P(^DIC(4.2,XMINST,0),U)
+SET S %Y=XMINST,Y=%Y+1000 K %4 L +^XMB(3.7,.5,2,Y)
+ I $D(^XMB(3.7,.5,2,Y,0)) S %=$S($D(^(1,0)):^(0),1:"") F %1=3,4 S $P(%,U,%1)=$P(%,U,%1)+1
+ E  S ^XMB(3.7,.5,2,Y,0)=XMSITE,^XMB(3.7,.5,2,"B",XMSITE,Y)="",%="^3.702P^1^1"
+ S K=^XMB(3.7,.5,2,Y,0),^(1,0)=% I $D(^(XMZ,0)) L -^XMB(3.7,.5,2,Y) G T
+ S %=$P(K,U,3),%1=$P(K,U,4)
+ K %3 S:+%=0 %=1 S:$O(^XMB(3.7,.5,2,Y,1,"C",%-1))'=% ^(%,XMZ)="",%3=1 I '$D(%3) F %=+%:1 I '$D(^(%)) S ^(%,XMZ)="" Q
+ S:%>%1 %1=%
+ S %3=$P(K,U,5),$P(K,U,3,5)=%_U_%1_U_(%3+1),^XMB(3.7,.5,2,Y,0)=K,%2=XMZ_U_%,%4=$O(^(1,0)),^(XMZ,0)=%2,^XMB(3.7,.5,2,Y,1,"C",%,XMZ)="" L -^XMB(3.7,.5,2,Y)
+T G Q:$D(XMQ(%Y))&'$D(XMQF),Q:$P(^DIC(4.2,%Y,0),U,2)'["S"
+ S %=$P($G(^XMBS(4.2999,%Y,0)),U,2) G N:+%<1
+ ;
+ ;Quit if task scheduled
+ I %,$S($G(%4):%4,1:$O(^XMB(3.7,.5,2,Y,1,XMZ,0))) G Q:$$CHK^XMS5(%)
+ ;Entries for Task setup
+N K XMB
+ ;
+ENQ S %=XMINST,XMB("TYPE")=3,(XMSCR,XMB("XMSCR"))=%,XMB("XMSCRN")=XMSITE,XMQ(%)=""
+ K XMDT D ^XMBPOST
+Q K %,%1,%2,%3,%4 Q
+ ;
+DEV ;D.Device Server
+ S X=$P(Y,".",2),DIC(0)="Z",DIC="^%ZIS(1,",XMD0=Y
+ D ^DIC Q:Y<0
+ S Y=XMD0,XMB("TYPE")=4,XMB("XMZ")=XMZ,XMB("XMDUZ")=Y,XMIO=$P(Y(0),U),XMB("XMXX")=Y
+ D DSERV^XMBPOST S Y=XMD0 K XMD0 Q
+SER ;SERVERS
+ N XMB,XMIO
+ S XMB("DUZ")=.5,XMB("XMZ")=XMZ,XMB("XMXX")=Y
+ S XMB("TYPE")=5,XMB("XMSERVER")=^TMP("XMY",$J,Y) K ^TMP("XMY",$J,Y)
+ S XMS5("RETURN_TASK#")=1
+ D M("Setting up MM Server Task"),^XMBPOST,M("MM Server Task #"_$S($D(ZTSK):ZTSK,1:"N/A"))
+ K XMS5("RETURN_TASK#")
+ Q
+M(X) Q:'$D(XMZ)!'$D(XMB("XMXX"))  S %=$$SRVTIME(XMZ,XMB("XMXX"),X)
+ Q
+ZSER ;S.'SERVER' TASKMAN ENTRY
+ S XMXX=XMB("XMXX"),(XMZ,XM1Z)=XMB("XMZ")
+ S %=$G(^XMB(3.9,XMZ,0)) G ENTS^XMSM:'$L(%)
+ S XMR=%,XMCHAN="SERVER"
+ D GET^XML
+ S X=$TR($P(XMR,U,2),"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ"),Y=X,X=$E(XMXX,3,999)_U_XMZ_U_X_U_$P(XMR,U)
+ I $E(Y)="<" S Y=$E(Y,2,$L(Y)-1)
+ S XMFROM=Y,XMB("TYPE")=5
+ D M("XMS1-Server hand off ready !")
+ K ^TMP("XMS1",$J,"M") S ^("M")=XMZ_U_XMB("XMXX")
+ D ^XQSRV
+ S %=^TMP("XMS1",$J,"M") K ^("M") S XMZ=+%,XMB("XMXX")=$P(%,U,2)
+ D M("XMS1-Served (hand off done) !")
+ D KILL^%ZTLOAD
+ Q
+ZDEV ;D.'SERVER' TASKMAN ENTRY
+ S (XMZ,XM1Z)=XMB("XMZ"),XMDUZ=XMB("XMDUZ"),XMK=0,XMXX=XMB("XMXX"),$P(XMDISPI,U)="I",XMTYPE="",XMP=1
+ U IO D TOP^XMS2,ENTPRT^XMAP D ^%ZISC
+ G TIME
+ZTSK ;POLLER
+ S (XMCNT("S"),XMCNT("R"))=0
+ S XM="",XMSCR=XMB("XMSCR"),XMSCRN=XMB("XMSCRN"),ZTDTH=XMB("FREQ")_"S",XMLOGIO=XMB("LOG")
+ D REQ^%ZTLOAD ;NOTE - USED TO REQUE TO DEVICE ^DD("MMDEV") - REMOVED FOR K7
+ ;I $L(XMLOGIO) O XMLOGIO::1 I $T U XMLOGIO W !,"POLLING " D NDT^XMA01 W Y W " JOB ",$J C XMLOGIO
+ S XM="",XMINST=XMSCR,XMZ=0
+ D ^XMC1
+ ;I $L(XMLOGIO) O XMLOGIO::1 I $T U XMLOGIO W "  ",XMCNT("S")," Messages sent, ",XMCNT("R")," Messages received."
+ Q
+STATUS(XM1Z,XMXX) ;Get Recipient Status
+ N X1 S XMS1S(0)=1 G TIME
+SRVTIME(XM1Z,XMXX,XMS1S) ;Mark Recipient Status
+ ;Returns 0 for success, 1 for failure
+ ;Parameters=(Message#,Recipient,Status)
+ I $L(XMS1S)>30 Q "2 Status too long"
+ I XMS1S[U Q "3 Bad Characters in Status"
+ N %,%H,%I,DT,XMB,XMRC,X,Y S XMB("TYPE")=0 D TIME
+ Q $S(XMRC="":"1 No Update",1:0)
+TIME ;Timestamp: IF $D(XQSRVOK) = server problem
+ S XMRC=$O(^XMB(3.9,XM1Z,1,"C",XMXX,0)) I XMRC="" G Q:'$D(XMS1S(0)) Q ""
+ D NOW^%DTC
+ S X1=^XMB(3.9,XM1Z,1,XMRC,0)
+ ;
+ I $D(XMS1S(0)) Q $P(X1,U,6)
+ ;
+ S X1=$P(X1_U,U,1,2)_U_%_U_$P(X1,U,4,5)_U_$S(XMB("TYPE")=5&$L($G(XQSRVOK)):XQSRVOK,1:$P($G(XMS1S)_"^Done^Done^Done^Printed^Served",U,XMB("TYPE")+1))_U_$P(X1,U,7,99)
+ S ^XMB(3.9,XM1Z,1,XMRC,0)=X1
+TQ I '$D(XMS1S(0)) Q
+ Q $P(X1,U,6)
+POLL G ^XMS1P
+
+XMS5
+XMS5 ;(WASH ISC)/CAP/RM/AML-DISPLAY/TRANSMIT QUEUES ;4/12/93  17:32 ;
+ ;;7.1;MailMan;**13,8**;Jun 02, 1994
+ ;ACTIVE
+ENT N XMDUZ K XMA
+ F Z=999:0 S Z=$O(^XMB(3.7,.5,2,Z)) Q:+Z'=Z  Q:Z>9999  I $P($G(^(Z,0)),U,5)>0  S XMK=Z,XMDUZ=.5 W:'$D(ZTQUEUED) "." S %=$$REN^XMA03(.5,Z)
+ENT1 S XMLROU="ZTSK^XMS5",ZTSAVE("XMA")=""
+ D ENT^XMA30 I POP K POP,ZTSAVE Q
+ZTSK K DIR S XMB0="",(XME0,XMD0)=0,DIR(0)="E",XM="D"
+ D NOW^%DTC K %I,%H S A=$E(%,6,7)_" "_$P("Jan^Feb^Mar^Apr^May^Jun^Jul^Aug^Sep^Oct^Nov^Dec",U,$E(%,4,5))_" "_$E(%,2,3)
+ I %\1'=% S %=$P(%,".",2)_"0000",A=A_" "_$E(%,1,2)_":"_$E(%,3,4)
+ S XMC0=A,XMC0("D")=0,XMC0("M")=0
+Q S XMB0=$O(^DIC(4.2,"B",$P(XMB0,U))) G END:XMB0="" S K=$O(^(XMB0,0))+1000 I $D(XMA) S XMB=$G(^XMBS(4.2999,K-1000,3)) G Q:XMB="" S X=$P(XMB,U),Y=$H-X*86400+$P($H,",",2)-$P(X,",",2) G Q:Y>599
+ S XMF0="",J=$S($D(^XMB(3.7,.5,2,K,0)):$P(^(0),U,5),1:0)
+ G:'$D(XMA) Q:J<1 S XMG0=J
+ I '$D(XMA) S $P(XMB,U,6)=$P(^DIC(4.2,K-1000,0),U,17) G W
+ G Q:$P(XMB,U,1,6)?.P S %H=$P(XMB,U) D YMD^%DTC
+ G W:$D(XMA) S %=$P(%H,",",2),%=%#3600\60/100+(%\3600)/100
+ S XMF0=$E(X,4,5)_"/"_$E(X,6,7)_"/"_$E(X,2,3) I % S XMF0=XMF0_" @ "_%
+W I XME0 G X:XMD0+5'>IOSL
+ I '$D(ZTQUEUED),IOST?1"C-".E I XME0 U IO(0) D ^DIR K DIRUT G END:X["^" U IO
+ D HD
+X S XMD0=XMD0+1,XMC0("D")=XMC0("D")+1 W !,$E($P(XMB0,U),1,18) G:$D(XMA) Q:'$D(XMB)
+ W ?19,$J(XMG0,4),?27,$P(XMB,U,6)
+ G M:'$D(XMA) I Y>180 S XMD0=XMD0+2 W ?42," == Appears Inactive - ",Y\60," Minutes",!,?42," == Analysis of device indicated." G M
+ I $P(XMB,U,4)<0 S $P(XMB,U,4)=""
+ I '$P(XMB,U,2) W ?44,"Connecting/Disconnecting"
+ E  W ?44,$P(XMB,U,2),?52," ",$P(XMB,U,3),?58," ",$P(XMB,U,7),?63,$J($P(XMB,U,4),6),?70,$J($P(XMB,U,5),8)
+M S XMC0("M")=XMC0("M")+XMG0 G Q
+HD S XMD0=5,XME0=XME0+1 W @IOF,!
+ I '$D(XMA) W "QUEUES WITH MESSAGES TO GO OUT"
+ E  W "QUEUES ACTIVELY TRANSMITTING MESSAGES"
+ W ?79-$L(XMC0),XMC0,!,"At "_^XMB("NETNAME"),?71,"Page: ",XME0,!
+ W !,"Domain",?16,"# Que'd" I '$D(XMA) W "    Physical Link"
+ I $D(XMA) W ?21,"  Device/Protocol",?44,"Msg #",?51,"Line  ZTSK  Errors  Rate C/S"
+ W ! Q
+END I 'XME0 D HD:IOST'?1"C".E W !,"No messages ",$P("queued^actively transmitting",U,$D(XMA)+1),!
+ E  W !!,"Total Domains: ",XMC0("D"),", Total Messages Queued: ",XMC0("M"),!!,"<<< END OF REPORT >>>"
+ K %,%H,%I,DIR,I,XMC0,K,XMB0,XMD0,XME0,XMF0,XMG0
+ I $D(IO(0)),IO(0)'=IO W @IOF
+ I $D(ZTQUEUED),$L(ZTSK) S ZTREQ="@" W @IOF Q
+ D ^%ZISC
+ Q
+GO ;DSP ALL
+ S XMA=1 G ENT1
+ ;;n/a;
+ ;
+TASK ;
+REQUE ;
+ K ^TMP($J,"ZTMKZ") S %=$G(XMDUZ)
+ N DIR,DIRUT,DTOUT,DUOUT,I,J,K,X,XMDUZ,Y,ZTD,ZTI,ZTQ,ZTS
+ S XMDUZ=$S($G(%):%,1:DUZ)
+ S I=999 F  D  Q:I=""
+ . S I=$O(^XMB(3.7,.5,2,I)) I $S(I'=+I:1,I>9999:1,I<1001:1,1:0) S I="" Q
+ . W:'$D(ZTQUEUED) "." I $O(^XMB(3.7,.5,2,I,1,0)) S K=I-1000 D
+ . . S J=$P($G(^XMBS(4.2999,K,0)),U,2) S:J J=$$CHK(J) I 'J S ^TMP($J,"ZTMKZ",$P(^DIC(4.2,K,0),U))=K
+ . Q
+ ;
+ ;W/Tasks
+ ;W:'$D(ZTQUEUED) !,"Wait for %ZTLOAD",!
+ ;D H F ZTS=0:0 S ZTS=$O(^%ZTSK(ZTS)) Q:'ZTS  S %=$S($D(^%ZTSK(ZTS,.1)):^(.1),1:"") I $S($L(%)'=1:1,"12345AG"[%:1,1:0),$D(^(.3,"XMB","XMSCRN"))#2 S ZTD=^("XMSCRN") K ^TMP($J,"ZTMKZ",ZTD)
+ ;
+ I '$D(ZTQUEUED) W !,"Some queues have no messages.",!
+ D H S ZTD="" F ZTI=2:1 S ZTD=$O(^TMP($J,"ZTMKZ",ZTD)) Q:ZTD=""  I '$O(^XMB(3.7,.5,2,^(ZTD)+1000,1,0)) K ^TMP($J,"ZTMKZ",ZTD)
+ I $O(^TMP($J,"ZTMKZ",""))="" W:'$D(ZTQUEUED) !!!,"<<<<  NO domains lack tasks !!! >>>",!!! Q
+ I '$D(ZTQUEUED) W !!,"These domains lack tasks."
+ I  S ZTD="" F ZTI=2:1 S ZTD=$O(^TMP($J,"ZTMKZ",ZTD)) Q:ZTD=""  S X=^(ZTD) W !?5,ZTD W:$P(^DIC(4.2,X,0),U,2)'["S" " << No Send Flag" I ZTI#20=0 S DIR(0)="E" D ^DIR K DIR,DIRUT
+ ;
+ ;
+ I '$D(ZTQUEUED) S DIR(0)="YO",DIR("A")="Requeue the missing tasks",DIR("B")="NO",DIR("?")="Answer YES to transmit these domains." D ^DIR K DIR,DIRUT I 'Y W !!,"Tasks not requeued." K ^TMP($J,"ZTMKZ") Q
+ ;
+ ;
+ S XMDUZ=$S($D(XMDUZ)[0:.5,'XMDUZ:.5,1:XMDUZ)
+ S XMS5="",XMS5("RETURN_TASK#")=1 F XMS5Z=0:0 S XMS5=$O(^TMP($J,"ZTMKZ",XMS5)) Q:XMS5=""  S XMSITE=XMS5,(XMINST,XMSCR)=^TMP($J,"ZTMKZ",XMS5) D Z
+ W:'$D(ZTQUEUED) !,"Done !" K XMS5,XMS5Z,^TMP($J,"ZTMKZ"),ZTD,ZTS Q
+H F I=1:1:9 H 1 W:'$D(ZTQUEUED) "."
+ Q
+CHK(J) ;Is Task scheduled ? (0=no,1=yes)
+ I 'J Q 0
+ N %,ZTSK S ZTSK=J D STAT^%ZTLOAD
+ Q $S(ZTSK(0)=0:0,$G(ZTSK(2))["Finish":0,$G(ZTSK(2))["Available":0,$G(ZTSK(2))["Interrupted":1,1:1)
+Z N % S %=$P(^DIC(4.2,XMINST,0),U,2)
+ I %["C"!(%["c") W:'$D(ZTQUEUED) !!,"Domain ",XMS5," has no send flag." Q
+ N XMB,ZTSK D ENQ^XMS1
+ I $G(ZTSK) W:'$D(ZTQUEUED) !!,"Task "_ZTSK_" queued for domain "_XMS5,! Q
+ I '$D(ZTQUEUED) W !!,"NO task queued for domain "_XMS5_"."
+ Q
+
+
+

@@ -1,0 +1,673 @@
+$TXT Created by TRAXLER,FRANK at DEV.DEV.FO-HINES.MED.VA.GOV  (KIDS) on Wednesday, 05/04/05 at 12:33
+=============================================================================
+Run Date: MAY 24, 2005                     Designation: GMRV*5*8
+Package : GMRV - GEN. MED. REC. - VITALS      Priority: Mandatory
+Version : 5         SEQ #5                      Status: Released
+                  Compliance Date: JUN 24, 2005
+=============================================================================
+
+Associated patches: (v)GMRV*5*5    <<= must be installed BEFORE `GMRV*5*8'
+
+Subject: VUID CHANGES
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Enhancement (Mandatory)
+  - Other
+
+Description:
+============
+
+ Associated NOIS:
+  Associated E3R: 19338
+  
+ Test Sites:
+ ===========
+  Cheyenne
+  St. Louis
+  Martinsburg
+  
+ NOTE: The environment check routine will not allow the installation of 
+       this patch if the new Health Data & Informatics (HDI) package is 
+       not installed. However, the KIDS build will remain loaded on the
+       system.
+  
+       The post installation routine calls a HDI routine to request the
+       VHA Unique Indentification (VUID) data for FILEs 120.51, 120.52
+       and 120.53.
+  
+  
+ This patch is an enhancement. It modifies the GEN. MED. REC. - VITALS 
+ package to utilize VUID data. 
+  
+ 1) The following changes are made to the data dictionary of the GMRV
+ VITAL TYPE (#120.51) file.
+  
+ a) Field MASTER ENTRY FOR VUID (#99.98) is added. This field is used in 
+ the new AMASTERVUID index. See 1d below for the index definition.
+  
+ 120.51,99.98  MASTER ENTRY FOR VUID  VUID;2 SET (Required)
+  
+                                 '0' FOR NO; 
+                                 '1' FOR YES; 
+               LAST EDITED:      FEB 10, 2005 
+               DESCRIPTION:      This field identifies the Master entry 
+                                 for a VUID associated with a Term/Concept.
+  
+                                 UNEDITABLE
+  
+               RECORD INDEXES:   AMASTERVUID (#534)
+  
+  
+ b) Field VUID (#99.99) is added. This field is used in the new AMASTERVUID
+ index. See 1d below for the index definition. Also, the AVUID
+ cross-reference is created and is defined here.
+  
+ 120.51,99.99  VUID                   VUID;1 FREE TEXT (Required)
+  
+               INPUT TRANSFORM:  S X=+X K:$L(X)>20!($L(X)<1)!'(X?1.20N) X
+               LAST EDITED:      FEB 10, 2005 
+               HELP-PROMPT:      Answer must be 1-20 digits in length. 
+               DESCRIPTION:      VHA Unique ID (VUID). A unique meaningless
+                                 integer assigned to reference terms VHA 
+                                 wide.  
+  
+                                 UNEDITABLE
+               NOTES:            XXXX--CAN'T BE ALTERED EXCEPT BY 
+                                 PROGRAMMER
+  
+               CROSS-REFERENCE:  120.51^AVUID 
+                                 1)= S ^GMRD(120.51,"AVUID",$E(X,1,30),DA)
+                                     =""
+                                 2)= K ^GMRD(120.51,"AVUID",$E(X,1,30),DA)
+                                 3)= This cross-reference is by VUID.
+                                 This field and cross-reference are 
+                                 required for the Data Standardization
+                                 project.  
+  
+               RECORD INDEXES:   AMASTERVUID (#534)
+  
+ c) Field EFFECTIVE DATE/TIME (#99.991) (multiple) is added.
+  
+ 120.51,99.991 EFFECTIVE DATE/TIME    TERMSTATUS;0 DATE Multiple #120.5199
+                                  (Add New Entry without Asking)
+  
+               DESCRIPTION:      Describes the pair Status and Effective
+                                 Date/Time for each reference term.  
+  
+  
+ 120.5199,.01    EFFECTIVE DATE/TIME    0;1 DATE (Required)
+  
+                 INPUT TRANSFORM:  S %DT="ESTX" D ^%DT S X=Y K:Y<1 X
+                 LAST EDITED:      FEB 01, 2005 
+                 DESCRIPTION:      This is the date/time when the Status 
+                                   of the reference term was established.
+  
+                                   UNEDITABLE
+                 CROSS-REFERENCE:  120.5199^B 
+                                 1)= S ^GMRD(120.51,DA(1),"TERMSTATUS","B",
+                                     $E(X, 1,30),DA)=""
+                                 2)= K ^GMRD(120.51,DA(1),"TERMSTATUS","B",
+                                     $E(X, 1,30),DA)
+                                 This cross-reference is by Effective 
+                                 Date/Time. 
+  
+ 120.5199,.02    STATUS               0;2 SET (Required)
+  
+                                 '1' FOR ACTIVE; 
+                                 '0' FOR INACTIVE; 
+                 LAST EDITED:    FEB 01, 2005 
+                 DESCRIPTION:    The Status of a reference term is either
+                                 'ACTIVE' or 'INACTIVE'. If 'ACTIVE', then 
+                                 the term will be accessible by end-users
+                                 to document a particular patient event. If
+                                 'INACTIVE', then the term will only be 
+                                 accessible by the application to display 
+                                 legacy data.
+  
+                                 UNEDITABLE
+  
+ d) The AMASTERVUID index is created. (Note: #534 is a local entry number. 
+ The index entry number may be different on your system).
+  
+  
+   AMASTERVUID (#534)    RECORD    REGULAR    IR    SORTING ONLY
+       Short Descr:  This cross-reference identifies the Master entry for a
+                     VUID.
+       Description:  If multiple entries have the same VUID in the file, 
+                     this cross-reference can be used to identify the
+                     Master entry for a VUID associated with a
+                     Term/Concept.
+         Set Logic:  S ^GMRD(120.51,"AMASTERVUID",$E(X(1),1,30),X(2),DA)=""
+        Kill Logic:  K ^GMRD(120.51,"AMASTERVUID",$E(X(1),1,30),X(2),DA)
+        Whole Kill:  K ^GMRD(120.51,"AMASTERVUID")
+              X(1):  VUID  (120.51,99.99)  (Subscr 1)  (Len 30)  (forwards)
+              X(2):  MASTER ENTRY FOR VUID  (120.51,99.98)  (Subscr 2)
+                     (forwards)
+  
+  
+ 2) The following changes are made to the data dictionary of the GMRV
+ VITAL QUALIFIER (#120.52) file.
+  
+ a) Field MASTER ENTRY FOR VUID (#99.98) is added. This field is used in 
+ the new AMASTERVUID index. See 2d below for the index definition.
+  
+ 120.52,99.98  MASTER ENTRY FOR VUID  VUID;2 SET (Required)
+                                 '0' FOR NO; 
+                                 '1' FOR YES; 
+               LAST EDITED:      FEB 10, 2005 
+               DESCRIPTION:      This field identifies the Master entry 
+                                 for a VUID associated with a Term/Concept.
+  
+                                 UNEDITABLE
+  
+               RECORD INDEXES:   AMASTERVUID (#535)
+  
+ b) Field VUID (#99.99) is added. This field is used in the new AMASTERVUID
+ index. See 2d below for the index definition. Also, the AVUID
+ cross-reference is created and is defined here.
+  
+ 120.52,99.99  VUID                   VUID;1 FREE TEXT (Required)
+               INPUT TRANSFORM:  S X=+X K:$L(X)>20!($L(X)<1)!'(X?1.20N) X
+               LAST EDITED:      FEB 10, 2005 
+               HELP-PROMPT:      Answer must be 1-20 digits in length. 
+               DESCRIPTION:      VHA Unique ID (VUID). A unique meaningless
+                                 integer assigned to reference terms VHA 
+                                 wide.  
+  
+                                 UNEDITABLE
+  
+               NOTES:            XXXX--CAN'T BE ALTERED EXCEPT BY 
+                                 PROGRAMMER
+  
+  
+               CROSS-REFERENCE:  120.52^AVUID 
+                                 1)= S ^GMRD(120.52,"AVUID",$E(X,1,30),DA)
+                                     =""
+                                 2)= K ^GMRD(120.52,"AVUID",$E(X,1,30),DA)
+                                 3)= This cross-reference is by VUID.
+                                 This field and cross-reference are 
+                                 required for the Data Standardization
+                                 project.
+  
+               RECORD INDEXES:   AMASTERVUID (#535)
+  
+ c) Field EFFECTIVE DATE/TIME (#99.991) (multiple) is added.
+  
+ 120.52,99.991 EFFECTIVE DATE/TIME    TERMSTATUS;0 DATE Multiple #120.5299
+                                  (Add New Entry without Asking)
+  
+               DESCRIPTION:      Describes the pair Status and Effective
+                                 Date/Time for each reference term.  
+  
+ 120.5299,.01    EFFECTIVE DATE/TIME    0;1 DATE (Required)
+                 INPUT TRANSFORM:  S %DT="ESTX" D ^%DT S X=Y K:Y<1 X
+                 LAST EDITED:      FEB 01, 2005 
+                 DESCRIPTION:      This is the date/time when the Status 
+                                   of the reference term was established.
+  
+                                   UNEDITABLE
+  
+                 CROSS-REFERENCE:  120.5299^B 
+                                 1)= S ^GMRD(120.52,DA(1),"TERMSTATUS","B",
+                                     $E(X,1,30),DA)=""
+                                 2)= K ^GMRD(120.52,DA(1),"TERMSTATUS","B",
+                                     $E(X,1,30),DA)
+                                 This cross-reference is by Effective 
+                                 Date/Time. 
+  
+ 120.5299,.02    STATUS               0;2 SET (Required)
+                                 '1' FOR ACTIVE; 
+                                 '0' FOR INACTIVE; 
+                 LAST EDITED:    FEB 01, 2005 
+                 DESCRIPTION:    The Status of a reference term is either
+                                 'ACTIVE' or 'INACTIVE'. If 'ACTIVE', then 
+                                 the term will be accessible by end-users
+                                 to document a particular patient event. If
+                                 'INACTIVE', then the term will only be 
+                                 accessible by the application to display 
+                                 legacy data.
+  
+                                 UNEDITABLE
+  
+  
+ d) The AMASTERVUID index is created. (Note: #535 is a local entry number. 
+ The index entry number may be different on your system).
+  
+   AMASTERVUID (#535)    RECORD    REGULAR    IR    SORTING ONLY
+       Short Descr:  This cross-reference identifies the Master entry for a
+                     VUID.
+       Description:  If multiple entries have the same VUID in the file, 
+                     this cross-reference can be used to identify the
+                     Master entry for a VUID associated with a
+                     Term/Concept.
+         Set Logic:  S ^GMRD(120.52,"AMASTERVUID",$E(X(1),1,30),X(2),DA)=""
+        Kill Logic:  K ^GMRD(120.52,"AMASTERVUID",$E(X(1),1,30),X(2),DA)
+        Whole Kill:  K ^GMRD(120.52,"AMASTERVUID")
+              X(1):  VUID  (120.52,99.99)  (Subscr 1)  (Len 30)  (forwards)
+              X(2):  MASTER ENTRY FOR VUID  (120.52,99.98)  (Subscr 2)
+                     (forwards)
+  
+  
+ 3) The following changes are made to the data dictionary of the GMRV
+ VITAL CATEGORY (#120.53) file.
+  
+ a) Field MASTER ENTRY FOR VUID (#99.98) is added. This field is used in
+ the new AMASTERVUID index. See 3d below for the index definition.
+  
+ 120.53,99.98  MASTER ENTRY FOR VUID  VUID;2 SET (Required)
+  
+                                 '0' FOR NO;
+                                 '1' FOR YES; 
+               LAST EDITED:      FEB 10, 2005 
+               DESCRIPTION:      This field identifies the Master entry 
+                                 for a VUID associated with a Term/Concept.
+  
+                                 UNEDITABLE
+  
+               RECORD INDEXES:   AMASTERVUID (#536)
+  
+  
+ b) Field VUID (#99.99) is added. This field is used in the new AMASTERVUID
+ index. See 3d below for the index definition. Also, the AVUID 
+ cross-reference is created and is defined here.
+  
+ 120.53,99.99  VUID                   VUID;1 FREE TEXT (Required)
+  
+               INPUT TRANSFORM:  S X=+X K:$L(X)>20!($L(X)<1)!'(X?1.20N) X
+               LAST EDITED:      FEB 10, 2005 
+               HELP-PROMPT:      Answer must be 1-20 digits in length. 
+               DESCRIPTION:      VHA Unique ID (VUID). A unique meaningless
+                                 integer assigned to reference terms VHA 
+                                 wide.  
+  
+                                 UNEDITABLE
+  
+               NOTES:            XXXX--CAN'T BE ALTERED EXCEPT BY 
+                                 PROGRAMMER
+  
+               CROSS-REFERENCE:  120.53^AVUID 
+  
+                                 1)= S ^GMRD(120.53,"AVUID",$E(X,1,30),
+                                     DA)=""
+                                 2)= K ^GMRD(120.53,"AVUID",$E(X,1,30),DA)
+                                 3)= This cross-reference is by VUID.
+                                 This field and cross-reference are 
+                                 required for the Data Standardization
+                                 project.  
+  
+               RECORD INDEXES:   AMASTERVUID (#536)
+  
+  
+ c) Field EFFECTIVE DATE/TIME (#99.991) (multiple) is added.
+  
+ 120.53,99.991 EFFECTIVE DATE/TIME    TERMSTATUS;0 DATE Multiple #120.5399
+                                  (Add New Entry without Asking)
+  
+               DESCRIPTION:      Describes the pair Status and Effective
+                                 Date/Time for each reference term.  
+  
+ 120.5399,.01    EFFECTIVE DATE/TIME    0;1 DATE (Required)
+                 INPUT TRANSFORM:  S %DT="ESTX" D ^%DT S X=Y K:Y<1 X
+                 LAST EDITED:      FEB 01, 2005 
+                 DESCRIPTION:      This is the date/time when the Status 
+                                   of the reference term was established.
+  
+                                   UNEDITABLE
+  
+                 CROSS-REFERENCE:  120.5399^B 
+  
+                                 1)= S ^GMRD(120.53,DA(1),"TERMSTATUS","B",
+                                     $E(X,1,30),DA)=""
+                                 2)= K ^GMRD(120.53,DA(1),"TERMSTATUS","B",
+                                     $E(X,1,30),DA)
+  
+                                 This cross-reference is by Effective 
+                                 Date/Time. 
+  
+ 120.5399,.02    STATUS               0;2 SET (Required)
+  
+                                 '1' FOR ACTIVE; 
+                                 '0' FOR INACTIVE; 
+                 LAST EDITED:    FEB 01, 2005 
+                 DESCRIPTION:    The Status of a reference term is either
+                                 'ACTIVE' or 'INACTIVE'. If 'ACTIVE', then 
+                                 the term will be accessible by end-users
+                                 to document a particular patient event. If
+                                 'INACTIVE', then the term will only be 
+                                 accessible by the application to display 
+                                 legacy data.
+  
+                                 UNEDITABLE
+  
+ d) The AMASTERVUID index is created. (Note: #536 is a local entry number. 
+ The index entry number may be different on your system).
+  
+   AMASTERVUID (#536)    RECORD    REGULAR    IR    SORTING ONLY
+       Short Descr:  This cross-reference identifies the Master entry for a
+                     VUID.
+       Description:  If multiple entries have the same VUID in the file, 
+                     this cross-reference can be used to identify the
+                     Master entry for a VUID associated with a
+                     Term/Concept.
+         Set Logic:  S ^GMRD(120.53,"AMASTERVUID",$E(X(1),1,30),X(2),DA)=""
+        Kill Logic:  K ^GMRD(120.53,"AMASTERVUID",$E(X(1),1,30),X(2),DA)
+        Whole Kill:  K ^GMRD(120.53,"AMASTERVUID")
+              X(1):  VUID  (120.53,99.99)  (Subscr 1)  (Len 30)  (forwards)
+              X(2):  MASTER ENTRY FOR VUID  (120.53,99.98)  (Subscr 2)
+                     (forwards)
+  
+ 4) The following changes are made to FILEs 120.51, 120.52 and 120.53.
+  
+ a) The #.01 field is modified to prohibit changes to any enries.
+  
+  ^DD(file #,.01,7.5)=
+  I $G(DIE)'="",'$D(XUMF) K X D EN^DDIOL("Entries must be edited via the
+  Master File Server (MFS).","","!?5,$C(7)")
+  
+  ^DD(file #,.01,"DEL",1,0)=
+  D:'$D(XUMF) EN^DDIOL("Entries must be inactivated via the Master File
+  Server (MFS).","","!?5,$C(7)") I $D(XUMF)
+  
+  ^DD(file #,.01,"LAYGO",1,0)=
+  D:'$D(XUMF) EN^DDIOL("Entries must be added via the Master File Server
+  (MFS).","","!?5,$C(7)") I $D(XUMF)
+   
+ b) File level access is changed to the "@" sign except for READ access. 
+ The READ access is not changed.
+  
+  ^DIC(file #,0,"AUDIT")=@
+  ^DIC(file #,0,"DD")=@
+  ^DIC(file #,0,"DEL")=@
+  ^DIC(file #,0,"LAYGO")=@
+  ^DIC(file #,0,"WR")=@
+  
+ c) The following statement is added to the file description. 
+  
+ Per VHA Directive {pending directive #}, this file has been "locked down" 
+ by Data Standardization (DS). The file definition (i.e. data dictionary)
+ shall not be modified. All additions, changes and deletions to entries in
+ the file shall be done by Enterprise Reference Terminology (ERT) using the
+ Master File Server (MFS), provided by Common Services (CS). Creating
+ and/or editing locally defined fields in the file are not permitted. Use
+ of locally defined fields that were created prior to VHA Directive
+ {pending directive #} shall not be supported.
+  
+ d) The WRITE ACCESS node of every field is set to the up-arrow (^) value. 
+ For example:
+  
+ ^DD(file #,.01,9)="^"
+  
+ 5) The OLD RECORD NUMBER (#999) field in FILE 120.52 is deleted. This 
+ field is no longer needed.
+  
+ 6) The Enter/Edit Vitals Qualifiers [GMRV VMSITE] is locked permanently.
+ Local facilities will no longer be able to add new qualifiers to the
+ package using this option. Instead, the 'New Term Rapid Turnaround'
+ process will be used to add or modify qualifiers.
+  
+ Local facilities will not be able to add or modify qualifiers in the 
+ Vitals Graphical User Interface (GUI) either.
+  
+ Routines affected: GMRVSITE, GMVRPCM
+  
+ 7) The software will check the VUID status value to determine if a FILE 
+ 120.51 (vital type), 120.52 (qualifier) or 120.53 (category) value is 
+ 'Active'. Only Active values will be displayed for selection when 
+ entering patient data. Old patient records that use "Inactive" values 
+ will continue to be shown in reports and displays.
+  
+ Routines affected: GMVRPCM, GMRVPCE0, GMRVPCE1, GMRVQUAL, GMVQUAL, GMVUID
+  
+ 8) Patient records uploaded to the Health Data Repository (HDR) will 
+ contain the VUID numbers and STOP CODE values associated with the GMRV 
+ VITAL MEASUREMENT (#120.5) entry.
+  
+ Routines affected: GMVVDEF1
+  
+ 9) Before installing this patch, the GMRVPCE0, GMRVPCE1, GMRVQUAL and 
+ GMRVSITE routines on your system are version 4 routines. The second lines 
+ are:
+  
+ GMRVPCE0
+  <tab>;;4.0;Vitals/Measurements;**8**;Apr 25, 1997
+  
+ GMRVQUAL
+  <tab>;;4.0;Vitals/Measurements;**1,11**;Apr 25, 1997
+  
+ GMRVSITE
+  <tab>;;4.0;Vitals/Measurements;**1**;Apr 25, 1997
+  
+ After installing this patch, these routines will be version 5. The second 
+ lines will be:
+  
+ GMRVPCE0
+  <tab>;;5.0;GEN. MED. REC. - VITALS;**8**;Oct 31, 2002
+  
+ GMRVQUAL
+  <tab>;;5.0;GEN. MED. REC. - VITALS;**8**;Oct 31, 2002
+  
+ GMRVSITE
+  <tab>;;5.0;GEN. MED. REC. - VITALS;**8**;Oct 31, 2002
+  
+ If you do a comparison of the patch to your system before installation, 
+ you will see the following message for GMRVQUAL routine:
+  
+ *** WARNING, your routine has more patches than the incoming routine ***.
+  
+ For example:
+  
+ Select Installation Option: 4  Compare Transport Global to Current System
+ Select INSTALL NAME: GMRV*5.0*8       Loaded from Distribution  
+ 2/17/05@16:25:40
+      => GMRV*5*8  ;Created on Feb 17, 2005@15:17:51
+  
+ This Distribution was loaded on Feb 17, 2005@16:25:40 with header of 
+    GMRV*5*8  ;Created on Feb 17, 2005@15:17:51
+    It consisted of the following Install(s):
+      GMRV*5.0*8
+  
+      Select one of the following:
+  
+           1         Full Comparison
+           2         Second line of Routines only
+           3         Routines only
+  
+ Type of Compare: 2  Second line of Routines only
+ DEVICE: HOME//
+  
+  ...
+  ...
+  Routine: GMRVQUAL
+ <TG>  ;;5.0;GEN. MED. REC. - VITALS;**8**;Oct 31, 2002
+ <SYS> ;;4.0;Vitals/Measurements;**1,11**;Apr 25, 1997
+ *** WARNING, your routine has more patches than the incoming routine ***
+  ...
+  ...
+  
+ You should ignore this warning.
+  
+ 10) The ABBREVIATION field (#1) in FILE 120.51 is modified to make the 
+ field editable. Before the patch, the second piece of ^DD(120.51,1,0) is 
+ "RFI". After the patch, it is "RF".
+  
+ 11) The SYNONYM field (#.02) in FILE 120.52 is modified so that it is no 
+ longer a required value for the entry. Before the patch, the second piece
+ of ^DD(120.52,.02,0) is "RFX". After the patch, it is "FX".
+  
+ 12) The value of the SYNONYM field (#.02) in FILE 120.52 no longer has to 
+ be unique. The GMVFSYN routine is modified to no longer force each SYNONYM
+ value to unique.
+  
+ Routines affected: GMVFSYN
+  
+ 13) Some facilities have an old field called VITALS/MEASUREMENT (#9) in 
+ FILE 120.51. This field is no longer used. This patch deletes this field 
+ definition and any data, if they exist.
+  
+ 14) The AHDRNEW and AHDRERR indexes on FILE 120.5 are modified. After 
+ this patch, these indexes will no longer call the VDEFQM routine if the
+ record is for a test patient. Also, the AHDRNEW index uses the PATIENT
+ (#.02) field instead of the DATE/TIME VITALS TAKEN (#.01) field.
+  
+  
+ Documentation:
+ ==============
+  There are no documentation changes for this patch. 
+  
+ Routine Version Line:
+ =====================
+  
+ Below is a list of the routines included in this patch. The second line of
+ each of these routines now looks like:
+  
+ ;;5.0;GEN. MED. REC. - VITALS;**[PATCH HISTORY]**;Oct 31, 2002
+  
+ Checksum Results:
+ =================
+  
+ Routine Name   Before Patch    After Patch     Patch History
+ ============   ============    ===========     =============
+  GMRVPCE0       942601          911153          8    
+  GMRVQUAL       16498706        16552450        8                
+  GMRVSITE       16577174        3548053         8               
+  GMV8ENV        new             175321          8
+  GMV8PST        new             11309244        8
+  GMVFSYN        3209515         2757211         8 
+  GMVQUAL        7167088         7281044         8              
+  GMVRPCM        13082062        13990743        1,8                
+  GMVUID         new             7814832         8           
+  GMVVDEF1       7787990         8483466         5,8
+  
+ Installation Instructions:
+ ==========================
+  
+ 1) This patch can be installed with users on the system.
+    Installation should take less than 5 minutes.
+    These routines are not recommended for mapping.
+  
+ 2) Load the Transport Global.
+  
+ 3) (Optional) Run the following KIDS options before installing the patch:
+  
+               Compare Transport Global to Current System
+               Verify Checksums in Transport Global
+               Backup a Transport Global
+  
+ 4) Install the Build GMRV*5.0*8.
+  
+    At the 'Want KIDS to INHIBIT LOGONs during the install' prompt answer
+    NO.
+  
+    At the 'Want to DISABLE Scheduled Options, Menu Options, and
+    Protocols?' prompt answer with "GMRV*" and "GMV*"
+  
+ 5) Move the routines to other CPUs if appropriate.
+  
+ 6) The post-installation routine, GMV8PST, calls a HDI utility which
+    creates an XML file for each of the files being standardized (120.51,
+    120.52,120.53). The XML file includes the Term/Concept (Field #.01)
+    from each of the three files. Each XML file is then forwarded to the
+    central server (FORUM). On the FORUM server, the XML file is compared 
+    with the standardized data from Enterprise Terminology Services (ETS). 
+    The data received from the facility is modified as follows: 1) FORUM 
+    sets a VUID value for every matching entry; 2) local entries are
+    assigned a VUID from a block of available numbers, and identified as
+    inactive terms; and 3) duplicate entries are identified as inactive
+    terms. The information is then passed back to the facility as an XML
+    file. The HDI package on the facility's server uses the XML file to
+    update the VistA files.
+  
+    Once the facility's VistA files are updated, a MailMan message is 
+    automatically sent to the Enterprise Reference Terminology (ERT) team.
+    The ERT team will manually initiate a Master File Server (MFS) "push" 
+    through the Vitria Interface Engine (VIE), which will complete the
+    update with standardized data. This ERT update relies on VUIDs as a key
+    for inserting the standardized data. At this point, the facility is
+    considered standardized for that particular VistA file. 
+  
+    When Files 120.51, 120.52 and 120.53 are standardized, the GMRV*5*8 
+    post-installation routine performs some cleanup tasks. 
+  
+    The Health Data Repository (HDR) Implementation Managers are notified
+    automatically via a MailMan message. This message alerts HDR that the
+    site is ready to have the VistA Data Extraction Framework (VDEF) 
+    triggers turned on, which enables communication between the facility's 
+    VistA server and the HDR/IMS database.
+
+Routine Information:
+====================
+
+Routine Name:
+  - GMRVPCE0
+
+
+Routine Checksum:
+
+Routine Name:
+  - GMRVQUAL
+
+
+Routine Checksum:
+
+Routine Name:
+  - GMRVSITE
+
+
+Routine Checksum:
+
+Routine Name:
+  - GMV8PST
+
+
+Routine Checksum:
+
+Routine Name:
+  - GMVQUAL
+
+
+Routine Checksum:
+
+Routine Name:
+  - GMVRPCM
+
+
+Routine Checksum:
+
+Routine Name:
+  - GMVUID
+
+
+Routine Checksum:
+
+Routine Name:
+  - GMVVDEF1
+
+
+Routine Checksum:
+
+Routine Name:
+  - GMVFSYN
+
+
+Routine Checksum:
+
+Routine Name:
+  - GMV8ENV
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : TRAXLER,FRANK                 Date Entered  : JAN 24, 2005
+Completed By: CARDILLI,AL                   Date Completed: MAY 18, 2005
+Released By : GIVENS,DALE S                 Date Released : MAY 24, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

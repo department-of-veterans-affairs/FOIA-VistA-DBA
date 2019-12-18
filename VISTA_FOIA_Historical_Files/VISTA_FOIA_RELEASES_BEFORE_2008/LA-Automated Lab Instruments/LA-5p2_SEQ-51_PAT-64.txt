@@ -1,0 +1,626 @@
+
+=============================================================================
+Run Date: DEC 17, 2004                     Designation: LA*5.2*64
+Package : LA - AUTOMATED LAB INSTRUMENTS      Priority: Mandatory
+Version : 5.2        SEQ #51                    Status: Released
+                  Compliance Date: JAN 17, 2005
+=============================================================================
+
+Associated patches: (v)LA*5.2*27   <<= must be installed BEFORE `LA*5.2*64'
+                    (v)LA*5.2*46   <<= must be installed BEFORE `LA*5.2*64'
+                    (v)LA*5.2*55   <<= must be installed BEFORE `LA*5.2*64'
+                    (v)LA*5.2*61   <<= must be installed BEFORE `LA*5.2*64'
+                    (v)LA*5.2*62   <<= must be installed BEFORE `LA*5.2*64'
+                    (v)LA*5.2*63   <<= must be installed BEFORE `LA*5.2*64'
+                    (v)LA*5.2*65   <<= must be installed BEFORE `LA*5.2*64'
+                    (v)HL*1.6*101  <<= must be installed BEFORE `LA*5.2*64'
+                    (v)XU*8*261    <<= must be installed BEFORE `LA*5.2*64'
+                    (v)LA*5.2*70   <<= must be installed BEFORE `LA*5.2*64'
+
+Subject: VA/DOD LAB INTEROPERABILITY
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ EFFECT ON BLOOD BANK FUNCTIONAL REQUIREMENTS: Patch LA*5.2*64 does not
+ contain any changes to the VISTA BLOOD BANK Software as defined by VHA
+ DIRECTIVE 99-053 titled VISTA BLOOD BANK SOFTWARE VERSION 5.2.
+  
+ EFFECT ON BLOOD BANK FUNCTIONAL REQUIREMENTS: Patch LA*5.2*64 does not
+ alter or modify any software design safeguards or safety critical elements
+ functions.
+  
+ RISK ANALYSIS: Changes made by patch LA*5.2*64 have no effect on Blood Bank
+ software functionality, therefore RISK is none.
+  
+ VALIDATION REQUIREMENTS BY OPTION:  Because of the nature of the changes
+ made, no specific validation requirements exist as a result of installation
+ of this patch.
+  
+ =======================================================================
+ This patch adds support for sending/receiving Laboratory Electronic
+ Data Interchange (LEDI) orders/results with Department of Defense (DoD)
+ facilities and implements enhancements to general LEDI functionality.
+  
+  
+ 1. The process of building orders in the LAB PENDING ORDERS ENTRY file
+ (#69.6) has been enhanced to use additional information from the HL7 Order
+ (ORM) message. It will store the following information when available in the
+ LAB PENDING ORDERS ENTRY file (#69.6):
+  - patient's race
+  - order comments
+  - test results that accompany an order
+  
+ 2. The new option Start a Shipping Manifest [LA7S MANIFEST START] will
+ allow a manifest to be started without performing a manifest build.
+ Specimens can then be added manually, instead of automatically, using
+ option Add/Remove a Shipping Manifest Test [LA7S MANIFEST TEST ADD/REMOVE].
+  
+ 3. The new option Edit Relevant Clinical Information [LA7S MANIFEST
+ CLINICAL INFO] is used to enter relevant clinical information that
+ should accompany a test order on a manifest.
+  
+ 4. Converted supported API calls $$FMDATE^HLFNC and $$HLDATE^HLFNC to
+ recommended Kernel supported API's $$HL7TFM^XLFDT and $$FMTHL7^XLFDT
+ respectively.
+  
+ 5. Routine LA7VHL changed to call HL7 supported API RSPINIT^HLFNC2 to
+ obtain message delimiters that HL7 package will use when building MSH
+ header of application acknowledgement message. Previous call to
+ INIT^HLFNC would return incorrect headers under certain conditions.
+ See patch HL*1.6*101 for additional information.
+  
+ 6. Routine LA7VMSG1 changed to check if $QUERY of ^TMP global has
+ returned a null value. Under certain conditions an illegal function call
+ error could be observed.
+  
+ 7. Changed routines LA7VLL, LA7VSTP, and LA7VSTP1 to setup LA7V* logical
+ links without <space> between "LA7V" and station number. Allows HL7 package
+ to display logical links for DoD sites which utilize DoD DMIS ID codes as
+ facility identifiers similar to VA station numbers. HL7 package only
+ displays first 8 characters of logical link name. Option LEDI Setup
+ [LA7V SETUP] will only support creation of TCP logical links.
+  
+ 8. Routine LA7PURG is changed to purge shipping manifests from LAB
+ SHIPPING MANIFEST file (#62.8) when all related accessions have been
+ purged from ACCESSION file (#68) (E3R #18036). Orders in the LAB PENDING
+ ORDERS ENTRY file (#69.6) are purged when the date completed is >365
+ days, when the order transmitted date is >720 days or when the order
+ transmitted date is >360 and the order status is Results/data Received.
+  
+ 9. When selecting a shipping manifest the list of entries to select
+ from will list the manifests in inverse order with the most recent
+ being displayed first. (E3R #18036)
+  
+ 10. Requesting provider's office phone, voice and digital pager numbers
+ will be printed on working copies of shipping manifest. (E3R #17914)
+  
+ 11. Four new alerts/mail bulletins are generated when processing LEDI
+ HL7 messages. These alerts and corresponding bulletins are addressed to
+ the mail group designated to receive the NEW RESULTS alert specified
+ by the site in LA7 MESSAGE PARAMETER file (#62.48) for LEDI type
+ interfaces.
+  
+    a. Mail bulletin: LA7 ABNORMAL RESULTS RECEIVED
+    Mail bulletin created by Laboratory package when processing a LEDI
+    interface type HL7 result (ORU) message which contains laboratory
+    testing results that are flagged as critical or abnormal.  Values
+    that are critical will always trigger the alert and bulletin. Values
+    that are abnormal low or high will be triggered when site has flagged
+    the corresponding test in AUTO INSTRUMENT file (#62.4), NOTIFY ABNORMAL
+    FLAGS field (#22) within the CHEM TEST multiple (#30) for the interface.
+  
+    b. Mail bulletin: LA7 AMENDED RESULTS RECEIVED
+    Mail bulletin created by Laboratory package when processing a LEDI
+    interface type HL7 result (ORU) message which contains laboratory
+    testing results that are flagged as amended.
+  
+    c. Mail bulletin: LA7 UNITS/NORMALS CHANGED
+    Mail bulletin created by Laboratory package when processing a LEDI
+    interface type HL7 result (ORU) message which contains laboratory
+    test result units and/or normals different from values specified for
+    test in LABORATORY TEST file (#60) and which are flagged to be used
+    for reference testing purposes.
+  
+    d. Mail bulletin: LA7 ORDER STATUS CHANGED
+    Mail bulletin created by Laboratory package when processing a LEDI
+    interface type HL7 message.
+  
+    Bulletin will be generated for the following conditions:
+  
+    - When an order acknowledgment (ORR) message contains laboratory
+    test order status changes that indicate the order is not correct or
+    cannot be performed/completed. Currently only supported on LEDI
+    interfaces with DoD facilities.
+  
+    - When an order result (ORU) message indicates that a laboratory
+    test has been added by the reference laboratory to the original order.
+  
+ 12. Corrected a spelling error in set of codes for LAB SHIPPING
+ CONFIGURATION file (#62.9), COLLECTING FACILITY'S SPEC ID field (#.05).
+  
+ 13. Internal review determined that the specimen container was not printing
+ on working copies of shipping manifests. When printing working versions
+ of a shipping manifest the specimen container will be printed.
+  
+ 14. A new error bulletin #47 has been added to LA7 MESSAGE LOG BULLETINS
+ file (#62.485). When processing LEDI orders if any of the following are
+ incomplete - local test, local urgency, local topography or local collection
+ sample then the bulletin will be triggered. This is to insure that orders
+ sent by the collecting facility are not missed when processed during LEDI
+ Referral Patient Accessioning. If this bulletin is triggered it indicates
+ that the host site's shipping configuration is not properly configured to
+ process orders from it's collecting site.
+  
+  
+ ASSOCIATED E3R
+ --------------
+  E3R #17914, PROVIDER CONTACT NUMBERS ON MANIFEST
+  E3R #17904, LEDI BETWEEN VA AND DOD SITES
+  E3R #18036, UNABLE TO PURGE SHIPPING MANIFESTS
+  
+ ASSOCIATED NOIS
+ ---------------
+  ISA-0398-10075
+  
+  
+ TEST SITES
+ ----------
+  Albuquerque VAMC - VMS/DSM and VMS/Cache
+  Boston HCS - VMS/DSM and VMS/Cache
+  El Paso HCS - NT/Cache and VMS/Cache
+  Hines VAMC - VMS/DSM and VMS/Cache
+  Honolulu VAMC - NT/Cache
+  Manchester VAMC - NT/Cache and VMS/Cache
+  Milwaukee VAMC - VMS/DSM
+  North Chicago VAMC - VMS/DSM
+  Salt Lake City VAMC - VMS/DSM
+  San Diego VAMC - VMS/DSM and VMS/Cache
+  Upstate New York HCS - VMS/DSM and VMS/Cache
+  
+  
+  INSTALLATION FILES:
+  ==================
+  The following software and documentation files are exported as part of
+  this patch:
+  
+     File Name             Contents                     Retrieval Format
+     ---------             --------                     ----------------
+  
+ LAB_LEDI_III.KID        LA*5.2*64 KIDS build           ASCII
+                         LR*5.2*286 KIDS build
+  
+  
+ LAB_LEDI_III_IG.PDF     LABORATORY ELECTRONIC DATA     BINARY
+                         INSTALLATION GUIDE
+  
+ LAB_LEDI_III_IMP_UG.PDF LABORATORY ELECTRONIC DATA     BINARY
+                         IMPLEMENTATION AND USER GUIDE
+  
+  The files listed above may be obtained via FTP.  The preferred method is
+  to FTP the files from:
+  
+     download.vista.med.va.gov
+  
+  This transmits the files from the first available FTP server.  Sites may
+  also elect to retrieve software directly from a specific server as
+  follows:
+  
+     CIO FIELD OFFICE   FTP ADDRESS                 DIRECTORY
+     ----------------   -------------------------   --------------------
+     Albany             ftp.fo-albany.med.va.gov    [anonymous.software]
+     Hines              ftp.fo-hines.med.va.gov     [anonymous.software]
+     Salt Lake City     ftp.fo-slc.med.va.gov       [anonymous.software]
+  
+  
+ ROUTINE SUMMARY
+ ===============
+   The following routines are included in this patch.  The second line
+   of each of these routines now looks like:
+   <tab> ;;5.2;AUTOMATED LAB INSTRUMENTS;<patchlist>;Sep 27, 1994
+  
+                     Checksum       Checksum
+    Routine Name     Before Patch   After Patch    Patch List
+    ------------     ------------   -----------    ------------
+    LA64             N/A            5936440        **64** (Deleted by KIDS)
+    LA7PURG          3834284        4599657        **27,64**
+    LA7SBCR1         4924406        5434157        **27,46,64**
+    LA7SBCR2         2564479        2593598        **27,46,64**
+    LA7SCE           11501726       13339015       **27,46,61,64**
+    LA7SM2           12143125       16026225       **46,64**
+    LA7SMB           14649107       12799432       **27,46,64**
+    LA7SMP           11746903       12373162       **27,45,46,64**
+    LA7SMP0          9303222        10961615       **46,64**
+    LA7SMPXL         3215234        4682314        **27,42,46,64**
+    LA7SMU           7104257        7255424        **27,46,64**
+    LA7SMU1          6300206        6311796        **27,46,65,64**
+    LA7SMU2          5290542        7549846        **46,64**
+    LA7SRR           6233015        7637904        **46,64**
+    LA7UTILA         10237097       10662046       **23,27,46,64**
+    LA7VHL           4568355        5811383        **27,46,62,64**
+    LA7VHLU          4487468        5914870        **46,62,64**
+    LA7VHLU1         2323481        3267492        **46,61,64**
+    LA7VHLU2         4100825        4356637        **46,61,64**
+    LA7VHLU3         2007360        2799232        **46,64**
+    LA7VHLU4         5424804        4836094        **46,64**
+    LA7VHLU5         5541950        7828952        **46,64**
+    LA7VIN1          5261630        5855016        **46,64**
+    LA7VIN1A         N/A            13987419       **64**
+    LA7VIN2          5808892        8339412        **46,64**
+    LA7VIN3          2061956        3081309        **46,64**
+    LA7VIN4          7936019        12162627       **46,64**
+    LA7VIN5          5205707        10570600       **46,64**
+    LA7VIN5A         5039195        8695039        **46,64**
+    LA7VLL           5170411        6390054        **27,51,55,64**
+    LA7VMSG          3253314        5080421        **27,50,56,46,64**
+    LA7VMSG1         8227296        8679432        **56,46,61,64**
+    LA7VOBR          2129056        2455598        **46,64**
+    LA7VOBRA         5326634        8044290        **46,64**
+    LA7VOBX          2088674        2633711        **46,64**
+    LA7VOBX1         4057776        4535705        **46,61,63,64**
+    LA7VOBX2         4350324        4309250        **46,64**
+    LA7VOBX3         5240738        6460347        **46,64**
+    LA7VOBXA         6416931        6372995        **46,70,64**
+    LA7VORC          1565653        1713732        **46,64**
+    LA7VORM          6471896        12116142       **27,42,46,64**
+    LA7VORM1         7594289        9199759        **27,51,46,61,64**
+    LA7VORM3         6787219        7257153        **46,64**
+    LA7VORU          6241961        8366274        **27,46,61,64**
+    LA7VORU1         4734718        4842743        **46,64**
+    LA7VORU2         1962290        2531397        **46,64**
+    LA7VORUA         2199285        2385822        **61,64**
+    LA7VPID          4123683        4823699        **46,64**
+    LA7VSET          15979413       14514051       **27,51,55,46,64**
+    LA7VSET1         9065449        7835525        **27,51,55,46,64**
+    LA7VSTP          6079680        4597827        **27,44,51,46,64**
+    LA7VSTP1         3317926        3042573        **27,46,64**
+    LAGEN            8522786        8715369        **1,17,22,27,47,46,64**
+  
+  List of preceding patches: 46, 61, 62, 63, 65, 70
+  Sites should use CHECK^XTSUMBLD to verify checksums.
+  
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+  
+ See LABORATORY ELECTRONIC DATA INTERCHANGE III (LEDI III) INSTALLATION GUIDE
+     LA*5.2*64/LR*5.2*286
+
+Routine Information:
+====================
+
+Routine Name:
+  - LA64
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7SMP
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7SMP0
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7SMPXL
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7SMU2
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7UTILA
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VHLU2
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VHLU5
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VMSG
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VMSG1
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VOBR
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VOBRA
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VOBX
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VOBX1
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VOBX2
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VOBX3
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VORC
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VORM
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VORM1
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VORM3
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VORU
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VORU1
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VORU2
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VORUA
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VIN2
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VIN5
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7SMB
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7SMU
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7SRR
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VHL
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VHLU
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VIN1
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VHLU3
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VIN4
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VIN5A
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VPID
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VSET
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VSET1
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VSTP
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7SCE
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VIN1A
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7SM2
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VHLU4
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VHLU1
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VLL
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VSTP1
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7SMU1
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7PURG
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VOBXA
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7VIN3
+
+
+Routine Checksum:
+
+Routine Name:
+  - LAGEN
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7SBCR1
+
+
+Routine Checksum:
+
+Routine Name:
+  - LA7SBCR2
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : MCCORMACK,JOHN                Date Entered  : MAY 13, 2002
+Completed By: ELIJAH,VICKEY                 Date Completed: NOV 19, 2004
+Released By : LECLAIR,RAY                   Date Released : DEC 17, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

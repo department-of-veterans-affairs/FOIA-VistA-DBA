@@ -1,0 +1,216 @@
+$TXT Created by THEROUX,JOHN at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 08/09/04 at 12:25
+=============================================================================
+Run Date: DEC 10, 2004                     Designation: DG*5.3*604
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #542                    Status: Released
+                  Compliance Date: JAN 10, 2005
+=============================================================================
+
+Associated patches: (v)DG*5.3*459  <<= must be installed BEFORE `DG*5.3*604'
+                    (v)DG*5.3*530  <<= must be installed BEFORE `DG*5.3*604'
+
+Subject: PATIENT SAFETY ISSUE AND UNDEFINED ERRORS
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch concerns a patient safety issue when certain Patient file
+ records cannot be accessed, and two other undefined errors.
+  
+ ASSOCIATED NOISes:
+ ==================
+ CIN-0404-41550     Patients dfns such as 7119197.8892
+ UNY-0504-11758     VAFH PIVOT PURGE BACKGROUND JOB ERRORED AGAIN
+ SBY-0504-31843     DEL+1^DGDIS:2
+ ZZZ-0704-N1310     Patient File IENs & DINUM
+ V07-0700-N0943     NON-INTEGER DFNs
+  
+ ASSOCIATED E3R(s):
+ ==================
+ N/A
+     
+ PARTICIPATING TEST SITES:
+ =========================
+ Salisbury,NC  
+ Grand Junction,CO
+ Puget Sound,WA
+   
+ NOIS OVERVIEW:
+ ==============
+  
+ 1)  CIN-0404-41550    Patients dfns such as 7119197.8892
+  
+ Problem:
+ ========
+ Certain packages, notably CPRS, Imaging and BCMA, have 
+ reported problems accessing patient file records which were
+ created several years ago with an Internal Entry Number (IEN) 
+ that contains decimals.  Back then the Lab package had the capability
+ to add records to the Patient file and derived an IEN by
+ subtracting the FileMan date/time from "9999999".  
+  
+ Solution:
+ =========
+ One aspect of the solution is to create new records to replace
+ those with such IENS.  This is most easily done by "merging"
+ the old record with the new, as follows:
+  
+ 1. Change the SSN of the record identified by the reporting utility to a
+    pseudo-SSN (the reporting utility is explained below).
+ 2. Create a new patient record with the requisite demographic information
+    of the patient. The merge process uses the following fields in the
+    patient file record to identify potential duplicate records: (1) Name,
+    (2) Social Security Number, (3) Sex, (4) Date of Birth, (4) Date of
+    Death, (5) Last Separation Date (Last Discharge Date), (6) Mother's
+    Maiden Name, and (7) Claim Number. A value is ascribed to each
+    field based upon similarity in the data present. Then all field values
+    are tabulated to form a single value, which is compared against the
+    Threshold Percentage (a site parameter). When record pair scores
+    evaluate above this percentage, they are considered to be potential
+    duplicates, entered into the DUPLICATE RECORD file (#15), and made
+    available for further processing.
+  
+ 3. Once a new record is created in the patient file (#2) with the correct
+    demographic information for the patient, you should follow the merge
+    process procedures utilized by your site to merge the "old" data record
+    (assigned a pseudo SSN in step #1) into the newly created record.
+  
+       
+ In order to help you identify the patient file records which will need
+ to be merged, utility routine DG53P604 is included in this patch
+ which will produce a report of such records.  Each record on this 
+ report will need to be merged.  However, for any patient who is an 
+ inpatient when you come to do the merge, please wait until that patient
+ is discharged before doing the merge.    
+  
+ 2)  UNY-0504-11758    VAFH PIVOT PURGE BACKGROUND JOB ERRORED AGAIN
+  
+ Problem:
+ ========
+ When using the Purge PIMS HL7 PIVOT file [VAFH PIVOT PURGE] option, 
+ an undefined error occurs if an ADT/HL7 PIVOT file (#391.71) record
+ is missing a zero node.
+  
+ Solution:
+ =========
+ Routine VAFHPURG has been modified to avoid such records. 
+  
+ 3)  SBY-0504-31843    DEL+1^DGDIS:2
+  
+ Problem:
+ ======== 
+ When using the Disposition an Application [DG DISPOSITION APPLICATION] 
+ option, if a pointer to the Outpatient Encounter file (#409.68) exists
+ in the DISPOSITION LOG-IN DATE/TIME SUB-FILE (#2.101) entry of the
+ Patient file (#2), and the user tries to exit the process, a call is made
+ to EN^SDCODEL to attempt to delete the check-out.  In the process, an
+ undefined error occurs.
+  
+ Solution:
+ =========
+ Routine DGDIS has been modified to "bullet proof" the call by using
+ $G(SDISHDL)) instead of just the variable name SDISHDL (an optional 
+ variable), thus avoiding the undefined error.
+  
+  ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;5.3;Registration;**[patch list]**;Aug 13,1993
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  DG53P604                   N/A              3204137            604
+  DGDIS                 14503669             14519875      108,121,161,151
+                                                               459,604
+  VAFHPURG               2480201              2547640       91,219,530,604
+  
+ INSTALLATION INSTRUCTIONS:
+ ===========================
+ This patch may be run with users on the system.
+  
+ Installation will take less than 2 minutes.
+  
+ 1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu to unload
+     the KIDS distribution included with this message.
+  
+     NOTE:  If the required patches are not installed, the transport global
+            will be removed.  If the transport global is removed you will
+            need to repeat this step.
+  
+ 2.  Review your mapped set.  If any of the routines listed in the 
+     ROUTINE section are mapped, they should be removed from the mapped
+     set at this time.
+  
+ 3.  From the Kernel Installation and Distribution System Menu, select
+     the Installation menu.
+  
+ 4.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter DG*5.3*604):
+     a.  Compare Transport Global to Current System  - this option will
+         allow you to view all changes that will be made when the patch
+         is installed.  It compares all components of the patch (routines,
+         DDs, templates, etc.).
+     b.  Verify Checksums in Transport Global - this option will
+         allow you to ensure the integrity of the routines that are in
+         the transport global.
+     c.  Print Transport Global - this option will allow you to view the
+         components of the KIDS build.
+     d.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+  
+ 5.  Use the Install Package(s) option and select the package DG*5.3*604.
+  
+ 6.  When prompted ' Want KIDS to INHIBIT LOGONs during the install?
+     YES//', respond NO.
+  
+ 7.  When prompted,'Want to DISABLE Scheduled Options, Menu Options, and 
+     Protocols? NO//', respond Yes.
+     When prompted,'Enter options you wish to mark as 'Out Of Order':',
+     enter:
+              DISPOSITION AN APPLICATION [DG DISPOSITION APPLICATION]      
+     When prompted,'Enter protocols you wish to mark as 'Out Of Order':', 
+     hit enter.
+  
+ 8.  If routines were unmapped as part of step 2, they should be returned
+     to the mapped set once the installation has run to completion.
+  
+ POST-INSTALL INSTRUCTIONS:
+ =========================
+  
+ Run routine DG53P604. Suggest you queue the report as the routine 
+ must read the entire Patient file in order to produce the report.  
+
+Routine Information:
+====================
+
+Routine Name:
+  - VAFHPURG
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGDIS
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : THEROUX,JOHN                  Date Entered  : MAY 21, 2004
+Completed By: BOWEN,MARY JANE               Date Completed: DEC 10, 2004
+Released By : GROOMS,ANTHONY E              Date Released : DEC 10, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

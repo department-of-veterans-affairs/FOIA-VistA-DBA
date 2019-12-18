@@ -1,0 +1,359 @@
+$TXT Created by WOLF,ED at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Friday, 02/23/07 at 14:00
+=============================================================================
+Run Date: JUL 16, 2007                     Designation: PX*1*183
+Package : PX - PCE PATIENT CARE ENCOUNTER     Priority: Mandatory
+Version : 1       SEQ #140                      Status: Released
+                  Compliance Date: AUG 16, 2007
+=============================================================================
+
+Associated patches: (v)PX*1*143    <<= must be installed BEFORE `PX*1*183'
+                    (v)PX*1*161    <<= must be installed BEFORE `PX*1*183'
+
+Subject: PCE FIXES
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch addresses four issues related to the Patient Care Encounter (PCE)
+ module that were reported on the Remedy tickets listed below.
+  
+ ASSOCIATED REMEDY TICKETS:
+ =========================
+  
+   1) HD123432 - IBDF UTIL MAINT UTILITY PROBLEM
+   2) HD135534 - IB MT NIGHT COMP erroring out with 
+                 <SUBSCRIPT>ENCEVENT+10~PXKENC
+   3) HD136528 - Warning on Patient Death
+   4) HD173398 - Event Capture Issue
+  
+ ASSOCIATED NSR(s):
+ ==================
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Chillicothe, OH
+ Philadelphia, PA
+ Biloxi, MS
+  
+   
+ REMEDY OVERVIEW:
+ ================
+  
+   1) HD123432 - IBDF UTIL MAINT UTILITY PROBLEM
+  
+   Problem:
+   =======
+   An error occurred when attempting to use code PX SELECT IMMUNIZATION 
+   while running Maintenance Utility for Active/Inactive Codes [IBDF 
+   UTIL MAINTENANCE UTILITY] option for clinics, see an example below.
+  
+ Select OPTION NAME: IBDF REPORTS MENU       Reports and Utilities
+ Select Reports and Utilities Option: MU  Maintenance Utility for 
+                                          Active/Inactive Codes 
+ Sort by [C]linics, [G]roups, [F]orms:  (C/G/F): CLINICS//  (Individual)
+ Select Clinic: ALL// EMPLOYEE HEALTH (EVEN)
+ Select another Clinic: 
+ Select Type of Code to Display: 86  PX SELECT IMMUNIZATIONS      TYPE=SELECTION
+          ...OK? Yes//   (Yes)
+  
+ Any inactive entry in the IMMUNIZATION (#9999999.14) file contributed to
+ a syntax error because of the following line of code:
+  TESTIMM+8 in routine PXAPIIB:
+  
+    I $P($G(^AUTTIMM(X,0)),"^",7) S Y=$P(^AUTTEDT(X,0),"^") K X
+  
+ The second global reference should have been to the IMMUNIZATION (#9999999.14)
+ file and not to the EDUCATION TOPICS (#9999999.09) file.
+  
+   Solution:
+   =========   
+   The code has been corrected to refer to the same file.
+  
+   I $P($G(^AUTTIMM(X,0)),"^",7) S Y=$P(^AUTTIMM(X,0),"^") K X
+  
+ ============
+   2) HD135534 - IB MT NIGHT COMP erroring out with 
+                 <SUBSCRIPT>ENCEVENT+10~PXKENC
+  
+   Problem:
+   =======
+   If PCE DBIA1889-F was called and an expected VISITIEN was not passed,
+   a syntax error occurred in routine PXKENC because, even if the VISITIEN is 
+   a required parameter, there was no code that would stop execution in that
+   situation.
+  
+   The current code:
+  
+   ENCEVENT(VISITIEN,DONTKILL) ;Create the ^TMP("PXKENC",$J, array of all the
+          ;  information about one encounter.
+          ;Parameters:
+          ;  VISITIEN  Pointer to the Visit (#9000010)
+          ;  DONOTKILL is 1 if the output array is not to be killed before used
+          ;            and 0 or null if the array is to be killed (cleaned out)
+          ;
+          ;  The encounter is returned in the array
+          ;    ^TMP("PXKENC",$J,pointer to visit)
+          ;
+          I '$D(^AUPNVSIT(VISITIEN)) Q
+          ;
+  
+    evaluated VISITIEN parameter without anticipation that it could be NULL, 
+    and if NULL was improperly passed then an error was generated.
+  
+    Solution:
+    ========
+    The following line of code was added to quit if NULL is passed, in the same
+    way as if a invalid VISITIEN was passed:
+  
+  ENCEVENT(VISITIEN,DONTKILL);Create the ^TMP("PXKENC",$J, array of all the
+          ;  information about one encounter.
+          ;Parameters:
+          ;  VISITIEN  Pointer to the Visit (#9000010)
+          ;  DONOTKILL is 1 if the output array is not to be killed before used
+          ;            and 0 or null if the array is to be killed (cleaned out)
+          ;
+          ;  The encounter is returned in the array
+          ;    ^TMP("PXKENC",$J,pointer to visit)
+          ;
+          I $G(VISITIEN)'>0 Q  ;PX/183
+          I '$D(^AUPNVSIT(VISITIEN)) Q
+  
+ NOTE: It is important for all subscribing packages to evaluate if the
+       required VISITIEN has a valid entry in the VISIT (#9000010) file 
+       but this is the current requirement of DBIA1889-F.
+  
+  ===========
+   3) HD136528 - Warning on Patient Death
+  
+   Problem:
+   ========
+   In PCE Encounter Data Entry options (see the INSTALLATION INSTRUCTIONS
+   section of patch description for list), if a patient with death remarks
+   in the REMARKS (#.091) field of the PATIENT (#2) file is accessed then
+   other patients were processed by switching through Action: 'SP'- Select
+   New Patient, then the death remarks are randomly displayed with a
+   patient to whom they do not belong.
+   
+   The problem was primarily caused by array segment
+   DIR("A",1)="WARNING "_VADM(7) that is included with ^DIR call used to
+   display the REMARKS (#.091) field, if applicable. Any action that
+   killed or 'newed' DIR array before executing a new ^DIR call was working
+   fine but if, for example, a new ^DIR call was made for a patient that
+   did not have any remarks, then the previous patient's remarks were
+   wrongly displayed.  VADM(7) represents a patient's remarks, and for the
+   dead patient those remarks, for example, look something like "[PATIENT
+   DIED ON 4/1/05]". Even if VADM array was properly initiated and VADM(7)
+   did not contain any value, segment DIR("A",1) still existed.
+  
+   Solution:
+   ========
+   Subroutine PAT1 of routine PXCEPAT was modified to use the NEW command
+   for DIR array, preventing any DIR segment from carrying over. Also in
+   subroutine NEWPAT two calls to subroutine PATKILL were added for
+   cleaning the processed patient data. Any patient remarks are displayed
+   properly with the patient to whom they belong.
+  
+  ===========
+   4) HD173398 - Event Capture Issue
+  
+   Problem:
+   ========
+   There are conditions under which visits have to be displayed depending on
+   a PCE option being used. Users are not aware of these conditions because
+   they are not included in the user documentation.  Routine PXCEPAT
+   includes these conditions, and any ancillary visits are not displayed on
+   PCE Encounter Data Entry [PCE ENCOUNTER DATA ENTRY] option except PCE
+   Data Entry Supervisor. The ancillary visits can be also viewed in PCE
+   Encounter Viewer [PXCE ENCOUNTER VIEWER] option.
+     
+   Patient Care Encounter (PCE) V. 1.0 User Manual August 1996 Patch
+   PX*1*124 (Revised September 2005), while describing PCE Encounter Data
+   Entry [PXCE ENCOUNTER DATA ENTRY] option does not include information
+   about differences in PCE Encounter Data Entry options.
+   
+   It is likely this was done for a purpose not to be able to see and
+   modify ancillary visits from PCE unless you have a supervisor privilege.
+   In the same PXCE Supervisor menu it can be assigned to a desired,
+   responsible person, not necessarily a supervisor.  PCE Encounter
+   Viewer [PXCE ENCOUNTER VIEWER] option may be used if it is desired to
+   view visits, including ancillary ones.
+   
+  
+   Ancillary visits are identified by 'A' in the Encounter Type field of
+   the Visit file. 
+  
+   FIELD NAME:       ENCOUNTER TYPE
+  
+   FLD NUMBER:       15003            
+   NODE;PIECE:       150;3          
+  
+    DATA TYPE:       Set of Codes
+                       P:PRIMARY
+                       O:OCCASION OF SERVICE
+                       S:STOP CODE
+                       A:ANCILLARY
+                       C:CREDIT STOP
+  
+  If the ENCOUNTER TYPE (#15003) field in the VISIT (#9000010) file entry
+  is "A"- ANCILLARY  then this visit is skipped from being displayed in 
+  PCE Encounter Data Entry options except option:
+   PCE Encounter Data Entry - Supervisor [PXCE ENCOUNTER ENTRY SUPER].
+  
+  This issue will be addressed by including additional information about
+  PCE Encounter Data Entry options, and about 
+  PCE Encounter Viewer [PXCE ENCOUNTER VIEWER] functionality.
+  
+  Please note the current description of PCE Encounter Data Entry 
+  - Supervisor:
+  
+  "Assign PCE Encounter Data Entry - Supervisor to users who can document
+  a clinical encounter and can also delete any encounter entries, even though
+  they are not the creator of the entries."
+  
+  As you can see there is nothing about a privilege of seeing ancillary visits
+  under that option and not under someone else's.
+  
+  Solution:
+  ========
+  Patient Care Encounter (PCE) V. 1.0 User Manual August 1996 Patch PX*1*124
+  (Revised September 2005) will be updated by providing modified information
+  about functionality of different PCE Data Entry options.
+  
+  On page 73:
+  
+ "Assign PCE Encounter Data Entry - Supervisor to users who can document
+  a clinical encounter and can also delete any encounter entries, even though
+  they are not the creator of the entries. This option allows also, contrary 
+  to all other PXCE Encounter Data Entry, to display, and even modify ancillary
+  encounters so it should be assigned with caution."
+  
+  After table 'List by Encounters', page 12 the following paragraph will
+  be added:
+  
+ "List by Encounters includes ancillary encounters only if the process starts
+  either through PCE Encounter Data Entry Supervisor or PXCE Encounter Viewer."
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ Users can be on the system during the installation of this patch but it
+ is recommended to install it during non-peak time/few users on the system.
+  
+ Installation should take less than 1 minute.
+  
+ 1.  LOAD TRANSPORT GLOBAL
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the
+     INSTALL/CHECK MESSAGE PackMan option.
+  
+ 2.  START UP KIDS
+     -------------
+     Start up the Kernel Installation and Distribution System Menu
+     [XPD MAIN]
+  
+           Edits and Distribution ...
+           Utilities ...
+           Installation ...
+  
+     Select Kernel Installation & Distribution System Option:  INStallation
+                                                               ---
+  
+     1     Load a Distribution
+     2     Verify Checksums in Transport Global
+     3     Print Transport Global
+     4     Compare Transport Global to Current System
+     5     Backup a Transport Global
+     6     Install Package(s)
+           Restart Install of Package(s)
+           Unload a Distribution
+  
+ 3.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter PX*1.0*183):
+  
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch.  It will NOT
+         backup any other changes such as DDs or templates.
+  
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when the patch
+         is installed.  It compares all components of the patch
+         (routines, DDs, templates, etc.).
+  
+     c.  Verify Checksums in Transport Global - This option will ensure
+         the integrity of the routines that are in the transport global.
+  
+     d.  Print Transport Global - This option will allow you to view
+         the components of the KIDS build.
+  
+ 4.  Use the Install Package(s) option and select the package PX*1.0*183.
+  
+     a.  When prompted "Want KIDS to INHIBIT LOGONS during the
+         install? YES//" respond NO.
+  
+     b.  When prompted "Want to DISABLE Scheduled Options, Menu Options,
+         and Protocols? YES//" respond YES.
+  
+         When prompted "Enter options you wish to mark as "Out of
+            Order":" enter the following option:
+  
+         PCE Encounter Data Entry [PXCE ENCOUNTER DATA ENTRY]
+         PCE Encounter Data Entry and Delete [PXCE ENCOUNTER ENTRY & DELETE]
+         PCE Encounter Data Entry without Delete
+                                          [PXCE ENCOUNTER ENTRY NO DELETE]
+         PCE Encounter Data Entry - Supervisor [PXCE ENCOUNTER ENTRY SUPER]
+         PCE Encounter Viewer [PXCE ENCOUNTER VIEWER]
+                  
+         When prompted "Enter protocols you wish to mark as 'Out Of Order':"
+         enter <CR>.
+  
+      c. When prompted "Delay Install (Minutes):  (0-60): 0//" accept 
+            default '0' minutes.
+  
+      d. Print the install process to a designated printer for your 
+         records.
+  
+  ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+    <tab>;;1.0;PCE PATIENT CARE ENCOUNTER;**[patch list]**;Aug 12, 1996;Build 1
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  PXAPIIB                1387457              1387716             183
+  PXCEPAT                7295275              7417487        1,5,14,30,70
+                                                            147,160,161,183
+  PXKENC                 6277624              6302919      15,22,73,108,143
+                                                                  183
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PXAPIIB
+    Before:  B5736008   After:  B5736603  **183**
+Routine Name: PXCEPAT
+    Before: B30169766   After: B30450430  **1,5,14,30,70,147,160,161,183**
+Routine Name: PXKENC
+    Before: B23222675   After: B23516097  **15,22,73,108,143,183**
+ 
+Routine list of preceding patches: 143, 161
+
+=============================================================================
+User Information:
+Entered By  : WOLF,ED                       Date Entered  : DEC 08, 2006
+Completed By: TSAIMEUCHONG,BRENDA           Date Completed: JUL 11, 2007
+Released By : CANNEDY,JOELLEN               Date Released : JUL 16, 2007
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

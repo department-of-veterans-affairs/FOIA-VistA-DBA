@@ -1,0 +1,255 @@
+$TXT Created by THEROUX,JOHN at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Friday, 10/12/07 at 15:03
+=============================================================================
+Run Date: APR 10, 2008                     Designation: DG*5.3*766
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #687                    Status: Released
+                  Compliance Date: MAY 11, 2008
+=============================================================================
+
+Associated patches: (v)DG*5.3*713  <<= must be installed BEFORE `DG*5.3*766'
+
+Subject: CORRECT TWO DATE FIELDS AND RETIRE PATIENT DATA REVIEW
+
+Category: 
+  - Routine
+  - Other
+  - Data Dictionary
+
+Description:
+============
+
+ This patch addresses the following:
+ - corrects hours and minutes of the 'DATE LAST TREATED' for MPI
+ - requires precise dates for the Confidential Address Start and
+   End dates, CONFIDENTIAL START DATE and CONFIDENTIAL END DATE in 
+   the Patient File (#2)
+ - retires the Patient Data Review (PDR) functionality in MPI   
+  
+ ASSOCIATED REMEDY TICKETS:
+ ==========================
+ 1) HD 197859 - Erroneous entry for minutes data in DATE LAST TREATED
+ 2) HD 199527 - Problem with entering just month and year for Confidential 
+                end date
+ 3) HD 204680 - PHONE NUMBER [RESIDENCE]: HAS AT THE END OF NUMBER ~PRN~PH
+  
+ ASSOCIATED NSRs:
+ =================
+ N/A
+   
+ PARTICIPATING TEST SITES:
+ =========================
+ Bay Pines, FL
+ Biloxi, MS
+ Manchester, NH
+ Memphis, TN
+ Upstate, NY
+   
+ REMEDY OVERVIEW:
+ ================
+  
+ 1) HD 197859 - Erroneous entry for minutes data in DATE LAST TREATED  
+  
+ Certain old records in the Outpatient Encounter file (#409.68) have
+ bad data in the DATE field (#.01) where the minutes exceed 59 or the
+ hours exceed 23.  This causes an error in MPI when that date is used 
+ as the "date last treated".
+  
+ Solution:
+ =========
+ Routine VAFCTF will be modified to convert the minutes to 59 and the
+ hours to 23 before passing the date as the "date last treated".
+ Note: Only the data passed to the MPI will be changed; no data in VistA
+ files will be changed.
+  
+ 2) HD 199527 - Problem with entering just month and year for Confidential 
+                end date
+  
+ Problem:
+ ========
+ When using the option DG LOAD PATIENT DATA, to update a patient's 
+ Confidential Start or End dates, if the user enters the date as just 
+ Month and Year, the Patient file (#2) will be updated with a 
+ Fileman date of 3071200, which is interpreted as DEC 00, 2007.
+ Such a date is then rejected by the Austin Automation Center (AAC).
+  
+ Solution:
+ =========
+ The input transform of field #.1417 and .1418 in the Patient file (#2)
+ has been changed to prevent imprecise dates by adding an "X" to 
+ the variable %DT.
+  
+ 3) HD204680 - PHONE NUMBER [RESIDENCE]: HAS AT THE END OF NUMBER ~PRN~PH
+  
+  Problem:
+  ========
+  While processing the IVM UPLOAD, site noted patients in the Patient 
+  file (#2) that have ~PRN~PH at the end of the PHONE NUMBER [RESIDENCE] (field
+  #.131).
+  
+  The issue is that the site is getting a PDR to review and accept which 
+  has a Phone Number [residence] value difference and from the PDR view it 
+  looks fine, however when it is accepted, it is stored with the HL7 
+  message formatting "~PRN~PH" tacked on. 
+  
+  Solution:
+  =========
+  As explained in RG*1.0*49, the Patient Data Review (PDR) functionality
+  is being disabled in the Master Patient Index (MPI) package because
+  Primary View Initialization concluded on September 10.
+  The below options are being marked obsolete by this DG patch: 
+  
+      Patient Data Review [VAFC EXCEPTION HANDLER]
+      Purge Patient Data Reviews [VAFC PDR PURGE]
+  
+  The post-init routine DG53P766 will also delete all records from the 
+  Patient Data Exception File (#391.98) and from the Patient Data Element 
+  File (#391.99).  
+  
+  When this patch and RG*1.0*49 have been installed at all sites, 
+  an additional patch will be issued that will provide a list of 
+  the patient records whose phone numbers need to be reviewed for possible
+  repair.
+  Remedy ticket HD0000000243664 was opened to track this. The repairs 
+  will need to be done manually as the field is free text and can also 
+  contain characters other than ~PRN~PH,and can contain multiple 
+  phone numbers and multiple sets of appended characters.
+  Here is one example of what the data could look like coming in:
+  
+  (###)###-####~PRN~PH|(###)###-####~WPN~PH
+  
+  In this example the PRN number (along with everything else left of the 
+  bar) would have been stored.  If the PRN number wasn't defined the WPN 
+  would then probably get stored in the Home Phone #.
+  
+ DOCUMENTATION DISTRIBUTION:
+ ===========================
+ Sites may retrieve the documentation directly via FTP (using BIN mode).  
+ The preferred method is to FTP the files from:
+  
+        download.vista.med.va.gov
+  
+ This transmits the files from the first available FTP server.  
+ Sites may also elect to retrieve the documentation directly from the
+ ANONYMOUS.SOFTWARE directory from a specific server as follows:
+  
+  Albany:                 ftp.fo-albany.med.va.gov    anonymous.software
+  Hines:                  ftp.fo-hines.med.va.gov     anonymous.software
+  Salt Lake City:         ftp.fo-slc.med.va.gov       anonymous.software
+  FIRST AVAILABLE SERVER  download.vista.med.va.gov   anonymous.software
+  
+ Filename                    Description
+ ========                    ===========
+ RG_1_0_P49TM.doc            MPI/PD VISTA Technical Manual
+ RG_1_0_P49UM.doc            MPI/PD VISTA User Manual    
+ RG_1_0_P49EH.doc            MPI/PD VISTA Exception Handling
+  
+ The updated manuals will be available on the VDL upon the release of
+ this patch.
+  
+  
+  INSTALLATION INSTRUCTIONS:
+  ===========================
+  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  NOTE: 
+  It is recommended to run the Purge Patient Data Reviews [VAFC PDR PURGE] 
+  option prior to installing the patch, otherwise the post-init 
+  routine may run a long time.  At one test site with 1.9 million entries
+  in file 391.99, the post-init took 3 hours to run to completion.
+  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  The Registration menu disabled during installation will be back in 
+  order during the post-init.
+  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  
+ This patch may be run with users on the system, but should be at a time 
+ when Registration menu use is expected to be very low.
+ Installation will take less than 5 minutes.
+   
+ 1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu to unload
+     the KIDS distribution included with this message.
+     NOTE:  If the required patches are not installed, the transport global
+            will be removed.  If the transport global is removed you will
+            need to repeat this step.
+   
+ 2.  From the Kernel Installation and Distribution System Menu, select
+     the Installation menu.
+   
+ 3.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter DG*5.3*766):
+     a.  Compare Transport Global to Current System  - this option will
+         allow you to view all changes that will be made when the patch
+         is installed.  It compares all components of the patch (routines,
+         DDs, templates, etc.).
+     b.  Verify Checksums in Transport Global - this option will
+         allow you to ensure the integrity of the routines that are in
+         the transport global.
+     c.  Print Transport Global - this option will allow you to view the
+         components of the KIDS build.
+     d.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+   
+ 4.  Use the Install Package(s) option and select the package DG*5.3*766.
+   
+ 5.  When Prompted, 'Want KIDS to Rebuild Menu Trees Upon Completion of 
+     Install? NO// NO', respond NO.
+  
+ 6.  When prompted, 'Want KIDS to INHIBIT LOGONs during the install?
+     NO//', respond NO.
+   
+ 7.  When prompted, 'Want to DISABLE Scheduled Options, Menu Options, and
+     Protocols? NO//', respond Yes.
+     When prompted, 'Enter options you wish to mark as 'Out Of Order':',
+     enter: 
+  
+            Registration Menu [DG REGISTRATION MENU]
+  
+     When prompted,'Enter protocols you wish to mark as 'Out Of Order':', 
+     press enter.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.3;Registration;**[Patch List]**;Aug 13, 1993;Build 3
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: DG53P766
+    Before:       n/a   After:   B498490  **766**
+Routine Name: VAFCTF
+    Before:  B9218723   After: B10073625  **428,713,766**
+ Description of Changes:
+  VAFCTF.INT.1                  |"PATVEE"|VAFCTF.INT.1  
+  **************************************************************************
+  *****
+  VAFCTF.INT.1
+   +2         ;;5.3;Registration;**428,713,766**;Aug 13, 1993
+  ...................
+  |"PATVEE"|VAFCTF.INT.1
+   +2         ;;5.3;Registration;**428,713**;Aug 13, 1993
+  ---------------------------------------
+  VAFCTF.INT.1
+   +73        ;DG*5.3*766
+   +74        I $E(VAFCX3,9,10)>23 S 
+  VAFCX3=$E(VAFCX3,1,8)_"23"_$E(VAFCX3,11,14)
+   +75        I $E(VAFCX3,11)>5 S 
+  VAFCX3=$E(VAFCX3,1,10)_"59"_$E(VAFCX3,13,14)
+   +76        ;DG*5.3*713
+  ...................
+  |"PATVEE"|VAFCTF.INT.1
+
+ 
+Routine list of preceding patches: 713
+
+=============================================================================
+User Information:
+Entered By  : THEROUX,JOHN                  Date Entered  : JUL 26, 2007
+Completed By: BOWEN,MARY JANE               Date Completed: APR 10, 2008
+Released By : HEUER,CINDY                   Date Released : APR 10, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

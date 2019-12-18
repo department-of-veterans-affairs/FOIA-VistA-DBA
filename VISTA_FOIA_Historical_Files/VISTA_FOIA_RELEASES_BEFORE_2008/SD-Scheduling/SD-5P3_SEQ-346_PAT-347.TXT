@@ -1,0 +1,360 @@
+$TXT Created by WILLIAMS,JOHN F at CHY7B.FO-BAYPINES.MED.VA.GOV  (KIDS) on Friday, 04/01/05 at 08:48
+=============================================================================
+Run Date: JUL 12, 2005                     Designation: SD*5.3*347
+Package : SD - SCHEDULING                     Priority: Mandatory
+Version : 5.3       SEQ #346                    Status: Released
+                  Compliance Date: AUG 12, 2005
+=============================================================================
+
+Associated patches: (v)SD*5.3*283  <<= must be installed BEFORE `SD*5.3*347'
+                    (v)SD*5.3*301  <<= must be installed BEFORE `SD*5.3*347'
+                    (v)SD*5.3*310  <<= must be installed BEFORE `SD*5.3*347'
+                    (v)SD*5.3*316  <<= must be installed BEFORE `SD*5.3*347'
+
+Subject: UPDATES FOR SCHEDULING APIS
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ PURPOSE OF THE PATCH
+ ====================
+ This patch contains the following changes to the Scheduling Replacement APIs
+ SDAPI, GETAPPT, NEXTAPPT, PATAPPT, AND GETPLIST:
+  
+ 1. GETAPPT, PATAPPT, AND NEXTAPPT APIs currently look into the VistA 
+    appointment sub-files 2.98 in the PATIENT File (#2), and subfiles
+    44.001 and 44.003 in the HOSPITAL LOCATION File (#44) to
+    check for any appointment information. All of these APIs will now call
+    SDAPI^SDAMA301, which hides (or encapsulates) whether this 
+    appointment information is in VistA files or in a migrated database 
+    (Oracle DB).
+  
+ 2. GETPLIST API currently looks into the  Hospital Location File (#44) and
+    the SDAM Data Map file (#44.3), for appointment information for each
+    clinic.  This API will now call SDAPI^SDAMA301, which hides (or
+    encapsulates) whether this appointment information is in VistA files
+    or in a migrated database (Oracle DB).
+   
+ 3. GETAPPT and NEXTAPPT APIs will exclude non-cancelled appointments that 
+    exist in the Patient file (#2), but do not have a corresponding entry 
+    in the HOSPITAL LOCATION file (#44).
+  
+ 4. GETAPPT, NEXTAPPT, and GETPLIST now allows the appointment status to be
+    set to "R" / "R;NT" / "NT", when the patient status is set to "O". In 
+    addition, all appointment statuses of NT will return a patient status of 
+    "O".  
+  
+ 5. Ensure that (%) variables in GETAPPT, NEXTAPPT, GETPLIST and the 
+    validation routine (SDAMA200) are newed, as other programs may be 
+    relying on them.
+  
+        New Variables Used in Conjunction with ^%DTC: %,%H,%T,%Y,X,%I
+   
+ 6. GETPLIST assumes that the patient value returned from the
+    appointment sub-file always exists. However, if the data has been 
+    corrupted, the value may not exist which will cause the API to 
+    crash when it tries to access the Appointment sub-file with a null
+    patient value.
+  
+    Partial Existing Logic:
+  
+         .. S SDPATIEN=$$GETPTIEN^SDAMA200(SDCLIEN,SDAPPTDT,SDPATCNT)
+         .. ;compare clinic to DPT clinic; exclude appointment if not same
+         .. I +$G(^DPT(SDPATIEN,"S",SDAPPTDT,0))'=SDCLIEN Q
+  
+    New Logic:
+  
+         .. S SDPATIEN=$$GETPTIEN^SDAMA200(SDCLIEN,SDAPPTDT,SDPATCNT)
+         .. Q:SDPATIEN']""
+         .. ;compare clinic to DPT clinic; exclude appointment if not same
+         .. I +$G(^DPT(SDPATIEN,"S",SDAPPTDT,0))'=SDCLIEN Q
+   
+ 7. GETAPPT, PATAPPT, NEXTAPPT, and GETPLIST will be called and will return 
+    appointment information in the same format as currently done. No
+    reprogramming of existing code is needed.
+  
+ 8. SDAPI was returning the incorrect eligibility IEN and name for field 
+    number 8 of the appointment data field list of the SDAPI. The MAS
+    ELIGIBILITY CODE File (#8.1) was being returned to users instead of the
+    documented LOCAL Eligibility IEN and NAME Field number 8 of the
+    appointment data field list of SDAPI data.
+  
+    SDAPI will now return both Local and National Eligibility IENs and
+    NAMEs in the following format for field #8:
+  
+                  Local IEN;Local Name;National IEN;National Name
+  
+    Note: No modification of existing code is required for users who have
+          already completed coding for the Local Eligibility IEN and NAME 
+          to exist in piece 1 and 2 respectively, for SDAPI's field #8.
+          
+ 9. SDAPI now incorporates 25 returnable fields. The following 2 NEW FIELDS
+    that can be returned through SDAPI^SDAMA301 include:
+        
+    FIELD NUMBER 24: AUTO-REBOOKED APPOINTMENT DATE/TIME
+    This is the date/time the appointment was auto-rebooked (rescheduled) to.
+  
+    FIELD NUMBER 25: NO/SHOW CANCEL DATE/TIME
+    This is the date/time the appointment was No-Showed or Cancelled.
+  
+ 10.SDAPI now incorporates a new filter, DATE APPOINTMENT MADE, for selecting
+    a more specific group of appointments. This filter will accept a valid FM
+    date or date range in the following formats: YYYMMDD / "YYYMMDD;YYYMMDD" 
+    / ";YYYMMDD". To use this filter set ARRAY(16)=FM Date or FM Date Range. 
+  
+    NOTE: If the Date Appointment Filter is set and the field, Date 
+          Appointment Made, is NULL (Bad Data), that appointment will not be 
+          included in the filtered set.
+  
+ 11.SDAPI has increased the number of filters that can be used with each
+    appointment request. The previous Maximum Filter allowed of 3 has now
+    been increased to 6 filters. So all filters can be used in an 
+    appointment request. Available filters include:
+   
+          a. Appointment Date/Time Range
+          b. Clinic
+          c. Appointment Status
+          d. Patient
+          e. Primary Stop Codes
+          f. Date Appointment Made Date Range
+  
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Asheville
+ Bay Pines
+ Dallas (North Texas)
+ Pittsburgh
+  
+  
+ ASSOCIATED REMEDY TICKETS:
+ ==========================
+ This patch addresses Remedy tickets:  63876
+                                       64036
+  
+     
+ ASSOCIATED E3R(S):
+ ==================
+ N/A                      
+  
+   
+ REMEDY TICKET OVERVIEW:
+ =======================
+  
+ Remedy Ticket # 63876 - Null Subscript SDAMA2002
+   Description:  When using the CPRS GUI, the user attempts to display 
+     his/her patients by selecting a Clinic from the Patient List 
+     selection.
+     
+     Only one clinic in particular results in the following error:
+  
+     $ZE= GETPLIST+54^SDAMA202:1, %DSM-E-NULLSUBSCR, Null subscript
+  
+   Resolution:  Code in SD*5.3*347 modified to resolve this error.
+  
+  
+ Remedy Ticket # 64036 - GETPLIST+54^SDAMA202:1
+   Description:  In the SDAMA202 routine it does not return the 
+     $$GETTPTIEN.
+   Resolution:  This was a data corruption error. Code in SD*5.3*347 
+     modified to resolve this error.
+  
+  
+  
+ SOFTWARE AND DOCUMENTATION DISTRIBUTION:
+ ========================================
+  
+ This patch will be distributed in a PackMan message through the National 
+ Patch Module.  The KIDS build for this patch is SD*5.3*347.  See 
+ Installation Instructions below:
+  
+ Sites may retrieve the documentation directly via ftp.  The preferred 
+ method is to FTP the files from:
+  
+       download.vista.med.va.gov
+  
+ This transmits the files from the first available FTP server.  Sites may 
+ also elect to retrieve software directly from the ANONYMOUS.SOFTWARE 
+ directory from a specific server as follows:
+  
+ ALBANY:                  ftp.fo-albany.med.va.gov
+ HINES:                   ftp.fo-hines.med.va.gov
+ SALT LAKE:               ftp.fo-slc.med.va.gov
+  
+ Filename                 Description
+ ========                 =========== 
+ SD_53_347_RN.PDF         Release Notes
+  
+ Note: These files are binary and must be transferred using binary file 
+ transfer tools.
+  
+  
+ ROUTINE SUMMARY:
+ ================
+  
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+  
+          <tab>;;5.3;Scheduling;**[patch list]**;Aug 13, 1993
+  
+                             CHECK^XTSUMBLD results
+ Routine name      Before Patch      After Patch         Patch List
+ ============      ============      ===========         ==========
+ SDAMA200             7216599         7852473        253,275,310,283,347
+ SDAMA201             7707980         7081829        253,275,283,316,347
+ SDAMA202             4543117         5500371        253,275,283,316,347
+ SDAMA204              318020          827059              310,347
+ SDAMA205               N/A           5408553                347
+ SDAMA300             5725864         5781532              301,347
+ SDAMA301              966439          931566              301,347
+ SDAMA302             6642111         6673446              301,347
+ SDAMA303             6122575         6154293              301,347
+ SDAMA304             1809937         2379344              301,347
+ SDAMA305             9318805         9703439              301,347
+ SDAMA306             1375982         2096152              301,347
+   
+                        Number of Routines = 12
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+  
+ This patch should be installed during non-peak hours. Users can be on
+ the system. Installation will take less than 5 minutes.
+  
+ NOTE: THE FOLLOWING PATCHES ARE REQUIRED PRIOR TO INSTALLATION. KIDS will 
+       not allow the installation of this patch without the prior 
+       installation of the following patches:
+                                               SD*5.3*283
+                                               SD*5.3*301
+                                               SD*5.3*310
+                                               SD*5.3*316
+     
+   1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+  
+   2.  From the Kernel Installation and Distribution System Menu, select
+       the Installation menu.
+  
+   3.  From this menu, you may elect to use the following options
+       (when prompted for INSTALL NAME, enter SD*5.3*347):
+         a.  Backup a Transport Global - this option will create a backup
+             message of any routines exported with the patch.  It will NOT
+             backup any other changes such as DDs or templates.
+         b.  Compare Transport Global to Current System  - this option will
+             allow you to view all changes that will be made when the patch
+             is installed.  It compares all components of the patch
+             (routines, DDs, templates, etc.).
+         c.  Verify Checksums in Transport Global - this option will
+             allow you to ensure the integrity of the routines that are in
+             the transport global.
+  
+   4.  Use the Install Package(s) option and select the package SD*5.3*347.
+  
+   5.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+       YES??//',respond NO.
+  
+   6.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+       Protocols? YES//', respond NO.
+
+Routine Information:
+====================
+
+Routine Name:
+  - SDAMA200
+
+
+Routine Checksum:
+7852473
+
+Routine Name:
+  - SDAMA201
+
+
+Routine Checksum:
+7081829
+
+Routine Name:
+  - SDAMA202
+
+
+Routine Checksum:
+5500371
+
+Routine Name:
+  - SDAMA204
+
+
+Routine Checksum:
+827059
+
+Routine Name:
+  - SDAMA205
+
+
+Routine Checksum:
+5408553
+
+Routine Name:
+  - SDAMA300
+
+
+Routine Checksum:
+5781532
+
+Routine Name:
+  - SDAMA301
+
+
+Routine Checksum:
+931566
+
+Routine Name:
+  - SDAMA302
+
+
+Routine Checksum:
+6673446
+
+Routine Name:
+  - SDAMA303
+
+
+Routine Checksum:
+6154293
+
+Routine Name:
+  - SDAMA304
+
+
+Routine Checksum:
+2379344
+
+Routine Name:
+  - SDAMA305
+
+
+Routine Checksum:
+9703439
+
+Routine Name:
+  - SDAMA306
+
+
+Routine Checksum:
+2096152
+
+=============================================================================
+User Information:
+Entered By  : SUBASIC,RAYMOND               Date Entered  : MAR 08, 2004
+Completed By: MEYERS,STEPHEN                Date Completed: JUL 11, 2005
+Released By : BENBOW,PHYLLIS O              Date Released : JUL 12, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

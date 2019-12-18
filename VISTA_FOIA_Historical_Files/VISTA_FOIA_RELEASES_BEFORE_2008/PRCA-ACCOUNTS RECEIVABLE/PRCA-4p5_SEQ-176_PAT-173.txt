@@ -1,0 +1,1030 @@
+
+=============================================================================
+Run Date: OCT 10, 2003                     Designation: PRCA*4.5*173
+Package : PRCA - ACCOUNTS RECEIVABLE          Priority: Mandatory
+Version : 4.5       SEQ #176                    Status: Released
+                  Compliance Date: NOV 10, 2003
+=============================================================================
+
+
+Subject: THIRD PARTY EDI LOCKBOX
+
+Category: 
+  - Enhancement (Mandatory)
+  - Data Dictionary
+  - Routine
+  - Input Template
+  - Other
+
+Description:
+============
+
+ INTRODUCTION
+ ============
+  
+ The software for this patch, PRCA*4.5*173, and associated 
+ patch IB*2*135, are not being distributed through the National Patch
+ Module.  These patches are being distributed as a single KIDS software
+ distribution (host file).  This patch contains the informational portion
+ of PRCA*4.5*173 and provides field personnel with instructions on how to
+ acquire, install, and implement the patch software.
+  
+ Patch PRCA*4.5*173 contains the Accounts Receivable software 
+ changes that support the Third Party EDI Lockbox initiative 
+ where third party payers will be sending electronic funds 
+ transfers (EFT) to the V.A.'s Lockbox bank in place of paper 
+ checks sent to the sites.  The payers will also be sending 
+ Explanation of Benefit (EOB) statements electronically as 
+ Electronic Remittance Advices (ERA) messages in place of the 
+ paper EOBs they currently send to the sites.
+  
+ The users guide for this patch is currently in development and is going
+ through a final review.  Because of the importance of this patch being
+ released to meet the HIPAA deadlines, it was decided to release the patch
+ software and then deliver the user guide on October 17, 2003.  Since sites
+ must be signed up with payers for receipt of electronic Third Party
+ Lockbox transmissions, this delay should not cause any undue hardships as
+ the document will be available prior to the software actually being able
+ to be implemented.
+  
+  
+ FUNCTIONAL CHANGES
+ ==================
+ 1.  Electronic ERA and EFT records will be received by VistA 
+ via Mailman messages sent from Austin (the Austin FSC sends 
+ data through the Austin AAC DMI queues) and are filed into 
+ A/R at the site.  EFTs received are automatically posted to 
+ FMS using a CR document and are deposited to fund 
+ 5287/revenue source code 8NZZ.  These ERAs replace paper EOBs 
+ and the EFTs replace paper checks.  A new AR EVENT TYPE was 
+ added for EDI LOCKBOX.  Two new site parameters were added 
+ for default # of days that EFTs and ERAs must age before 
+ being included on new EFT and ERA aging reports.
+  
+ 2.  New electronic message exception processing is available 
+ to process data records that cannot be filed completely in 
+ the A/R system.  Several new mail groups were added to 
+ receive bulletins generated as a result of these new messages.
+  
+ 3.  A new Worklist function has been added to allow the data 
+ from an ERA to be easily reviewed and passed to the receipt 
+ processing option.  Access to many existing options used to 
+ research the EOB payments have been included in the Worklist 
+ functionality.
+  
+ 4.  Receipt Processing has been changed to allow a receipt to 
+ be associated with an EFT and/or an ERA.  The PROCESS RECEIPT 
+ action will now perform automatic decrease adjustments if 
+ they were entered for any line items on an ERA from within 
+ the new Worklist option.
+  
+ 5.  Audit a bill has been re-written to allow for an 
+ auto-audit to occur when an electronic bill status message is 
+ received by Integrated Billing and it meets the criteria for 
+ auto-audit.  The RATE TYPE file was modified to allow entry 
+ of a 'BILL RESULTING FROM' field for bills of the 
+ corresponding rate type when the auto-audit is performed.  If 
+ no data is found in this new field, no auto-audit of bills 
+ having that rate type are auto-audited.  A new option exists 
+ to set/delete this field to turn auto-audit on and off by 
+ rate type.
+  
+ 6.  The ability to transfer the detail for an electronic EOB 
+ (EEOB) to another site using Mailman has been added.
+  
+ 7.  A new transaction has been added for FMS.  This is the TR 
+ transaction and moves money from the new account set up for 
+ EFT deposits to the appropriate fund and revenue source code 
+ once a receipt is processed that references the EFT and 
+ contains the detail for the payment.
+  
+ 8.  A new separate receipt is now created for each ERA 
+ processed through the Worklist.  For those ERAs that 
+ reference paper checks, there is a new 215 Summary Report for 
+ the Agent Cashier to use to more easily sum up all the 
+ receipts for a day's deposit by fund.
+  
+  
+  
+      
+ TECHNICAL DESCRIPTION
+ =====================
+  
+ The following is a brief list of the technical functionality 
+ and changes contained in this patch.  For specific 
+ information on using the software, please refer to the user 
+ documentation.
+   
+ 1.  New Server Option
+  
+     A new server will be added to the option file called EDI 
+     Lockbox EFT/ERA/EOB Processing Server [RCDPE EDI LOCKBOX
+     SERVER].  This option will accept the electronic payment messages and
+     electronic remittance advice messages for processing.  Mail messages
+     will be delivered to the server and will automatically be filed,
+     updating the new Accounts Receivable files for electronic deposit
+     records and electronic remittance advice records.
+  
+  
+ 2.  New Files
+  
+     Several new files will be added to Accounts Receivable:
+  
+     EDI LOCKBOX DEPOSIT (#344.3)  This file stores data in 
+     the ^RCY(344.3 global (note: the RCY global currently exists in the
+     Accounts Receivable package). This file will be used to hold the
+     electronic funds transfer records of daily deposits received by the
+     EDI Lockbox EFT/ERA/EOB Processing Server [RCDPE EDI LOCKBOX SERVER].
+  
+     EDI THIRD PARTY EFT DETAIL (#344.31)  This file stores data in the
+     ^RCY(344.31 global.  This file is used to store each individual
+     payment from a single payer made to the site using Electronic Funds
+     Transfer (EFT) that was included in the site's daily EFT deposit.
+  
+     ELECTRONIC REMITTANCE ADVICE (#344.4)  This file stores data in the
+     ^RCY(344.4 global. This file holds the ERA (Electronic Remittance
+     Advice) information that is received electronically.  It holds the
+     summary for each individual EOB (Explanation of Benefits) that
+     comprise the ERA.  Individual EOB adjudication detail data is
+     automatically stored in the EXPLANATION OF BENEFITS (#361.1) file in
+     Integrated Billing once the ERA is successfully stored in the
+     ELECTRONIC REMITTANCE ADVICE (#344.4) file in Accounts Receivable.
+  
+     AR EDI LOCKBOX MESSAGES (#344.5)  This file stores data in the
+     ^RCY(344.5 global.  Since the electronic remittance advices may span
+     more than one mail message, this file is used as a holding file for
+     the data in the ERA mail messages as they are received.  Once all mail
+     messages are received for an ERA, the data in the AR EDI LOCKBOX
+     MESSAGES File (#344.5) will be moved to the files ELECTRONIC
+     REMITTANCE ADVICE (#344.4) and EXPLANATION OF BENEFITS (#361.1) File.
+  
+   There will typically be one EFT deposit record received per site per
+   business day.  The size and number of the ERA records received by the
+   EDI Lockbox EFT/ERA/EOB Processing Server [RCDPE EDI LOCKBOX SERVER]
+   server option depends on the size of the Medical Center and the number
+   of paper payment explanations (EOBs) normally received by the site on a
+   given day. Once the server accepts the message, it is removed from the
+   server basket for deletion from MailMan.
+  
+  
+ 3.  Post-Install Routine
+  
+     A post installation routine RCY173PO will perform the following
+     functions:
+  
+     a.  Adds default values to the new 'aging' site parameters fields
+         in the AR SITE PARAMETER (#342) file.  The fields updated are
+         NUMBER OF DAYS EFT UNMATCHED (#7.02) where the default value is
+         set to 5 and NUMBER OF DAYS ERA UNMATCHED (#7.03) where the
+         default value is set to 7.  These parameters are used as the
+         default number of days to use to include records on the ERA or
+         EFT UNMATCHED AGING REPORT.
+  
+     b.  Adds a new user named 'EDILOCKBOX,AUTOMATIC' to the NEW PERSON
+         (#200) file, if it doesn't already exist there.  This is the
+         user who will be assigned to the actions performed in the
+         background by the EDI Lockbox processes.
+  
+     c.  Adds a new user named 'PRCA,AUTOAUDIT' to the NEW PERSON
+         (#200) file, if it doesn't already exist there.  This is the
+         user who will be assigned to the auto-audit function introduced
+         by the EDI 3rd Party Lockbox patch.
+  
+  
+ 4.  New menus/options:
+      
+     a.  A new menu option has been added to the Clerk's AR Menu [PRCA
+         CLERK MENU] for EDI Lockbox named EDI Lockbox [RCDPE EDI
+         LOCKBOX MENU]. This menu contains most of the new options needed
+         to perform the functions required to run/manage EDI Lockbox.  
+         
+     Refer to the user documentation for this patch to see specific details
+     on the following options:
+           EDI Lockbox 3rd Party Exceptions [RCDPE EXCEPTION PROCESSING]
+           Automatic Match EFTs to ERAs [RCDPE MATCH EFT TO ERA]
+           Manual Match EFT-ERA [RCDPE MANUAL MATCH EFT-ERA]
+           Move ERA Total To Suspense [RCDPE MOVE ERA TO SUSPENSE]
+           EDI Lockbox Reports Menu ... [RCDPE EDI LOCKBOX REPORTS MENU]
+             Daily Activity Report [RCDPE EDI LOCKBOX ACT REPORT]
+             EOB Transfer Reports [RCDPE EOB TRANSFER REPORTS]
+             EFT Unmatched Aging Report [RCDPE EFT AGING REPORT]
+             ERA Aging Report [RCDPE ERA AGING REPORT]
+             Unapplied EFT Deposits Report [RCDPE UNAPPLIED EFT DEP REPORT]
+             View/Print ERA [RCDPE VIEW/PRINT ERA]
+          Unmatch An ERA [RCDPE UNMATCH ERA]
+          Update ERA Posted Using Paper EOB [RCDPE ERA POSTED BY PAPER EOB]
+          EEOB Worklist [RCDPE EDI LOCKBOX WORKLIST]
+          Mark 0-Balance EFT Matched [RCDPE MARK 0-BAL EFT MATCHED]
+           
+     b.  An additional menu item was added to the Site Parameter Edit
+         [PRCA SITE PARAMETER] menu.  This menu item is used to edit
+         the new site parameters for the default 'aging' days for EFTs
+         and ERAs.  It is named EDI Lockbox Parameters [RCDPE EDI LOCKBOX
+         PARAMETERS].
+  
+     c.  An additional menu item was added to the Agent Cashier's Menu
+         [RCDP AGENT CASHIER MENU].  This menu item is used to produce
+         a new summary 215 report.  It is named Summary SF215 Report
+         [RCDP SUMMARY 215 REPORT].
+  
+     d.  An additional menu item was added to the Supervisor's AR Menu
+         [PRCAF SUPERVISOR MENU].  This menu item is used to activate
+         and inactivate rate types for auto-audit.  It is named Update
+         Rate Types For Auto-audit [RCDPE RATE TYPE AUTO AUDIT].
+  
+ 5.  New Background Process:
+  
+     A new background process has been added to the Accounts Receivable
+     system to allow for the 'auto-auditing' of bills that were submitted
+     electronically via VistA EDI.  The A/R auto-audit functionality will
+     be called when Integrated Billing receives return status messages
+     indicating the bills have either been electronically forwarded to the
+     payer or have been printed and mailed to the payer by the EDI
+     clearinghouse.  The auto-audit functionality is controlled by a
+     setting in the RATE TYPE file (#399.3) for 'BILL RESULTING FROM'. This
+     setting is controlled using a new option on the SUPERVISOR's AR menu.
+  
+  6.  New fields:
+      
+     File: AR SITE PARAMETER (#342)
+            NUMBER OF DAYS EFT UNMATCHED (#7.02)
+            NUMBER OF DAYS ERA UNMATCHED (#7.03)
+      
+     File: AR BATCH PAYMENT (#344)
+            LOCKBOX ACH NUMBER (#.16)
+            EFT RECORD (#.17)
+            ERA REFERENCE (#.18)
+            Subfile: TRANSACTION (#344.01)
+                      ERA SEQUENCE (#.27)
+                      AUTO DECREASE ADJUSTMENT (#.28)
+     File: AR/FMS DOCUMENTS (#347.4)
+            TR TYPE (#.07)
+  
+         This field is released with the following values:
+            TRANS TYPE=10  TR TYPE=60
+            TRANS TYPE=20  TR TYPE=65
+            TRANS TYPE=24  TR TYPE=75
+            TRANS TYPE=25  TR TYPE=24
+            TRANS TYPE=50  TR TYPE=33
+            TRANS TYPE=01  TR TYPE=18
+            TRANS TYPE=02  TR TYPE=75
+            TRANS TYPE=09  TR TYPE=33
+  
+ 7.  New file entries:
+     
+     Two new A/R file entries are automatically added by the kids build:
+     
+     File: AR EVENT TYPE (#341.1)
+           NAME: EDI LOCKBOX   EVENT NUMBER: 14   CATEGORY: Payment
+     File: AR FMS DOCUMENT TYPE (#347.1)
+           NAME: TRANSFER-EDI LOCKBOX DETAIL   ABBREVIATION: TR
+  
+  
+ 8.  Modified Input Templates:
+     
+     Two input templates are modified:
+    
+     File: AR SITE PARAMETER (#342) Input template: [AR SITE PARAMETER]
+     File: ACCOUNTS RECEIVABLE (#430) Input template: [PRCA CAUSED BY]
+  
+  
+ 9.  New mail groups:
+    
+     Four new mail groups are installed by this patch:
+  
+     RCDPE PAYMENTS: This group will receive all reports and bulletins
+     generated by the nightly processing job and from all other EDI
+     Lockbox jobs except for those resulting from exceptions found when
+     storing the EDI Lockbox transmission records.
+  
+     RCDPE PAYMENTS EXCEPTIONS: This group will receive all bulletins for
+     exception conditions generated by the transmission server option.
+  
+     RCDPE PAYMENTS MGMT: This group will receive the bulletin that is
+     sent when a transferred EOB is accepted by another site.
+  
+     MLB: This group receives all transmission messages relating to EDI
+     Lockbox.  The only member of this mail group is the AR EDI Lockbox
+     server option.
+  
+     A local decision needs to be made to determine who will be members of
+     the first 3 mail groups.  Please remember to consult your Accounts
+     Receivable staff and add members to these groups upon the completion
+     of the patch installation.
+  
+     The MLB mail group must be populated with the EDI Lockbox server
+     option as a remote member after the install has been completed.  This
+     remote member name should be:
+                   S.RCDPE EDI LOCKBOX SERVER@<site's domain name>
+  
+ 10. New/Modified List Templates:
+  
+     There are 6 new list templates included with this patch in the RCDPE*
+     namespace.
+  
+     The following list template was modified:
+       Receipt Profile [RCDP RECEIPT PROFILE] - bottom margin decreased
+           from 17 to 16 to accommodate an additional action item on it's
+           protocol menu for EDI Worklist
+  
+  
+ 11. New/Modified Protocols:
+  
+     There are 37 new protocols included with this patch in the RCDPE*
+     namespace.
+  
+     The following protocol was modified:
+       Receipt Profile Menu [RCDP RECEIPT PROFILE MENU] - added link to EOB
+           Worklist as an action item.
+  
+  
+  
+ PRE-INSTALLATION INSTRUCTIONS
+ =============================
+   
+ Software and Documentation Retrieval
+ ------------------------------------
+ 1. The software for this patch is being distributed in a host file. 
+    The host file will contain two KIDS builds.  The first build will
+    be for the Accounts Receivable patch, PRCA*4.5*173, the second
+    build will be for the Integrated Billing patch, IB*2.0*135.
+  
+     Host file name: PRCA_45_173.KID
+    
+             Builds: PRCA*4.5*173
+                     IB*2.0*135
+   
+    Sites may retrieve the software and documentation directly using FTP
+    from the ANONYMOUS.SOFTWARE directory at the following OI Field 
+    Offices:
+   
+    OI FIELD OFFICE         FTP ADDRESS               DIRECTORY
+    ---------------         -----------               ---------
+    Albany                  FTP.FO-ALBANY.MED.VA.GOV  anonymous.software
+    Hines                   FTP.FO-HINES.MED.VA.GOV   anonymous.software
+    Salt Lake City          FTP.FO-SLC.MED.VA.GOV     anonymous.software
+    First Available Server  DOWNLOAD.VISTA.MED.VA.GOV anonymous.software
+   
+    NOTE: the user guide PDF file will not be available on this site
+    until October 17, 2003.  The software may be downloaded immediately.
+  
+    The following will be available:
+    
+     File Name                      Description
+     ---------                      -----------
+     PRCA_45_173.KID                Host file containing KIDS distribution
+     PRCA_45_173UG.PDF              Accounts Receivable Third Party EDI
+                                     Lockbox User Guide (available on
+                                     October 17, 2003)
+   
+     Note: Use ASCII mode when transferring the .KID file.
+            Use Binary mode when transferring the .PDF file.  The .PDF
+            files can be read on a PC using the Adobe Acrobat Reader 
+            program.
+            The VistA Documentation Library [VDL] contains all end-user
+            manuals.
+  
+  
+ 2. ROUTINE SUMMARY:
+   
+    This patch consists of a total of 67 routines, including
+    42 new routines and 25 existing routines that have been modified.
+  
+  The following is a list of the routine(s) included in this
+  patch.  The second line of each of these routine(s) will look like:
+  
+      <tab>;;4.5;Accounts Receivable;**[patch list]**;Mar 20, 1995
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  PRCABJ                 6921297              7227807    11,34,101,114,155
+                                                       153,141,165,167,173
+  PRCABJV                5909196              5923474      1,48,63,114,141
+                                                             170,176,173
+  PRCAFBD                9164108              9178554      16,48,86,90,119
+                                                           165,204,203,173
+  PRCAUDT               14553591             18624117       1,21,57,97,143
+                                                                107,173
+  PRCAUDT1               5877681              7248455            1,173
+  PRCAUT3                5505333              6237270          34,63,173
+  RCBEADJ               14544121             14605306       169,172,204,173
+  RCDPDPL1               7348510              7893484       114,148,172,173
+  RCDPDPLU               2178629              2354805           114,173
+  RCDPE215                   N/A             22824004           114,173
+  RCDPE8NZ                   N/A             11755647             173
+  RCDPEAR                    N/A              1589785             173
+  RCDPEAR1                   N/A             12713872             173
+  RCDPEAR2                   N/A             12220543             173
+  RCDPEDA1                   N/A              5588782             173
+  RCDPEDAR                   N/A             24446906             173
+  RCDPEDS                    N/A             15570131             173
+  RCDPEM                     N/A             19821905             173
+  RCDPEM0                    N/A             17651122             173
+  RCDPEM1                    N/A             17320004             173
+  RCDPEM2                    N/A             17139181             173
+  RCDPESR0                   N/A             16266702             173
+  RCDPESR1                   N/A             13660919             173
+  RCDPESR2                   N/A             29685734             173
+  RCDPESR3                   N/A             14475318             173
+  RCDPESR4                   N/A             18178004             173
+  RCDPESR5                   N/A             13751971             173
+  RCDPESR6                   N/A             12803094             173
+  RCDPESR8                   N/A              8578018             173
+  RCDPESR9                   N/A             12589439             173
+  RCDPESRV                   N/A             11792419             173
+  RCDPETR                    N/A             19313188             173
+  RCDPEU                     N/A              2512536             173
+  RCDPEWL                    N/A             14336645             173
+  RCDPEWL0                   N/A             17361400             173
+  RCDPEWL1                   N/A             17888958             173
+  RCDPEWL2                   N/A             15059617             173
+  RCDPEWL3                   N/A             27738756             173
+  RCDPEWL4                   N/A             32424385             173
+  RCDPEWL5                   N/A             12280343             173
+  RCDPEWL6                   N/A             23606770             173
+  RCDPEWLA                   N/A             19774255             173
+  RCDPEX                     N/A             17879896             173
+  RCDPEX0                    N/A              9921613             173
+  RCDPEX1                    N/A              8199374             173
+  RCDPEX2                    N/A              8344198             173
+  RCDPEX3                    N/A             20355599             173
+  RCDPEX31                   N/A             13561137             173
+  RCDPEX32                   N/A             16472561             173
+  RCDPR215              10444585             12622471           114,173
+  RCDPRPL2              10154583             11511952         114,148,173
+  RCDPRPL3              12270960             24516646       114,148,153,173
+  RCDPRPL4               7878846             13560308         169,172,173
+  RCDPRPLM              17074774             22965091       114,148,149,173
+  RCDPRPLU               1804442              2329909           114,173
+  RCDPUDEP               3725169              4569053           114,173
+  RCDPURE1               8931753             19523828   114,148,153,169,204
+                                                                  173
+  RCDPUREC               5422927             15156922       114,148,169,173
+  RCDPURET              10581505             12330935       114,141,169,173
+  RCFMFN02               3727236              4558221         114,204,173
+  RCMSITE                3167404              3352284             173
+  RCXFMSC1               5143538              5792321     90,96,106,113,135
+                                                                98,173
+  RCXFMSCR               9191885              9911308    90,114,148,172,204
+                                                                203,173
+  RCXFMST1                   N/A              9841476             173
+  RCXFMSUF               4486727              4599264    90,101,135,157,160
+                                                        165,170,203,207,173
+  RCXFMSUR               9151309              9194313   90,101,170,203,173
+  RCY173PO                   N/A              5346421             173
+  
+  Number of Routines = 67
+  
+   
+  
+ 3. PRE-REQUISITE PATCHES
+  
+    This software distribution requires the following patches be 
+    installed prior to installation.  KIDS will verify the patches are
+    installed:
+    
+    For patch PRCA*4.5*173:
+      PRCA*4.5*98
+      PRCA*4.5*107
+      PRCA*4.5*149
+      PRCA*4.5*167
+      PRCA*4.5*176
+      PRCA*4.5*207
+  
+    For patch IB*2.0*135:
+      IB*2.0*197
+      IB*2.0*199
+      IB*2.0*210
+  
+  
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+  
+ THIS PATCH MUST BE LOADED AFTER NORMAL WORKING HOURS.  Extensive 
+ changes are made to Accounts Receivable so it should not be in use 
+ during the install. The install should take approximately 10 
+ minutes.
+  
+ Make sure all Accounts Receivable users are logged off the system 
+ and deactivate the following menu options:
+                 Clerk's AR Menu ...      PRCA CLERK MENU
+                 Supervisor's AR Menu     PRCAF SUPERVISOR MENU
+  
+ Be sure that the following background task is not running when
+ you install this patch:
+    Accounts Receivable Nightly Process Background Job
+       [PRCA NIGHTLY PROCESS]
+  
+  
+  
+ 1. Download the KIDS file PRCA_45_173.KID from the
+      ANONYMOUS.SOFTWARE directory from one of the sites listed under
+      the software retrieval section above to the appropriate directory
+      on your system.
+   
+   2. Use the 'LOAD A DISTRIBUTION' option on the KIDS INSTALLATION 
+      menu, and enter: PRCA_45_173.KID.
+   
+   3. Disable Routine Mapping   (DSM for Open VMS sites only) 
+      Disable routine mapping on all systems for the routines listed in
+      the Routine Summary section of patches IB*2.0*135 and PRCA*4.5*173.
+  
+      NOTE:  If the routines included in these patches are not currently
+      in your mapped routine set, please skip this step.
+  
+ 4.  Start up KIDS
+  
+      Start up the Kernel Installation and Distribution System Menu
+      [XPD MAIN]:
+  
+           Edits and Distribution ...
+           Utilities ...
+           Installation ...
+  
+   Select Kernel Installation & Distribution System Option: INStallation
+                                                            ---
+           1      Load a Distribution
+           2      Verify Checksums in Transport Global
+           3      Print Transport Global
+           4      Compare Transport Global to Current System
+           5      Backup a Transport Global
+           6      Install Package(s)
+                  Restart Install of Package(s)
+                  Unload a Distribution
+  
+      Select Installation Option:
+  
+ 5.  Select Installation Option:
+  
+     NOTE:  The following are OPTIONAL - (When prompted for the
+     INSTALL NAME, enter PRCA*4.5*173):
+  
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when this patch
+         is installed.  It compares all components of this patch
+         (routines, DD's, templates, etc.).
+     c.  Verify Checksums in Transport Global - This option will allow
+         you to ensure the integrity of the routines that are in the
+         transport global.
+  
+ 6.  Install KIDS Patch
+      
+     First of all, make sure that you are not installing this patch at
+     the same time that the AR NIGHTLY PROCESS is running. Otherwise,
+     the install will shut it down in the middle of its processing.
+  
+     **This is the step to start the installation of this KIDS patch:
+  
+     a.  Choose the Install Package(s) option to start the patch
+         install.
+     b.  When prompted 'Want KIDS to INHIBIT LOGONs during the
+         install? YES//' answer NO
+     c.  When prompted 'Want to DISABLE Scheduled Options and Menu
+         Options and Protocols? YES//' answer YES.
+     d.  When prompted 'Enter options you wish to mark as 'Out Of
+         Order':'  enter the following options:
+  
+        Clerk's AR Menu          [PRCA CLERK MENU]
+        Supervisor's AR Menu     [PRCAF SUPERVISOR MENU]
+  
+     e.  When prompted 'Enter protocols you wish to mark as 'Out Of
+         Order': ' press return.
+  
+ 7.  Rebuild Mapped Routine(s)  (DSM for Open VMS sites only)
+  
+     Optional - Include the routines distributed with this patch in
+     the mapped routine set.
+   
+     NOTE: This step is only necessary if you performed step 3 or if
+            you wish to include the routines in your mapped set.
+  
+ 8. Delete the Post install routine
+  
+    Delete the post install routine RCY173PO.
+  
+ 9. Populate the mail groups
+  
+    Remember to add members to the 4 new mail groups, especially MLB.
+
+Routine Information:
+====================
+
+Routine Name:
+  - RCMSITE
+
+
+Routine Checksum:
+
+Routine Name:
+  - PRCABJ
+
+
+Routine Checksum:
+
+Routine Name:
+  - PRCAUDT
+
+
+Routine Checksum:
+
+Routine Name:
+  - PRCAUDT1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PRCAFBD
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPURE1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPRPL2
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPDPLU
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPDPL1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPRPLM
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPUDEP
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPUREC
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPRPL3
+
+
+Routine Checksum:
+
+Routine Name:
+  - PRCAUT3
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPRPLU
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPEAR
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPEAR1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPEAR2
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPEDA1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPEDAR
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPEDS
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPEM
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPEM0
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPEM1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPESR0
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPESR1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPESR2
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPESR3
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPESR4
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPESR5
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPESR6
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPESR8
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPESR9
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPESRV
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPETR
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPEU
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPEWL
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPEWL0
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPEWL1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPEWL2
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPEX
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPEX0
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPEX1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPEX2
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPEX3
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPEX31
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPEWL3
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPEWL4
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPEWL5
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCXFMSUF
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCXFMSUR
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCXFMSC1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCXFMSCR
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCXFMST1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPEWL6
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPE8NZ
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCFMFN02
+
+
+Routine Checksum:
+
+Routine Name:
+  - PRCABJV
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPEM2
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPEX32
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPR215
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPRPL4
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPURET
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCY173PO
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPE215
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCDPEWLA
+
+
+Routine Checksum:
+
+Routine Name:
+  - RCBEADJ
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : JONES,RICK                    Date Entered  : AUG 24, 2001
+Completed By: TORRANCE,LORI                 Date Completed: OCT 10, 2003
+Released By : BARRICK,DENISE                Date Released : OCT 10, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

@@ -1,0 +1,233 @@
+$TXT Created by CHESNEY,CHRISTINE M at DEVCRN.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 06/16/04 at 07:21
+=============================================================================
+Run Date: JUN 17, 2004                     Designation: MPIF*1*25
+Package : MPIF - MASTER PATIENT INDEX VISTA   Priority: Mandatory
+Version : 1        SEQ #32                      Status: Released
+                  Compliance Date: JUL 18, 2004
+=============================================================================
+
+Associated patches: (v)MPIF*1*28   <<= must be installed BEFORE `MPIF*1*25'
+                    (v)MPIF*1*31   <<= must be installed BEFORE `MPIF*1*25'
+                    (v)DG*5.3*545  <<= must be installed BEFORE `MPIF*1*25'
+
+Subject: FHIE AND ZPD SEGMENT ADDED FOR POW STATUS
+
+Category: 
+  - Routine
+
+Description:
+============
+
+   NOTE:  MPIF and RG patches should NOT be installed on Legacy systems to
+   avoid issues with the legacy systems ending up as Coordinating Master 
+   of Records (CMORs), Treating Facilities or Subscribers.
+  
+  *********** VERY IMPORTANT ***************************
+  NOTE:  MPIF*1.0*25 needs to be INSTALLED PRIOR to installing 
+  patch DG*5.3*575.  Since RG and MPIF patches aren't installed in legacy
+  systems, these builds couldn't be made required builds for patch
+  DG*5.3*575.
+   
+  ISSUE 1:  Prisoner of War (POW) status is not passed in all the ADT 
+  messages sent to the MPI.  The POW field is passed in the ZPD segment
+  which will now be included in the ADT messages via the MPIFA24B, MPIFA28,
+  and MPIFA31B routines.
+  
+  ISSUE 2:  The FHIE project is not processing the Health Level Seven 
+  (HL7) A24 message when it is the result of a merge of two records on the
+  MPI.  An enhancement is being made to the A24 processing routine so if
+  the site processing the message is the FHIE, the FHIE API,
+  $$MERGE^OMGPIDMI, will be called to facilitate the merging of the
+  records involved in the FHIE databases.  Routine MPIFA24 has been 
+  modified to support this.
+  
+  FYI -- if you run ^XINDEX on the routine MPIFA24, the API 
+  $$MERGE^OMGPIDMI will pop up as routine not available on your system and
+  that is correct.  This is only available on the FHIE system.
+  
+  ISSUE 3:  The FHIE project had a local modification that they had to 
+  maintain to avoid sending updates to the MPI when an ICN was created on
+  the FHIE database. To assist them in the removal of the local
+  modification, we have enhanced the MPIFA31B routine to check to see if
+  the local site is FHIE and if so, don't build or send the A31 HL7
+  message.
+  
+  ISSUE 4:  It was reported in NOIS NOP-1103-10665 that a patient who had 
+  the Social Security Number (SSN) changed to have 5 leading zeros and
+  who had an Integration Control Number (ICN), didn't have the ICN
+  inactivated from the MPI.  This was related to a lock issue as other
+  edits had happened after the SSN was edited.  This was corrected by
+  changing the lock.  This would only be an issue if additional fields
+  after the SSN were edited. 
+  
+  The Post Init for this patch will review all the 5 leading zero SSNs and
+  check if they have an ICN.  If that record does have an ICN, 
+  inactivation of that ICN will be requested.  Routine MPIFDEL has been 
+  modified to address this issue.
+  
+  ISSUE 5:  The variable HL was being killed in routine MPIFA28 which was 
+  impacting other processing.  The HL variable has been removed from the
+  KILL line.
+  
+  ISSUE 6:  A change is being made to the entry point BLDPID^VAFCQRY to 
+  support passing the sequence numbers of the fields to be included in the
+  PID segment.  Even if the sequence numbers were passed now, all fields
+  were included in the PID segment. Routines MPIFA24B, MPIFA28 and MPIFA31B
+  made this call passing the original subset of sequence numbers which
+  would not include all the fields we would want.  The routines will be
+  modified to pass ALL for the sequence number. 
+  
+  ISSUE 7:  It was reported in NOIS BHS-1203-10320 that entry point RT in 
+  routine MPIF24B was quitting and returning a value when it should have
+  been just quitting.  This entry point has been modified to log an
+  exception if the error condition occurs and quit normally.
+    
+   TEST SITES:
+   ==========
+  
+   Alexandria (VSM/Cache)
+   Battle Creek (Alpha/DSM)
+   Big Spring (Cache/NT)
+   Birmingham (Alpha/DSM)  
+   Hines (Alpha/DSM)
+   New Jersey (Alpha/DSM)
+   Palo Alto (Alpha/DSM)
+   Salisbury (Alpha/DSM)
+  
+   
+   Routine Summary:
+   ================
+   The following is a list of the routine(s) included in this patch.  The
+   second line of each of these routine(s) will look like:
+    
+   <TAB>;;1.0; MASTER PATIENT INDEX VISTA ;**[Patch List]**;30 Apr 99
+   CHECK^XTSUMBLD results:
+    
+   Routine       Before Patch       After Patch       Patch List
+   --------      ------------       ------------      ----------
+   MPIFA24         5579765             6588472       22,24,27,31,25
+   MPIFA24B        2923823             3269573        22,28,31,25
+   MPIFA28         2308610             2310059           22,31,25
+   MPIFA31B        2540420             2605594       22,24,27,28,31,25
+   MPIFDEL         9628444             9628745    1,3,9,19,17,21,27,28,25
+   MPIFP25         NEW                  948357           25
+         ** NOTE MPIFP25 REMOVED AFTER INSTALL HAS BEEN COMPLETED
+    
+  
+   INSTALLATION INSTRUCTIONS:
+   ==========================
+  
+    This patch takes less than 3 minutes to install.  This patch should
+    be loaded during non-peak hours to minimize disruption to the users.   
+  
+    1.  Users are allowed on the system during patch installation.
+        
+    2.  TaskMan does not need to be stopped or placed in a wait state.
+    
+    3.  The HL7 inbound filers should be stopped via Monitor, Start, Stop 
+        Filers on the Filer and Link Management Options menu off of the HL7
+        Main Menu.
+   
+    4.  These routines are not usually mapped, so you will probably not
+        have to disable mapping. 
+  
+    5.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu. [Note:
+        TEXT PRINT/DISPLAY option in the PackMan menu will display the
+        patch text only.
+  
+    6.  From the Kernel Installation and Distribution System Menu, select
+        the Installation menu.  
+  
+    7.  From this menu, you may elect to use the following options:
+        a.  Backup a Transport Global - this option will create a backup
+            message of any routines exported with the patch.  It will NOT
+            backup any other changes such as DDs or templates.
+        b.  Compare Transport Global to Current System  - this option will
+            allow you to view all changes that will be made when the patch
+            is installed.  It compares all components of the patch
+            (routines, DDs, templates, etc.).
+        c.  Verify Checksums in Transport Global - this option will allow
+            you to ensure the integrity of the routines that are in the
+            transport global.
+        d.  Print Transport Global - this option will allow you to view the
+            components of the KIDS build.
+  
+    8.  Use the Install Package(s) option and select the package 
+        MPIF*1.0*25.
+   
+    9.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? '
+        YES//', respond No.
+   
+    10.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, 
+         and Protocols? YES//', respond Yes and enter the following
+         options:
+  
+         Single Patient Initialization to MPI    [MPIF IND MPI LOAD]
+         Inactivate Patient from MPI             [MPIF PAT INACT]
+  
+         MPI/PD Exception Handling               [RG EXCEPTION HANDLING]
+  
+         10-10T Registration                [DGRPT 10-10T REGISTRATION]
+         Register a Patient                 [DG REGISTER PATIENT]
+         Load/Edit Patient Data             [DG LOAD PATIENT DATA]
+         Electronic 10-10EZ Processing      [EAS EZ 1010EZ PROCESSING]
+  
+    
+    11.  If you unmapped routines in step 3, remap them after installation
+         has completed.
+  
+    12.  Restart the HL7 inbound filers via the Monitor, Start, Stop 
+         Filers option on the Filer and Link Management Options menu off of
+         the HL7 Main Menu.
+
+Routine Information:
+====================
+
+Routine Name:
+  - MPIA24
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFA24B
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFA28
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFA31B
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFDEL
+
+
+Routine Checksum:
+
+Routine Name:
+  - MPIFP25
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : DAVIS,PAULETTE                Date Entered  : NOV 25, 2002
+Completed By: ALDERMAN,MATT S               Date Completed: JUN 17, 2004
+Released By : BURTS,WANDA                   Date Released : JUN 17, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,309 @@
+$TXT Created by HOLLOWAY,THOMAS J at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 08/28/03 at 11:44
+=============================================================================
+Run Date: AUG 28, 2003                     Designation: IB*2*229
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #204                      Status: Released
+                  Compliance Date: SEP 28, 2003
+=============================================================================
+
+Associated patches: (v)IB*2*137    <<= must be installed BEFORE `IB*2*229'
+
+Subject: CSA PROCESSING AND DATE DISPLAY FIXES
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch addresses two problems:
+ 1)  The sites are complaining that the CSA (Claims Status Awaiting
+     Resolution) report is taking an excessive amount of time to run.
+ 2)  The Contact Date overwrites the Call Ref. No. on the Patient
+     Insurance Info View/Edit screen [IBCN PATIENT INSURANCE].
+    
+ ASSOCIATED E3R(s):
+ ==================
+    
+ N/A
+    
+ ASSOCIATED NOIS:
+ ================
+    
+ 1. FGH-0203-31133  CSA processing takes too long
+ 2. BAY-0403-32311  'Contact Date' displays > 4 Digit Year
+    
+ NOIS OVERVIEW:
+ ==============
+    
+ 1. FGH-0203-31133  CSA processing takes too long
+    
+    Problem:
+    --------
+    When running the Claims Status Awaiting Resolution option [IBCE 
+    CLAIMS STATUS AWAITING], there is a long delay while the computer 
+    searches for records to include on the report. This delay impacts 
+    the sites ability to complete their billing reviews in a timely, 
+    cost-effective manner.
+    
+    Resolution:
+    -----------
+    The report program processes an index of unreviewed bills. This
+    index contains many old entries which were of Information/Warning
+    status.  New entries of this type are cleared by an auto-review
+    function but the old entries from prior to the auto-review are still
+    hanging around.  These additional, unnecessary entries in the index
+    cause a slow down in processing. This patch will run a conversion
+    program to auto-review the old entries, remove them from the
+    'unreviewed' index and add them to the 'completed review' index.
+    Once these are removed, the CSA report generation should be much 
+    faster.
+    
+ 2. BAY-0403-32311  'Contact Date' displays > 4 Digit Year
+    
+    Problem:
+    --------
+    When viewing a patient's insurance policy information using the VP
+    [POLICY EDIT/VIEW] action on the Patient Insurance Management screen
+    [Patient Insurance Info View/Edit], the Contact Date field sometimes
+    appeared to have more than 4 digits in the year. The problem was
+    that the Contact Date field was being written on the same line as the
+    Call Ref. No. field (overwriting it). This meant that the call 
+    reference number was not being displayed as it should have been and 
+    in cases where the reference number was longer than 12 characters 
+    (i.e. longer than the date display), the extra characters appeared 
+    to be part of the year.
+    
+    Resolution:
+    -----------
+    The Contact Date was moved down one line to where it was originally
+    intended to be. This allows the Call Ref. No. field to be seen and
+    allows the date to be displayed without extraneous characters showing.
+    
+ TECHNICAL:
+ ==========
+    
+ 1.  RE:  FGH-0203-31133  CSA processing takes too long
+     A conversion routine, IB20P229, has been written to update the BILL 
+     STATUS MESSAGE (#361) file. All messages with a REVIEW STATUS of 
+     "NOT REVIEWED" that were received prior to 03/24/2003 (compliance 
+     date for IB*2*197) will be processed using the following rules.
+     If they have a MESSAGE SEVERITY of INFORMATION/WARNING, they will:
+     a. be reset to a REVIEW STATUS [.09] of "REVIEW COMPLETE"
+     b. have their FINAL REVIEW ACTION [.1] set to "FILED - NO ACTION"
+     c. be flagged "YES" for AUTO FILED WITH NO REVIEW [.14]
+     This action will also move the record from ^IBM(361,"AREV",0,IEN) to
+     ^IBM(361,"AREV",2,IEN).
+    
+ 2.  RE:  BAY-0403-32311  'Contact Date' displays > 4 Digit Year
+     The routine IBCNSP0 is modified at line CONTACT+18 as follows:
+    
+     Before -
+     +17     D SET(START+4,OFFSET,"    Call Ref. No.: "...
+     +18     D SET(START+4,OFFSET,"     Contact Date: "...
+                         ^
+    
+     After -
+     +17     D SET(START+4,OFFSET,"    Call Ref. No.: "...
+     +18     D SET(START+5,OFFSET,"     Contact Date: "...
+                         ^
+    
+ PARTICIPATING TEST SITES:
+ =========================
+ Iowa City, IA
+ Dublin, GA
+ Bay Pines, FL
+ Amarillo, TX
+ New York, NY
+    
+ ROUTINE SUMMARY 
+ ===============
+ The following is a list of the routines included in this patch.  
+ The second line of each of these routines now looks like: 
+    
+   <tab>;;2.0;INTEGRATED BILLING;**[PATCH LIST]**;21-MAR-94
+    
+                        CHECK^XTSUMBLD results
+ Routine name      Before Patch        After Patch       Patch List
+ ============      ============        ===========       ===========
+ IB20P229                  N/A             6110311           229
+ IBCNSP0                9301315            9301329    28,43,52,85,93,
+                                                         103,137,229
+     
+ INSTALLATION INSTRUCTIONS
+ =========================
+     
+  This patch can be installed at any time, however at some larger
+  sites the installation may take considerable time and consume
+  system resources so an off-hours installation may be a better choice.
+     
+  Install time - Installation time depends on the number of entries at
+  the ^IBM(361,"AREV",0) node level and, to some extent, on local 
+  system response time.  Test site installations ranged from a low of
+  2 minutes, 17 seconds (Dublin) to a high of 3 hours, 28 minutes
+  (Central Plains).  Processing took an average of .022 seconds per
+  entry in the "AREV",0 level.  
+  Optionally, an approximate installation time can be computed by running
+  the following code from the M prompt:
+   
+ S X="",C=0
+ F  S X=$O(^IBM(361,"AREV",0,X)) Q:X=""  S C=C+1
+ S X=C*.022,H=X\3600,M=(X#3600)\60,S=(X#3600)#60
+ W !,"Estimated conversion time = "_H_" hr. "_M_" min. "_S_" sec."
+   
+  *** JOURNALING WARNING ***
+  At larger sites, the conversion process will involve a large number of
+  Sets and Kills.  You may wish to consider turning off journaling for
+  global ^IBM during the patch installation.  At least be aware that the
+  journal file will be affected by this conversion process.
+   
+  If installed during the normal workday it is recommended that
+  several options, related to the area of change, be temporarily
+  taken out of service (See installation step 5 below).
+     
+  1.  Choose the PackMan message containing this patch and invoke the 
+      INSTALL/CHECK MESSAGE PackMan option.  
+    
+  2.  Disable routine mapping on all systems for the routines listed in
+      the routine summary.  (DSM for open VMS sites only)
+      NOTE:  If the routines included in this patch are not currently in
+      your mapped routine set, please skip this step.
+    
+  3.  Start up the Kernel Installation and Distribution System Menu 
+      [XPD MAIN]: 
+    
+            Edits and Distribution ...  
+            Utilities ...
+            Installation ...  
+    
+      Select Kernel Installation & Distribution System Option: INStallation
+                                                               ---
+    
+      1      Load a Distribution
+      2      Verify Checksums in Transport Global
+      3      Print Transport Global
+      4      Compare Transport Global to Current System
+      5      Backup a Transport Global
+      6      Install Package(s)
+             Restart Install of Package(s)
+             Unload a Distribution
+    
+  4.  From this menu, you may elect to use the following options
+      (When prompted for the INSTALL NAME, enter IB*2.0*229):
+    
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will
+          not backup any other changes such as DD's or templates.
+      b.  Compare Transport Global to Current System - This option
+          will allow you to view all changes that will be made when
+          this patch is installed. It compares all components of this
+          patch (routines, DD's, templates, etc.).
+      c.  Verify Checksums in Transport Global - This option will
+          allow you to ensure the integrity of the routines that are
+          in the transport global.
+    
+  5.  Use the Install Package(s) option and select the package IB*2.0*229.
+    
+      a.  When prompted 'Want KIDS to INHIBIT LOGONs during the
+          install? YES//', answer NO.
+      b.  When prompted 'Want to DISABLE Scheduled Options, Menu
+          Options, and Protocols? YES//' answer YES.
+      c.  When prompted 'Enter options you wish to mark as 'Out of
+          Order':' Enter the following:       
+          Claims Status Awaiting Resolution   [IBCE CLAIMS STATUS AWAITING]
+          Patient Insurance Info View/Edit    [IBCN PATIENT INSURANCE]
+      d.  When prompted 'Enter protocols you wish to mark as 'Out of
+          Order': Enter the following: (press return) 
+    
+  6.  Optional - Include the routines distributed with this patch in the
+      mapped routine set.  (DSM for Open VMS sites only)
+    
+      NOTE: This step is only necessary if you performed step 2 or if you 
+      wish to include the routines in your mapped set.
+    
+  7.  Optional - You may delete the pre-init routine IB20P229
+      after installation has successfully completed.
+    
+ INSTALLATION EXAMPLE:
+ ---------------------
+    
+ Select INSTALL NAME: IB*2.0*229    Loaded from Distribution  8/7/03@15:07:43
+      => IB*2.0*229 V5D
+   
+ This Distribution was loaded on Aug 07, 2003@15:07:43 with header of 
+    IB*2.0*229 V5D
+    It consisted of the following Install(s):
+      IB*2.0*229
+ Checking Install for Package IB*2.0*229
+   
+ Install Questions for IB*2.0*229
+   
+   
+ Want KIDS to INHIBIT LOGONs during the install? YES// NO
+ Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// NO
+   
+ Enter the Device you want to print the Install messages.
+ You can queue the install by enter a 'Q' at the device prompt.
+ Enter a '^' to abort the install.
+   
+ DEVICE: HOME//   VIRTUAL CONNECTION
+    
+  Install Started for IB*2.0*229 : 
+                Aug 07, 2003@15:08:27
+  
+ Build Distribution Date: Aug 07, 2003
+  
+  Installing Routines:
+                Aug 07, 2003@15:08:27
+                                    IB*2.0*229                               
+   
+ ----------------------------------------------------------------------------
+  
+  Running Post-Install Routine: ^IB20P229
+  
+ Conversion of ^IBM(361,"AREV",0 started.
+  
+ Conversion complete.
+  
+  Updating Routine file...
+  
+  Updating KIDS files...
+  
+  IB*2.0*229 Installed. 
+                Aug 07, 2003@15:08:30
+  
+  Install Message sent #6403
+ ----------------------------------------------------------------------------
+           +------------------------------------------------------------+
+   100%    |             25             50             75               |
+ Complete  +------------------------------------------------------------+
+   
+ Install Completed
+
+Routine Information:
+====================
+
+Routine Name:
+  - IB20P229
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNSP0
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : HOLLOWAY,THOMAS J             Date Entered  : JUL 08, 2003
+Completed By: DAWSON,TIM                    Date Completed: AUG 28, 2003
+Released By : JACKSON,SHERYL                Date Released : AUG 28, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

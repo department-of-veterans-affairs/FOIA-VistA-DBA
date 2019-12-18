@@ -1,0 +1,112 @@
+Patch 29 is an installation program for client workstations. Its primary
+function is to install three files (XUESAP.TLB,
+RPCSharedBrokerSessionMgr.exe and RPCSharedBrokerSessionMgr1.exe) and
+register them for use with the RPCBroker. However, running the
+installation program requires user interaction to select the directory,
+etc. The default directory is:
+
+     C:\Program Files\Vista\Common Files
+
+Since it is a client workstation installation, we are also providing a
+batch file that can perform the registration, etc. without user
+interaction.  If the files are installed upon a server location, the
+registration can also be performed on the workstation for the files on the
+server location if the server and path is specified as an argument to the
+batch file.
+
+While installation of the files on a server can be done, we recommend that
+the files be copied to each workstation and registered there.  This is due
+to the fact that the files can only be registered to a single location. 
+If the server were to become disabled, there would be no fall back
+capability to a secondary server and programs using the SharedRPCBroker
+would be unable to function (i.e., Connections via ESSO [Enterprise Single
+Sign-On] would show error messages, however, uses would still be permitted
+to sign on manually).
+
+The Bar Code Medication Administration (BCMA) Version 2 developers
+identified a mechanism that might be considered for remote installation
+and registration of these files. This process uses a free application
+(psexec.exe), which can be obtained from:
+
+     http://www.sysinternals.com/ntw2k/freeware/psexec.shtml
+
+or as a part of the free PsTools Suite, which contains a number of useful
+tools at:
+
+     http://www.sysinternals.com/ntw2k/freeware/pstools.shtml
+
+Its use is via the three cmd or bat files described below.
+
+
+
+1.  Install.cmd contains the following single line:
+
+
+-----------------------  code starts here -------------------------------
+
+   doit.cmd > info.txt
+
+---------------------------  end of code
+-----------------------------------
+
+
+This line will cause the text display to be sent to the info.txt file and
+will permit the user to check the sequence of processes that were
+executed.
+
+
+
+2.  Doit.cmd contains a list of workstations upon which the installation
+should be run.  These are in the format  pc=Name.  Following each line
+specifying a pc name is a code execution line (call :install), which will
+execute the install code at the end of the file.  Following the last pc
+name and this code execution line is a command to stop execution (goto:
+EOF), which is then followed by the code for install.
+
+The following is a sample showing a subset of pc names; the actual list
+will contain many more pcs.
+
+NOTE: The line starting Xcopy might need to be modified if you use a
+different drive and/or path for your initial installation.
+
+
+-----------------------  code starts here -------------------------------
+
+REM Add additional entries as shown below for each PC that will require
+RPCBroker containing applications
+
+set pc=VHA-PC1
+call :install
+
+set pc=VHA-PC2
+call :install
+
+goto :EOF
+
+:install
+
+REM the following is a single line although it may have wrapped
+Xcopy "C:\Program Files\vista\Common Files\*.*"  "\\%pc%\C$\program
+files\vista\common files\*.*" /y
+
+psexec \\%pc% -c callreg.bat
+
+---------------------------  end of code
+-----------------------------------
+
+
+
+
+3.  CallReg.bat  moves to the destination directory on the remote machine
+and then runs the batch file included with Patch XWB*1.1*29 to register
+the files.
+
+
+-----------------------  code starts here -------------------------------
+
+c:
+cd "c:\program files\vista\common files"
+XWB1_1P29.bat
+
+---------------------------  end of code
+-----------------------------------

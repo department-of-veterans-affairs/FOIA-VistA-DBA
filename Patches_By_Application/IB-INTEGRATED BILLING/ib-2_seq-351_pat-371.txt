@@ -1,0 +1,852 @@
+$TXT Created by GUSTAFSON,ERIC S at DEVFEY.FO-ALBANY.MED.VA.GOV  (KIDS) on Friday, 10/26/07 at 16:42
+=============================================================================
+Run Date: DEC 20, 2007                     Designation: IB*2*371
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #351                      Status: Released
+                  Compliance Date: JAN 20, 2008
+=============================================================================
+
+Associated patches: (v)IB*2*240    <<= must be installed BEFORE `IB*2*371'
+                    (v)IB*2*244    <<= must be installed BEFORE `IB*2*371'
+                    (v)IB*2*320    <<= must be installed BEFORE `IB*2*371'
+                    (v)IB*2*349    <<= must be installed BEFORE `IB*2*371'
+                    (v)IB*2*361    <<= must be installed BEFORE `IB*2*371'
+                    (v)IB*2*363    <<= must be installed BEFORE `IB*2*371'
+                    (v)IB*2*374    <<= must be installed BEFORE `IB*2*371'
+
+Subject: E-CLAIMS PLUS ITERATION 3
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Input Template
+  - Other
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ The eClaims Plus project was divided into multiple iterations.
+  
+ This patch is primarily focused on reducing the number of electronic claim
+ rejections by enhancing the Integrated Billing (IB) edit checks that
+ happen before the claim is authorized. It also includes enhancements to
+ the way in which Patient Insurance is entered and updated. The electronic
+ claim Electronic Data Interface (EDI) data produced by the output
+ formatter also had significant changes.
+  
+ Full list of patch items:
+  
+ 1.  Forty new IB error messages have been added to the IB ERROR file
+     (#350.8). These error messages are displayed to the biller whenever
+     the claim fails these IB edit checks. A claim must pass all IB edit
+     checks before it can be authorized.
+  
+ 2.  Changes have been made to the entry and update of the patient's
+     insurance information. This is stored in the INSURANCE TYPE multiple
+     (#2.312) of the PATIENT file (#2). The patient's primary ID number
+     field was added when the patient and the subscriber are different and 
+     the insurance company assigns unique ID numbers for the subscriber 
+     and all dependents. A corresponding field has also been added to the
+     INSURANCE BUFFER file (#355.33).
+  
+ 3.  The name of the insured person is now able to be edited even when the
+     patient and the subscriber are the same. When the patient is the 
+     subscriber, several of the patient insurance fields (like the name) 
+     will be provided as default values from the patient file, but they 
+     may be overridden.
+  
+ 4.  Support has been added for the data entry of up to 3 secondary ID's 
+     and qualifiers for both the patient and for the insurance subscriber.
+  
+ 5.  The insurance company editor option has been changed to allow for the 
+     storage of additional payer ID's and qualifiers. Also, payer address 
+     line 1 and line 2 may no longer be the same thing.
+  
+ 6.  For MRA request claims which are split by Medicare, VistA receives 2 
+     or more MRAs. The MRA secondary claim will now include all of the
+     MRAs on file for these claims even when the MRA is denied with $0 of
+     patient responsibility.
+  
+ 7.  For CMS-1500 claims, $0 line items are ignored by EDI. However, MRA 
+     secondary claims are not constructed properly when the claim has a $0 
+     line item. This patch corrects this problem.
+  
+ 8.  EDI support for chiropractic claims has been added by this patch.
+  
+ 9.  FL-8a, FL-14, and FL-59 A:C on the UB-04 claim form have been changed
+     by this patch. The patient ID number will now print in FL-8a when the
+     patient is different than the subscriber. For outpatient claims, 
+     FL-14, Type of Admission, will now default to the value of "9". The
+     Patient Relationship to the Insured codes that print in FL-59 A:C have
+     been updated. They are now the HIPAA X12 codes instead of the internal
+     VistA codes.
+  
+ 10. Box 20 on the CMS-1500 claim form has been changed by this patch.  
+     OUTSIDE LAB? will be marked YES if the service facility is a Non-VA 
+     facility. Otherwise, OUTSIDE LAB? will be marked NO. The dollar 
+     amount on the left side of the $CHARGES field will be the total 
+     purchased service charges amount. The right side of the $CHARGES 
+     field will always be blank.
+  
+ 11. The Help Text and data entry checks have been enhanced for Value Code
+     values and Occurrence Span dates. An error message has been added to
+     prevent the transmission of a Value Code with no associated value.  
+     Value Codes that were made obsolete on 3/1/07 were made unavailable to
+     billers for claims after 3/1/07.
+  
+ 12. The Bill Remarks text will be electronically transmitted for UB-04 
+     claims. This is the text that is locally printed in FL-80.
+  
+ 13. FL-14 will default to a 9 if not present on UB-04. 
+  
+ 14. The print status of the printed UB-04 claim will now be displayed in
+     FL-38 above the payer name and address. The available print statuses
+     are "*** SECOND NOTICE ***", "*** THIRD NOTICE ***", "*** COPY OF 
+     ORIGINAL BILL ***", and "*** NOT A BILL-MRA NEEDED ***". 
+  
+ 15. Claims may not be electronically transmitted to Austin if they have 
+     three payers on the claim and the current payer sequence of the claim 
+     is either secondary or tertiary.
+  
+ 16. The ability to transmit UB-04 MRA request replacement claims was
+     added. The Medicare ICN/DCN and claim remarks must both be present 
+     on the claim.
+  
+ 17. The "*" review in process indicator was added to the CSA print report 
+     option.
+  
+ 18. The Creation Date field on the printed UB-04 claim form was changed 
+     so that it will show the date the claim was first printed. So when 
+     claims are reprinted, this creation date field will not change.
+  
+  
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+ There is no NSR associated with this patch.
+  
+  
+ This patch addresses the following Remedy Tickets:
+ ----------------------------------------------------
+ 1. HD64676   FGH-0105-30816  Billing vets and Tri Care
+ 2. HD64841   WPB-0205-30321  COB has wrong payment
+ 3. HD174382  Need to enter 10 characters in VALUE field 399.047,.02
+ 4. HD64505   BAY-1204-30722  SYNTAX ERROR PT1-07 MISSING
+  
+  
+ Overview of Remedy Tickets:
+ ---------------------------
+ 1. HD64676  FGH-0105-30816  Billing vets and Tri Care
+  
+ Problem:
+ --------
+ When the Rate Type for the claim is Interagency or Sharing Agreement, the
+ payer sequence error message improperly appears at the end of the 
+ Enter/Edit Billing Information [IB EDIT BILLING INFO] option. There should
+ be no coordination of benefits required for these types of claims.
+  
+ Resolution:
+ -----------
+ Modified routine IBCBB1 to eliminate the payer sequence error message in
+ the edit checks for Interagency and Sharing Agreement claims.
+  
+  
+ 2. HD64841  WPB-0205-30321  COB has wrong payment
+  
+ Problem:
+ --------
+ When using the option Copy for Secondary/Tertiary Bill [IB COPY
+ SECOND/THIRD] to create a secondary or tertiary bill, the prior payment
+ amount extracted from the original bill didn't reflect the true payment
+ that resulted in the bill total to be incorrect.
+  
+ Resolution:
+ -----------
+ Modified routine IBCEU1 to default the prior payment amount by using the
+ Payer Paid Amt field instead of the Patient Responsible Amt field in the
+ EXPLANATION OF BENEFITS (#361.1) file.
+  
+  
+ 3. HD174382  Need to enter 10 characters in VALUE field 399.047,.02
+  
+ Problem:
+ --------
+ The current VistA software only allows 9 characters for the value code 
+ value amounts. In terms of dollars and cents, this will allow a maximum
+ value code dollar amount of 999999.99 which includes the decimal point.  
+ Some sites have claims larger than $1 million dollars so this field is 
+ too small.
+  
+ Resolution:
+ -----------
+ Increase the size of this field to allow for the data entry of 10 
+ characters. This will allow for a maximum value code dollar amount of 
+ 9999999.99. This is the maximum allowed by the VA's electronic claim 
+ clearinghouse Emdeon and also the maximum allowed by HIPAA.
+  
+  
+ 4. HD64505   BAY-1204-30722  SYNTAX ERROR PT1-07 MISSING
+  
+ Problem:
+ --------
+ Electronic claims get rejected at Emdeon when the patient or subscriber
+ street address is missing or incomplete.
+  
+ Resolution:
+ -----------
+ This patch provides many more IB edit checks so that claims may not be 
+ transmitted if they have incorrect or incomplete addresses.
+  
+  
+ Components Sent With Patch
+ --------------------------
+  
+  The following is a list of the routines included in this patch.
+  The second line of each of these routines now looks like:
+  
+      <tab>;;2.0;INTEGRATED BILLING;**[patch list]**;21-MAR-94;Build 57
+  
+                             CHECK^XTSUMBLD results
+  
+  Routine       Before Patch       After Patch         Patch List
+  -------       ------------       -----------         ----------
+  IBCBB          6013547            16870829        80,51,137,288,327,
+                                                       361,371
+  IBCBB1         18869205           18815716        27,52,80,93,106,
+                                                    51,151,148,153,137,
+                                                    232,280,155,320,343,
+                                                       349,363,371
+  IBCBB11        7546898            8243877         51,343,363,371
+  IBCBB2         18651709           19077504        51,137,210,245,232,
+                                                       296,320,349,371
+  IBCBB3         11236455           11950947        51,137,155,349,371
+  IBCBB5         3394293            4377053         51,137,371
+  IBCBB9         7671625            7062135         51,137,155,349,371
+  IBCCC2         22532928           22532976        80,106,124,138,51,
+                                                    151,137,161,182,211,
+                                                    245,155,296,320,348,
+                                                       349,371
+  IBCE           11030770           12534531        137,283,296,371
+  IBCECSA3       10729900           11179234        137,320,371
+  IBCECSA4       12331282           12370936        137,155,320,371
+  IBCEF          8573333            8842110         52,80,51,137,288,
+                                                       296,361,371
+  IBCEF1         13765491           14521139        52,124,51,137,210,
+                                                       155,349,371
+  IBCEF11        12869682           12667120        51,137,155,309,335,
+                                                       348,349,371
+  IBCEF21        5862025            8320589         51,296,371
+  IBCEF75        9930182            10003008        320,371
+  IBCEF78          N/A              1673136         371
+  IBCEFG1        10545692           10624579        52,51,137,181,197,
+                                                       232,288,349,371
+  IBCEM          19052362           19245081        137,191,155,371
+  IBCEU1         11193439           11517958        137,155,296,349,371
+  IBCEU3         15440060           14866177        51,137,155,323,348,
+                                                       371
+  IBCEU6         3716168            4199961         155,371
+  IBCNBCD        14252617           14311777        82,251,361,371
+  IBCNBEE        14892068           15262542        82,184,252,251,356,
+                                                       361,371
+  IBCNBLE        22478520           22143949        82,231,184,251,371
+  IBCNBMI        12434004           12543717        82,184,246,251,299,
+                                                       345,361,371
+  IBCNEBF        5914715            6159021         184,271,361,371
+  IBCNRDV        17863815           17896164        214,231,361,371
+  IBCNS1         7971407            8006689         28,60,52,85,107,
+                                                       51,137,240,371
+  IBCNSC         8868539            9429632         46,137,184,276,320,
+                                                       371
+  IBCNSC0        6126055            6121144         371
+  IBCNSC01       14217042           15757148        52,137,191,184,232,
+                                                       320,349,371
+  IBCNSC02       10047343           10042368        320,371
+  IBCNSC1        15503252           18012234        62,137,232,291,320,
+                                                       348,349,371
+  IBCNSEH        4953017            3943876         6,28,371
+  IBCNSM32       11447037           10453107        28,40,52,85,103,
+                                                       133,361,371
+  IBCNSP         10805536           12840759        6,28,43,52,85,
+                                                       251,363,371
+  IBCNSP0        11430465           11249258        28,43,52,85,93,
+                                                    103,137,229,251,363,
+                                                       371
+  IBCNSP01       9274444            12027726        43,52,85,251,371
+  IBCNSP1        5334459            11350174        6,28,40,43,52,
+                                                       85,103,361,371
+  IBCNSP2        8950581            9815244         6,28,75,82,155,
+                                                       371
+  IBCNSP3        10541198           10877040        28,52,85,251,371
+  IBCNSU         6499425            7371052         28,103,371
+  IBCNSU1        3761676            4861316         103,133,244,371
+  IBCSC8A          N/A              3790164         371
+  IBCSC8H        14517316           14890190        51,137,207,210,232,
+                                                       155,320,343,349,371
+  IBCSCE         7360816            7558052         52,80,91,106,51,
+                                                    137,236,245,287,349,
+                                                       371
+  IBCSCH         28408121           28997667        52,80,106,124,138,
+                                                    51,148,137,161,245,
+                                                    232,287,348,349,374,
+                                                       371
+  IBCU4          7843107            8750885         109,122,137,245,349,
+                                                       371
+  IBCU7          22025232           21770355        62,52,106,125,51,
+                                                    137,210,245,228,260,
+                                                       348,371
+  IBCVA0         9526550            7554961         52,361,371
+  IBCVA1         9925340            10043556        52,80,109,51,137,
+                                                       210,349,371
+  IBCVC            N/A              2648956         371
+  IBY371PO         N/A              deleted**       371
+  IBY371PR         N/A              deleted**       371
+  
+  
+     ** These routines are automatically deleted.
+  
+  
+      Total number of routines:  55
+                  New routines:  5
+             Modified routines:  50
+  
+                             CHECK1^XTSUMBLD results
+  
+  Routine       Before Patch       After Patch         Patch List
+  -------       ------------       -----------         ----------
+  IBCBB          14809145           70083781        80,51,137,288,327,
+                                                       361,371
+  IBCBB1         70812955           66788213        27,52,80,93,106,
+                                                    51,151,148,153,137,
+                                                    232,280,155,320,343,
+                                                       349,363,371
+  IBCBB11        14703047           16826545        51,343,363,371
+  IBCBB2         42055097           43441310        51,137,210,245,232,
+                                                       296,320,349,371
+  IBCBB3         37225304           41352216        51,137,155,349,371
+  IBCBB5         6359548            8194886         51,137,371
+  IBCBB9         10249958           9034446         51,137,155,349,371
+  IBCCC2         66228987           66229263        80,106,124,138,51,
+                                                    151,137,161,182,211,
+                                                    245,155,296,320,348,
+                                                       349,371
+  IBCE           21210962           25142847        137,283,296,371
+  IBCECSA3       26519666           27586417        137,320,371
+  IBCECSA4       56824408           57240644        137,155,320,371
+  IBCEF          53271927           55741819        52,80,51,137,288,
+                                                       296,361,371
+  IBCEF1         53245090           58389025        52,124,51,137,210,
+                                                       155,349,371
+  IBCEF11        48127699           51577775        51,137,155,309,335,
+                                                       348,349,371
+  IBCEF21        11282906           23659732        51,296,371
+  IBCEF75        30617202           30751276        320,371
+  IBCEF78          N/A              4445010         371
+  IBCEFG1        26630861           26758325        52,51,137,181,197,
+                                                       232,288,349,371
+  IBCEM          58848548           59477823        137,191,155,371
+  IBCEU1         41905172           42998590        137,155,296,349,371
+  IBCEU3         63577235           61357507        51,137,155,323,348,
+                                                       371
+  IBCEU6         9821242            10687368        155,371
+  IBCNBCD        35493538           35866486        82,251,361,371
+  IBCNBEE        44602878           45297417        82,184,252,251,356,
+                                                       361,371
+  IBCNBLE        68938971           69021746        82,231,184,251,371
+  IBCNBMI        54212603           54899476        82,184,246,251,299,
+                                                       345,361,371
+  IBCNEBF        27574081           29002877        184,271,361,371
+  IBCNRDV        65860108           66590171        214,231,361,371
+  IBCNS1         34528689           35071030        28,60,52,85,107,
+                                                       51,137,240,371
+  IBCNSC         21343309           24159978        46,137,184,276,320,
+                                                       371
+  IBCNSC0        9886384            9881323         371
+  IBCNSC01       48419928           54638863        52,137,191,184,232,
+                                                       320,349,371
+  IBCNSC02       55607158           55602026        320,371
+  IBCNSC1        65094362           79495067        62,137,232,291,320,
+                                                       348,349,371
+  IBCNSEH        7694394            5882362         6,28,371
+  IBCNSM32       28247845           26481916        28,40,52,85,103,
+                                                       133,361,371
+  IBCNSP         31460590           42668156        6,28,43,52,85,
+                                                       251,363,371
+  IBCNSP0        29977117           32537201        28,43,52,85,93,
+                                                    103,137,229,251,363,
+                                                       371
+  IBCNSP01       19919744           32694224        43,52,85,251,371
+  IBCNSP1        17268693           54597105        6,28,40,43,52,
+                                                       85,103,361,371
+  IBCNSP2        22122714           24458638        6,28,75,82,155,
+                                                       371
+  IBCNSP3        34813871           35837178        28,52,85,251,371
+  IBCNSU         31546366           38899795        28,103,371
+  IBCNSU1        11956107           18337578        103,133,244,371
+  IBCSC8A          N/A              7456472         371
+  IBCSC8H        33583237           34954742        51,137,207,210,232,
+                                                       155,320,343,349,371
+  IBCSCE         14217145           14634015        52,80,91,106,51,
+                                                    137,236,245,287,349,
+                                                       371
+  IBCSCH         61198859           62017089        52,80,106,124,138,
+                                                    51,148,137,161,245,
+                                                    232,287,348,349,374,
+                                                       371
+  IBCU4          17693963           20355514        109,122,137,245,349,
+                                                       371
+  IBCU7          54846939           54198894        62,52,106,125,51,
+                                                    137,210,245,228,260,
+                                                       348,371
+  IBCVA0         13013773           10445232        52,361,371
+  IBCVA1         20900613           21105006        52,80,109,51,137,
+                                                       210,349,371
+  IBCVC            N/A              8423325         371
+  IBY371PO         N/A              deleted**       371
+  IBY371PR         N/A              deleted**       371
+  
+  
+     ** These routines are automatically deleted.
+  
+  
+      Total number of routines:  55
+                  New routines:  5
+             Modified routines:  50
+  
+  
+ The following is a list of files included in this patch:
+  
+                                          UP    SEND  DATA
+                                          DATE  SEC.  COMES  SITE   RSLV
+ FILE #   NAME                            DD    CODE  W/FILE DATA   PTS
+ -----------------------------------------------------------------------
+ 2        PATIENT                         YES   YES   NO
+ 36       INSURANCE COMPANY               YES   YES   NO
+ 350.8    IB ERROR                        NO    NO    YES    OVER   NO
+ 355.33   INSURANCE BUFFER                YES   YES   NO
+ 355.93   IB NON/OTH VA BILLING PROVIDER  YES   YES   NO
+ 364.5    IB DATA ELEMENT DEFINITION      NO    NO    YES    OVER   YES
+ 364.6    IB FORM SKELETON DEFINITION     NO    NO    YES    OVER   YES
+ 364.7    IB FORM FIELD CONTENT           NO    NO    YES    OVER   YES
+ 399      BILL/CLAIMS                     YES   YES   NO
+ 399.1    MCCR UTILITY                    YES   YES   NO 
+  
+  
+ The following is a list of fields included in this patch:
+  
+ Field Name (Number)                     File Name (Number)
+ -------------------                     ------------------
+ SUBSCRIBER ID (1)                       INSURANCE TYPE  (sub-file) (2.312)
+ PATIENT ID (5.01)                       INSURANCE TYPE  (sub-file) (2.312)
+ SUBSCRIBER'S SEC QUALIFIER(1) (5.02)    INSURANCE TYPE  (sub-file) (2.312)
+ SUBSCRIBER'S SEC ID(1) (5.03)           INSURANCE TYPE  (sub-file) (2.312)
+ SUBSCRIBER'S SEC QUALIFIER(2) (5.04)    INSURANCE TYPE  (sub-file) (2.312)
+ SUBSCRIBER'S SEC ID(2) (5.05)           INSURANCE TYPE  (sub-file) (2.312)
+ SUBSCRIBER'S SEC QUALIFIER(3) (5.06)    INSURANCE TYPE  (sub-file) (2.312)
+ SUBSCRIBER'S SEC ID(3) (5.07)           INSURANCE TYPE  (sub-file) (2.312)
+ PATIENT'S SEC QUALIFIER(1) (5.08)       INSURANCE TYPE  (sub-file) (2.312)
+ PATIENT'S SECONDARY ID(1) (5.09)        INSURANCE TYPE  (sub-file) (2.312)
+ PATIENT'S SEC QUALIFIER(2) (5.1)        INSURANCE TYPE  (sub-file) (2.312)
+ PATIENT'S SECONDARY ID(2) (5.11)        INSURANCE TYPE  (sub-file) (2.312)
+ PATIENT'S SEC QUALIFIER(3) (5.12)       INSURANCE TYPE  (sub-file) (2.312)
+ PATIENT'S SECONDARY ID(3) (5.13)        INSURANCE TYPE  (sub-file) (2.312)
+ PT. RELATIONSHIP TO INSURED (16)        INSURANCE TYPE  (sub-file) (2.312)
+ NAME OF INSURED (17)                    INSURANCE TYPE  (sub-file) (2.312)
+ STREET ADDRESS [LINE 1] (.111)          INSURANCE COMPANY (36)
+ STREET ADDRESS [LINE 2] (.112)          INSURANCE COMPANY (36)
+ STREET ADDRESS [LINE 3] (.113)          INSURANCE COMPANY (36)
+ CLAIMS (INPT) STREET ADDRESS 1 (.121)   INSURANCE COMPANY (36)
+ CLAIMS (INPT) STREET ADDRESS 2 (.122)   INSURANCE COMPANY (36)
+ CLAIMS (INPT) STREET ADDRESS 3 (.123)   INSURANCE COMPANY (36)
+ APPEALS ADDRESS ST. [LINE 1] (.141)     INSURANCE COMPANY (36)
+ APPEALS ADDRESS ST. [LINE 2] (.142)     INSURANCE COMPANY (36)
+ APPEALS ADDRESS ST. [LINE 3] (.143)     INSURANCE COMPANY (36)
+ INQUIRY ADDRESS ST. [LINE 1] (.151)     INSURANCE COMPANY (36)
+ INQUIRY ADDRESS ST. [LINE 2] (.152)     INSURANCE COMPANY (36)
+ INQUIRY ADDRESS ST. [LINE 3] (.153)     INSURANCE COMPANY (36)
+ CLAIMS (OPT) STREET ADDRESS 1 (.161)    INSURANCE COMPANY (36)
+ CLAIMS (OPT) STREET ADDRESS 2 (.162)    INSURANCE COMPANY (36)
+ CLAIMS (OPT) STREET ADDRESS 3 (.163)    INSURANCE COMPANY (36)
+ CLAIMS (RX) STREET ADDRESS 1 (.181)     INSURANCE COMPANY (36)
+ CLAIMS (RX) STREET ADDRESS 2 (.182)     INSURANCE COMPANY (36)
+ CLAIMS (RX) STREET ADDRESS 3 (.183)     INSURANCE COMPANY (36)
+ EDI INST SECONDARY ID QUAL(1)  (6.01)   INSURANCE COMPANY (36)
+ EDI INST SECONDARY ID(1) (6.02)         INSURANCE COMPANY (36)
+ EDI INST SECONDARY ID QUAL(2) (6.03)    INSURANCE COMPANY (36)
+ EDI INST SECONDARY ID(2) (6.04)         INSURANCE COMPANY (36)
+ EDI PROF SECONDARY ID QUAL(1)  (6.05)   INSURANCE COMPANY (36)
+ EDI PROF SECONDARY ID(1) (6.06)         INSURANCE COMPANY (36)
+ EDI PROF SECONDARY ID QUAL(2) (6.07)    INSURANCE COMPANY (36)
+ EDI PROF SECONDARY ID(2) (6.08)         INSURANCE COMPANY (36)
+ SUBSCRIBER ID (60.04)                   INSURANCE BUFFER (355.33)
+ PT. RELATIONSHIP TO INSURED (60.06)     INSURANCE BUFFER (355.33)
+ PATIENT ID (62.01)                      INSURANCE BUFFER (355.33)
+ X12 TYPE OF FACILITY (.11)              IB NON/OTHER VA BILLING PROVIDER 
+                                            (355.93)
+ PRIMARY PROVIDER # (122)                BILL/CLAIMS (399)
+ SECONDARY PROVIDER # (123)              BILL/CLAIMS (399)
+ TERTIARY PROVIDER # (124)               BILL/CLAIMS (399)
+ LAST XRAY DATE (245)                    BILL/CLAIMS (399)
+ DATE OF INITIAL TREATMENT (246)         BILL/CLAIMS (399)
+ DATE OF ACUTE MANIFESTATION (247)       BILL/CLAIMS (399)
+ PATIENT CONDITION CODE (248)            BILL/CLAIMS (399)
+ BILL REMARKS (402)                      BILL/CLAIMS (399)
+ *LAST XRAY DATE (50.02)                 PROCEDURES  (sub-file) (399.0304)
+ *LEVEL OF SUBLUXATION (50.04)           PROCEDURES  (sub-file) (399.0304)
+ *CHIRO TREATMENT SERIES NUM (50.05)     PROCEDURES  (sub-file) (399.0304)
+ *CHIROPRACTIC QUANTITY (50.06)          PROCEDURES  (sub-file) (399.0304)
+ END DATE (.04)                          OCCURRENCE CODE  (sub-file) 
+                                            (399.041)
+ VALUE CODE (.01)                        VALUE CODE  (sub-file) (399.047)
+ VALUE (.02)                             VALUE CODE  (sub-file) (399.047)
+ VALUE CODE OBSOLETE DATE (.26)          MCCR UTILITY (399.1)
+ VALUE CODE HELP TEXT (1)                MCCR UTILITY (399.1)
+  
+  
+ The following is a list of templates included in this patch:
+  
+ Template Name           Type        File Name (Number)
+ -------------           ----        ------------------
+ IB SCREEN8H             INPUT       BILL/CLAIMS (399)
+ IBCN PATIENT INSURANCE  INPUT       INSURANCE TYPE (2.312)
+ IBEDIT INS CO1          INPUT       INSURANCE COMPANY (36)
+  
+  
+ The following is a list of protocols included in this patch:
+  
+ Protocol
+ --------
+ IBCNSC INS CO APPEALS OFFICE                   SEND TO SITE
+ IBCNSC INS CO ASSOCIATION                      SEND TO SITE
+ IBCNSC INS CO BILLING PARAMETERS               SEND TO SITE
+ IBCNSC INS CO INPT CLAIMS                      SEND TO SITE
+ IBCNSC INS CO INQUIRY OFFICE                   SEND TO SITE
+ IBCNSC INS CO MAIN MAILING ADDRESS             SEND TO SITE
+ IBCNSC INS CO OPT CLAIMS                       SEND TO SITE
+ IBCNSC INS CO RX CLAIMS                        SEND TO SITE
+ IBCNSJ EDIT COVERAGE LIMITS                    SEND TO SITE
+ IBCNSP ADD COMMENT                             SEND TO SITE
+ IBCNSP EDIT EFFECTIVE DATES                    SEND TO SITE
+ IBCNSP EMPLOYER INFO FOR CLAIMS                SEND TO SITE
+ IBCNSP INSURANCE CONTACT INF                   SEND TO SITE
+ IBCNSP SUBSCRIBER UPDATE                       SEND TO SITE
+ IBCNSP UR INFO                                 SEND TO SITE
+ IBCNSP VERIFY COVERAGE                         SEND TO SITE
+  
+  
+ Test Sites:
+ -----------
+ Altoona
+ Memphis
+ VISN 2 
+  
+  
+ Documentation Retrieval
+ -----------------------
+ The EDI Billing User's Guide has been updated. This guide is available
+ for download at the following websites:
+  
+ http://www.va.gov/vdl/Financial_Admin.asp?appID=45
+  
+ http://vaww.vistau.med.va.gov/VistaU/e-bp/e-claims.htm
+  
+  
+ The user's guide may also be retrieved from the following OI Field
+ Offices' Anonymous.Software Directories. Use the appropriate FTP
+ capability to retrieve the files and use BINARY format.
+  
+  
+ OI Field Office         FTP Address                 Directory
+ ---------------         -----------                 ---------
+ ALBANY                  ftp.fo-albany.med.va.gov    anonymous.software
+ HINES                   ftp.fo-hines.med.va.gov     anonymous.software
+ SALT LAKE               ftp.fo-slc.med.va.gov       anonymous.software
+ FIRST AVAILABLE SERVER  download.vista.med.va.gov   anonymous.software
+  
+  
+ File Name
+ ---------
+ IB_2_371UG.PDF
+  
+  
+ Pre/Post Installation Overview
+ ------------------------------
+ Both the pre-installation routine and the post-installation routine
+ are automatically deleted after this patch is installed.
+  
+ The pre-installation routine removes output formatter entries that are 
+ included in this patch so they are installed cleanly. It also removes a 
+ trigger cross reference which was originally in this patch but was later 
+ replaced with a new style cross reference. Since the trigger cross
+ reference had been created at the test site, it needed to be deleted.  
+ This will have no effect on sites that did not install the earlier 
+ versions of this patch.
+  
+ The post-installation routine recompiles the input templates associated 
+ with IB billing screens 3 through 7. It also examines all of the 
+ addresses in the INSURANCE COMPANY (#36) file, and removes any duplicate 
+ address lines that it finds. It also populates the secondary payer ID 
+ for the MEDICARE (WNR) insurance company entry. It adds some help text and
+ the obsolete date field to the value codes. Finally, it adds a new style 
+ cross reference to sub-field VALUE CODE (#399.047) which makes sure the
+ VALUE (#.02) field is in the correct format when a VALUE CODE (#.01) is
+ modified.
+  
+  
+        ================INSTALLATION INSTRUCTIONS =================
+  
+ It is recommended that this patch be installed outside of normal working
+ hours when no Integrated Billing users are on the system. However, if
+ installed during the normal workday, it is recommended that the following
+ selection(s) in the OPTION (#19) file, and all of their descendants be
+ disabled to prevent possible conflicts while running the KIDS Install.
+ Other VISTA users will not be affected.
+  
+       Patient Insurance Info View/Edit     [IBCN PATIENT INSURANCE]
+       Insurance Company Entry/Edit         [DG INSURANCE COMPANY EDIT]
+       Insurance Company Entry/Edit         [IBCN INSURANCE CO EDIT]
+       Process Insurance Buffer             [IBCN INSURANCE BUFFER PROCESS]
+       Enter/Edit Billing Information       [IB EDIT BILLING INFO]
+       Print Bill                           [IB PRINT BILL]
+       Print Authorized Bills               [IB BATCH PRINT BILLS]
+       View/Print EDI Bill Extract Data     [IBCE EDI VIEW/PRINT EXTRACT]
+  
+ **** Do not install this patch when the IB MT NIGHT COMP background job
+      is running.
+  
+ Also, make sure that electronic claims are NOT scheduled to be transmitted
+ via TaskManager while the patch is being installed. It's best to check
+ with your Billing section on this. There is a field called HOURS TO
+ TRANSMIT BILLS (#8.06) in the IB SITE PARAMETERS file (#350.9) that may
+ contain specific times to transmit bills.
+  
+ Any future tasks set up in TaskManager based on the field HOURS TO
+ TRANSMIT BILLS (#8.06) field in the IB SITE PARAMETERS file (#350.9) would
+ appear similar to this:
+  
+  5310003: FORMOUT^IBCEFG7, OUTPUT FORMATTER - FORM: IB 837 TRANSMISSION.
+           No device.  ACT,ACT.  From Today at 1:01,  By you.
+           Scheduled for Today at 16:00
+  
+ If there are no specific times set up in this parameter, claims will be
+ transmitted when the Queue Means Test Compilation of Charges [IB MT NIGHT
+ COMP] job runs.
+  
+  
+ Install Time - It can vary between 5 minutes and 30 minutes. The most 
+                time consuming part of this install is STEP 5 of the 
+                post-install routine which builds a new style cross-
+                reference in the VALUE CODE multiple (399.047) of the
+                BILL/CLAIMS file (399).
+  
+  
+ 1.  LOAD TRANSPORT GLOBAL
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the
+     INSTALL/CHECK MESSAGE PackMan option.
+  
+ 2.  START UP KIDS
+     -------------
+     Start up the Kernel Installation and Distribution System Menu
+     [XPD MAIN]:
+  
+          Edits and Distribution ...
+          Utilities ...
+          Installation ...
+  
+ Select Kernel Installation & Distribution System Option: INStallation
+                                                          ---
+          Load a Distribution
+          Print Transport Global
+          Compare Transport Global to Current System
+          Verify Checksums in Transport Global
+          Install Package(s)
+          Restart Install of Package(s)
+          Unload a Distribution
+          Backup a Transport Global
+  
+ Select Installation Option:
+  
+ 3.  Select Installation Option:
+     ---------------------------
+     NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+            NAME, enter IB*2.0*371):
+  
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when this patch
+         is installed. It compares all components of this patch
+         (routines, DD's, templates, etc.).
+     c.  Verify Checksums in Transport Global - This option will allow
+         you to ensure the integrity of the routines that are in the
+         transport global.
+  
+ 4.  Select Installation Option: Install Package(s)
+                                 ------------------
+     **This is the step to start the installation of this KIDS patch:
+  
+     a.  Choose the Install Package(s) option to start the patch
+         install.
+     b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+         NO//' answer NO
+     c.  When prompted 'Want to DISABLE Scheduled Options, Menu
+         Options, and Protocols? NO//' answer YES if installing during 
+         working hours
+     d.  When prompted 'Enter options you wish to mark as 'Out Of
+         Order':'  Enter the following options:
+  
+         Patient Insurance Info View/Edit   [IBCN PATIENT INSURANCE]
+         Insurance Company Entry/Edit       [DG INSURANCE COMPANY EDIT]
+         Insurance Company Entry/Edit       [IBCN INSURANCE CO EDIT]
+         Process Insurance Buffer           [IBCN INSURANCE BUFFER PROCESS]
+         Enter/Edit Billing Information     [IB EDIT BILLING INFO]
+         Print Bill                         [IB PRINT BILL]
+         Print Authorized Bills             [IB BATCH PRINT BILLS]
+         View/Print EDI Bill Extract Data   [IBCE EDI VIEW/PRINT EXTRACT]
+  
+     e.  When prompted 'Enter protocols you wish to mark as 'Out Of
+         Order':' press <return>.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;2.0;INTEGRATED BILLING;**[Patch List]**;21-MAR-94;Build 57
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: IBCBB
+    Before: B14809145   After: B70083781  **80,51,137,288,327,361,371**
+Routine Name: IBCBB1
+    Before: B70812955   After: B66788213  **27,52,80,93,106,51,151,148,
+                                           153,137,232,280,155,320,343,
+                                           349,363,371**
+Routine Name: IBCBB11
+    Before: B14703047   After: B16826545  **51,343,363,371**
+Routine Name: IBCBB2
+    Before: B42055097   After: B43441310  **51,137,210,245,232,296,320,
+                                           349,371**
+Routine Name: IBCBB3
+    Before: B37225304   After: B41352216  **51,137,155,349,371**
+Routine Name: IBCBB5
+    Before:  B6359548   After:  B8194886  **51,137,371**
+Routine Name: IBCBB9
+    Before: B10249958   After:  B9034446  **51,137,155,349,371**
+Routine Name: IBCCC2
+    Before: B66228987   After: B66229263  **80,106,124,138,51,151,137,
+                                           161,182,211,245,155,296,320,
+                                           348,349,371**
+Routine Name: IBCE
+    Before: B21210962   After: B25142847  **137,283,296,371**
+Routine Name: IBCECSA3
+    Before: B26519666   After: B27586417  **137,320,371**
+Routine Name: IBCECSA4
+    Before: B56824408   After: B57240644  **137,155,320,371**
+Routine Name: IBCEF
+    Before: B53271927   After: B55741819  **52,80,51,137,288,296,361,371**
+Routine Name: IBCEF1
+    Before: B53245090   After: B58389025  **52,124,51,137,210,155,349,371**
+Routine Name: IBCEF11
+    Before: B48127699   After: B51577775  **51,137,155,309,335,348,349,371**
+Routine Name: IBCEF21
+    Before: B11282906   After: B23659732  **51,296,371**
+Routine Name: IBCEF75
+    Before: B30617202   After: B30751276  **320,371**
+Routine Name: IBCEF78
+    Before:       n/a   After:  B4445010  **371**
+Routine Name: IBCEFG1
+    Before: B26630861   After: B26758325  **52,51,137,181,197,232,288,349,371**
+Routine Name: IBCEM
+    Before: B58848548   After: B59477823  **137,191,155,371**
+Routine Name: IBCEU1
+    Before: B41905172   After: B42998590  **137,155,296,349,371**
+Routine Name: IBCEU3
+    Before: B63577235   After: B61357507  **51,137,155,323,348,371**
+Routine Name: IBCEU6
+    Before:  B9821242   After: B10687368  **155,371**
+Routine Name: IBCNBCD
+    Before: B35493538   After: B35866486  **82,251,361,371**
+Routine Name: IBCNBEE
+    Before: B44602878   After: B45297417  **82,184,252,251,356,361,371**
+Routine Name: IBCNBLE
+    Before: B68938971   After: B69021746  **82,231,184,251,371**
+Routine Name: IBCNBMI
+    Before: B54212603   After: B54899476  **82,184,246,251,299,345,361,371**
+Routine Name: IBCNEBF
+    Before: B27574081   After: B29002877  **184,271,361,371**
+Routine Name: IBCNRDV
+    Before: B65860108   After: B66590171  **214,231,361,371**
+Routine Name: IBCNS1
+    Before: B34528689   After: B35071030  **28,60,52,85,107,51,137,240,371**
+Routine Name: IBCNSC
+    Before: B21343309   After: B24159978  **46,137,184,276,320,371**
+Routine Name: IBCNSC0
+    Before:  B9886384   After:  B9881323  **371**
+Routine Name: IBCNSC01
+    Before: B48419928   After: B54638863  **52,137,191,184,232,320,349,371**
+Routine Name: IBCNSC02
+    Before: B55607158   After: B55602026  **320,371**
+Routine Name: IBCNSC1
+    Before: B65094362   After: B79495067  **62,137,232,291,320,348,349,371**
+Routine Name: IBCNSEH
+    Before:  B7694394   After:  B5882362  **6,28,371**
+Routine Name: IBCNSM32
+    Before: B28247845   After: B26481916  **28,40,52,85,103,133,361,371**
+Routine Name: IBCNSP
+    Before: B31460590   After: B42668156  **6,28,43,52,85,251,363,371**
+Routine Name: IBCNSP0
+    Before: B29977117   After: B32537201  **28,43,52,85,93,103,137,229,
+                                           251,363,371**
+Routine Name: IBCNSP01
+    Before: B19919744   After: B32694224  **43,52,85,251,371**
+Routine Name: IBCNSP1
+    Before: B17268693   After: B54597105  **6,28,40,43,52,85,103,361,371**
+Routine Name: IBCNSP2
+    Before: B22122714   After: B24458638  **6,28,75,82,155,371**
+Routine Name: IBCNSP3
+    Before: B34813871   After: B35837178  **28,52,85,251,371**
+Routine Name: IBCNSU
+    Before: B31546366   After: B38899795  **28,103,371**
+Routine Name: IBCNSU1
+    Before: B11956107   After: B18337578  **103,133,244,371**
+Routine Name: IBCSC8A
+    Before:       n/a   After:  B7456472  **371**
+Routine Name: IBCSC8H
+    Before: B33583237   After: B34954742  **51,137,207,210,232,155,320,
+                                           343,349,371**
+Routine Name: IBCSCE
+    Before: B14217145   After: B14634015  **52,80,91,106,51,137,236,245,
+                                           287,349,371**
+Routine Name: IBCSCH
+    Before: B61198859   After: B62017089  **52,80,106,124,138,51,148,137,
+                                           161,245,232,287,348,349,374,
+                                           371**
+Routine Name: IBCU4
+    Before: B17693963   After: B20355514  **109,122,137,245,349,371**
+Routine Name: IBCU7
+    Before: B54846939   After: B54198894  **62,52,106,125,51,137,210,245,
+                                           228,260,348,371**
+Routine Name: IBCVA0
+    Before: B13013773   After: B10445232  **52,361,371**
+Routine Name: IBCVA1
+    Before: B20900613   After: B21105006  **52,80,109,51,137,210,349,371**
+Routine Name: IBCVC
+    Before:       n/a   After:  B8423325  **371**
+Routine Name: IBY371PO
+    Before:       n/a   After:B100442292  **371**
+Routine Name: IBY371PR
+    Before:       n/a   After: B24403844  **371**
+
+=============================================================================
+User Information:
+Entered By  : GUSTAFSON,ERIC S              Date Entered  : MAR 02, 2007
+Completed By: ROBBINS,BRADLEY               Date Completed: DEC 11, 2007
+Released By : CAULFIELD,MARY                Date Released : DEC 20, 2007
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

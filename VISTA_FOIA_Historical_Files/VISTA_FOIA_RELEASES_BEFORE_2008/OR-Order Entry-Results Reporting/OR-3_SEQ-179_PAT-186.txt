@@ -1,0 +1,231 @@
+$TXT Created by NABER,DAVID A at DEVCUR.FO-SLC.MED.VA.GOV  (KIDS) on Tuesday, 09/09/03 at 13:43
+=============================================================================
+Run Date: SEP 26, 2003                     Designation: OR*3*186
+Package : OR - ORDER ENTRY/RESULTS REPORTING  Priority: Mandatory
+Version : 3       SEQ #179                      Status: Released
+                  Compliance Date: OCT 27, 2003
+=============================================================================
+
+Associated patches: (v)OR*3*177    <<= must be installed BEFORE `OR*3*186'
+
+Subject: Event delayed orders issues, display issues
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch will fix a problem with pharmacy orders being reinstated
+ when a patient is readmitted following a discharge from observation.  
+ Prior to this patch, it was possible for pharmacy orders to be reinstated 
+ when a patient was readmitted following a discharge from observation and
+ no active discharge auto-dc rule were in place.  Now, if there is no 
+ active discharge auto-dc rule and pharmacy auto-dcs orders upon discharge 
+ from an observation admission, the temporary space that holds these 
+ orders for possible reinstatement is cleared.
+  
+ This patch will also fix a problem with orders appearing on the active 
+ orders list with more than one status.  If a pharmacy order were placed 
+ and finished and then updated multiple times in such a way as to not 
+ create a new order, it was possible for the AC cross reference in file 
+ 100 to have more than one entry.  The AC cross reference indicates active 
+ orders and their corresponding action.  When multiple AC cross references 
+ are in place an order will appear more than once with the appropriate 
+ status based on the action.  A change was made so that the AC cross 
+ reference gets updated correctly.  In addition, a change was made so that 
+ when orders are displayed the AC cross reference is reviewed to be sure 
+ that only the latest, and correct, entry is in place.
+  
+ Additionally, this patch fixes two problems related to delayed surgery 
+ events.  It's possible for delayed orders to be released more than once 
+ if the TIME PAT OUT OR field is entered and then immediately edited to a 
+ new value.  In addition, it's possible for orders to be rejected by a 
+ package if the OPERATING ROOM field for a procedure is not identified.  A 
+ change has been made to ensure that a surgery event is only processed one 
+ time.  A change has also been made so that the patient's current ward 
+ location is used if an operating room has not been entered for the 
+ procedure.
+  
+ A change was made to the detailed display for an order so that the person 
+ who marked the order as signed on chart is now shown.  In addition, the 
+ date/time the order was marked as signed on chart will show as well.
+  
+ A problem was identified with NHCU patients who were ASIH to an 
+ observation type ward that needed to be followed up for continued care.  
+ When the patient went ASIH to observation and then was discharged and 
+ then was sent back to ASIH non-observation, the pharmacy orders did not 
+ reinstate as expected.  Transfers back TO ASIH following an observational 
+ ASIH visit in which the user indicated that the patient would be 
+ immediately readmitted will now reinstate pharmacy orders as expected.  
+ It's important to note that when a patient is ASIH on a non-observation 
+ ward that the receiving site's treating specialty auto-dc rule may be
+ invoked if it's active.  All TO ASIH and FROM ASIH movements include a
+ treating specialty change.  As a result, even a FROM ASIH movement may
+ invoke the treating specialty rule if it's active as treating specialty
+ changes always over-ride.  When the patient is ASIH on an observation
+ ward, then the receiving site's FROM ASIH auto-dc rule will take
+ precedence.  You will want to review your FROM ASIH set-up to be sure 
+ that the correct orders are auto-dcd in this case.
+  
+ NOIS
+ ====
+ BAY-0103-30614     DC/EDIT ORDERS REMAIN ON ACTIVE ORDERS SHEET
+ WPB-0902-31431     LIST DUP IN CPRS
+ MOU-0302-32622     Orders displaying in two statuses
+  
+ The AC cross reference should only have one entry per order.  It was 
+ discovered that multiple AC cross reference entries could exist under 
+ unusual circumstances.  The AC cross reference is now set correctly under 
+ the identified scenario.
+  
+ UNY-0403-11545     AUTODISCONTINUE Not working always
+ For observation patients who have active pharmacy orders and there is no 
+ active discharge auto-dc rule, it is possible to have pharmacy orders 
+ reinstate upon readmission, which is incorrect.  A check is now made to 
+ see if there is an active discharge auto-dc rule.  If there is not then 
+ the temporary space holding the pharmacy orders to be reinstated is 
+ deleted.
+  
+ HWH-0503-40688     Duplicate orders from order set
+ If the TIME PAT OUR OR field is entered and then immediately changed, 
+ it's possible for two processes to be running that will release and/or 
+ auto-dc orders.  A flag is now set so that once processing of a surgery 
+ event begins, no other process can attempt to work with the same surgery 
+ event.
+  
+ BHH-0403-40376     Delayed orders for O.R. causes radiology orders to 
+                    cancel
+ When the TIME PAT OUR OR field is filled in and an active surgery event 
+ is processed, the OPERATING ROOM field is used to determine the location 
+ to print the orders to (if defined) and is used as the ordering location 
+ for the order.  Depending on the package and the setup of the OPERATING 
+ ROOM field it's possible for orders to be rejected.  In addition, if the 
+ OPERATING ROOM field is undefined, it's possible that an order could end 
+ up with no ordering location, which can also cause orders to be 
+ rejected.  A change has been made so that the OPERATING ROOM will be used 
+ to determine where to print orders to.  If no OPERATING ROOM is defined 
+ then the patient's current ward location will be used to determine where 
+ the orders print.  In either case, the patient's current ward location 
+ will be used as the ordering location.
+  
+ MAC-0403-60380     Unsigned orders released as signed on chart
+ When an order is signed as "signed on chart" the user who released the 
+ order with this signature status is not show in the order's detailed 
+ display.  For this type of order, the "released by" line now indicates 
+ who released it and when.
+  
+ LEX-0503-40797     Meds didn't auto dc after specialty transfer
+ When a patient is returning to the NHCU after being ASIH to an 
+ observation ward, the FROM ASIH auto-dc rule at the receiving site will 
+ be invoked.  In this case, the site did not have an active FROM ASIH rule 
+ and therefore orders were not auto-dcing as expected.  In addition, 
+ pharmacy orders were not being reinstated upon readmission to ASIH on a 
+ non-observation ward.
+  
+ ROUTINE SUMMARY: 
+ ================ 
+  
+ The following is a list of the routines included in this patch.  The
+ second line of each of these routines will look like:
+  
+      <tab>;;3.0;ORDER ENTRY/RESULTS REPORTING;**[patch list]**;Dec 17, 1997
+  
+                            CHECK^XTSUMBLD results
+ Routine name         Before Patch          After Patch      Patch List
+ ============         ============          ===========      ==========
+ ORMEVNT                  18914687             21880680    24,45,70,79,141,
+                                                              165,177,186
+ ORMEVNT1                 17761469             18971009   141,165,177,186
+ ORMEVNT2                  7599981              9143536        177,186
+ ORMPS2                   10179181             10307777  94,116,129,134,186
+ ORQ11                    20286165             20427366  7,27,48,72,78,99,
+                                                         94,148,141,177,186
+ ORQ20                    21256519             22591707   12,27,92,94,116,
+                                                             141,177,186
+  
+ INSTALLATION INSTRUCTIONS:  
+ =========================
+ This patch should be loaded during non-peak hours to minimize disruption
+ to users.  Users may be on the system during installation. Installation
+ will take less than 1 minute.
+  
+ *NOTE: Sites should review the setup of their FROM ASIH auto-dc rule.  
+ When a patient is ASIH on an observation ward and is subsequently 
+ discharged, the receiving site's FROM ASIH rule will be invoked.  When a 
+ patient is ASIH to a non-observation ward then the receiving site's 
+ TREATING SPECIALTY auto-dc rule is invoked (if it's active); otherwise,
+ the FROM ASIH auto-dc rule will be used.  It's important to review the
+ FROM ASIH and TREATING SPECIALTY auto-dc rules to be sure they were
+ working as you expect them to.
+  
+ 1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+  
+ 2.  From the Kernel Installation and Distribution System Menu, select the
+     Installation menu.
+  
+ 3.  From this menu, you may elect to use the following options (when 
+     prompted for INSTALL NAME, enter OR*3.0*186):
+       a.  Backup a Transport Global
+       b.  Compare Transport Global to Current System
+       c.  Verify Checksums in Transport Global
+  
+ 4.  Use the Install Package(s) options and select the package OR*3.0*186.
+  
+ 5.  When prompted 'Want KIDS to INHIBIT LOGONS during install? YES//',
+     respond "NO".
+  
+ 6.  When prompted 'Want to DISABLE Scheduled Options, Menu Options and 
+     Protocols? YES//', respond NO.
+
+Routine Information:
+====================
+
+Routine Name:
+  - ORMEVNT
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORMPS2
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORQ11
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORMEVNT1
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORQ20
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORMEVNT2
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : NABER,DAVID A                 Date Entered  : APR 29, 2003
+Completed By: MERRILL,DAVID P               Date Completed: SEP 19, 2003
+Released By : KREUZ,SHERI B                 Date Released : SEP 26, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

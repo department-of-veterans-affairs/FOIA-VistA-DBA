@@ -1,0 +1,243 @@
+
+=============================================================================
+Run Date: OCT 08, 2004                     Designation: ICPT*6*19
+Package : ICPT - CPT/HCPCS CODES              Priority: Mandatory
+Version : 6        SEQ #19                      Status: Released
+                  Compliance Date: NOV 08, 2004
+=============================================================================
+
+Associated patches: (v)ICPT*6*16   <<= must be installed BEFORE `ICPT*6*19'
+
+Subject: CTD - CPT CODE TEXT DESCRIPTORS
+
+Category: 
+  - Data Dictionary
+  - Routine
+  - Enhancement (Mandatory)
+  - Informational
+
+Description:
+============
+
+  The Code Text Descriptor (CTD) project adds the functionality of 
+  versioning the short and long-text descriptions of the International
+  Classification of Diseases (ICD-9-CM), Diagnostic Related Groupings 
+  (DRG), Current Procedural Terminology (CPT-4) and Healthcare Common 
+  Procedure Coding System (HCPCS) classification systems.  Once installed,
+  the long and short text descriptors presented for these classifications
+  will be date-sensitive (versioned) for all text changes occurring since
+  Oct 1, 2002.
+  
+  This patch modifies the data dictionary for CPT/HCPCS Procedure file
+  (file 81) and CPT Modifier file (file 81.3) to record a continuing 
+  history of textual changes in the names and descriptions (short and
+  long text) of diagnosis, procedures and DRG groupings.  Several APIs 
+  have been modified to extract and return the date appropriate text 
+  based on the history stored in the new fields.
+  
+  API SUMMARY
+  ===========
+  
+     $$CPT^ICPTCOD(<code/IEN>,<date>,<source>,<DFN>)
+  
+        CPT/HCPCS Procedure Short Text - This API has been modified to 
+        return a 10 piece "^" delimited string containing information
+        about a CPT/HCPCS Procedure code.  The 3rd piece of the string is
+        the name of the procedure (short text) and is date sensitive.
+        The text returned is date appropriate based on the date passed
+        to the API.  If no date is passed, then TODAY is used and the 
+        current text is returned in piece 3.  If the date passed in 
+        pre-dates text versioning (before Jan 1, 2002), then a warning
+        message will be inserted at the 10th piece, warning the user that
+        the text may be inaccurate. (DBIA 1995)
+  
+     $$CPTD^ICPTCOD(<Code>,<Array>,<DFN>,<Date>)
+  
+        CPT/HCPCS Description Long Text - This API has been modified to 
+        return the date sensitive CPT/HCPCS description (long text).  The
+        text returned is date appropriate based on the date passed to the
+        API.  Output will be in an array designated by an input parameter.
+        If the date passed in pre-dates text versioning (before Jan 1, 2002)
+        then the array will contain a blank line followed by a warning 
+        message that the text may be inaccurate.  (DBIA 1995)
+ 
+     $$CODM^ICPTCOD(<Code>,<Array>,<Source>,<Date>,<DFN>)
+ 
+        CPT Modifier Name Short Text - This API has been modified to return
+        the date sensitive CPT Modifier name (short text) as the first piece
+        of a subscripted array data element.  The text returned is date 
+        appropriate based on the date passed to the API.  Output will be in
+        an array designated by an input parameter.  (DBIA 1995)
+  
+     PERIOD^ICPTAPIU(<Code>,.<Array>)
+  
+        CPT/HCPCS Short Text - This API has been modified to include a
+        date sensitive procedure name (short text) as the 2nd piece of
+        a "^" delimited string.  The string will be returned in an array
+        passed in by reference and subscripted by CPT/HCPCS procedure
+        activation date.  The text returned is date appropriate based on
+        the dates that define a period of activation for a CPT/HCPCS
+        procedure code.  If the history/period has an activation date 
+        and no inactivation date, then TODAY will be used, providing 
+        the current text.  If the history/period has an activation date
+        and an inactivation date, then the inactivation date will be 
+        used, providing the text of the code on the day the period of 
+        activation ended.  (DBIA 1997)
+  
+     $$MOD^ICPTMOD(<Modifier>,<Format>,<Date>,<Source>,<DFN>)
+  
+        CPT Modifier Short Text - This API has been modified to 
+        return a 10 piece "^" delimited string containing information
+        about a CPT Modifier code.  The 3rd piece of the string is
+        the name of the modifier (short text) and is date sensitive.
+        The text returned is date appropriate based on the date passed
+        to the API.  If no date is passed, then TODAY is used and the 
+        current text is returned in piece 3.  If the date passed in 
+        pre-dates text versioning (before Jan 1, 2002), then a warning
+        message will be inserted at the 10th piece, warning the user
+        that the text may be inaccurate.  (DBIA 1996)
+  
+     $$MODD^ICPTMOD(<Code>,<Array>,<DFN>,<Date>)           NEW
+  
+        CPT Modifier Description Long Text - This is a NEW API created to 
+        return the date sensitive CPT Modifier description (long text).  
+        The text returned is date appropriate based on the date passed to 
+        the API.  Output will be in an array designated by an input parameter.
+        If the date passed in pre-dates text versioning (before Jan 1, 2002)
+        then the array will contain a blank line followed by a warning 
+        message that the text may be inaccurate.  (DBIA 1996)
+ 
+     $$MODP^ICPTMOD(<Code>,<Modifier>,<Format>,<Date>,<Source>,<DFN>)
+ 
+        CPT Modifier Name Short Text - This API has been modified so that
+        when a Code/Modifier pair is acceptable, the second piece of the 
+        returned string will contain the date sensitive CPT Modifier
+        Name (short text).  The test returned is date appropriate based on
+        the date passed to the API.  Output will be in the format designated 
+        by an input parameter (format I - Internal, E - External).  
+        (DBIA 1996)
+   
+  DD SUMMARY
+  ==========
+  
+      CPT/HCPCS File #81 (2 new fields)
+  
+         61    SHORT NAME (VERSIONED) (Multiple-81.061), [61;0]
+               .01  VERSION DATE (MD), [0;1]
+               1    SHORT NAME (VERSIONED) (F), [0;2]
+  
+         62    DESCRIPTION (VERSIONED) (Multiple-81.062), [62;0]
+               .01  VERSION DATE (MD), [0;1]
+               1    DESCRIPTION (VERSIONED) (Multiple-81.621), [1;0]
+                    .01  DESCRIPTION (VERSIONED) (MF), [0;1]
+     
+      CPT Modifier File 81.3 (2 new fields)
+  
+         61    NAME (VERSIONED) (Multiple-81.361), [61;0]
+               .01  VERSION DATE (MD), [0;1]
+               1    NAME (VERSIONED) (F), [0;2]
+  
+         62    DESCRIPTION (VERSIONED) (Multiple-81.362), [62;0]
+               .01  VERSION DATE (MD), [0;1]
+               1    DESCRIPTION (VERSIONED) (Multiple-81.372), [1;0]
+                    .01  DESCRIPTION (VERSIONED) (W), [0;1]
+  
+  ROUTINE SUMMARY
+  ===============
+  
+    The second line of each of these routines will look like:
+ 
+        <tab>;;6.0;CPT/HCPCS;**[PATCH LIST]**;May 19, 1997
+ 
+               Checksums    Checksums  
+                  Before        After  
+    Routine        Patch        Patch  Patch List (2nd Line)
+    --------------------------------------------------------
+    ICPT619    Envir Chk      4951418  19
+    ICPTAPIU     6168648      7134333  1,6,12,14,16,19
+    ICPTCOD      6343214      9277596  6,12,13,14,16,19
+    ICPTID        <new>       3366427  19
+    ICPTMOD      5000024      9845869  6,12,13,14,19
+    ICPTSUPT     1987922      2374562  14,19
+   
+  
+  INSTALLATION
+  ============
+  
+       Please refer to the Health Insurance Portability and Accountability 
+      Act (HIPAA) Code Text Descriptors (CTD) Installation Guide for details
+      of the installation procedure for the CTD project.
+  
+      This patch is part of the CTD Utilities combined build, and is the
+      first build/patch to be installed.  Please reference the installation 
+      guide concerning the recommended installation of this combined build.
+  
+      The HIPAA CTD Installation Guide can be found in the following
+      [ANONYMOUS.SOFTWARE] directories:
+  
+                                    Preferred Address
+                                    -------------------------
+       First available FTP server   download.vista.med.va.gov
+    
+       Specific Field Office        FTD Address
+       ---------------------        ------------------------
+       Albany                       ftp.fo-albany.med.va.gov
+       Hines                        ftp.fo-hines.med.va.gov
+       Salt Lake City               ftp.fo-slc.med.va.gov
+    
+       File Name                  Description    Format FTP      Protocol
+       ---------                  -----------    ----------      --------
+       CTD_INSTALL_GUIDE_1_0.PDF  Install Guide  Acrobat Reader  Binary
+ 
+
+Routine Information:
+====================
+
+Routine Name:
+  - ICPTAPIU
+
+
+Routine Checksum:
+
+Routine Name:
+  - ICPTCOD
+
+
+Routine Checksum:
+
+Routine Name:
+  - ICPTMOD
+
+
+Routine Checksum:
+
+Routine Name:
+  - ICPTSUPT
+
+
+Routine Checksum:
+
+Routine Name:
+  - ICPT619
+
+
+Routine Checksum:
+
+Routine Name:
+  - ICPTID
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : ROWE,KIMBALL                  Date Entered  : MAR 16, 2004
+Completed By: STERNHAGEN,SHERRIL            Date Completed: OCT 07, 2004
+Released By : GROOMS,ANTHONY E              Date Released : OCT 08, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

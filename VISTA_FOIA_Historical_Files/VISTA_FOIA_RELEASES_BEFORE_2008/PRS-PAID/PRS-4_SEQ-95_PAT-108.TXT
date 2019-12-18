@@ -1,0 +1,414 @@
+$TXT Created by DILL,MATT at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Friday, 05/05/06 at 15:49
+=============================================================================
+Run Date: JUN 29, 2006                     Designation: PRS*4*108
+Package : PRS - PAID                          Priority: Mandatory
+Version : 4        SEQ #95                      Status: Released
+                  Compliance Date: JUL 30, 2006
+=============================================================================
+
+Associated patches: (v)PRS*4*102   <<= must be installed BEFORE `PRS*4*108'
+
+Subject: UPDATES TO OT RULES FOR PT AND INT EMPLOYEES
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch provides updates to the VistA PAID Enhanced Time and Attendance
+ (ETA) software to correct three software defects and to add a new 80 hour 
+ cap for Intermittent Physicians. The defects and the new 80 hour cap are 
+ described below.
+  
+  
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+ There are no NSRs associated with this patch.
+  
+  
+ This patch addresses the following Remedy Ticket(s):
+ ----------------------------------------------------
+ 1. HD0000000138312   Getting Holiday Was Encapsulated by Non-Pay Warning
+ 2. HD0000000138040   Overtime Entry Invalid or Pay Plan Error Exists
+ 3. HD0000000141551   Part-Time Dr. Getting Paid More Than 80 Hrs. in Pay
+                      Period
+  
+  
+ Overview of Remedy Ticket(s):
+ -----------------------------
+  
+ 1. HD0000000138312   Getting Holiday Was Encapsulated by Non-Pay Warning
+  
+ Patch PRS*4*102 introduced new functionality that reports an exception "HX
+ was encapsulated by non-pay" when a holiday excused posting is
+ encapsulated by without pay or non pay. This new functionality does not
+ work correctly under two different circumstances. The following options
+ can perform the holiday encapsulation check:
+  
+   List Daily Exceptions            [PRSA TPE ONE-SUP]
+   List Daily Exceptions            [PRSA TPE ONE]
+   Display Pay Period Exceptions    [PRSA TPE ALL-SUP]
+   Display Pay Period Exceptions    [PRSA TPE ALL]
+   List Prior Pay Period Exceptions [PRSA SUP PPE]
+   Display Employee Pay Period      [PRSA TPD PP]
+   Display Employee Pay Period      [PRSA PE DISP]
+   Display Employee Pay Period      [PRSA TPD PP-SUP]
+   Post Employee Time               [PRSA TK POST]
+  
+ The two problems are described below:
+  
+ Problem 1A:
+ -----------
+ Software may look in wrong pay period for the prior scheduled tour day.
+  
+ The software attempts to find the first scheduled tour day that is prior
+ to a holiday excused posting as part of the encapsulation checks. If the
+ first prior tour day is in a different pay period from the holiday, the
+ software will correctly move backward across pay periods until the pay
+ period containing the holiday is transmitted to Austin. Once that pay
+ period is transmitted, the software will inappropriately move backward
+ from day 1 of the holiday pay period to day 14 of the holiday pay period
+ instead of moving into the prior pay period. The encapsulation check may
+ return the wrong result when the wrong day is checked for without pay/non
+ pay.
+  
+       Example:
+       ------------------------------------------------
+       Pay Period 2  Day 13  Friday     Scheduled Tour
+                     Day 14  Saturday   Day Off
+       ------------------------------------------------
+       Pay Period 3  Day 1   Sunday     Day Off
+       Pay Period 3  Day 2   Monday     Holiday Excused
+       .
+       .
+       .
+       Pay Period 3  Day 13  Friday     Scheduled Tour
+       Pay Period 3  Day 14  Saturday   Day Off
+       -------------------------------------------------
+  
+ In this example, the software will correctly identify Day 13 in Pay Period
+ 2 as the first scheduled tour day that is prior to the holiday until Pay
+ Period 3 is transmitted. At that point, the software will inappropriately
+ identify Day 13 in Pay Period 3 as the first scheduled tour day that is
+ prior to the holiday when performing the encapsulation checks.
+  
+ Resolution 1A:
+ --------------
+ This patch corrects the software so the correct pay period is used.
+  
+  
+ Problem 1B:
+ -----------
+ A tour partially posted with WP or NP may result in an inappropriate
+ exception message. The software attempts to find the first scheduled tour
+ day prior to the holiday and the first scheduled tour day after the
+ holiday as part of the encapsulation checks. If the first tour day before
+ or after the holiday contains an exception of WP (without pay) or NP (non
+ pay) AND if the 15 minutes of the tour closest to the holiday does not
+ have any exception (such as WP or SL or AL, etc...) the software will fail
+ to recognize that the holiday is not encapsulated by non pay. Instead it
+ will inappropriately keep looking for a different tour day to check.  
+ Depending on how the subsequent tour day is posted, the software could
+ inappropriately consider the holiday to be encapsulated. This patch will
+ fix the software so it will identify this situation as a holiday that is
+ not encapsulated.
+  
+       Example of problem when software is looking for the prior tour day:
+  
+       Day 1  Sunday      Day Off
+       Day 2  Monday      Scheduled Tour entirely posted as WP
+       Day 3  Tuesday     Scheduled Tour with some WP, but last 15 minutes 
+                          worked
+       Day 4  Wednesday   Holiday Excused
+  
+ In this example, the software fails to recognize that the holiday is not
+ encapsulated by without pay due to the last 15 minutes of Tuesday having
+ been worked. It then inappropriately checks Monday as if it was the first
+ prior scheduled tour day before the holiday and incorrectly determines
+ that the time immediately before the holiday was posted as WP.
+  
+ Resolution 1B:
+ --------------
+ This patch corrects the software so only the days on either side of the
+ holiday will be checked.
+  
+  
+ 2. HD0000000138040   Overtime Entry Invalid or Pay Plan Error Exists 
+  
+ Patch PRS*4*102 introduced new business rules for the determination of 
+ overtime. However, some of the software requirements for that patch have
+ since been identified as incorrect. The incorrect software requirements
+ resulted in two problems that will be addressed by patch PRS*4*108.
+  
+ Problem 2A:
+ -----------
+ 80 hours in a pay period should not be used as criteria for overtime.
+  
+ The software requirements for patch PRS*4*102 stated that time worked 
+ outside the normal tour by a part-time or intermittent employee that 
+ exceeded 80 hours in the pay period should be reported as overtime. Upon
+ further review, payroll policy has stated that this use of 80 hours in a
+ pay period as a criteria for overtime is inappropriate.
+  
+ Because the software checks for 80 hours/pay period, it is possible for a
+ timecard to get regular overtime in week 2 (OE) without 40 hours worked in
+ week 2 as long as there was more than 40 hours worked in week 1. This
+ inappropriate overtime would have been rejected by Central PAID with the
+ message "Overtime Entry Invalid or Pay Plan Error Exists."
+  
+ Resolution 2A:
+ --------------
+ Patch PRS*4*108 will resolve the problem for future pay periods by
+ removing the 80 hours/pay period criteria.
+  
+  
+ Problem 2B:
+ -----------
+ Overtime greater than 8 hours/day and greater than 40 hours/week should be
+ reported as Hours Excess 8 Day (DA/DE)
+  
+ The software requirements for patch PRS*4*102 stated that overtime by 
+ part-time and intermittent employees should be reported as regular 
+ overtime (OA/OE) when it exceeded both 8 hours/day and 40 hours/week.  
+ Upon further review, payroll policy has stated that such overtime should
+ be reported as Hours Excess 8 Day (DA/DE).
+  
+ Resolution 2B:
+ --------------
+ Patch PRS*4*108 will update the software accordingly.
+  
+  
+ 3. HD0000000141551   Part-Time Dr. Getting Paid More Than 80 Hrs. in Pay
+                      Period
+  
+  
+ A part-time physician may inappropriately get paid for more than 80 hours
+ in a pay period.
+  
+ Problem 3:
+ ----------
+ There is a check in ETA that prevents part-time doctors from getting paid
+ more than 80 hours in a pay period. This check is based on the count of
+ hours worked in the week.
+  
+ Patch PRS*4*102 implemented a new method to count hours in a week. Per
+ the patch software requirements, unscheduled regular or overtime that is
+ in excess of 8 hours in a day but less than 40 hours in a week should not
+ be included in the counts of hours in the week and pay period.
+    
+ However, part-time doctors are not entitled to receive DA/DE (Hours Excess
+ 8) and hours in excess of 8 are reported on the 8B as UN/US. Since patch
+ PRS*4*102 did not include these hours in the pay period count, it is
+ possible that the sum of normal hours and UN/US could exceed 80 hours in
+ the pay period for a part-time doctor.
+  
+ Resolution 3:
+ -------------
+ This patch modifies the software to count hours in excess of 8 per day in
+ the week and pay period counts when the employee is not entitled to DA/DE
+ (Hours Excess 8). This will prevent part-time doctors from getting paid
+ for more than 80 hours in a pay period.
+  
+  
+ 4. ADD NEW 80 HOUR CAP FOR INTERMITTENT PHYSICIANS
+  
+ While researching the cap for PT Physicians, Payroll Policy determined
+ that a similar cap should be in place for Intermittent Physicians who
+ don't work Daily tours.
+  
+ E-Payroll provided the details for this cap in CR-003 and the software was
+ updated to identify these employees and to cap their hours for the pay
+ period at 80. The cap is for Intermittent Physicians with Pay Plan L and
+ Normal Hours equal to zero. The sum of Unscheduled Regular (UN/US) will 
+ be capped at 80 hours for the pay period.
+  
+  
+ Components Sent With Patch
+ --------------------------
+  
+ The following is a list of the routines included in this patch.  
+ The second line of each of these routines now looks like: 
+   
+      ;;Version;Package;**[patch list]**;Package Release Date 
+   
+                        CHECK^XTSUMBLD results
+  
+ Routine         Before Patch     After Patch     Patch List 
+ -------         ------------     -----------     ----------
+ PRS8HR          6946829          4513153         2,22,29,42,52,102,108
+ PRS8HRSV        7764848          7587446         29,52,102,108
+ PRSATP5         6679319          6286659         102,108
+ PRSATP6         1913596          1924127         102,108
+ PRSATP7         1889390          1899916         102,108
+   
+ Total number of routines - 5
+  
+                        CHECK1^XTSUMBLD results (new method)
+  
+ Routine         Before Patch     After Patch     Patch List 
+ -------         ------------     -----------     ----------
+ PRS8HR          41812105         29706028        2,22,29,42,52,102,108
+ PRS8HRSV        37540189         35348193        29,52,102,108
+ PRSATP5         28158534         26276696        102,108
+ PRSATP6         5009394          5087366         102,108
+ PRSATP7         4880229          4957081         102,108
+   
+ Total number of routines - 5
+  
+  
+ Test Sites:
+ -----------
+ Black Hills HCS
+ Little Rock
+ San Francisco
+ VISN2
+  
+  
+        ================INSTALLATION INSTRUCTIONS =================
+  
+ If installed during the normal workday, it is recommended that the 
+ following selection(s) in the OPTION (#19) file, and all of their 
+ descendants be disabled to prevent possible conflicts while running the 
+ KIDS Install. Other VISTA users will not be affected.
+  
+   Pay Period Certification         [PRSA SUP REV]
+   Decompose Time                   [PRSA PAY DECOMP]
+   List Daily Exceptions            [PRSA TPE ONE-SUP]
+   List Daily Exceptions            [PRSA TPE ONE]
+   Display Pay Period Exceptions    [PRSA TPE ALL-SUP]
+   Display Pay Period Exceptions    [PRSA TPE ALL]
+   List Prior Pay Period Exceptions [PRSA SUP PPE]
+   Display Employee Pay Period      [PRSA TPD PP]
+   Display Employee Pay Period      [PRSA PE DISP]
+   Display Employee Pay Period      [PRSA TPD PP-SUP]
+  
+ Install Time - less than 5 minutes
+  
+  
+ 1.  LOAD TRANSPORT GLOBAL 
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the 
+     INSTALL/CHECK MESSAGE PackMan option.  
+              
+ 2.  START UP KIDS 
+     -------------
+     Start up the Kernel Installation and Distribution System Menu 
+     [XPD MAIN]: 
+    
+          Edits and Distribution ...  
+          Utilities ...  
+          Installation ...  
+    
+ Select Kernel Installation & Distribution System Option: INStallation 
+                                                          ---
+          Load a Distribution 
+          Print Transport Global 
+          Compare Transport Global to Current System 
+          Verify Checksums in Transport Global 
+          Install Package(s) 
+          Restart Install of Package(s) 
+          Unload a Distribution 
+          Backup a Transport Global 
+    
+ 3.  Select Installation Option: 
+     ---------------------------
+     NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+            NAME, enter PRS*4.0*108):
+       
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when this patch
+         is installed.  It compares all components of this patch
+         (routines, DD's, templates, etc.).
+     c.  Verify Checksums in Transport Global - This option will allow
+         you to ensure the integrity of the routines that are in the
+         transport global.
+      
+ 4.  Select Installation Option: Install Package(s) 
+                                 ------------------
+     **This is the step to start the installation of this KIDS patch: 
+    
+     a.  Choose the Install Package(s) option to start the patch
+         install.
+     b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+         YES//' answer NO
+     c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+         Options, and Protocols? YES//' answer YES
+     d.  When prompted 'Enter options you wish to mark as 'Out Of
+         Order':'  Enter the following options:
+  
+           Pay Period Certification         [PRSA SUP REV]
+           Decompose Time                   [PRSA PAY DECOMP]
+           List Daily Exceptions            [PRSA TPE ONE-SUP]
+           List Daily Exceptions            [PRSA TPE ONE]
+           Display Pay Period Exceptions    [PRSA TPE ALL-SUP]
+           Display Pay Period Exceptions    [PRSA TPE ALL]
+           List Prior Pay Period Exceptions [PRSA SUP PPE]
+           Display Employee Pay Period      [PRSA TPD PP]
+           Display Employee Pay Period      [PRSA PE DISP]
+           Display Employee Pay Period      [PRSA TPD PP-SUP]
+  
+     e.  When prompted 'Enter protocols you wish to mark as 'Out Of
+         Order':' press <return>.
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PRS8HR
+    Before: B41812105  After: B29706028  **2,22,29,42,52,102,108**
+ Description of Changes:
+  The overtime eligibility checks for 80 hrs/pp were removed.
+   
+  A new check was added which will cap Intermittent Physicians at 80 hours 
+  in the pay period.  Intermittent Physicians have Pay Plan L and Normal 
+  Hours equal to zero.
+
+Routine Name: PRS8HRSV
+    Before: B37540189  After: B35348193  **29,52,102,108**
+ Description of Changes:
+  The overtime eligibility checks for 80 hrs/pp were removed.
+   
+  G8 was updated to give precedence to Hours Excess 8 Day (DA/DE) when the
+  employee was both greater than 8 hrs/day and 40 hrs/week.
+   
+  TH was updated to include two additional checks when determining if the 
+  current 15 minute segment of time should be included in the count for
+  hours worked in week and hours worked in the pay period.  These checks are
+  for Normal Hours less than 80 and the employee's entitlement to Hours
+  Excess 8/Day.
+
+Routine Name: PRSATP5
+    Before: B28158534  After: B26276696  **102,108**
+ Description of Changes:
+  The reverse looping logic to determine the prior pay period was updated.
+
+Routine Name: PRSATP6
+    Before:  B5009394  After:  B5087366  **102,108**
+ Description of Changes:
+  The looping logic was updated to set the QUIT variable if all seven 
+  segments of the day being reviewed did not contain a form of non-pay.
+
+Routine Name: PRSATP7
+    Before:  B4880229  After:  B4957081  **102,108**
+ Description of Changes:
+  The looping logic was updated to set the QUIT variable if all seven
+  segments of the day being reviewed did not contain a form of non-pay.
+
+
+=============================================================================
+User Information:
+Entered By  : DILL,MATT                     Date Entered  : APR 05, 2006
+Completed By: ROBBINS,BRADLEY               Date Completed: JUN 27, 2006
+Released By : DIETRICH,JON                  Date Released : JUN 29, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,259 @@
+$TXT Created by LUNDEN,JOHN at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Friday, 07/23/04 at 10:12
+=============================================================================
+Run Date: JUL 30, 2004                     Designation: PX*1*143
+Package : PX - PCE PATIENT CARE ENCOUNTER     Priority: Mandatory
+Version : 1       SEQ #110                      Status: Released
+                  Compliance Date: AUG 30, 2004
+=============================================================================
+
+Associated patches: (v)PX*1*108    <<= must be installed BEFORE `PX*1*143'
+                    (v)PX*1*136    <<= must be installed BEFORE `PX*1*143'
+
+Subject: ENCOUNTER TRANSMISSION, CPT PROMPT AND EDIT PROVIDER FIXES
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch addresses three issues. 
+  
+ 1) Editing the Provider information for an encounter is not triggering
+    a re-transmission of the encounter data to the National Patient
+    Care DataBase.
+ 2) The prompts in the CP protocol do not operate correctly when editing a 
+    CPT code that begins with a letter(ex. G0001,J0585,etc).
+ 3) Editing the Provider does not update the User Class when changing an 
+    existing provider to a different Provider.
+  
+ ASSOCIATED ER3(S):
+ ==================
+ N/A
+  
+ ASSOCIATED NOIS:
+ ================
+ NOL-1003-71412 - User needs to verify encounter transmission
+ MAC-0304-61158 - CPT Code Quantity problem   bdj
+ MAC-0101-61529 - User Class doesn't Update   bdj
+  
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Eastern Colorado HCS
+ El Paso,TX
+ Norhtern California HCS
+ Portland,OR
+  
+  
+ NOIS OVERVIEW:
+ ==============
+  
+ 1. NOL-1003-71412 - User needs to verify encounter transmission
+  
+ Problem:
+ --------
+ When the provider information is edited for an encounter this should
+ trigger a re-transmission of the encounter data to the NPCDB. However, it
+ is not. This is because the "before" and "after" data strings are both
+ being set equal to the "after" data string. This is correct for 
+ information that has not been edited but not for information that has 
+ been edited. 
+  
+ Resolution:
+ -----------
+ Use the same logic that the CPT, ICD9, etc.. entries are using. Set the 
+ "before" node equal to the "after" node only if the provider info has not 
+ been edited.
+  
+  
+ 2. MAC-0304-61158 CPT Code Quantity problem   bdj
+  
+ Problem:
+ --------
+ When a CPT code that starts with a letter (ex. G0001) is already entered
+ twice per encounter, the edit prompt does not work properly.
+ If you choose "E" to edit G0001, a display prompt appears on the screen 
+ " Do you want to add another G0001" when you take the default of N.
+ If you answer with Y, it will try to add G0001.
+  
+ Resolution:
+ -----------
+ The CP process incorrectly looks to see if this is a duplicate based on 
+ an incorrect comparison of the internal vs external values. If it 
+ compares external to external then it won't go to the function that 
+ evaluates duplicates.
+  
+ 3. MAC-0101-61529 User Class doesn't Update   bdj
+  
+ Problem:
+ --------
+ When editing an existing Provider on an encounter to a new provider the 
+ User Class does not update, remaining the same as the previous Provider 
+ User Class.
+  
+ Resolution:
+ -----------
+ The PR action process does not modify the User Class when editing an 
+ existing Provider to a new Provider since the logic already sees a User 
+ Class from the previous Provider and does not attempt to establish one 
+ for the entered Provider. The logic now clears the previous User Class
+ from the previously stored Provider to allow the save function to 
+ determine the User Class associated with the new Provider.
+  
+  
+ TECHNICAL:
+ ==========
+  
+  ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;1.0;PCE PATIENT CARE ENCOUNTER;**[patch list]**;Aug 12, 1996
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  PXCEVFI1               5939124              6148844          23,73,112,
+                                                                 136,143
+  PXKENC                 6230108              6277624          15,22,73,
+                                                                 108,143 
+  
+ Code changes in PXKNODE^PXKENC:
+  
+ Before:
+ -------
+  
+ PXKNODE(VFILE,FILESTR,IEN,PXKROOT)      ;
+         N STRR S PXKNODE=""
+         F  S PXKNODE=$O(@VFILE@(IEN,PXKNODE)) Q:PXKNODE=""  D:PXKNODE'=801
+         . I $E($P($P(PXKROOT,","),"(",2),2,7)="PXKENC" D
+         ..; ENCEVENT called
+         .. S @PXKROOT@(FILESTR,IEN,PXKNODE)=$G(@VFILE@(IEN,PXKNODE))
+         . E  I $E($P($P(PXKROOT,","),"(",2),2,6)="PXKCO" D
+         ..; COEVENT called
+         .. F STRR="BEFORE","AFTER" D
+         ... S @PXKROOT@(FILESTR,IEN,PXKNODE,STRR)=$G(@VFILE@(IEN,PXKNODE))
+         Q
+  
+ After:
+ ------
+  
+ PXKNODE(VFILE,FILESTR,IEN,PXKROOT)      ;
+         N STRR S PXKNODE=""
+         F  S PXKNODE=$O(@VFILE@(IEN,PXKNODE)) Q:PXKNODE=""  D:PXKNODE'=801
+         . I $E($P($P(PXKROOT,","),"(",2),2,7)="PXKENC" D
+         ..; ENCEVENT called
+         .. S @PXKROOT@(FILESTR,IEN,PXKNODE)=$G(@VFILE@(IEN,PXKNODE))
+         . I $P(PXKROOT,"""",2)="PXKCO",'$D(@PXKROOT@(FILESTR,IEN)) D
+         ..; COEVENT called
+         .. F STRR="BEFORE","AFTER" D
+         ... S @PXKROOT@(FILESTR,IEN,PXKNODE,STRR)=$G(@VFILE@(IEN,PXKNODE))
+         Q
+  
+ Code changes in EDIT01+27^PXCEVFI1
+  
+ Before:
+ -------
+ I X'=PXCEDIRB,$$DUP(PXCEINP) G EDIT01
+  
+ After:
+ ------
+ I $P(Y,"^",2)'=PXCEDIRB,$$DUP(PXCEINP) G EDIT01
+  
+ New code after line EDIT01+37^PXCEVFI1:
+ -------
+ I PXCECAT="PRV",$P(PXCEAFTR(0),"^",1)>0,PXCEDIRB]"" S 
+ $P(PXCEAFTR(0),"^",6)=""
+  
+  
+ DATA DICTIONARY CHANGES:
+ ========================
+ N/A
+  
+  
+ TEMPLATES:
+ ==========
+ N/A
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ This patch can be installed during business hours, but because some 
+ options will be out of service during the installation process it is 
+ suggested that it be queued for non-peak hours. Installation will take
+ less than 5 minutes.
+  
+ 1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu. [Note: TEXT 
+    PRINT/DISPLAY option in the PackMan menu sill display the patch text
+    only].
+  
+ 2. Review your mapped set.  If the routines are mapped, they should be
+    removed from the mapped set at this time.
+  
+ 3. From the Kernel Installation and Distribution System (KIDS) menu,
+    select the Installation menu.
+  
+ 4. From this menu, you may elect to use the following options:
+    (when prompted for INSTALL NAME enter PX*1.0*143)
+    
+    a. Backup a Transport Global - this option will create a backup message
+       of any routines exported with the patch. It will NOT backup any 
+       other changes such as DDs or templates.
+    b. Compare Transport Global to Current System - this option will allow
+       you to view all changes that will be made when the patch is 
+       installed. It compares all components of the patch (routines, DDs, 
+       templates, etc.).
+    c. Verify Checksums in Transport Global - this option will allow you
+       to ensure the integrity of the routines that are in the Transport
+       Global.
+    d. Print Transport Global - this option will allow you to view the
+       components of the KIDS build.
+  
+ 5. Use the Install Package(s) option and select the package PX*1.0*143.
+  
+ 6. When prompted 'Want KIDS to INHIBIT LOGONs during the install? YES//', 
+    respond NO
+  
+ 7. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+    Protocols? YES//', respond YES.
+  
+ 8. When prompted to select the options you would like to place out of
+    of order, enter the following:
+  
+         PXCE ENCOUNTER DATA ENTRY
+         PXCE ENCOUNTER ENTRY & DELETE
+         PXCE ENCOUNTER ENTRY NO DELETE
+         PXCE ENCOUNTER ENTRY SUPER
+  
+ 9. If routines were unmapped as part of step 2 (DSM for Open VMS sites
+    only), they should be returned to the mapped set once the installation
+    has run to completion.
+
+Routine Information:
+====================
+
+Routine Name:
+  - PXKENC
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCEVFI1
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : LUNDEN,JOHN                   Date Entered  : FEB 06, 2004
+Completed By: ILUSTRISIMO,LUCY              Date Completed: JUL 23, 2004
+Released By : CANNEDY,JOELLEN               Date Released : JUL 30, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

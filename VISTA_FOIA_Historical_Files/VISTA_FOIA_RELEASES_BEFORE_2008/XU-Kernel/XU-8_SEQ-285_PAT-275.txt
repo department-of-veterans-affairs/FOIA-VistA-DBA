@@ -1,0 +1,678 @@
+$TXT Created by FORT,WALLY at NXT.KERNEL.FO-OAKLAND.MED.VA.GOV  (KIDS) on Monday, 06/28/04 at 14:31
+=============================================================================
+Run Date: AUG 23, 2004                     Designation: XU*8*275
+Package : XU - KERNEL                         Priority: Mandatory
+Version : 8       SEQ #285                      Status: Released
+                  Compliance Date: SEP 23, 2004
+=============================================================================
+
+Associated patches: (v)XU*8*120    <<= must be installed BEFORE `XU*8*275'
+                    (v)XU*8*135    <<= must be installed BEFORE `XU*8*275'
+                    (v)XU*8*175    <<= must be installed BEFORE `XU*8*275'
+                    (v)XU*8*181    <<= must be installed BEFORE `XU*8*275'
+                    (v)XU*8*191    <<= must be installed BEFORE `XU*8*275'
+                    (v)XU*8*216    <<= must be installed BEFORE `XU*8*275'
+                    (v)XU*8*222    <<= must be installed BEFORE `XU*8*275'
+                    (v)XU*8*225    <<= must be installed BEFORE `XU*8*275'
+                    (v)XU*8*229    <<= must be installed BEFORE `XU*8*275'
+
+Subject: Kernel GT.M Support
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+  
+ Patch Tracking #: 36273894
+ Test Sites: BCMA Backup development, Dayton OH., Battle Creek MI,
+             Central Alabama, FORUM, Bay Pines MC
+ Blood Bank Clearance: 6/16/2003
+ 
+ This patch adds support for the GT.M Mumps implementation and provides 
+ support for the BCMA backup plan that is running on GT.M over Linux.  The 
+ approach of GT.M is different that other MUMPS vendors. Support is provided 
+ for both GT.M on VMS and GT.M on Linux. Like Cache, GT.M does not have 
+ UCI's.  Unlike other MUMPS implementations, each routine is a separate file 
+ on the host OS. GT.M does not have a ZLOAD or ZSAVE, so several utilities 
+ had to be fixed.
+ 
+ *********                                                          *******
+ ********* Several of the routines for loading and saving routine   *******
+ ********* source code are based on the assumption that all source  *******
+ ********* routines are in one big directory.                       *******
+ *********                                                          *******
+ 
+ There is a open source version of GT.M for Linux at http://sourceforge.net/
+ 
+ The routine ZFOO is used to start a GT.M routine from a host system
+ script.  This could be used to start TaskMan or other jobs started
+ from the OS.  The routine ZJFOO is used to run a detached routine from
+ a host system script.
+ 
+ There is a new Option "XUS Process count cleanup" (XU PROC CNT CLUP) that
+ only a GT.M site would need to be scheduled to run.
+ 
+ For sites installing on GT.M, a %RO file (routine out) can be provided 
+ that can be loaded with %RI (routine in). After this is installed, KIDS 
+ loads will be supported.
+ 
+ Other fixes.
+ NOIS: PUG-0103-50326, GRJ-0702-51555, SBY-0702-32314
+ Site reported this error "<NOLINE>DECRYP+5^XUSRB1". This was caused
+ by the input to the API having a null value.
+ Fix: Check that the input length is greater that 1, else return "".
+ 
+ NOIS: DAY-0303-41394
+ The code at QSUB+3^ZTMKU was missing a dot so D GROUP("SSUB(NODE)") was 
+ always done.
+ Fix: The code was changed to bring everything onto one line.
+ 
+ NOIS: SLC-0402-51731
+ If TaskMan parameters were setup wrong, TaskMan would try and move a 
+ task to the requested system, but just adding it to the current queue in 
+ a endless loop.
+ Fix: TaskMan now keeps a count (in New field "Hop Count" (#33)) of each 
+ move and stops after 3 attempts.
+ 
+ NOIS: FAV-0801-71737
+ Problem: The option XUINDEX was calling the wrong routine.
+ Fix: Change option to call XINDEX.
+ 
+ NOIS: CPH-0203-41734
+ Problem: The TaskMan cleanup routine XUTMK would remove the 
+ ^%ZTSCH("IO",<device>) node if that was the only node in the "IO" list.  
+ When a site is monitoring there "RESOURCE" devices this would cause the 
+ resource to stop being listed.  This did not cause any problem for TaskMan 
+ but did cause user concern.
+ Fix: The XUTMK routine will not clear "RES" type entries.
+ 
+ TaskMan will job off a routine once each hour to sync the ^%ZTSCH("SUB")
+ nodes with a revised count. The actual sync in done in the new routine
+ %ZTMS5.
+ 
+ New parameter in the LISTEN^%ZISTCP and LISTEN^%ZISTCPS API's.
+ LISTEN(socket, rtn to run, exit rule)
+ Exit rule is Mumps code that will set ZISQUIT=1 if the LISTENER should stop.
+ It is called about every 30 seconds in the listen loop.  This doesn't work
+ for DSM because the wait is done in the application.
+ As we move to use VMS TCPIP service this will stop being a problem.
+ 
+ New entry points added to XUTMDEVQ.
+ DEV(ZTRTN,ZTDESC,%VAR,%VOTH,%ZIS,IOP,%WR)
+     ;  single queue ask for device
+     ;  ZTRTN - required - [tag]^routine that TaskMan will run
+     ; ZTDESC - optional - default to name of [tag]~routine
+     ;   %VAR - optional - single value or passed by reference
+     ;          this will be used to S ZTSAVE()
+     ;          can be a string of variable names separated by ';'
+     ;            each ;-piece will be used as a subscript in ztsave
+     ;  %VOTH - optional - passed by reference
+     ;          %voth(sub)="" or explicit value
+     ;             sub - this is any other %ZTLOAD variable besides 
+     ;                   ZTRTN,ZTDESC,ZTIO,ZTSAVE
+     ;                   example:  %VOTH("ZTDTH")=$H
+     ;   %ZIS - optional - default value "MQ" - passed by reference
+     ;          standard %ZIS variable array for calling device handler
+     ;    IOP - optional - IOP variable as defined in Kernel device handler
+     ;    %WR - optional - if %WR>0 then write text to the screen as to
+     ;                     whether or not the queueing was successful
+     ;
+     ;  return: ZTSK value if successfully queued
+     ;          0 if run ztrtn without queuing
+     ;         -1 if unsuccessful device call or failed %ztload call
+ 
+ NODEV(ZTRTN,ZTDESC,%VAR,%VOTH,%WR)
+     ;  single queue no device needed
+     ;  see DEV for parameter descriptions and return values
+ 
+ QQ(%RTN,%DESC,%VAR1,%VOTH1,%ZIS,IOP,%WR,%RTN2,%DESC2,%VAR2,%VOTH2)
+     ;  double queuing - queue up the second routine to device, but do not
+     ;                   schedule the task in TaskMan
+     ;                   queue up the first job to ZTIO="" and schedule it
+     ;  %RTN - required - [tag]^routine for the 1st job to be run (usually a
+     ;                    search and build sorted data type process)
+     ; %DESC - optional - ZTDESC value for 1st job (default [tag]~routine)
+     ; %VAR1 - optional - ZTSAVE values for 1st job - see %VAR description above
+     ;%VOTH1 - optional - 1st job - see %VOTH description above
+     ;  %ZIS - optional - see %ZIS description above, except for one diff
+     ;         the 2nd job will be tasked to this device call
+     ;         exception: IF $D(%ZIS)=0 then default value is "MQ" and call
+     ;                    device handler
+     ;                    IF $D(%ZIS)=1,%ZIS="" then queue 2nd job also with
+     ;                       ZTIO=""  i.e., do not do device handler call
+     ;   IOP - optional - see above - default value "Q" - if IOP is passed
+     ;                    and IOP does not start with "Q;" then "Q;" will
+     ;                    be added
+     ;   %WR - optional - see above
+     ; %RTN2 - required - [tag]^routine for the 2nd job to be run (usually a
+     ;                    print job)
+     ;%DESC2 - optional - ZTDESC value for 2nd job (default [tag]~routine)
+     ; %VAR2 - optional - ZTSAVE values for 2nd job - see %VAR description above
+     ;         if %VAR1 is not passed and $D(%VAR) then also send %VAR
+     ;         data to 2nd tasked job.  If $D(%VAR1) then do not send %VAR
+     ;         data to 2nd tasked job.
+     ;%VOTH2 - optional - 2nd job - see %VOTH description above - usually not
+     ;         needed - note: if %VOTH1("ZTDTH") is passed it will be ignored
+     ;         as it is necessary to S ZTDTH="@" for the 2nd job - this will
+     ;          create the task but not schedule it
+     ;
+     ;  return: if successfully queued, return ztsk1^ztsk2 where
+     ;           ztsk1 = ZTSK value of 1st job, ztsk2 = ZTSK value of 2nd job
+     ;         -1 if unsuccessful device call or failed %ztload call
+     ;
+ 
+ New fields added:
+ STANDARD DATA DICTIONARY #9.8 -- ROUTINE FILE 
+ STORED IN ^DIC(9.8,  
+ DATA          NAME                  GLOBAL        DATA
+ ELEMENT       TITLE                 LOCATION      TYPE
+ -------------------------------------------------------------------------------
+ 9.8,7.3       PATCH LIST AT CHECKSUM TIME 4;3 FREE TEXT
+ 
+               INPUT TRANSFORM:  K:$L(X)>200!($L(X)<2) X
+               LAST EDITED:      DEC 17, 2002 
+               HELP-PROMPT:      Answer must be 2-200 characters in length. 
+               DESCRIPTION:      This field holds the patch list from the second
+                                 line of the routine at the time the checksum
+                                 was updated by the XTRUTL routine.  
+ 
+ 9.8,7.4       KIDS INSTALL DATE      4.1;1 DATE
+ 
+               INPUT TRANSFORM:  S %DT="ESTX" D ^%DT S X=Y K:Y<1 X
+               LAST EDITED:      DEC 17, 2002 
+               DESCRIPTION:      This field will be updated by KIDS when a
+                                 package is installed.  A cross reference on
+                                 this field could provide a way for GT.M sites
+                                 to link in new code on the fly. 
+ 
+ STANDARD DATA DICTIONARY #14.4 -- TASKS FILE  
+ STORED IN ^%ZTSK( 
+ DATA          NAME                  GLOBAL        DATA
+ ELEMENT       TITLE                 LOCATION      TYPE
+ -------------------------------------------------------------------------------
+ 14.4,33       Hop Count              .02;3 NUMBER
+ 
+               INPUT TRANSFORM:  K:+X'=X!(X>99)!(X<0)!(X?.E1"."1N.N) X
+               LAST EDITED:      JAN 23, 2003 
+               HELP-PROMPT:      Type a Number between 0 and 99, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:      This field is used by Taskmanager to keep track
+                                 of the number of times that a task is moved to
+                                 a new system trying to start it.  After 3 hops
+                                 taskman will reject the task.  This will help
+                                 keep it from filling up a disk.
+ 
+ 14.4,54       Job                    .1;4 NUMBER
+ 
+               INPUT TRANSFORM:  K:+X'=X!(X>999999999)!(X<0)!(X?.E1"."1N.N) X
+               LAST EDITED:      JAN 23, 2003 
+               HELP-PROMPT:      Type a Number between 0 and 999999999, 0 
+                                 Decimal Digits 
+               DESCRIPTION:      This field holds the $JOB value for the process
+                                 that ran the task.                               
+ 
+ Routine Summary
+ The following routines are included in this patch.  The second line of each
+ of these routines now looks like:
+  ;;8.0;KERNEL;**[Patch List]**;Jul 10, 1995
+ 
+                  Checksum
+ Routine         Old       New      Patch List
+ XPDI1         7418895   7616142    **58,61,95,108,229,275**
+ XPDIJ         7357972   7540144    **2,21,28,41,44,68,81,95,108,124,229,275**
+ XPDUTL        3806531   4038763    **21,28,39,81,100,108,137,181,275**
+ XTER         17970380  17840347    **63,275**
+ XUCIGTM           n/a   1947187    **275**
+ XUINP275          n/a   2582172    **275**
+ XUSCNT            n/a   3004852    **275**
+ XUSRB1       10106207  10127192    **28,82,135,275**
+ XUTMDEVQ       294750   2825488    **20,120,275**
+ XUTMK         8719089   8214461    **49,67,118,169,222,275**
+ ZFOO              n/a    183641    **275**
+ ZIS           8887232   8887232    **18,23,69,112,199,191,275**
+ ZIS4GTM           n/a   8115850    **275**
+ ZISC          8069178   7834364    **24,36,49,69,199,216,275**
+ ZISFGTM           n/a   5438955    **275**
+ ZISHGTM           n/a   6882761    **275**
+ ZISHGUX           n/a   6622803    **275**
+ ZISTCP        3208452   6096918    **36,34,59,69,118,225,275**
+ ZISTCPS       1281564   3357154    **78,118,127,225,275**
+ ZISUTL        2825748   2851743    **18,24,34,69,118,127,199,275**
+ ZJFOO             n/a    184125    **275**
+ ZOSFGTM           n/a   7752749    **275**
+ ZOSFGUX           n/a   8611914    **275**
+ ZOSV2GTM          n/a   2422098    **275**
+ ZOSVGTM           n/a   4119278    **275**
+ ZOSVGUX           n/a   7982434    **275**
+ ZTER         18198227  18252736    **8,18,32,24,36,63,73,79,86,112,118,
+                                      162,275**
+ ZTER1         4369129   4524467    **18,24,36,49,112,162,275**
+ ZTLOAD1       6923394   8797193    **112,118,127,162,275**
+ ZTLOAD2       4207916   4043323    **1,67,118,275**
+ ZTM           9005201   8719671    **24,36,64,67,118,127,136,275**
+ ZTM0          5998062   6499897    **42,36,67,88,118,127,136,175,275**
+ ZTM1          5465675   5574267    **118,127,275**
+ ZTM2          3672059   3857411    **23,118,275**
+ ZTM3          3114917   3245152    **275**
+ ZTM5          4418054   4605118    **24,36,118,127,136,162,275**
+ ZTMB         10483870   8891040    **275**
+ ZTMGRSET     14200672  12620037    **34,36,69,94,121,127,136,191,275**
+ ZTMKU         8841182   8883544    **118,127,275**
+ ZTMON1        9616420   9417693    **36,118,127,275**
+ ZTMS          5607220   6428218    **2,18,24,36,67,94,118,127,136,162,275**
+ ZTMS0         3316930   3069668    **24,118,275**
+ ZTMS1         8379658   7796936    **36,49,104,118,127,136,275**
+ ZTMS2         7090453   7220009    **2,18,23,36,67,118,127,163,167,175,
+                                      199,275**
+ ZTMS3         9642200   9277556    **1,18,36,49,64,67,94,118,127,136,175,275**
+ ZTMS4         5100103   4123981    **136,275**
+ ZTMS5             n/a    579173    **275**
+ ZTMS7         2052318   1901785    **1,118,127,136,275**
+ ZUGTM             n/a   3295134    **275**
+ ZUSET         1042105   1191618    **162,170,225,275**
+ 
+ List of preceding patches: 120, 135, 175, 181, 191, 216, 222, 225, 229
+ Sites should use CHECK^XTSUMBLD to verify checksums.
+ 
+ =========================================================================
+ Installation:
+ 
+ >>>Do not allow users to log in to the system during installation.
+ >>>TaskMan does need to be stopped.
+ 
+   1.  DSM sites - If any of these routines are mapped,
+       you will need to disable mapping for the affected routines.
+ 
+   2.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This
+       option will load the KIDS package onto your system.
+ 
+   3.  The patch has now been loaded into a Transport global on your
+       system. You now need to use KIDS to install the Transport global.
+       On the KIDS menu, under the 'Installation' menu, use the following
+       options:
+ 
+          Verify Checksums in Transport Global
+          Print Transport Global
+          Compare Transport Global to Current System
+          Backup a Transport Global
+ 
+  4.   Users will need to be off the system.
+       This patch can not be queued.
+       Stop TaskMan. (DO STOP^ZTMKU)
+       Inhibit users from login into the system.
+ 
+   5.  Installation will take less than 2 minutes.
+       In Programmer mode:
+       Use "D ^XPDKRN" then
+          Install Package(s)  'XU*8.0*275'
+                               ==========
+ 
+       Want KIDS to Rebuild Menu Trees Upon Completion of Install? YES// YES
+         
+       Want KIDS to INHIBIT LOGONs during the install? YES// YES
+ 
+       Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// NO
+       
+   8.  After installing this patch,
+       Cache/GT.M Sites - you don't need to move anything, skip this step.
+       DSM sites - you need to move several routines from
+       your production account to each manager account:
+ 
+       ZIS
+       ZIS4GTM
+       ZISC
+       ZISFGTM
+       ZISHGTM
+       ZISHGUX
+       ZISTCP
+       ZISTCPS
+       ZISUTL
+       ZOSFGTM
+       ZOSFGUX
+       ZOSV2GTM
+       ZOSVGTM
+       ZOSVGUX
+       ZTER
+       ZTER1
+       ZTLOAD1
+       ZTLOAD2
+       ZTM
+       ZTM0
+       ZTM1
+       ZTM2
+       ZTM3
+       ZTM5
+       ZTMB
+       ZTMGRSET
+       ZTMON1
+       ZTMS
+       ZTMS0
+       ZTMS1
+       ZTMS2
+       ZTMS3
+       ZTMS4
+       ZTMS5
+       ZTMS7
+       
+       
+   9.  And in the manager account,  (Cache/GT.M sites remain in VAH)
+       All sites:
+       DO RELOAD^ZTMGRSET
+       Select the System
+       Patch number to load: 275
+                             ===
+ 
+  10.  DSM Sites, after patch has installed, rebuild your map set.
+ 
+  11.  Enable user's login.
+       Start TaskMan.  (DO ^ZTMB)
+ 
+ =========================================================================
+ 
+
+Routine Information:
+====================
+
+Routine Name:
+  - XPDIJ
+
+
+Routine Checksum:
+
+Routine Name:
+  - XPDUTL
+
+
+Routine Checksum:
+
+Routine Name:
+  - XTER
+
+
+Routine Checksum:
+
+Routine Name:
+  - XUCIGTM
+
+
+Routine Checksum:
+
+Routine Name:
+  - XUINP275
+
+
+Routine Checksum:
+
+Routine Name:
+  - XUSCNT
+
+
+Routine Checksum:
+
+Routine Name:
+  - XUSRB1
+
+
+Routine Checksum:
+
+Routine Name:
+  - XUTMDEVQ
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZFOO
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZIS
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZIS4GTM
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZISC
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZISFGTM
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZISHGTM
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZISHGUX
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZISTCP
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZISTCPS
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZISUTL
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZJFOO
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZOSFGTM
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZOSFGUX
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZOSV2GTM
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZOSVGTM
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZOSVGUX
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTER
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTER1
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTLOAD1
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTLOAD2
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTM
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTM0
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTM1
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTM2
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTM3
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTM5
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTMB
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTMGRSET
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTMKU
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTMON1
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTMS
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTMS1
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTMS2
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTMS3
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTMS4
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTMS7
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZUGTM
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZUSET
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTMS5
+
+
+Routine Checksum:
+
+Routine Name:
+  - ZTMS0
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : FORT,WALLY                    Date Entered  : DEC 12, 2002
+Completed By: SINGH,GURBIR                  Date Completed: AUG 16, 2004
+Released By : TILLIS,LEWIS                  Date Released : AUG 23, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

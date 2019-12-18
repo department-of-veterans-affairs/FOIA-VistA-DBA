@@ -1,0 +1,244 @@
+$TXT Created by BOWEN,MARY JANE at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 05/19/08 at 14:59
+=============================================================================
+Run Date: JUL 24, 2008                     Designation: ICD*18*33
+Package : ICD - DRG GROUPER                   Priority: Mandatory
+Version : 18        SEQ #32                     Status: Released
+                  Compliance Date: AUG 24, 2008
+=============================================================================
+
+Associated patches: (v)ICD*18*27   <<= must be installed BEFORE `ICD*18*33'
+                    (v)ICD*18*30   <<= must be installed BEFORE `ICD*18*33'
+                    (v)ICD*18*31   <<= must be installed BEFORE `ICD*18*33'
+                    (v)ICD*18*32   <<= must be installed BEFORE `ICD*18*33'
+
+Subject: DRG CORRECTIONS
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch will fix incorrect DRG groupings.
+  
+ ASSOCIATED REMEDY TICKETS:
+ =========================
+ 1. HD0000000233286 - DRG issues
+ 2. HD0000000239947 - several groups of codes grouping to incorrect DRG
+    Duplicate:     HD0000000240468 - VIP (QUADRAMED) is pulling DRG 251 
+                   which is correct based on procedure. Vista pulls over 
+                   DRG 248 which is incorrect. 
+    Duplicate:     HD0000000247374 - wrong DRG.
+  
+ 3. HD0000000239801 - PTF Calculating DRG3, SHOULD be DRG4
+  
+ 4. HD0000000226718 - several DRG's calculating incorrectly
+ 5. HD0000000207009 - QMed DRG 468 vice PTF 174.
+ 6. HD0000000241831 - Problem with DRG 217 as ungroupable DRG470
+    
+  ASSOCIATED NSR'S:
+  ================
+  N/A 
+     
+  PARTICIPATING TEST SITES:
+  ========================
+  Connecticut HCS
+  Houston, TX
+  Tampa, FL
+     
+  REMEDY OVERVIEW:
+  ===============
+  1. HD0000000233286 - DRG issues
+      
+  Problem:
+  ========
+  Certain DRG codes are not calculating correctly
+  a. DRG 829 calculating as 847 (FY08)
+  b. DRG 029 calculating as 032 (FY08)
+          
+  Solution:
+  =========
+  a. Per patch ICD*18*22:
+     "New codes V58.11 and V58.12 replaced V58.1 on October 1, 2005.
+     The Federal Register entry on Aug. 12, 2005 (p.47635) failed to
+     include DRG 406-08 which can also apply. As a result, the DRG Grouper
+     failed in its calculation. Routines ICDTLB6B and ICDTLB61 will be
+     modified and pre-init routine ICD1822P will add DRGs 406-08 to the
+     possible DRGs for V58.11 and V58.12, thus resulting in DRG 492."
+     For FY08 the DRG codes 406-408 were changed to DRG codes 826-830.
+     Pre-init routine ICD1833P will add these DRGs to the possible DRGs for
+     V58.11 and V58.12, thus resulting in DRG 829.
+  b. Pre-init routine ICD1833P will add Major OR code B to MAJOR O.R. 
+     PROC FIELD (#20) for ICD procedure code 03.98 IN ICD
+     OPERATION/PROCEDURE FILE(#80.1). Change ICDTBL0 DRG26 to use - 
+     I ICDMAJ["B" D DRG28
+      
+  2. HD0000000239947 - several groups of codes grouping to incorrect DRG   
+    
+  Problem:
+  ======== 
+  a. DRG 247 calculating as 246 in Vista (FY08)
+  b. DRG 250 Calculating as 248 in Vista (FY08)
+  c. DRG 251 calculating as 248 in Vista (FY08)
+  d. DRG 282 Calculating as 280 in Vista (FY08)
+  e. DRG 829 Calculating as 847 in Vista (FY08)
+   
+  Solution:
+  =========
+  a. Problem corrected by fixing ICDTBL2 to set DRG to 247 if ICDMCC not 2.
+  b. Changed ICDTBL2 in linetag CMS516 to account for procedures 
+     36.06,92.27 or 36.07 - if they are not there D DRG251, if there D
+     DRG248. 
+  c. Fix is the same as fix for item b- going to linetag DRG251 does the
+     following and fixes both DRGs 250(b) and 251(c):
+        DRG251 S ICDRG=$S(ICDMCC=2:250,1:251) Q
+  d. Per site saying 410.71 is not a MCC when the principle diagnosis is 
+     another cardiovascular condition, changed ICDTBL2 to look for 
+     diagnosis 410.71 and diagnosis 428.0, then set DRG=282.
+  e. Fix is in previous ticket updating diagnosis codes v58.11 and v58.12
+  
+  
+  3. HD0000000239801 - PTF Calculating DRG3, SHOULD be DRG4 (FY08)
+  
+  Problem:
+  ======== 
+  a. Incorrect DRG calculation as 3 and should have DRG4.
+  
+  Solution:
+  =========
+  a. Changed ICDTBL0 to look for CC when determining which DRG to use, 
+     correcting DRG to the NON CC DRG4.
+  
+  
+  4. HD0000000226718 - several DRG's calculating incorrectly
+  
+  Problem:
+  ======== 
+  a. DRG 121 calculating as DRG 122 in Vista (FY07)
+  b. DRG 863 calculating as DRG 856 in Vista (FY08)
+  
+  Solution:
+  =========
+  a. Change ICDDRG0 to look for ICDSD["s"  to determine if code should
+     be 121 or 122.  
+  b. Change ICDTBL8 to look for ICDOR'["O" set to DRG862 to point 
+     to the correct DRG codes.
+  
+  5. HD0000000207009 - QMed DRG 468 vice PTF 174.
+  
+  Problem:
+  ======== 
+  a. DRG 982 calculating as DRG 378 in Vista (FY08)
+     also for FY07 DRG 468 calculates as 174
+  Solution:
+  =========
+  a. Change ICDDRG0 to look for ICDORI["O" instead of ICDORNI
+  
+  
+  6. HD0000000241831 - Problem with DRG 217 as ungroupable DRG470 (FY08)
+  
+  Problem:
+  ======== 
+  a. DRG 217 calculating as ungroupable 470 in Vista
+     
+  Solution:
+  =========
+  a. Changed ICDTLB3C - Add S DRG=217 to line DRG217. Line was
+     missing.
+  
+  INSTALLATION INSTRUCTIONS:
+  ==========================
+  This patch may be run with users on the system, but it is recommended
+  that Medical Records coders be off the system. 
+  Installation will take less than 2 minutes.
+   
+  1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu to unload
+      the KIDS distribution included with this message.
+  
+      NOTE:  If the required patches are not installed, the transport 
+             global will be removed.  If the transport global is removed
+             you will need to repeat this step.
+  
+  2.  From the Kernel Installation and Distribution System Menu, select
+      the Installation menu.
+   
+  3.  From this menu, you may elect to use the following options
+      (when prompted for INSTALL NAME, enter ICD*18.0*33):
+      a.  Compare Transport Global to Current System  - this option will
+          allow you to view all changes that will be made when the patch
+          is installed.  It compares all components of the patch (routines,
+          DDs, templates, etc.).
+      b.  Verify Checksums in Transport Global - this option will
+          allow you to ensure the integrity of the routines that are in
+          the Transport Global.
+      c.  Print Transport Global - this option will allow you to view the
+          components of the KIDS build.
+      d.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will not
+          backup any other changes such as DD's or templates.
+    
+  4.  Use the Install Package(s) option and select the package ICD*18.0*33.
+  
+  
+  5.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+      YES//', respond NO.
+   
+  6.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols? YES//', respond NO. 
+   
+  7. Routine ICD1833P can be deleted after the patch has been
+     successfully installed.  
+   
+  POST-INSTALL INSTRUCTIONS:
+  ==========================
+   
+      Following installation of this patch, it is necessary to run the
+      DG PTF UPDATE TRANSFER DRG's/Update Transfer DRG's for Current FY
+      option in order to make the transfer DRGs correspond to the
+      appropriate grouper.
+      This should be done soon after installing the patch, but should 
+      be run at a time when PTF options are not in use.
+       
+      This option updates/recalculates the transfer DRGs for PTF records
+      opened during the current fiscal year.
+       
+      The option is locked with the DG PTFSUP security key.  The Menu path
+      is PTF Menu/Update DRG Information Menu/Update Transfer DRGs for
+      current FY.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;18.0;DRG Grouper;**[Patch List]**;Oct 13,2000;Build 8
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: ICD1833P
+    Before:       n/a   After:  B2101687  **33**
+Routine Name: ICDDRG0
+    Before: B60142349   After: B59649900  **1,2,7,10,14,17,20,24,27,30,
+                                           31,32,33**
+Routine Name: ICDTBL0
+    Before: B14595541   After: B14918551  **31,33**
+Routine Name: ICDTBL2
+    Before: B37828418   After: B38947646  **31,32,33**
+Routine Name: ICDTBL8
+    Before: B17158747   After: B17255131  **31,33**
+Routine Name: ICDTLB3C
+    Before: B22984557   After: B23196579  **24,27,33**
+ 
+Routine list of preceding patches: 32
+
+=============================================================================
+User Information:
+Entered By  : BOWEN,MARY JANE               Date Entered  : FEB 27, 2008
+Completed By: CHANDARANA,RISHAN             Date Completed: JUL 24, 2008
+Released By : HOLMES,MARY                   Date Released : JUL 24, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

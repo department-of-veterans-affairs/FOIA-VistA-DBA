@@ -1,0 +1,329 @@
+$TXT Created by SMITH,ROBERT at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 11/07/06 at 14:24
+=============================================================================
+Run Date: MAR 27, 2007                     Designation: PSA*3*60
+Package : PSA - DRUG ACCOUNTABILITY           Priority: Mandatory
+Version : 3        SEQ #47                      Status: Released
+                  Compliance Date: APR 27, 2007
+=============================================================================
+
+Associated patches: (v)PSA*3*15    <<= must be installed BEFORE `PSA*3*60'
+                    (v)PSA*3*21    <<= must be installed BEFORE `PSA*3*60'
+                    (v)PSA*3*33    <<= must be installed BEFORE `PSA*3*60'
+                    (v)PSA*3*50    <<= must be installed BEFORE `PSA*3*60'
+
+Subject: MISC FIXES TO PREVENT DUPLICATE PROCESSING AND ERRORS
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ This patch addresses the following problems:
+  
+ 1.    67941     PSAPROC1     undefined in PSAPROC1
+ If a Controlled Substance (CS) drug has not been assigned to a master 
+ vault, the  subsequent code path  is killing variables it will be needing 
+ later when it returns from the call to perform vault selection.
+  
+ 2.    68039     PSAPROC3     default date
+ The data element in invoices that represents the receive date, under 
+ terms of the McKesson contract, is the date they deposit the invoice into 
+ their output directories for sites to access. The default date in VistA DA 
+ terms had been and is, the received at site date. Management has 
+ determined it is best to require the users to manually enter the receive 
+ date than to present a default date which is never correct and should not 
+ be accepted.
+  
+ 3.    68532     PSADRUGP   <UNDEFINED>DISP~PSADRUGP
+ The "Enter/Edit a Drug" [PSA PV DRUG ENTER/EDIT] option errors when the
+ drug's inactivation date is less than the day of the data entry.
+  
+ 4.   131384     PSAVER2     Error using Verify Invoice [PSA VERIFY INVOICES]
+ When verifying invoices, the application errors if the data in the processed
+ invoice contains a semicolon.
+  
+ 5.   134108     PSAVER, PSAVER1, PSAVER4        Invoice approved twice
+ During Invoice Verification, multiple users are allowed to select the same
+ invoice and verify it.  The quantities in the DRUG file (#50) are updated 
+ each time the invoice is verified.
+  
+ 6.   154985     PSAVER1    Invoice not verified, but message appears
+ Invoices are being marked as verified at the line item level when using the 
+ Verify Invoices [PSA VERIFY INVOICES] option and selecting an invoice from 
+ the <<< EDIT INVOICES TO BE VERIFIED SCREEN >>>
+  
+ ASSOCIATED NOIS/REMEDY:
+ =======================
+ 67941
+ 68039
+ 68532
+  DUPLICATE 118106
+ 131384
+ 134108
+  DUPLICATE 147662
+ 154985
+  DUPLICATE 162506
+  
+ ASSOCIATED NSR(s): 
+ ================== 
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ ========================= 
+ VA Central TX
+ Phoenix
+ Hampton VA
+  
+ NOIS/REMEDY OVERVIEW:
+ ==================== 
+ 1.    67941     PSAPROC1     undefined in PSAPROC
+  
+ PROBLEM
+ ======= 
+ If a Controlled Substance (CS) drug has not been assigned to a master 
+ vault, the  subsequent code path is killing variables it will be needing 
+ later when it returns from the call to perform vault selection.
+  
+ RESOLUTION
+ ========== 
+ The killing of the variable has been removed.
+  
+ 2.    68039     PSAPROC3     default date
+  
+ PROBLEM
+ =======
+ The data element in invoices that represents the receive date, under 
+ terms of the McKesson contract, is the date they deposit the invoice into 
+ their output directories for sites to access. The default date in VistA DA 
+ terms had been and is, the received at site date. Management has 
+ determined it is best to require the users to manually enter the receive 
+ date than to present a default date which is never correct and should not 
+ be accepted.
+  
+ RESOLUTION
+ ==========
+ The presenting of a date as a default has been removed.
+  
+ 3.    68532     PSADRUGP    <UNDEFINED>DISP~PSADRUGP
+  
+ PROBLEM
+ ======= 
+ The "Enter/Edit a Drug" [PSA PV DRUG ENTER/EDIT] option errors when the
+ drug's inactivation date is less than the day of the data entry.
+  
+ RESOLUTION
+ ==========
+ PSADRUGP routine will be modified at the DISP tag to test for the variable
+ PSA660.  If it does not exist, PSA660 variable will be set with the data 
+ from the global ^PSDRUG(drug#,660
+  
+ 4.   131384     PSAVER2     Error using Verify Invoice [PSA VERIFY INVOICES]
+  
+ PROBLEM
+ =======
+ When verifying invoices, the application errors if the data in the processed
+ invoice contains a semicolon.  Some of the invoice processing fields are free
+ text with no screening and are filed individually.  When the invoice is 
+ verified, that data is then concatenated together in the DR variable used
+ by the FileMan API ^DIE.  This API uses the semicolon as a field
+ separator.  If the data in the individual fields contain a semicolon, the
+ ^DIE API errors. 
+  
+ RESOLUTION
+ ==========
+ PSAVER2 routine will be modified to set the variable DR="5///^S X=PSADJ"
+ instead of DR="5///"_PSADJ.  This will allow the ^DIE API to file the 
+ data correctly, even when it contains characters that control its
+ functionality.
+  
+ 5.   134108     PSAVER, PSAVER4     Invoice approved twice
+  
+ PROBLEM
+ ======= 
+ During Invoice Verification, multiple users are allowed to select the same
+ invoice and verify it.  The quantities in the DRUG file (#50) are updated 
+ each time the invoice is verified.
+  
+ RESOLUTION
+ ==========
+ Correcting this problem is a two step process.
+  
+ a. INVOICE STATUS field (#2) in the INVOICE DATA sub-file (#58.8112) of
+ the DRUG ACCOUNTABILITY ORDER file (58.811) will have the value 'L' 
+ LOCKED VERIFYING added to the data dictionary.
+  
+ b.  Routines PSAVER & PSAVER4 will be modified to set the INVOICE STATUS
+ to 'L' LOCKED VERIFYING for each invoice prior to the start of the 
+ verification process.  At the end of the verification process, the INVOICE
+ STATUS will be changed to 'V' VERIFIED.  If the INVOICE STATUS of the
+ selected invoice is 'L' or 'V' the routine will move on to the next invoice
+ selected for processing.
+  
+ 6.   154985     PSAVER1     Invoice not verified, but message appears
+  
+ PROBLEM
+ =======
+ Invoices are being marked as verified at the line item level when using the 
+ "Verify Invoices" [PSA VERIFY INVOICES] option and selecting an invoice from 
+ the <<< EDIT INVOICES TO BE VERIFIED SCREEN >>>.  This occurs once the user 
+ enters a date at the Date Received prompt and then answers NO to the "Do you
+ want to change the invoice's status to Verified?" prompt.
+  
+ RESOLUTION
+ ==========
+ The prompt "Do you want to change the invoice's status to Verified?" at 
+ CHG^PSAVER1 will be moved to FIELDS+8^PSAVER1 to stop the verification
+ process when the user answers NO.
+  
+  
+ DATA DICTIONARY:
+ ===============
+  
+ BEFORE
+ ======
+ 58.8112,2   INVOICE STATUS         0;3 SET
+  
+             Invoice Status            
+                                 'P' FOR PROCESSED; 
+                                 'V' FOR VERIFIED; 
+                                 'C' FOR COMPLETED; 
+             LAST EDITED:      NOV 29, 1996 
+             HELP-PROMPT:      Enter the status of the invoice. 
+             DESCRIPTION:      The INVOICE STATUS field contains the status of
+                               the invoice. When the invoice is completed, the
+                               drug balances are incremented with the
+                               quantities received on the invoice.  
+  
+             CROSS-REFERENCE:  58.811^ASTAT 
+                               1)= S ^PSD(58.811,"ASTAT",$E(X,1,30),DA(1),DA)=
+                               ""
+                               2)= K ^PSD(58.811,"ASTAT",$E(X,1,30),DA(1),DA)
+                               3)= DO NOT DELETE!
+                               This cross-reference is used to locate all
+                               invoices with a specific status. 
+ AFTER
+ =====
+ 58.8112,2   INVOICE STATUS         0;3 SET
+  
+             Invoice Status            
+                               'P' FOR PROCESSED; 
+                               'V' FOR VERIFIED; 
+                               'C' FOR COMPLETED; 
+                               'L' FOR LOCKED VERIFYING; 
+             LAST EDITED:      MAR 21, 2006 
+             HELP-PROMPT:      Enter the status of the invoice. 
+             DESCRIPTION:      The INVOICE STATUS field contains the status of
+                               the invoice. When the invoice is completed, the
+                               drug balances are incremented with the
+                               quantities received on the invoice.  
+  
+             CROSS-REFERENCE:  58.811^ASTAT 
+                               1)= S ^PSD(58.811,"ASTAT",$E(X,1,30),DA(1),DA)=
+                               ""
+                               2)= K ^PSD(58.811,"ASTAT",$E(X,1,30),DA(1),DA)
+                               3)= DO NOT DELETE!
+                               This cross-reference is used to locate all
+                               invoices with a specific status.  
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ =========================
+ Suggested time to install: non-peak requirement hours. The patch should be
+ installed when NO Drug Accountability users are on the system.
+ Installation can be queued.
+  
+  
+ Install Time - less than 5 minutes (unless otherwise indicated)
+  
+  1.  Start up the Kernel Installation and Distribution System Menu
+      [XPD MAIN]: 
+  
+           Edits and Distribution ...  
+           Utilities ...  
+           Installation ...  
+  
+      Select Kernel Installation & Distribution System Option: Installation
+                                                               ---
+           1      Load a Distribution
+           2      Verify Checksums in Transport Global
+           3      Print Transport Global
+           4      Compare Transport Global to Current System
+           5      Backup a Transport Global
+           6      Install Package(s)
+                  Restart Install of Package(s)
+                  Unload a Distribution
+  
+  2.  From this menu, you may elect to use the following options
+      (When prompted for the INSTALL NAME, enter PSA*3.0*60):
+  
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will
+          not backup any other changes such as DD's or templates.
+      b.  Compare Transport Global to Current System - This option
+          will allow you to view all changes that will be made when
+          this patch is installed.  It compares all components of this
+          patch (routines, DD's, templates, etc.).
+      c.  Verify Checksums in Transport Global - This option will
+          allow you to ensure the integrity of the routines that are
+          in the transport global.
+  
+  3.  Use the Install Package(s) option and select the package
+      PSA*3.0*60.
+  
+      a.  When prompted 'Want KIDS to INHIBIT LOGONs during the
+          install? YES//', answer NO.
+      b.  When prompted 'Want to DISABLE Scheduled Options and Menu 
+          Options and Protocols? YES//', answer NO.
+  
+ ROUTINE SUMMARY:
+ =============== 
+ The following is a list of the routines included in this patch.  
+ The second line of each of these routines now looks like: 
+  
+   <tab>;;3.0; DRUG ACCOUNTABILITY/INVENTORY INTERFACE;**[PATCH LIST]**; 10/24/97
+  
+                        CHECK^XTSUMBLD results
+ Routine name      Before Patch         After Patch       Patch List
+ ============      ============         ===========       ===========
+ PSADRUGP              13010759            13063692       3,21,60
+ PSAPROC1              21679292            21671542       12,21,50,60
+ PSAPROC3              27987674            28029174       3,60
+ PSAVER                34809088            35746412       60
+ PSAVER1               21304024            24070316       33,60
+ PSAVER2               20761451            20814752       3,12,21,60
+ PSAVER4                6254747             9889646       15,60
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PSADRUGP
+    Before: B22313421  After: B22701616  **3,21,60**
+Routine Name: PSAPROC1
+    Before: B40499741  After: B40487833  **12,21,50,60**
+Routine Name: PSAPROC3
+    Before: B51547340  After: B51608562  **3,60**
+Routine Name: PSAVER
+    Before: B73058041  After: B76434485  **60**
+Routine Name: PSAVER1
+    Before: B45709811  After: B53904582  **33,60**
+Routine Name: PSAVER2
+    Before: B48083431  After: B48168766  **3,12,21,60**
+Routine Name: PSAVER4
+    Before:  B8379472  After: B15659954  **15,60**
+
+=============================================================================
+User Information:
+Entered By  : SMITH,ROBERT J                Date Entered  : MAR 22, 2006
+Completed By: HEFFERNAN,COREY               Date Completed: MAR 23, 2007
+Released By : VECE,VIRGINIA                 Date Released : MAR 27, 2007
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

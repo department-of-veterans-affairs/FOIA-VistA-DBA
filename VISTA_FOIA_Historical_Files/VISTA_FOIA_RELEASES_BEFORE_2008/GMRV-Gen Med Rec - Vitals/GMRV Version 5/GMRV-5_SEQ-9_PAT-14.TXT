@@ -1,0 +1,224 @@
+$TXT Created by MCNEILE,KEN at DEV.DEV.FO-HINES.MED.VA.GOV  (KIDS) on Wednesday, 11/02/05 at 08:43
+=============================================================================
+Run Date: JAN 05, 2006                     Designation: GMRV*5*14
+Package : GMRV - GEN. MED. REC. - VITALS      Priority: Mandatory
+Version : 5         SEQ #9                      Status: Released
+                  Compliance Date: FEB 05, 2006
+=============================================================================
+
+
+Subject: TRAP ERROR IN GMRVPCE1/DD CORRECTION/ERROR CHECK FOR INVALID HOS LOCATION
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch will address three issues relating to the Vitals and 
+ Measurements Package.  First is a subscript error.  The subscript error is
+ related to a data push that inadvertently pushed out incorrect data.  The
+ incorrect data should have been trapped cleanly but ended in a subscript
+ error.  The correction for the data was another data push with correct
+ data. The second issue deals with a data dictionary irregularity that will
+ be corrected with a pre-init routine.  The third issue will add a
+ hospital/location validation check when entering vitals data from the CPRS
+ cover page.
+      
+  
+ ASSOCIATED REMEDY TICKETS
+ =========================
+ HD0000000107096 - GMRVPCE1 errors not trapped
+      
+ HD0000000107673 - <SUBSCRIPT>DUPCHK+6^GMRVPCE1
+ Duplicates:
+ HD0000000107717 - NFL- <SUBSCRIPT>DUPCHK+6^GMRVPCE1
+ HD0000000107756 - <SUBSCRIPT>DUPCHK+6^GMRVPCE1
+ HD0000000107883 - <SUBSCRIPT>DUPCHK+6^GMRVPCE1
+ HD0000000108245 - <SUBSCRIPT>DUPCHK+6^GMRVPCE1
+ HD0000000108300 - <SUBSCRIPT>DUPCHK+6^GMRVPCE1 errors again
+ HD0000000108556 - PRN is not responding
+      
+ HD0000000107482 - Data Dictionary irregularity
+ Duplicate:
+ HD0000000098915 - GMRV 120.51 - field ORDERABLE - Fileman Verify
+      
+ HD0000000113449 - Add check for 'Z' hospital/location in Vitals Data
+                   Validation when entering data via CPRS
+  
+  
+ REMEDY TICKET OVERVIEW: 
+ ==============
+ HD0000000107096
+ When a missing APCE cross reference data error is encountered 
+ the system does not exit gracefully.
+      
+ HD0000000107673
+ Subscript error resulting from the bad data push 
+  
+ HD0000000107482
+ At some sites, there is a field definition (ORDERABLE) that is not being
+ used and conflicts with field PCE ABBREVIATION.
+      
+ HD0000000113449
+ When entering vitals from the CPRS Cover Page, the system allows
+ entry of a hospital/location with a 'Z' type - Other Location.
+      
+ Problem  #1
+ -------
+ HD0000000107096 & HD0000000107673
+ When a missing APCE cross reference data error from file 
+ ^GMRD(120.51,GMRV VITAL TYPE is encountered the system 
+ does not allow the user to be made aware of the error and exit 
+ gracefully.  Instead the System errors out with an UNDEF error 
+ because the logic in the code should have stopped when the 
+ error was detected.
+      
+ NOTE:  Remedy calls 107673, 107717, 107756, 107883, 108245 and
+ 108300 are indirectly related to 107096.  A data push is responsible 
+ for the error.  These calls resulted in a subscript error.  They should 
+ have been displayed to the user in a GUI error message but ended 
+ in a subscript error because of the problem reported in 107096.   
+      
+ Resolution #1
+ ----------
+ A modification will be made to routine GMRVPCE1 to exit the routine 
+ at the appropriate time giving the user the pre-defined error message 
+ and allowing them to exit gracefully.
+      
+ The above correction will resolve calls 107673, 107717, 107756, 107883,
+ 108245 and 108300 by ensuring that the subscript error no longer occurs.  
+ The other issue that caused the error to appear in the first place was 
+ resolved by subsequent data pushes.
+      
+  
+ Problem # 2
+ -------
+ HD0000000107482
+ In some sites, an unneeded field definition resides in the Data 
+ Dictionary ^DD(120.51,IEN,0).  This field was defined with the same node
+ and piece as the field PCE ABBREVIATION, node 0, piece 7.
+      
+ Resolution #2
+ ----------
+ A Preinit routine will be distributed with this patch that will check for
+ the existence of the ORDERABLE field and remove it from the data 
+ dictionary if it exists.
+      
+  
+ Problem #3
+ ----------     
+ HD0000000113449
+ During Vitals Data Entry in CPRS (Cover Page), the user is permitted to
+ enter Hospital/Locations of a 'Z'- Other Locations type.  
+  
+ Resolution #3
+ ----------  
+ A modification will be made in routine GMRVPCE1 to validate the 
+ Hospital/Location at the time of vitals data entry in CPRS (Cover
+ Page).  An error will be returned to the user using existing broker 
+ calls to alert them to the fact that an invalid Hospital/Location is being
+ input.
+     
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Anchorage, AK
+ Ann Arbor, MI
+ N. FL./S. GA. VHS
+      
+      
+ ROUTINE SUMMARY
+ ===============
+ Before installing this patch, the GMRVPCE1 routine on your system is a  
+ version 4 routine.  The second line is:
+  
+     ;;4.0;Vitals/Measurements;;Apr 25, 1997
+  
+ After installing this patch, the routine will be version 5. 
+  
+      
+ The following routines are included in this patch.  The second line of each
+ of these routines now looks like:
+  
+     ;;5.0;GEN. MED. REC. - VITALS;**[Patch List]**;Oct 31, 2002
+      
+    
+                         CHECK1^XTSUMBLD results
+  
+  Routine name      Before Patch          After Patch      Patch List
+  ============      ============          ===========      ==========
+   GMRVPCE1         16758878               18749286         14
+   GMRVP514            new                 1473095          14
+      
+                         CHECK^XTSUMBLD results
+       
+  Routine name      Before Patch          After Patch      Patch List
+  ============      ============          ===========      ==========
+   GMRVPCE1         6604282               7158298          14
+   GMRVP514           new                 1043052          14
+      
+  
+ Note: GMRVP514 is a pre-init routine which will be automatically deleted 
+ after installation.
+  
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+ This patch can be installed at any time.  Users do not need to be off
+ the system.  Install time will be less than 2 minutes.
+      
+  1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu. [Note:
+     TEXT PRINT/DISPLAY option in the PackMan menu will display the
+     patch text only].
+      
+  2. From the Kernel Installation and Distribution System (KIDS)
+     menu, select the Installation menu.
+      
+  3. From this menu, you may elect to use the following options:
+     (when prompted for INSTALL NAME, enter GMRV*5.0*14)
+      
+     a.  Backup a Transport Global - this option will create a backup
+         message of any routines exported with the patch.  It will
+         NOT backup any other changes such as DDs or templates.
+     b.  Compare Transport Global to Current System  - this option
+         will allow you to view all changes that will be made when
+         the patch is installed.  It compares all components of the
+         patch (routines, DDs, templates, etc.).
+     c.  Verify Checksums in Transport Global - this option will
+         allow you to ensure the integrity of the routines that are
+         in the transport global.
+     d.  Print Transport Global - this option will allow you to view
+         the components of the KIDS build.
+      
+  4. Use the Install Package(s) option and select the package
+     GMRV*5.0*14.
+      
+  5. When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+     YES//', respond NO
+      
+  6. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+     Protocols? YES//', respond NO.
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: GMRVP514
+    Before:            After:  B1473095  **14**
+Routine Name: GMRVPCE1
+    Before: B16758878  After: B18749286  **14**
+
+=============================================================================
+User Information:
+Entered By  : MCNEILE,KEN                   Date Entered  : AUG 15, 2005
+Completed By: WERNER,GARY                   Date Completed: JAN 03, 2006
+Released By : GIVENS,DALE S                 Date Released : JAN 05, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

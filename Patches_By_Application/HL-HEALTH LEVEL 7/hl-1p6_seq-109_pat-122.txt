@@ -1,0 +1,540 @@
+$TXT Created by HSU,RAYMOND at NXT.KERNEL.FO-OAKLAND.MED.VA.GOV  (KIDS) on Friday, 12/14/07 at 13:28
+=============================================================================
+Run Date: JAN 22, 2008                     Designation: HL*1.6*122
+Package : HL - HEALTH LEVEL SEVEN             Priority: Mandatory
+Version : 1.6       SEQ #109                    Status: Released
+                  Compliance Date: FEB 22, 2008
+=============================================================================
+
+Associated patches: (v)XU*8*275    <<= must be installed BEFORE `HL*1.6*122'
+                    (v)HL*1.6*132  <<= must be installed BEFORE `HL*1.6*122'
+
+Subject: Locking code enhancement, don't ping function and others
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ This patch enhances the locking code for the MPI Cache v5.2 client/server 
+ processing model, in addition to other functions and fixes as follows:
+  
+ 1. Enhances the locking code for the MPI Cache v5.2 client/server
+    processing model.
+  
+ 2. Enhances code to receive application ACK message for HL7 v2.5 and 
+    beyond with MSA as 3rd segment.
+  
+ 3. Cleans variables except Kernel related variables (Kernel API: 
+    KILL^XUSCLEAN) for each individual message of listeners as well as
+    incoming filer of non-TCP link message (cleans variables for TCP
+    message has been done in patch HL*1.6*120) to prevent the application
+    variables unexpectedly to be carried from message to message during the
+    processing.
+  
+ 4. Allows to add the 3rd component as receiving facility (for creating 
+    MSH-6 or BHS-6 field) to the HLL("LINKS") array for dynamic addressing
+    (Please refer to 11.5 Dynamic Addressing of the HL7 Site Manager &
+    Developer Manual).
+  
+ 5. Adds new field, STOP PROCESSING IN-QUEUE(#4.9), to HL LOGICAL LINK 
+    FILE:
+  
+    870,4.9       STOP PROCESSING IN-QUEUE 0;9 SET
+                                 '0' FOR NO; 
+                                 '1' FOR YES; 
+               LAST EDITED:      JUL 18, 2006 
+               HELP-PROMPT:      Setting this field to 'Y' prevents the 
+                                 incoming filer from processing the
+                                 incoming messages queued in this link.
+               DESCRIPTION:      Setting this field to 'Y' prevents the 
+                                 incoming filer from processing the
+                                 incoming messages queued in this link.
+  
+ 6. Adds new field, TCP/IP OPENFAIL TIMEOUT (#400.09), to HL LOGICAL LINK
+    FILE:
+  
+    870,400.09    TCP/IP OPENFAIL TIMEOUT 400;9 NUMBER
+  
+               INPUT TRANSFORM:  K:+X'=X!(X>60)!(X<1)!(X?.E1"."1N.N) X
+               LAST EDITED:      AUG 02, 2006 
+               HELP-PROMPT:      Type a Number between 1 and 60, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:      Enter the number of seconds for the TCP/IP
+                                 Openfail Timeout. The default is 5 seconds
+                                 if this field is left blank.
+  
+ 7. Adds new field, DESCRIPTION (#1), to HL LOGICAL LINK FILE:
+  
+    870,1         DESCRIPTION            3;0   WORD-PROCESSING #870.02
+  
+               HELP-PROMPT:      Enter a description for this link 
+               DESCRIPTION:      This field contains a brief explanation 
+                                 of this link.
+  
+ 8. Fixed bugs with "Openfail" state of the single listener and TaskMan 
+    based multi-listener.
+  
+  
+ 9. Provides the functionality running on the Greystone Technology MUMPS
+    (GT.M) environment.
+  
+ 9.1 Flush Character: The method by which TCP network device send-buffers
+     are flushed was changed from using the exclamation character ("!") to
+     a more generic flush variable using indirection because GT.M uses only
+     the pound character ("#"). The Kernel package made the changes to use
+     the indirection variable IOF to accommodate the difference in the
+     various environments.
+  
+ 9.2 Remote Host Disconnect:  Code was added to enable detection of a
+     remote host's disconnect.  The GT.M environment sets the $DEVICE
+     variable after a READ to detect that a remote host is disconnected.
+  
+ 9.3 The example for the GT.M/VMS TCPIP Services COM file could be found at
+     the bottom of sub-routine, GTMUCX^HLCSTCPA.
+  
+ 10. Locks global (L +^HLCS("HLTCPLINK",<ien of link>)) to avoid more than
+     one processes running on the same link (client link, single listener,
+     or TaskMan multi-listener).
+  
+ 11. Defines listeners and client link process name: 
+     For Listener with process name as HLs:5020-273241 (format: "HLs:"<port
+     number>"-"<the last allowed digits of $J>), where 5020 is the port
+     number and 273241 is the last 6 digits of $J.
+     For Client link with process name as "HLc:5000-123-78" (format:
+     "HLc:"<port number>"-"<ien of file #870>"-"<the last allowed digits of
+     $J>), where 5000 is the port number, 123 is the ien of file
+     #870 (Logical Link file) and 78 is the last 2 digits of $J.
+  
+ 12. Fixes a bug for Remedy 63964 read buffer error for MPI with error line
+     code at: RDBLK+1~HLCSTCP1:2, %DSM-E-NUMBER
+  
+ 13. Saves the message control id in variable HLRESLT("HLMID") and the <ien
+     of file #773> in variable HLRESLT("IEN773") for direct connect API:
+     DIRECT^HLMA.
+  
+ 14. Data in field, DNS Domain (#.08) of HL Logical Link file (#870) is 
+     applied to DNS call (superior to field, MailMan Domain [#.03]), when
+     ip address is not valid.
+  
+ 15. Modified code to prevent from  writing to the network buffer with
+     "maxstring" error, such as when there are more than one <ASCII 13>
+     characters consecutively inserted.
+  
+ 16. Modified code by applying $I command to message counters stored in 
+     fields, #5 through #8, of HL Logical Link file (#870) for efficiency.
+  
+ 17. Fixed the link problem to initiate the TCP link only as a background
+     job.
+  
+ 18. Adds new fields to HL COMMUNICATION SERVER PARAMETERS FILE as follows
+     and enhances code to prevent user from "pinging" non-Vista site using
+     the "Ping (TCP Only)" option of the HL7 menu:
+  
+     869.3,70      PING IP                7;0 Multiple #869.34
+                   LAST EDITED:      JAN 30, 2007 
+  
+     869.34,.01      PING IP                0;1 FREE TEXT (Multiply asked)
+  
+                 INPUT TRANSFORM:  K:$L(X)>240!($L(X)<7) X
+                 LAST EDITED:      JAN 30, 2007 
+                 HELP-PROMPT:      Multiple IP addresses may be entered, 
+                                   separated by "," as delimiter. 
+                 DESCRIPTION:      Use this multiple to enter the IP 
+                                   address which is allowed to "ping,"
+                                   using the "Ping (TCP Only)" option, for
+                                   pinging Vista site with Vista HL7
+                                   installed. Multiple IP addresses may be
+                                   entered, separated by "," as delimiter.
+                                   It is not necessary to enter an IP
+                                   address here for a link with a domain
+                                   containing the partial domain which has
+                                   been entered in the "PING DOMAIN
+                                   (PARTIAL)" multiple. 
+  
+                 CROSS-REFERENCE:  869.34^B 
+                                 1)= S 
+                                     ^HLCS(869.3,DA(1),7,"B",$E(X,1,30),DA)=""
+                                 2)= K 
+                                     ^HLCS(869.3,DA(1),7,"B",$E(X,1,30),DA)
+  
+  
+     869.3,80      PING DOMAIN (PARTIAL)  8;0 Multiple #869.35
+                   LAST EDITED:      JAN 30, 2007 
+  
+     869.35,.01      PING DOMAIN (PARTIAL)  0;1 FREE TEXT (Multiply asked)
+  
+                 INPUT TRANSFORM:  K:$L(X)>240!($L(X)<7) X
+                 LAST EDITED:      JAN 30, 2007 
+                 HELP-PROMPT:      Multiple partial or full domain names 
+                                   may be entered, separated by "," as
+                                   delimiter.
+                 DESCRIPTION:      Use this multiple to enter the partial
+                                   or full domain name, such as
+                                   "MED.VA.GOV" which is allowed to "ping,"
+                                   using the "Ping (TCP Only)" option, for
+                                   pinging Vista site with Vista HL7
+                                   installed.  
+                                    
+                                   Multiple partial or full domain names 
+                                   may be entered, separated by "," as
+                                   delimiter.  
+  
+                 CROSS-REFERENCE:  869.35^B 
+                                 1)= S 
+                                     ^HLCS(869.3,DA(1),8,"B",$E(X,1,30),DA)=""
+                                 2)= K 
+                                     ^HLCS(869.3,DA(1),8,"B",$E(X,1,30),DA)
+  
+  
+     869.3,90      DON'T PING PORT        9;0 Multiple #869.36
+  
+     869.36,.01      DON'T PING PORT        0;1 FREE TEXT (Multiply asked)
+  
+                 INPUT TRANSFORM:  K:$L(X)>240!($L(X)<1) X
+                 LAST EDITED:      JAN 30, 2007 
+                 HELP-PROMPT:      Multiple port numbers may be entered, 
+                                   separated by "," as delimiter. 
+                 DESCRIPTION:      Use this multiple to enter the port 
+                                   number, for those links which are not
+                                   allowed to "ping," using the "Ping (TCP
+                                   Only)" option.
+                                    
+                                   Multiple port numbers may be entered,
+                                   separated by "," as delimiter.  
+  
+                 CROSS-REFERENCE:  869.36^B 
+                                 1)= S 
+                                     ^HLCS(869.3,DA(1),9,"B",$E(X,1,30),DA)=""
+                                 2)= K 
+                                     ^HLCS(869.3,DA(1),9,"B",$E(X,1,30),DA)
+  
+  
+     869.3,91      DON'T PING LINK NAME (PARTIAL) 10;0 Multiple #869.391
+                   LAST EDITED:      JAN 30, 2007 
+  
+     869.391,.01 DON'T PING LINK NAME (PARTIAL) 0;1 FREE TEXT (Multiply
+                                                asked)
+  
+                 INPUT TRANSFORM:  K:$L(X)>240!($L(X)<3) X
+                 LAST EDITED:      JAN 30, 2007 
+                 HELP-PROMPT:      Multiple partial or full link names may 
+                                   be entered, separated by "," as
+                                   delimiter. 
+                 DESCRIPTION:      Use this multiple to enter the partial 
+                                   or full link name, for those links which
+                                   are not allowed to "ping," using the
+                                   "Ping (TCP Only)" option.
+                                    
+                                   Multiple partial or full link names may 
+                                   be entered, separated by "," as
+                                   delimiter.  
+  
+                 CROSS-REFERENCE:  869.391^B 
+                                 1)= S 
+                                     ^HLCS(869.3,DA(1),10,"B",$E(X,1,30),DA)=""
+                                 2)= K 
+                                     ^HLCS(869.3,DA(1),10,"B",$E(X,1,30),DA)
+  
+  
+     869.3,92      DON'T PING IP          11;0 Multiple #869.392
+  
+     869.392,.01     DON'T PING IP          0;1 FREE TEXT (Multiply asked)
+  
+                 INPUT TRANSFORM:  K:$L(X)>240!($L(X)<7) X
+                 LAST EDITED:      JAN 30, 2007 
+                 HELP-PROMPT:      Multiple IP addresses may be entered, 
+                                   separated by "," as delimiter. 
+                 DESCRIPTION:      Use this multiple to enter the IP 
+                                   address, for those links which are not
+                                   allowed to "ping," using the "Ping (TCP
+                                   Only)" option.
+                                    
+                                   Multiple IP addresses may be entered,
+                                   separated by "," as delimiter.    
+  
+                 CROSS-REFERENCE:  869.392^B 
+                                 1)= S 
+                                     ^HLCS(869.3,DA(1),11,"B",$E(X,1,30),DA)=""
+                                 2)= K 
+                                     ^HLCS(869.3,DA(1),11,"B",$E(X,1,30),DA)
+  
+  
+     869.3,93      DON'T PING DOMAIN (FULL) 12;0 Multiple #869.393
+  
+     869.393,.01 DON'T PING DOMAIN (FULL) 0;1 FREE TEXT (Multiply asked)
+  
+                 INPUT TRANSFORM:  K:$L(X)>240!($L(X)<7) X
+                 LAST EDITED:      JAN 30, 2007 
+                 HELP-PROMPT:      Multiple full domain names may be 
+                                   entered, separated by "," as delimiter.
+                 DESCRIPTION:      Use this multiple to enter full domain 
+                                   name, for those links which are not
+                                   allowed to "ping," using the "Ping (TCP
+                                   Only)" option.
+                                    
+                                   Multiple full domain names may be 
+                                   entered, separated by "," as delimiter.
+  
+                 CROSS-REFERENCE:  869.393^B 
+                                 1)= S 
+                                     ^HLCS(869.3,DA(1),12,"B",$E(X,1,30),DA)=""
+                                 2)= K 
+                                     ^HLCS(869.3,DA(1),12,"B",$E(X,1,30),DA)
+  
+ 19. Introduces new field (101,773.5), ACK MODE SET IN SUBSCRIBER to
+     PROTOCOL FILE and enhances code for setting the MSH-15 and MSH-16 from
+     subscriber protocol instead of Event driver protocol.  The new field 
+     will be distributed with Kernel patch XU*8*399:
+  
+     101,773.5     ACK MODE SET IN SUBSCRIBER 773;5 SET
+  
+                                 '1' FOR YES; 
+                                 '0' FOR NO; 
+               LAST EDITED:      APR 17, 2007 
+               HELP-PROMPT:      Enter 'Y' for 'YES' for setting the MSH-15
+                                 and MSH-16 from subscriber protocol
+                                 instead of Event driver protocol.
+               DESCRIPTION:      A 'YES' of this field will indicate that 
+                                 MSH-15 and MSH-16 will be taken from
+                                 Subscriber protocol instead of the
+                                 value(s) defined in Event driver protocol.
+  
+  
+ 20. The length of Node name of the HL7 Link Monitor screen has been 
+     changed from 8 characters to 10 characters.
+  
+ 21. Enhanced the excluding subscribers, defined in HLP("EXCLUDE
+     SUBSCRIBER",I) = "<ien of subscriber>" array, for dynamic addressing
+     using HLL("LINKS",n) array. Please refer to patch HL*1.6*132 for
+     the general use of ""EXCLUDE SUBSCRIBER."
+  
+ 22. Adds field, DESCRIPTION (#1),of HL LOGICAL LINK FILE to ScreenMan 
+     Form, HL7 LOGICAL LINK.
+  
+ 23. Reduced to call API, STAT^%%ZTLOAD, only once when the "Systems Link 
+     Monitor" option is invoked to prevent from slowing down to display 
+     the Monitor screen after Kernel patch XU*8*446 is released.
+  
+ 24. Adds routine, HLCSGTM, for Linux TCP/IP listener.  The sample Linux 
+     xinetd script could be found at the bottom of the routine.
+  
+ 25. Edit field, MESSAGE ID (#2) and "C" cross-reference, of HL7 MESSAGE
+     ADMINISTRATION FILE (#773):
+  
+     773,2         MESSAGE ID             0;2 FREE TEXT
+  
+               INPUT TRANSFORM:  K:$L(X)>60!($L(X)<1) X
+               LAST EDITED:      AUG 01, 2007 
+               HELP-PROMPT:      Answer must be 1-60 characters in length 
+               DESCRIPTION:      This is an unique identifier associated 
+                                 with a message.
+  
+               FIELD INDEX:      C (#115)    REGULAR    IR    LOOKUP & 
+                                 SORTING
+                   Short Descr:  This is a regular index of new-style
+                                 cross-reference on the Message ID field
+                   Description:  This cross reference allows a user to 
+                                 look up an HL7 message by its unique
+                                 message ID.  
+                     Set Logic:  S ^HLMA("C",$E(X,1,60),DA)=""
+                    Kill Logic:  K ^HLMA("C",$E(X,1,60),DA)
+                    Whole Kill:  K ^HLMA("C")
+                          X(1):  MESSAGE ID  (773,2)  (Subscr 1)  (Len 60)
+                                 (forwards)
+  
+ 26. Edit field, MESSAGE ID (#6) and "C" cross-reference, of HL7 MESSAGE 
+     TEXT FILE (#772):
+  
+     772,6         MESSAGE ID             0;6 FREE TEXT
+  
+               INPUT TRANSFORM:  K:$L(X)>60!($L(X)<1) X
+               LAST EDITED:      AUG 01, 2007 
+               HELP-PROMPT:      Answer must be 1-60 characters in length 
+               DESCRIPTION:
+                                 The unique ID for this HL7 message.  
+  
+               FIELD INDEX:      C (#111)    REGULAR    IR    LOOKUP & 
+                                 SORTING
+                   Short Descr:  This is a regular index of new-style
+                                 cross-reference on the Message ID field
+                   Description:  This cross reference allows a user to 
+                                 look up an HL7 message by its unique
+                                 message ID.  
+                     Set Logic:  S ^HL(772,"C",$E(X,1,60),DA)=""
+                    Kill Logic:  K ^HL(772,"C",$E(X,1,60),DA)
+                    Whole Kill:  K ^HL(772,"C")
+                          X(1):  MESSAGE ID  (772,6)  (Subscr 1)  (Len 60)
+                                 (forwards)
+  
+ 27. Fixed the problem described in Remedy 200540: the DD for the Read 
+     Timeout field (#200.04) in the HL Logical Link file (#870) allows the 
+     entry to be between 1-600.  When you use the HL EDIT LOGICAL LINKS
+     option in the Interface Developer Options to set up a TCP link, the
+     ScreenMan form allows only 2 digits.  The HLLP link type has the same
+     problem.
+  
+ 28. Edited field, STATE (#4), of HL LOGICAL LINK FILE to extend the 
+     character length from 10 to 60:
+     
+     870,4         STATE                  0;5 FREE TEXT
+  
+               INPUT TRANSFORM:  K:$L(X)>60!($L(X)<1) X
+               LAST EDITED:      AUG 01, 2007 
+               HELP-PROMPT:      Answer must be 1-60 characters in length 
+               DESCRIPTION:      This field is not editable from any user
+                                 option. It is used purely for display 
+                                 purposes in the STATE column of the
+                                 SYSTEMS LINK MONITOR display option.
+  
+ 29. Fixed a bug for dynamic addressing using HLP("SUBSCRIBER")
+     with "^" character as component separator to change the field data 
+     of MSH-3, MSH-4, MSH-5, or MSH-6.
+  
+  
+ Test Sites:
+ ===========
+ AMARILLO, TX - VAMC
+ AUGUSTA, GA - VAMC
+ HC NETWORK UPSTATE NY
+ SALISBURY, NC - VAMC
+ ATLANTA, GA - VAMC 
+  
+ Remedy:
+ =======
+ 63964  - AAC-0604-70235  HL7 error on MPI in Austin RDBLK+1~HLCSTCP1:2, 
+          %DSM-E-NUMBER
+ 200540 - Read Timeout field for TCP links allows only 2 digits
+ 203133 - VistA HL7 Invalid Receving Application
+  
+  
+ INSTALLATION INSTRUCTIONS (takes fewer than 10 minutes):
+ ========================================================
+  
+    1.  Users are allowed to be on the system during the installation.
+  
+    2.  Disable the HL7 TCPIP services for the multi-listeners running on 
+        all nodes in the cluster, for example:
+          ISC6A1> TCPIP
+          TCPIP> DISABLE SERVICE HLS5000CACHE  
+  
+    3.  Shutdown all Logical Links, incoming and outgoing filers using
+        the Filer and Link Management options listed below:
+  
+          Stop All Messaging Background Processes [HL STOP ALL]
+  
+    4.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This
+        option will load the KIDS package onto your system.
+  
+    5.  This patch is now loaded into a transport global on your system.
+        The next step is to use KIDS to install the Transport global.  On
+        the KIDS menu, under the 'Installation' menu, use the following
+        options:
+  
+           Verify Checksums in Transport Global
+           Print Transport Global 
+           Compare Transport Global to Current System 
+           Backup a Transport Global
+           Install Package(s) 
+  
+        When using the Install Package(s) menu option to install the 
+        patch build, you will be asked several questions.  The questions,
+        and the answers you should supply, are shown below.
+  
+        INSTALL NAME: <HL*1.6*122>
+        Want KIDS to INHIBIT LOGONS during the install?  <NO>
+        Want to DISABLE Scheduled Options, Menu Options,
+          and Protocols?  <NO>
+  
+    6.  Start up all Logical Links and incoming and outgoing filers using
+        the Filer and Link Management Option's 'Restart/Start All Links
+        and Filers [HL TASK RESTART]' menu option.
+  
+        (Note those links that do not have "autostart" enabled will need
+        to be restarted manually.)
+  
+    7. Enable the HL7 TCPIP services for the multi-listeners, for example:
+          ISC6A1> TCPIP
+          TCPIP> ENABLE SERVICE HLS5000CACHE 
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;1.6;HEALTH LEVEL SEVEN;**[Patch List]**;Oct 13, 1995;Build 14
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: HLCS
+    Before: B32818553   After: B35933605  **2,9,14,19,43,57,109,132,122**
+Routine Name: HLCS2
+    Before: B38051566   After: B49434182  **14,40,43,49,57,58,82,84,109,122**
+Routine Name: HLCSGTM
+    Before:       n/a   After:  B2303330  **122**
+Routine Name: HLCSHDR1
+    Before: B57541761   After: B59513881  **19,57,59,72,80,93,120,133,122**
+Routine Name: HLCSHDR4
+    Before: B76569108   After: B78131935  **93,108,122**
+Routine Name: HLCSIN
+    Before: B18983334   After: B34245145  **2,30,14,19,62,109,115,122**
+Routine Name: HLCSLNCH
+    Before: B37171475   After: B46750262  **6,19,43,49,57,75,84,109,122**
+Routine Name: HLCSMON
+    Before: B52128223   After: B54162059  **34,40,48,49,65,66,73,109,122**
+Routine Name: HLCSMON1
+    Before:  B8085567   After: B10975872  **15,40,49,65,109,122**
+Routine Name: HLCSREP
+    Before:  B2010073   After:  B2826311  **109,122**
+Routine Name: HLCSTCP
+    Before: B33765852   After: B46918121  **19,43,49,57,58,64,84,109,133,122**
+Routine Name: HLCSTCP1
+    Before: B37159862   After: B70690150  **19,43,57,64,71,133,132,122**
+Routine Name: HLCSTCP2
+    Before: B63043745   After: B68574650  **19,43,49,57,63,64,66,67,76,
+                                           77,87,109,133,122**
+Routine Name: HLCSTCP3
+    Before:  B4549114   After: B12715740  **76,77,133,122**
+Routine Name: HLCSTCP4
+    Before:  B2712680   After: B39383548  **109,122**
+Routine Name: HLCSTCPA
+    Before:  B1420563   After:  B6096093  **84,122**
+Routine Name: HLCSTERM
+    Before:  B4136031   After:  B4335770  **40,49,122**
+Routine Name: HLDIE
+    Before: B42269584   After: B47013227  **109,122**
+Routine Name: HLMA
+    Before: B41973628   After: B50301067  **19,43,58,63,66,82,91,109,115,
+                                           133,132,122**
+Routine Name: HLMA4
+    Before:       n/a   After: B23979433  **122**
+Routine Name: HLPAT122
+    Before:       n/a   After:  B4294969  **122**
+Routine Name: HLTF
+    Before: B49703549   After: B22809391  **1,19,43,55,109,120,122**
+Routine Name: HLTF1
+    Before: B24283055   After: B25518513  **5,8,22,25,19,78,122**
+Routine Name: HLTF2
+    Before:  B9975068   After: B40999444  **25,122**
+Routine Name: HLTP3
+    Before: B73884339   After: B75102682  **19,43,57,58,59,66,69,109,115,
+                                           108,116,117,125,120,133,122**
+Routine Name: HLTPCK2B
+    Before: B64470063   After: B67329178  **120,133,122**
+ 
+Routine list of preceding patches: 62, 73, 78, 84, 87, 120, 132
+
+=============================================================================
+User Information:
+Entered By  : HSU,RAYMOND JL                Date Entered  : AUG 16, 2004
+Completed By: MURPHY,ELISA                  Date Completed: JAN 17, 2008
+Released By : GAYFIELD,LISA                 Date Released : JAN 22, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

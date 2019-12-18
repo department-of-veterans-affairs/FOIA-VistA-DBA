@@ -1,0 +1,205 @@
+$TXT Created by DESMOND,LINDA at MNTVLL.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 01/21/10 at 10:01
+=============================================================================
+Run Date: OCT 28, 2010                     Designation: IVM*2*143
+Package : IVM - INCOME VERIFICATION MATCH     Priority: Mandatory
+Version : 2       SEQ #122                      Status: Released
+                  Compliance Date: NOV 28, 2010
+=============================================================================
+
+Associated patches: (v)IVM*2*105   <<= must be installed BEFORE `IVM*2*143'
+
+Subject: FIX PROB W/ IVM BACKGROUND JOB NOT SENDING RX COPAY TESTS
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch (IVM*2*143) corrects a problem where a patient's primary 
+ RX Copay Exemption Test is not being sent to Enrollment System Redesign 
+ (ESR) if the patient also has a Means Test that is primary.  In this 
+ scenario, the IVM Background Job skips over the primary RX Copay Exemption
+ test if it is in a more recent year than the latest primary Means Test.  
+ After the patch is installed, the IVM Background Job will check for both a
+ primary Means Test and primary RX Copay Exemption Test and transmit the
+ more recent active test to ESR.
+  
+  
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+ There is no NSR associated with this patch.
+  
+ This patch addresses the following Remedy Ticket(s):
+ ----------------------------------------------------
+ HD0000000302893 - IVM Background Job not sending RX Copay Exemption tests
+  
+ This patch addresses the following Code Change Request (CCR):
+ -------------------------------------------------------------
+ REEG_00009592 - HD0000000302893 - IVM Background Job not sending RX Copay 
+ Exemption tests
+  
+  
+ Overview of Remedy Ticket(s):
+ -----------------------------
+ HD0000000302893 - IVM Background Job not sending RX Copay Exemption tests
+  
+ Problem:
+ --------
+ If a patient had an RX Copay Exemption Test as the primary test in an 
+ income year, that test was not being transmitted to the HEC in the 
+ ORU-Z07 HL7 message if the patient also had a Means Test that was 
+ primary, even if the RX Copay Exemption Test was more recent than the 
+ Means Test.  This was caused by code in the IVMPTRN routine called during 
+ the running of the IVM BACKGROUND JOB.  This routine is calling 
+ $$LST^DGMTU to get the date of the patient's most recent test.  The 
+ problem is that the only type of test being checked is the Means Test.  
+ If the patient had ever had a primary Means Test, the date of that test 
+ will be returned.  There is no additional check to see if there is a 
+ primary RX Copay Exemption Test that is more recent.
+  
+ Resolution:
+ -----------
+ New code was added to the IVMPTRN routine in the GETMTDT tag. The code 
+ will check for both a primary Means Test and RX Copay Exemption Test and 
+ return the date of the most recent active test.
+  
+  
+ Test Sites:
+ -----------
+ Battle Creek VAMC (Medium)
+ Tampa VAMC (Large)
+ St. Louis VAMC (Large/Integrated)
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+  
+ This patch may be installed during normal working hours; however, 
+ this patch should NOT be installed while the IVM BACKGROUND JOB [IVM 
+ BACKGROUND JOB] is running. VISTA users will not be affected.
+  
+  
+ Install Time - less than 5 minutes
+       
+ 1.  LOAD TRANSPORT GLOBAL 
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the 
+     INSTALL/CHECK MESSAGE PackMan option.  
+              
+ 2.  START UP KIDS 
+     -------------
+     Start up the Kernel Installation and Distribution System Menu 
+     [XPD MAIN]: 
+    
+          Edits and Distribution ...  
+          Utilities ...  
+          Installation ...  
+    
+ Select Kernel Installation & Distribution System Option: INStallation 
+                                                          ---
+          Load a Distribution 
+          Print Transport Global 
+          Compare Transport Global to Current System 
+          Verify Checksums in Transport Global 
+          Install Package(s) 
+          Restart Install of Package(s) 
+          Unload a Distribution 
+          Backup a Transport Global 
+    
+ Select Installation Option: 
+    
+ 3.  Select Installation Option: 
+     ---------------------------
+     NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+            NAME, enter IVM*2.0*143):
+       
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when this patch
+         is installed.  It compares all components of this patch
+         (routines, DD's, templates, etc.).
+     c.  Verify Checksums in Transport Global - This option will allow
+         you to ensure the integrity of the routines that are in the
+         transport global.
+      
+ 4.  Select Installation Option: Install Package(s) 
+                                 ------------------
+     **This is the step to start the installation of this KIDS patch: 
+    
+     a.  Choose the Install Package(s) option to start the patch
+         install.  When prompted for INSTALL NAME, enter IVM*2.0*143.
+     b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+         NO//' answer NO.
+     c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+         Options, and Protocols? NO//' answer NO.
+  
+ Note:  In the Routine Information section below, where the routine's
+ second line is listed, please disregard the Build number, as it has been
+ generated by the National Patch Module and is irrelevant to VistA sites'
+ installations.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;2.0;INCOME VERIFICATION MATCH;**[Patch List]**;JUL 8,1996;Build 1
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: IVMPTRN
+    Before: B44251671   After: B48845730  **1,9,11,12,17,28,34,74,79,89,
+                                           105,143**
+ Description of Changes:
+   
+  Code Changed:
+  =============
+  Before:
+   
+  REG+25
+         ..S IVMMTDT=$P($$LST^DGMTU(DFN,($E(IVMDT,1,3)+1)_"1231.9999"),"^",2
+  )
+  After:
+   
+  REG+25
+         ..S IVMMTDT=$$GETMTDT(DFN,IVMDT)  ;IVM*2*143
+   
+            
+  Code Added:
+  ===========
+   
+  GETMTDT(DFN,IVMDT) ;Get date of primary Means Test or RX Copay Test (IVM*
+  2*143)
+         N IDT,MT,MTDT,MTSTA,RX,RXDT,RXSTA
+         I '$G(DFN)!('$G(IVMDT)) Q ""
+         S IDT=($E(IVMDT,1,3)+1)_"1231.9999"
+         ;Get most recent primary MT
+         S MT=$$LST^DGMTU(DFN,IDT,1),MTDT=$P(MT,"^",2),MTSTA=$P(MT,"^",4)
+         ;Get most recent primary RX Copay Test
+         S RX=$$LST^DGMTU(DFN,IDT,2),RXDT=$P(RX,"^",2),RXSTA=$P(RX,"^",4)
+         ;If there's no RX Copay Test, then return the Means Test date.
+         I 'RXDT Q MTDT
+         ;If the RX Copay Test date is greater than or equal to the Means
+         ;Test date, and the RX Copay Test status is Exempt, Non-Exempt,
+         ;or Pending Adjudication, then return the RX Copay Test date.
+         I RXDT'<MTDT,("^E^M^P^"[("^"_RXSTA_"^")) Q RXDT
+         ;Otherwise, return the Means Test date.
+         Q MTDT
+
+ 
+Routine list of preceding patches: 105
+
+=============================================================================
+User Information:
+Entered By  : DESMOND,LINDA                 Date Entered  : OCT 15, 2009
+Completed By: RUDINGER,NANCY L.             Date Completed: OCT 14, 2010
+Released By : FRANCE,KATHI                  Date Released : OCT 28, 2010
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,1194 @@
+
+=============================================================================
+Run Date: NOV 27, 2006                     Designation: DG*5.3*650
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #645                    Status: Released
+                  Compliance Date: DEC 01, 2006
+=============================================================================
+
+Associated patches: (v)DG*5.3*425  <<= must be installed BEFORE `DG*5.3*650'
+                    (v)DG*5.3*554  <<= must be installed BEFORE `DG*5.3*650'
+                    (v)DG*5.3*607  <<= must be installed BEFORE `DG*5.3*650'
+                    (v)DG*5.3*699  <<= must be installed BEFORE `DG*5.3*650'
+                    (v)DG*5.3*718  <<= must be installed BEFORE `DG*5.3*650'
+
+Subject: PATIENT RECORD FLAGS PHASE III
+
+Category: 
+  - Enhancement (Mandatory)
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ I. OVERVIEW
+  
+ This patch introduces changes and enhancements to the Registration V. 5.3
+ package in support of the Patient Record Flags (PRF) initiative.
+  
+ Associated Remedy Tickets:
+ -------------------------
+ HD63812:  DAY-0304-41446 PRF HL7 QUERY ERROR
+   Duplicates:
+     HD63844  LEB-0304-22827 PRF HL7 ERROR
+     HD63853  MIN-0404-40541 Receiving an HL7 transmission error
+     HD63900  MAN-0404-12078 PRF HL7 TRANSMISSION ERRORS
+     HD64069  WWW-0704-51537 CAT I PT FLAG NOT TRANSMITTED FROM CMOR
+     HD64669  SHE-0105-50750 Patient Record Flag transmission error
+     HD63818  POR-0304-51817 Transmission Error for flags
+     HD101997 PRF HL7 TRANSMISSION ERRORS
+     HD120799 Too many messages PRF HL7 ERROR ENCOUNTERED
+     HD121936 DAY-0304-41446 PRF HL7 QUERY ERROR
+     HD122372 PRF HL7 ERROR ENCOUNTERED - can't clear error
+     HD127384 HL7 transmission error mail alert
+     HD158684 Currently have 6 HL& error messages on Category 1
+     HD158747 PRF Cat I not linking
+     HD160001 PRF Error
+  
+  
+ HD63621:  UNY-0903-12427 Won't accept one of our Divisions as the 
+                          Originating site.
+   Duplicates:
+     HD63711  PAL-0104-60470 Edit Local Patient Flag
+     HD63749  CPH-0204-40420 Unable to change Patient Record Flag
+     HD64025  HEH-0704-40063 Can't edit Patient Record Flag
+     HD64208  HWH-0904-41052 CANNOT CHANGE PATIENT RECORD FLAG ASSIGNMENT
+     HD100414 Edit Patient Record Flags
+     HD112458 PRF CO action allows invalid Owner Change
+     HD115519 Incorrect OWNER SITE cannot be changed
+     HD120057 Not able to edit Flag Assignment
+     HD144561 Unable to change CMOR, match MPI with patient
+     HD161342 Patient Record Flag owner site
+  
+  
+ HD102710:  Patient Record Flag edit issue
+  
+  
+ HD151248:  MAKE APPT FILEMAN ERROR
+  
+  
+ Associated New Service Request:
+ ------------------------------
+ NSR 20040801: Patient Record Flag Multi-Divisional Functionality
+  
+  
+  
+                          I M P O R T A N T 
+  *************************************************************************
+  Following installation of Patient Record Flags Phase III patch DG*5.3*650, 
+  it is possible that a Patient Record Flags (PRF) HL7 Query message may
+  cause one of your site's VA-namespaced HL7 Logical Links to remain in a
+  "Reading" state.  This will only occur when the receiving site of the
+  message has not yet installed the Patient Record Flags Phase III patch.
+  Please refer to section VI. IMPLEMENTATION STEPS, subsection 3. HL7
+  Logical Link in a constant "Reading" state in this patch description
+  for more details.
+ 
+ 
+  This patch, DG*5.3*650, is being released in a single KIDS software
+  distribution (host file).  This patch message contains the informational
+  portion of DG*5.3*650 and provides field personnel with instructions on
+  how to acquire, install, and implement the patch software.
+  *************************************************************************
+  
+  
+ II. FUNCTIONAL OVERVIEW
+  
+ 1. HD63812: DAY-0304-41446 PRF HL7 QUERY ERROR
+  
+    Problem:
+    =======
+    When an edit of an existing PRF assignment is performed, PRF HL7
+    Unsolicited Update (ORU~R01) messages are transmitted to the patient's
+    known treating facilities.  If the destination facility's PRF assignment
+    database is not synchronized with the sending facility, then the update
+    will fail.  The most common cause of failed synchronization is due to an
+    unsuccessful query attempt by the destination facility to the patient's
+    Coordinated Master of Record (CMOR) site.
+  
+    Resolution:
+    ==========
+    a. There is a new Record Flag Transmission Errors [DGPF TRANSMISSION
+       ERRORS] option.  This option provides a List Manager user interface
+       to review and retransmit Category I PRF assignment messages with a
+       rejected status.  The retransmitted message will contain the
+       complete PRF assignment history for the specific flag assignment.
+       When the PRF assignment does not exist at the destination site,
+       the complete history is processed to synchronize the destination site.
+       When a PRF assignment does exist at the destination site, only the
+       most recent PRF assignment history record is processed.
+  
+    b. There is a new Record Flag Manual Query [DGPF MANUAL QUERY] option.
+       This option allows a user to query a selected treating facility for
+       existing Category I Patient Record Flag (PRF) assignments for a
+       selected patient.  Any Category I PRF assignment returned by the
+       query that does not exist at the local facility will automatically
+       be added at the local facility.  A List Manager user interface will
+       display a list of all Category I PRF assignments found at the
+       queried treating facility.
+  
+    c. The PRF HL7 Query interface has been enhanced.  Two new files,
+       PRF HL7 EVENT (#26.21) and PRF HL7 QUERY LOG (#26.19) will be used
+       to record query activity.  A task has been added to the scheduled
+       Patient Record Flag Background [DGPF BACKGROUND PROCESSING] option
+       to retransmit failed queries.
+       
+    d. The PRF message transmission error bulletin has been enhanced
+       to facilitate troubleshooting messaging problems.  The Message
+       Control ID# and the Owning Site have been added to the bulletin
+       text. The reason text has been enhanced to provide more specific
+       descriptions of the error cause.
+   
+  
+ 2. HD63621: UNY-0903-12427 Won't accept one of our Divisions as the 
+                            Originating site.
+  
+    NSR 20040801: Patient Record Flag Multi-Divisional Functionality
+  
+    Problem:
+    =======
+    When a site creates a PRF assignment and does not define the OWNER SITE
+    as the primary facility within a division, access to edit the PRF
+    assignment is blocked.
+  
+    Resolution:
+    ==========
+    a.  A new option, Record Flag Enable Divisions [DGPF ENABLE DIVISIONS],
+        has been added to allow multi-divisional and integrated sites to
+        enable or disable divisions in the MEDICAL CENTER DIVISION (#40.8)
+        file as eligible to be PRF assignment owners.
+  
+    b.  The Assign Flag action of the Record Flag Assignment [DGPF RECORD
+        FLAG ASSIGNMENT] option has been modified.  The "Enter Owner Site"
+        prompt allows the user to select from a list of local divisions that
+        have been enabled as PRF assignment owners.  The list is available
+        for both Category I and Category II PRF assignments.
+        
+    c.  The Edit Flag Assignment action of the Record Flag Assignment [DGPF
+        RECORD FLAG ASSIGNMENT] option has been modified.  A PRF assignment
+        may be edited only when the user's logon location matches the OWNER
+        SITE of the assignment.
+  
+    d.  The Change Assignment Ownership action of the Record Flag Assignment
+        [DGPF RECORD FLAG ASSIGNMENT] option has been modified.  The "Select
+        new owner site..." prompt allows the user to select from a list of
+        local divisions that have been flagged as PRF assignment owners when
+        changing ownership of both Category I and Category II PRF 
+        assignments.  The user may also select from a list of the patient's
+        current treating facilities when changing ownership of Category I PRF
+        assignments.
+        
+    e.  The Active Patient Record Flag(s) display generated during
+        patient lookup and the Display Assignment Details action of the
+        Record Flag Assignment option have been enhanced to include the
+        primary site in parenthesis following the display of both the
+        Owner Site and the Originating Site.
+  
+  
+ 3. HD102710: Patient Record Flag edit issue
+  
+    Problem:
+    =======
+    When displaying Active Patient Record Flag(s) details during a
+    patient lookup, the Approved By field displays the wrong user name.
+    There doesn't seem to be a way to change this name that displays to the
+    local users.
+  
+    Resolution:
+    ==========
+    The Active Patient Record Flag(s) display generated during patient
+    lookup has been modified to display the person approving the most
+    recent record flag assignment edit.
+  
+  
+ 4. HD151248: MAKE APPT FILEMAN ERROR
+  
+    Problem:
+    =======
+    When a user runs the Appointment Management [SDAM APPT MGT] option,
+    selects a patient with active Patient Record Flag (PRF) assignments,
+    and chooses to display the PRF details an <UNDEFINED> error may
+    occur.  The error will only occur if the value of the TIMESTAMP (#99)
+    field in the PROTOCOL (#101) file for the VALM DISPLAY protocol
+    does not match the value in the zero node of the VALM DISPLAY entry
+    in the ^XUTL("XQORM", global.
+  
+    Resolution:
+    ==========
+    The FileMan variable, DQ, will be NEWed in the DGPFAPI routine
+    prior to displaying active PRF assignments.
+  
+  
+ III. TECHNICAL COMPONENTS
+  
+ The following section describes the technical components of this patch.
+  
+ 1. The following new OPTION(s) will be added.
+  
+  a.        NAME: DGPF TRANSMISSION ERRORS
+       MENU TEXT: Record Flag Transmission Errors
+     DESCRIPTION: This option provides a List Manager user interface that
+                  can be used to review and manage Rejected Status ("RJ") HL7
+                  transmission messages that are received from Treating
+                  Facilities of the patient when trying to share Category I
+                  PRF Assignment information.
+  
+  b.        NAME: DGPF MANUAL QUERY
+       MENU TEXT: Record Flag Manual Query
+     DESCRIPTION: This option allows a user to query a selected treating 
+                  facility for existing Category I Patient Record Flag (PRF)
+                  assignments for a selected patient.  Any Category I PRF
+                  assignment returned by the query that does not exist at the
+                  local facility will automatically be added at the local
+                  facility.  A List Manager user interface will display a list
+                  of all Category I PRF assignments found at the queried
+                  treating facility.  The following action is provided within
+                  the List Manager interface:
+                  - Display the query details for a selected assignment.
+  
+  c.        NAME: DGPF TRANSMISSION MGMT
+       MENU TEXT: Record Flag Transmission Mgmt
+     DESCRIPTION: This option acts as a submenu containing options available
+                  to manage patient record flags transmissions.
+  
+  d.        NAME: DGPF ENABLE DIVISIONS
+       MENU TEXT: Record Flag Enable Divisions
+     DESCRIPTION: This option allows multi-divisional facilities to 
+                  enable individual medical center divisions stored in
+                  the MEDICAL CENTER DIVISION (#40.8) file as patient record
+                  flag assignment owners.  Once a medical center division has 
+                  been enabled as a patient record flag assignment owner, 
+                  it may also be disabled through this option.  Disabling a
+                  medical center division will only be allowed if there are 
+                  no active assignments associated with the division.
+  
+  
+ 2. The following OPTION(s) will be modified.
+  
+  a.        NAME: DGPF RECORD FLAGS MAIN MENU
+       MENU TEXT: Patient Record Flags Main Menu
+    MODIFICATION: This option is being sent as a link for the new menu
+                  option sub-items.
+  
+  b.        NAME: DGPF RECORD FLAG ASSIGNMENT
+       MENU TEXT: Record Flag Assignment
+    MODIFICATION: The LOCK has been changed from the DGPF PRF ACCESS
+                  security key to the DGPF ASSIGNMENT security key.
+  
+  c.        NAME: DGPF RECORD FLAG MANAGEMENT
+       MENU TEXT: Record Flag Management
+    MODIFICATION: The LOCK has been changed from the DGPF PRF ACCESS
+                  security key to the DGPF MANAGER security key.
+  
+  
+ 3. The following OPTION will be deleted.
+  
+  a.        NAME: DGPF PRF SYSTEM CONFIGURATION
+       MENU TEXT: PRF System Configuration
+  
+  
+ 4. The following new PROTOCOL(s) will be added.
+  
+  a.        NAME: DGPF TRANSMISSION ERRORS MENU
+            TYPE: Menu
+     DESCRIPTION: This protocol menu contains all the activities for viewing 
+                  and retransmitting PRF Rejected Status ("RJ") HL7 error
+                  messages.
+  
+  b.        NAME: DGPF TRANSMIT REJECT MESSAGE
+       ITEM TEXT: Retransmit Message
+            TYPE: action
+     DESCRIPTION: This protocol provides the action for selecting one or 
+                  more of the PRF Rejected Status ("RJ") HL7 error messages
+                  from the displayed list.  The selection will trigger the
+                  retransmission of the patient's PRF Assignment and History
+                  information to the site that the rejection occurred at.
+                  
+  c.        NAME: DGPF TRANSMIT SORT LIST
+       ITEM TEXT: Change Sort
+            TYPE: action
+     DESCRIPTION: This action protocol provides for switching the display 
+                  list of PRF Rejected Status ("RJ") HL7 error messages
+                  from the default sort by patient name to the date/time
+                  error message received.
+                  
+  d.        NAME: DGPF TRANSMIT VIEW MESSAGE
+       ITEM TEXT: View Message
+            TYPE: action
+     DESCRIPTION: This action protocol allows the user to select a single 
+                  PRF Rejected Status ("RJ") HL7 error message from the
+                  displayed list and view the details.
+                  
+  e.        NAME: DGPF TRANSMIT VIEW MSG MENU
+            TYPE: menu
+     DESCRIPTION: This protocol menu provides for the selection of the 
+                  action protocol to retransmit a single PRF Rejected
+                  Status ("RJ") HL7 error message while viewing the details
+                  of the error message.
+                  
+  f.        NAME: DGPF RECORD FLAG QUERY MENU
+            TYPE: menu
+     DESCRIPTION: This menu protocol is used to associate the action
+                  protocols used in the Record Flag Manual Query
+                  [DGPF MANUAL QUERY] option.
+  
+  g.        NAME: DGPF DISPLAY QUERY RESULTS
+       ITEM TEXT: Display Query Result Details
+            TYPE: action
+     DESCRIPTION: This action protocol permits the user to view the details
+                  of a selected patient record flag assignment from query
+                  results within the Record Flag Manual Query [DGPF MANUAL
+                  QUERY] option.
+  
+  
+ 5. The following PROTOCOL(s) will be modified.
+  
+  a.        NAME: DGPF RECORD FLAG MANAGEMENT MENU
+            TYPE: menu
+    MODIFICATION: Added SCREEN logic for disabling action protocols attached 
+                  to menu.
+  
+  b.        NAME: DGPF DISPLAY FLAG DETAIL
+       ITEM TEXT: Display Flag Detail
+            TYPE: action
+    MODIFICATION: Added SCREEN logic for disabling action protocol.
+  
+  c.        NAME: DGPF ADD FLAG
+       ITEM TEXT: Add New Record Flag
+            TYPE: action
+    MODIFICATION: Added SCREEN logic for disabling action protocol.
+  
+  d.        NAME: DGPF EDIT FLAG
+       ITEM TEXT: Edit Record Flag
+            TYPE: action
+    MODIFICATION: Added SCREEN logic for disabling action protocol.
+  
+  e.        NAME: DGPF RECORD FLAG ASSIGNMENT MENU
+            TYPE: menu
+    MODIFICATION: Added SCREEN logic for disabling action protocols attached 
+                  to menu.
+  
+  f.        NAME: DGPF EDIT ASSIGNMENT
+       ITEM TEXT: Edit Flag Assignment
+            TYPE: action
+    MODIFICATION: Added SCREEN logic for disabling action protocol.
+  
+  g.        NAME: DGPF ASSIGN FLAG
+       ITEM TEXT: Assign Flag
+            TYPE: action
+    MODIFICATION: Added SCREEN logic for disabling action protocol.
+  
+  h.        NAME: DGPF DISPLAY ASSIGNMENT DETAIL
+       ITEM TEXT: Display Assignment Details
+            TYPE: action
+    MODIFICATION: Added SCREEN logic for disabling action protocol.
+  
+  i.        NAME: DGPF CHANGE ASSIGNMENT OWNERSHIP
+       ITEM TEXT: Change Assignment Ownership
+            TYPE: action
+    MODIFICATION: Added SCREEN logic for disabling action protocol.
+  
+  j.        NAME: DGPF SELECT PATIENT
+       ITEM TEXT: Select Patient
+            TYPE: action
+    MODIFICATION: This protocol is being sent to maintain the link with
+                  the DGPF RECORD FLAG ASSIGNMENT MENU protocol.
+  
+  k.        NAME: DGPF CHANGE CATEGORY
+       ITEM TEXT: Change Category
+            TYPE: action
+    MODIFICATION: This protocol is being sent to maintain the link with
+                  the DGPF RECORD FLAG MANAGEMENT MENU protocol. 
+                  
+  l.        NAME: DGPF SORT FLAG LIST
+       ITEM TEXT: Change Sort
+            TYPE: action
+    MODIFICATION: This protocol is being sent to maintain the link with
+                  the DGPF RECORD FLAG MANAGEMENT MENU protocol. 
+                  
+  
+ 6. The following new SECURITY KEY will be added.
+  
+  a.        NAME: DGPF TRANSMISSIONS
+       DESC NAME: Patient Record Flag Trans
+     DESCRIPTION: This key should only be given to those individuals who may
+                  perform patient record flag functions related to the
+                  sharing/transmission of Category I PRF assignments with
+                  other treating facilities.  These functions include the
+                  following:
+  
+                  - Transmission error processing.
+                  - Retransmission of patient assignments.
+                  
+  
+ 7. The following existing SECURITY KEY(s) will be renamed.
+  
+  a.   OLD NAME: DGPF RECORD FLAG ASSIGNMENT
+       NEW NAME: DGPF ASSIGNMENT
+  
+  b.   OLD NAME: DGPF LOCAL FLAG EDIT
+       NEW NAME: DGPF MANAGER
+  
+  
+ 8. The following existing SECURITY KEY(s) will be deleted.
+  
+  a.        NAME: DGPF PRF ACCESS
+       DESC NAME: Patient Record Flag Access
+  
+  b.        NAME: DGPF PRF CONFIG
+       DESC NAME: Patient Record Flag Config
+  
+  
+ 9. The following new LIST TEMPLATE(s) will be added.
+  
+  a.         NAME: DGPF TRANSMISSION ERRORS
+     TYPE OF LIST: PROTOCOL
+  
+  b.         NAME: DGPF TRANSMIT VIEW MESSAGE
+     TYPE OF LIST: PROTOCOL
+  
+  c.         NAME: DGPF RECORD FLAG QUERY
+     TYPE OF LIST: PROTOCOL
+  
+  d.         NAME: DGPF QUERY DETAIL
+     TYPE OF LIST: DISPLAY
+  
+  
+ 10. The following LIST TEMPLATE(s) will be modified.
+  
+  a.         NAME: DGPF RECORD FLAG ASSIGNMENT
+     TYPE OF LIST: PROTOCOL
+     MODIFICATION: Removed APPROVED BY caption and added OWNER SITE caption.
+   
+  
+ 11. The following new FILES will be added.
+  
+  a. PRF HL7 QUERY LOG (#26.19) file
+  
+     This is a new file.  The data for this file is stored in the existing
+     global, ^DGPF(.
+  
+     Description: This file contains a list of all Query (QRY~R02) HL7 
+     transmissions that have been generated at the site by the Patient
+     Record Flags software module.  Entries in this file are created/edited
+     automatically by the Patient Record Flags HL7 interface.
+  
+     FIELD #   FIELD NAME
+     -------   ----------
+     .01       MESSAGE CONTROL ID
+     .02       EVENT
+     .03       TRANSMISSION DATE/TIME
+     .04       STATUS
+     .05       SITE TRANSMITTED TO
+     .06       ACK RECEIVED DATE/TIME
+     .07       ERROR CODES (multiple)
+               
+  
+  b. PRF HL7 EVENT (#26.21) file
+  
+     This is a new file.  The data for this file is stored in the existing
+     global, ^DGPF(.
+  
+     Description: This file tracks patients that need to have one or more of 
+     their treating facilities checked for existing Patient Record Flag
+     assignments. 
+  
+     FIELD #   FIELD NAME
+     -------   ----------
+     .01       PATIENT
+     .02       INITIAL TIMESTAMP
+     .03       CURRENT STATUS
+  
+  
+ 12. The following FILES will be modified.
+  
+  a. PATIENT (#2) file
+  
+     Modified Field:
+     ==============
+  
+           FIELD #:  991.01
+        FIELD NAME:  INTEGRATION CONTROL NUMBER
+      MODIFICATION:  A new action type field index, "APRFEVT", has been added
+                     to trigger the creation of an entry in the PRF HL7 EVENT
+                     (#26.21) file when a National ICN is entered.
+  
+  b. PRF ASSIGNMENT (#26.13) file
+  
+     Modified Field:
+     ==============
+  
+           FIELD #:  .03    
+        FIELD NAME:  STATUS
+      MODIFICATION:  A new compound record index, "AOWN", has been added.
+  
+           FIELD #:  .04    
+        FIELD NAME:  OWNER SITE
+      MODIFICATION:  A new compound record index, "AOWN", has been added.
+  
+  c. PRF HL7 TRANSMISSION LOG (#26.17) file
+  
+     New field:
+     =========
+  
+           FIELD #:  .07
+        FIELD NAME:  ERROR CODES (multiple)
+       DESCRIPTION:  When the receiving site of a PRF Unsolicited Update
+                     (ORU~R01) HL7 message encounters one or more errors
+                     while processing the message, one or more error codes
+                     are returned in the Acknowledgment (ACK~R01) HL7 message.
+                     This multiple field contains the returned error codes.
+    
+  d. MEDICAL CENTER DIVISION (#40.8) file
+  
+     Modified Field:
+     ==============
+  
+           FIELD #:  .07
+        FIELD NAME:  INSTITUTION FILE POINTER
+      MODIFICATION:  A new record index, "APRF", has been added.
+  
+     New Fields:
+     ==========
+  
+           FIELD #:  26.01    
+        FIELD NAME:  PRF ASSIGNMENT OWNERSHIP
+       DESCRIPTION:  This field contains the indicator of whether or not
+                     this medical center division has been designated as
+                     a patient record flag assignment owner.
+  
+           FIELD #:  26.02
+        FIELD NAME:  PRF OWNERSHIP EDITED
+       DESCRIPTION:  This field is used as part of the audit trail for the
+                     enabling/disabling of medical center divisions as patient
+                     record flag assignment owners.  This field will contain
+                     the date/time that the PRF ASSIGNMENT OWNERSHIP indicator
+                     was edited.
+  
+           FIELD #:  26.03
+        FIELD NAME:  PRF OWNERSHIP EDITED BY
+       DESCRIPTION:  This field is used as part of the audit trail for the
+                     enabling/disabling of medical center divisions as patient
+                     record flag assignment owners.  This field will contain
+                     the user responsible for editing the PRF ASSIGNMENT
+                     OWNERSHIP indicator.
+  
+  
+ 13. The following PARAMETER DEFINITION will be added.
+  
+   a.         NAME: DGPF QUERY TRY LIMIT
+      DISPLAY TEXT: Patient Record Flags Query Try Limit
+       DESCRIPTION: This value is used by the Patient Record Flags module
+                    to control the maximum number of query attempts that are
+                    allowed. 
+  
+  
+ 14. The following DIALOG FILE (#.84) record will be modified.
+  
+   a.  DIALOG NUMBER: 261116
+        MODIFICATION: The TEXT value will be changed as follows:
+  
+       Original TEXT:  Sending facility is not the owner of the assignment
+  
+            New TEXT:  Sending facility is not listed as the owner of the
+                       assignment at the rejecting facility
+  
+  
+ 15. The following ROUTINE(s) will be added/modified.
+  
+  ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;5.3;Registration;**[patch list]**;Aug 13, 1993
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  DG53P650                   N/A              4767847             650
+  DGPFAA2                7481781              4618194         425,554,650
+  DGPFAA3                1122577              4440649           425,650
+  DGPFAPI                5766632              6591273       425,554,699,650
+  DGPFAPI1               5391112              5418480           554,650
+  DGPFAPI2               4705707              4666753           554,650
+  DGPFBGR                9316990              9222500           425,650
+  DGPFDD                 3797810              4703589         425,554,650
+  DGPFDIV                    N/A              8909562             650
+  DGPFDIV1                   N/A              3974533             650
+  DGPFHLL                2762690              7626519           425,650
+  DGPFHLL1                   N/A              2026706             650
+  DGPFHLQ                7683472              7851589           425,650
+  DGPFHLQ3               3548528              1140091           425,650
+  DGPFHLQ4                   N/A              2776111           425,650
+  DGPFHLR                4582161              8119950           425,650
+  DGPFHLRT               3125613              1813796           425,650
+  DGPFHLS                5170135              8345176           425,650
+  DGPFHLU                4944268              5762926         425,718,650
+  DGPFHLU3               7804885              7551501           425,650
+  DGPFHLU5               9463346              9290646         425,718,650
+  DGPFHLUQ                   N/A              7167530             650
+  DGPFHLUT               3589792              3990050           425,650
+  DGPFLF3               13938963             12727564         425,554,650
+  DGPFLF4                8480844              7323015         425,554,650
+  DGPFLMA2               9986642             13059698       425,623,554,650
+  DGPFLMA3              16397536             15315308       425,623,554,650
+  DGPFLMA4              10714433             10648616         425,554,650
+  DGPFLMQ                    N/A               194732             650
+  DGPFLMQ1                   N/A              5072926             650
+  DGPFLMQ2                   N/A              7113922             650
+  DGPFLMQD                   N/A               275979             650
+  DGPFLMT                    N/A               667918             650
+  DGPFLMT1                   N/A              8849668             650
+  DGPFLMT2                   N/A              5603948             650
+  DGPFLMT3                   N/A              1974454             650
+  DGPFLMT4                   N/A              6989721             650
+  DGPFLMT5                   N/A              2878474             650
+  DGPFLMU                3875301              4000042           425,650
+  DGPFLMU1               7598760              8230060         425,554,650
+  DGPFRAL1              11809723             11782504           554,650
+  DGPFUT                 4338517              5468780         425,554,650
+  DGPFUT1                6018721              4571314         425,607,650
+  DGPFUT2                5781261              6535244         425,554,650
+  
+  Number of Routines = 44
+  
+                             CHECK1^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  DG53P650                   N/A             18743146             650
+  DGPFAA2               47055667             31192734         425,554,650
+  DGPFAA3                3807769             33716755           425,650
+  DGPFAPI               32207494             36238141       425,554,699,650
+  DGPFAPI1              24151608             24558175           554,650
+  DGPFAPI2              18390437             18327429           554,650
+  DGPFBGR               44753141             43954617           425,650
+  DGPFDD                17115421             29798054         425,554,650
+  DGPFDIV                    N/A             38624185             650
+  DGPFDIV1                   N/A             18927567             650
+  DGPFHLL                8636516             41058426           425,650
+  DGPFHLL1                   N/A              8068964             650
+  DGPFHLQ               44034534             44511391           425,650
+  DGPFHLQ3              25817891              3002263           425,650
+  DGPFHLQ4                   N/A             17883143           425,650
+  DGPFHLR               30149519             69390340           425,650
+  DGPFHLRT               8257718              4258248           425,650
+  DGPFHLS               29645251             55420041           425,650
+  DGPFHLU               27262143             34815804         425,718,650
+  DGPFHLU3              34322832             31915353           425,650
+  DGPFHLU5              59520478             49294437         425,718,650
+  DGPFHLUQ                   N/A             40674346             650
+  DGPFHLUT              30959687             36458354           425,650
+  DGPFLF3               51450229             47245932         425,554,650
+  DGPFLF4               29613889             26165641         425,554,650
+  DGPFLMA2              33213840             50998481       425,623,554,650
+  DGPFLMA3              75304468             70378995       425,623,554,650
+  DGPFLMA4              38033813             39834723         425,554,650
+  DGPFLMQ                    N/A               591948             650
+  DGPFLMQ1                   N/A             22327142             650
+  DGPFLMQ2                   N/A             39288801             650
+  DGPFLMQD                   N/A              1208744             650
+  DGPFLMT                    N/A              2035581             650
+  DGPFLMT1                   N/A             55169432             650
+  DGPFLMT2                   N/A             24050413             650
+  DGPFLMT3                   N/A              6275876             650
+  DGPFLMT4                   N/A             29251148             650
+  DGPFLMT5                   N/A             10105469             650
+  DGPFLMU               15922307             16582926           425,650
+  DGPFLMU1              44001072             45355090         425,554,650
+  DGPFRAL1              71927213             71862269           554,650
+  DGPFUT                25945716             38902808         425,554,650
+  DGPFUT1               32867509             28564344         425,607,650
+  DGPFUT2               35502181             44485554         425,554,650
+  
+  Number of Routines = 44
+  
+  
+ IV. SOFTWARE AND DOCUMENTATION RETRIEVAL
+  
+ The software for this patch is not being distributed through the National
+ Patch Module.  This patch is being distributed as a host file.  The host
+ file will contain a single KIDS build.
+  
+   Host file name: DG_53_P650.KID
+            Build: DG*5.3*650
+  
+   Sites may retrieve the software and documentation directly using FTP from
+   the following Office of Information Field Offices (OIFOs) sites:
+  
+   OIFO               FTP ADDRESS                  DIRECTORY
+   ------------       ------------------------     ------------------
+   First available    download.vista.med.va.gov    anonymous.software
+   Albany             ftp.fo-albany.med.va.gov     anonymous.software
+   Hines              ftp.fo-hines.med.va.gov      anonymous.software
+   Salt Lake City     ftp.fo-slc.med.va.gov        anonymous.software
+  
+   The following files will be available:
+  
+   FILE NAME             DESCRIPTION
+   ------------------    -----------------------------------------------
+   DG_53_P650.KID        Host file containing KIDS software distribution
+   DG_53_650_TM.PDF      Changes to the PIMS V. 5.3 Technical Manual
+   DG_53_650_RN.PDF      Release Notes on new features and functionality
+   DG_53_650_UG.PDF      User Guide for system access and use
+  
+  
+   * Note:  Use ASCII mode when transferring the .KID file.
+            Use Binary mode when transferring the .PDF files.
+  
+   VistA Intranet
+   --------------
+   Upon release of this patch to the field, the Patient Record Flags
+   documentation will also be available through the VistA Documentation
+   Library (VDL) at the following address:
+  
+      http://www.va.gov/vdl/application.asp?appid=156 
+  
+  
+ V. INSTALLATION INSTRUCTIONS
+  
+  Pre-Installation Items:
+  =======================
+  
+  * Environment Check:
+  
+     Programmer access is required for installing this patch.  Prior to 
+     installation, the installer must ensure the DUZ(0) node of the DUZ
+     array is set to the "@" symbol.
+  
+  * Users On the System: 
+  
+     This patch may be installed with users on the system, but should be
+     loaded during non-peak hours to minimize disruption to users and to
+     reduce the possibility of errors when the routines are updated.
+  
+  * Software Installation Time:
+  
+     The estimated installation time is less than 5 minutes during off peak
+     hours.
+  
+  * Required Builds:
+  
+     The following is a list of REQUIRED builds for this KIDS
+     distribution.  KIDS will not allow the installation of this patch
+     without their prior installation.
+  
+     Required Build(s):
+     ------------------
+     DG*5.3*425
+     DG*5.3*554
+     DG*5.3*607
+     DG*5.3*699
+     DG*5.3*718
+  
+  * File and Global Information:
+  
+     The two new files, PRF HL7 QUERY LOG (#26.19) and PRF HL7 EVENT 
+     (#26.21), use the existing ^DGPF( global.  Therefore, no additional
+     global placement or journaling definition is required.
+  
+  * Pre-Install Routine (PRE^DG53P650):
+   
+     Responsible for renaming the existing DGPF RECORD FLAG ASSIGNMENT
+     security key to DGPF ASSIGNMENT.
+  
+     Responsible for renaming the existing DGPF LOCAL FLAG EDIT
+     security key to DGPF MANAGER.
+  
+     Responsible for deleting the following two (2) obsolete security
+     keys:
+          DGPF PRF ACCESS
+          DGPF PRF CONFIG
+  
+  * Post-Install Routine (POST^DG53P650):
+  
+     Responsible for setting the DGPF QUERY TRY LIMIT parameter definition
+     value to "5".
+  
+     Responsible for enabling the primary division as a PRF assignment
+     owner.
+  
+  
+  Installation Steps:
+  ===================
+  
+   1. Download the KIDS file DG_53_P650.KID from the ANONYMOUS.SOFTWARE
+      directory of the Albany OIFO to the appropriate directory on
+      your system.
+  
+   2. Use LOAD A DISTRIBUTION option on the KIDS INSTALLATION menu, and
+      enter: DG_53_P650.KID
+  
+   3. From the 'Kernel Installation & Distribution System' menu, select the
+      Installation menu.
+  
+   4. From this menu, you may now elect to use the following options (when
+      prompted for INSTALL NAME, enter DG*5.3*650).
+  
+      a. Backup a Transport Global - This option will create a backup
+         message of any routines exported with the patch.  It will NOT
+         backup any changes such as DDs or templates.
+  
+      b. Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when the patch is
+         installed.  It compares all components of the patch (routines,
+         DDs, templates, etc.).
+  
+      c. Verify Checksums in Transport Global - This option will allow you
+         to ensure the integrity of the routines that are in the transport
+         global.
+  
+      d. Print Transport Global - this option will allow you to view the
+         components of the KIDS build.
+  
+   5. Use the Install Package(s) option and select package DG*5.3*650.
+  
+   6. When prompted 'Want KIDS to Rebuild Menu Trees Upon Completion of
+      Install? YES//', respond NO.
+  
+   7. When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+      YES//', it is recommended you answer NO.
+  
+   8. When prompted to 'Want to DISABLE Scheduled Options, Menu Options,
+      and Protocols? YES//', respond YES.  When prompted to select the
+      options you would like to place out of order, enter the following:
+  
+        DGPF*
+        DG LOAD PATIENT DATA             Load/Edit Patient Data
+        DG REGISTER PATIENT              Register a Patient
+  
+   9. The ENV/PRE/POST Installation routine DG53P650 may be deleted from
+      your system after successful patch installation.
+  
+   
+ VI. IMPLEMENTATION STEPS
+  
+ This section contains the final steps for implementing the Patient Record
+ Flags software module after the successful installation of patch
+ DG*5.3*650.
+  
+ 1. Security Key allocation
+  
+    Using the Allocation of Security Keys [XUKEYALL] option of the
+    Key Management [XUKEYMGMT] menu, allocate the following security key
+    to the appropriate personnel.
+  
+    a. DGPF TRANSMISSIONS
+       These individuals should have the authority to retransmit PRF HL7
+       messages using the new Record Flag Transmission Errors [DGPF
+       TRANSMISSION ERRORS] option.
+  
+  
+ 2. Enable Divisions for PRF Assignment Ownership
+  
+    The Post-Install routine enables only the primary division for PRF
+    assignment ownership.  Use the Record Flag Enable Divisions
+    [DGPF ENABLE DIVISIONS] option to enable additional divisions for
+    PRF assignment ownership.  This option and how to use it are described
+    in the "Record Flag Enable Divisions" section of the User Guide and
+    the "PRF Assignment Ownership in Multi-Divisional Systems" section
+    of the Release Notes document.
+ 
+ 
+ 3. HL7 Logical Link in a constant "Reading" state
+ 
+    Following installation of Patient Record Flags Phase III patch DG*5.3*650, 
+    it is possible that a Patient Record Flags (PRF) HL7 Query message may
+    cause one of your site's VA-namespaced HL7 Logical Links to remain in a
+    "Reading" state.  This will only occur when the receiving site of the
+    message has not yet installed the Patient Record Flags Phase III patch.
+ 
+ 
+    Cause of the problem
+    ====================
+    The PRF Phase II software contains an unreported defect that prevents
+    the message destination site from returning an HL7 Acknowledgment
+    message when the patient Date of Birth (DOB) or Social Security Number
+    (SSN) at the sending site does not match the DOB or SSN at the receiving
+    site.  The defect was discovered and corrected during development of the
+    PRF Phase III patch DG*5.3*650.  Once patch DG*5.3*650 is installed at
+    all sites, the problem will be resolved.
+ 
+ 
+    How to determine when your site has the problem
+    ===============================================
+    Run the Systems Link Monitor [HL MESSAGE MONITOR] option at least once
+    a day, preferably in the morning.  Scroll through the NODE list looking
+    for VA-namespaced HL7 Logical Links that display a continuous STATE value
+    of "Reading".
+ 
+                 MESSAGES  MESSAGES   MESSAGES  MESSAGES  DEVICE  
+      NODE       RECEIVED  PROCESSED  TO SEND   SENT      TYPE     STATE   
+    
+      VANTH      1         1          667       664        NC      Idle    
+      VAIND      0         0          18        4          NC      Reading
+ 
+ 
+    What to do when your site has the "Reading" STATE problem
+    =========================================================
+    A. Identify the specific message that is causing the "Reading" STATE to
+       determine if the message is a Patient Record Flags Query message using
+       the following steps:
+ 
+ 
+      1. Perform a FileMan Inquire on the HL LOGICAL LINK (#870) file using
+         the NODE value from the Systems Link Monitor to determine the
+         Internal Entry Number (IEN) and Institution associated with the 
+         NODE in a continuous "Reading" STATE.
+ 
+   VA FileMan 22.0
+ 
+   Select OPTION:    INQUIRE TO FILE ENTRIES
+ 
+   OUTPUT FROM WHAT FILE: HL LOGICAL LINK// 870  HL LOGICAL LINK
+                                                  (75 entries)
+   Select HL LOGICAL LINK NODE: VAIND
+   ANOTHER ONE:
+   STANDARD CAPTIONED OUTPUT? Yes// N  (No)
+   FIRST PRINT FIELD: NUMBER
+   THEN PRINT FIELD: INSTITUTION
+   THEN PRINT FIELD:
+   Heading (S/C): HL LOGICAL LINK LIST  Replace
+   DEVICE:   UCX/TELNET    Right Margin: 80//
+   HL LOGICAL LINK LIST                           NOV  7,2006  15:26    PAGE 1
+   NUMBER        INSTITUTION
+   ---------------------------------------------------------------------------
+   24            INDIANAPOLIS
+ 
+ 
+      2. Perform a global listing (^%G) on the ^HLMA("AC","O",IEN global
+         substituting the HL LOGICAL LINK IEN from step A.1.  The first
+         entry in the list points to the message causing the problem.
+ 
+   >D ^%G
+  
+   Device:      Right margin: 80=>
+  
+   Global ^HLMA("AC","O",24   <== The HL LOGICAL LINK IEN from step 1 above.
+ 
+     ^HLMA("AC","O",24,524027350)= <== 524027350 is the problem message pointer.
+                       531911211)=
+                       531921212)=
+                       531931212)=
+ 
+ 
+      3. Perform a FileMan Inquire on the HL7 MESSAGE ADMINISTRATION (#773)
+         file using the problem message pointer from step A.2 to determine the
+         IEN of the HL7 MESSAGE TEXT (#772) record and the Sending Application
+         associated with the problem message.
+ 
+ 
+   Select OPTION: INQUIRE TO FILE ENTRIES
+ 
+   OUTPUT FROM WHAT FILE: HL7 MESSAGE ADMINISTRATION// 773  HL7 MESSAGE ADMINI
+   STRATION
+                                        (10 entries)
+   Select HL7 MESSAGE ADMINISTRATION DATE/TIME ENTERED: `524027350
+   JAN 10, 2006@14:04:01     528524027350     PRF-QRY
+   ANOTHER ONE:
+   STANDARD CAPTIONED OUTPUT? Yes// NO  (No)
+   FIRST PRINT FIELD: INTERNAL(#.01)
+   THEN PRINT FIELD: SENDING APPLICATION
+   THEN PRINT FIELD:
+   Heading (S/C): HL7 MESSAGE ADMINISTRATION LIST  Replace
+   STORE PRINT LOGIC IN TEMPLATE:
+   DEVICE:   UCX/TELNET    Right Margin: 80//
+   HL7 MESSAGE ADMINISTRATION LIST                NOV  9,2006  10:57    PAGE 1
+   INTERNAL(#.01)
+   SENDING APPLICATION
+   ------------------------------------------------------------------------------
+   279395297
+   PRF-QRY
+ 
+ 
+   NOTE:  If the Sending Application is not "PRF-QRY", then DO NOT PROCEED,
+          because the "Reading" STATE is not being caused by Patient Record
+          Flags.
+ 
+ 
+    B. Determine the patient DFN, DOB, and SSN that is being transmitted in
+       the problem message using the following:
+ 
+      1. Perform a FileMan Inquire on the HL7 MESSAGE TEXT (#772) file
+         using the IEN value determined in step A.3.  The DFN value is
+         found in the 5th piece of the MESSAGE TEXT line that starts with
+         QRD.  The SSN and DOB are found in the 5th and 6th pieces of the
+         MESSAGE TEXT line that starts with QRF.
+ 
+   Select OPTION: INQUIRE TO FILE ENTRIES
+ 
+   OUTPUT FROM WHAT FILE: HL7 MESSAGE ADMINISTRATION// 772  HL7 MESSAGE TEXT
+                                           (10 entries)
+   Select HL7 MESSAGE TEXT DATE/TIME ENTERED: `279395297
+   1-10-2006@14:04:01     PRF-QRY
+   ANOTHER ONE:
+   STANDARD CAPTIONED OUTPUT? Yes//   (Yes)
+   Include COMPUTED fields:  (N/Y/R/B): NO// B  BOTH Computed Fields and Record 
+   Number (IEN)
+ 
+   NUMBER: 279395297                   DATE/TIME ENTERED: JAN 10, 2006@14:04:01
+   SERVER APPLICATION: PRF-QRY         TRANSMISSION TYPE: OUTGOING
+   MESSAGE ID: 528279395297               PARENT MESSAGE: JAN 10, 2006@14:04:01
+   PRIORITY: IMMEDIATE
+   RELATED EVENT PROTOCOL: DGPF PRF QRY/R02 EVENT
+   MESSAGE TYPE: SINGLE MESSAGE         FAST PURGE DT/TM: JAN 17, 2006@14:04:03
+   MESSAGE TEXT:
+                                  |== DFN value is 489350
+                                  V
+   QRD^20060110140401-0500^R^I^489350^^^10~RD^100123456V138728~~~~~~~~USVHA&&
+   L^OTH~Other~HL0048^PRFA~Patient Record Flag Assignments~L
+ 
+   QRF^PRF^^^082420427^19490910 <== SSN value is 082420427
+                                    DOB value is 19490910 in HL7 (YYYYMMDD)
+                                    format, which translates to 09/10/1949.
+   STATUS: SUCCESSFULLY COMPLETED
+   DATE/TIME PROCESSED: JAN 10, 2006@14:04:03
+   NO. OF CHARACTERS IN MESSAGE: 159     NO. OF EVENTS IN MESSAGE: 1
+ 
+ 
+    C. Compare the message DOB and SSN values to the values found in the
+       Patient Inquiry [DG PATIENT INQUIRY] option.
+ 
+       If the message values match the Patient Inquiry values and are
+       accurate, then contact the message destination site requesting that
+       the mismatched values be corrected. When the destination site
+       corrects the values, the NODE in a "Reading" STATE should clear
+       within a few minutes.
+ 
+       If the message values do not match the Patient Inquiry values or are
+       not accurate, then the problem message must be removed from the message
+       queue.  Please contact EVS for instructions and assistance with this
+       process. 
+  
+   
+ VII. TEST SITES
+  
+ The following sites participated in the testing of the DG*5.3*650 (Patient
+ Record Flags Phase III) software.
+  
+  Test Site                             Alpha              Beta
+  ------------------------              -----              ----
+  Upstate New York HCS                    X                 X
+  Boston Regional HCS                                       X
+  Cleveland, OH VAMC                                        X
+  Charleston, SC VAMC                                       X
+  Palo Alto HCS                                             X
+  Portland, OR VAMC                                         X
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: DG53P650
+    Before:       n/a  After: B18743146  **650**
+Routine Name: DGPFAA2
+    Before: B47055667  After: B31192734  **425,554,650**
+Routine Name: DGPFAA3
+    Before:  B3807769  After: B33716755  **425,650**
+Routine Name: DGPFAPI
+    Before: B32207494  After: B36238141  **425,554,699,650**
+Routine Name: DGPFAPI1
+    Before: B24151608  After: B24558175  **554,650**
+Routine Name: DGPFAPI2
+    Before: B18390437  After: B18327429  **554,650**
+Routine Name: DGPFBGR
+    Before: B44753141  After: B43954617  **425,650**
+Routine Name: DGPFDD
+    Before: B17115421  After: B29798054  **425,554,650**
+Routine Name: DGPFDIV
+    Before:       n/a  After: B38624185  **650**
+Routine Name: DGPFDIV1
+    Before:       n/a  After: B18927567  **650**
+Routine Name: DGPFHLL
+    Before:  B8636516  After: B41058426  **425,650**
+Routine Name: DGPFHLL1
+    Before:       n/a  After:  B8068964  **650**
+Routine Name: DGPFHLQ
+    Before: B44034534  After: B44511391  **425,650**
+Routine Name: DGPFHLQ3
+    Before: B25817891  After:  B3002263  **425,650**
+Routine Name: DGPFHLQ4
+    Before:       n/a  After: B17883143  **425,650**
+Routine Name: DGPFHLR
+    Before: B30149519  After: B69390340  **425,650**
+Routine Name: DGPFHLRT
+    Before:  B8257718  After:  B4258248  **425,650**
+Routine Name: DGPFHLS
+    Before: B29645251  After: B55420041  **425,650**
+Routine Name: DGPFHLU
+    Before: B27262143  After: B34815804  **425,718,650**
+Routine Name: DGPFHLU3
+    Before: B34322832  After: B31915353  **425,650**
+Routine Name: DGPFHLU5
+    Before: B59520478  After: B49294437  **425,718,650**
+Routine Name: DGPFHLUQ
+    Before:       n/a  After: B40674346  **650**
+Routine Name: DGPFHLUT
+    Before: B30959687  After: B36458354  **425,650**
+Routine Name: DGPFLF3
+    Before: B51450229  After: B47245932  **425,554,650**
+Routine Name: DGPFLF4
+    Before: B29613889  After: B26165641  **425,554,650**
+Routine Name: DGPFLMA2
+    Before: B33213840  After: B50998481  **425,623,554,650**
+Routine Name: DGPFLMA3
+    Before: B75304468  After: B70378995  **425,623,554,650**
+Routine Name: DGPFLMA4
+    Before: B38033813  After: B39834723  **425,554,650**
+Routine Name: DGPFLMQ
+    Before:       n/a  After:   B591948  **650**
+Routine Name: DGPFLMQ1
+    Before:       n/a  After: B22327142  **650**
+Routine Name: DGPFLMQ2
+    Before:       n/a  After: B39288801  **650**
+Routine Name: DGPFLMQD
+    Before:       n/a  After:  B1208744  **650**
+Routine Name: DGPFLMT
+    Before:       n/a  After:  B2035581  **650**
+Routine Name: DGPFLMT1
+    Before:       n/a  After: B55169432  **650**
+Routine Name: DGPFLMT2
+    Before:       n/a  After: B24050413  **650**
+Routine Name: DGPFLMT3
+    Before:       n/a  After:  B6275876  **650**
+Routine Name: DGPFLMT4
+    Before:       n/a  After: B29251148  **650**
+Routine Name: DGPFLMT5
+    Before:       n/a  After: B10105469  **650**
+Routine Name: DGPFLMU
+    Before: B15922307  After: B16582926  **425,650**
+Routine Name: DGPFLMU1
+    Before: B44001072  After: B45355090  **425,554,650**
+Routine Name: DGPFRAL1
+    Before: B71927213  After: B71862269  **554,650**
+Routine Name: DGPFUT
+    Before: B25945716  After: B38902808  **425,554,650**
+Routine Name: DGPFUT1
+    Before: B32867509  After: B28564344  **425,607,650**
+Routine Name: DGPFUT2
+    Before: B35502181  After: B44485554  **425,554,650**
+
+=============================================================================
+User Information:                          Hold Date     : NOV 27, 2006
+Entered By  : LOUCK,KEVIN                   Date Entered  : FEB 23, 2005
+Completed By: BARBER,HAROLDINE              Date Completed: NOV 20, 2006
+Released By : ALEXANDER,DIANNE              Date Released : NOV 27, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

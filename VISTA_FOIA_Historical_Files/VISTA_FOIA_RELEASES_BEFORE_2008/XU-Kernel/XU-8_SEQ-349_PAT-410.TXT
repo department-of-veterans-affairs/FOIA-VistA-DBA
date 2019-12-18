@@ -1,0 +1,480 @@
+$TXT Created by IVEY,JOEL at NXT.KERNEL.FO-OAKLAND.MED.VA.GOV  (KIDS) on Thursday, 09/14/06 at 10:29
+=============================================================================
+Run Date: SEP 28, 2006                     Designation: XU*8*410
+Package : XU - KERNEL                         Priority: Mandatory
+Version : 8       SEQ #349                      Status: Released
+                  Compliance Date: OCT 29, 2006
+=============================================================================
+
+Associated patches: (v)XU*8*420    <<= must be installed BEFORE `XU*8*410'
+
+Subject: National Provider Identifier Support.
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ Remedy tickets: HD0000000153381; HD0000000153404; HD0000000157291;
+ HD0000000158625; HD0000000160614
+  
+ List of Test Sites: 
+   BATTLE CREEK, MI                                       
+   HEARTLAND-WEST HCS 
+   LITTLE ROCK, AR (C) 
+   SHERIDAN, WY                                       
+  
+                             XU*8*410 
+  
+ This patch includes the following: 
+  
+ 1) Provides APIs in support of the NPI or National Provider Identifier and 
+ TAXONOMY for New Person (#200) and Institution (#4) files.  
+   
+   $$CHKDGT^XUSNPI(XUSNPI) ; CHECKSUM for NPI 
+   -----------------------
+   Input : XUSNPI = The NPI value to test. Must be 10 digits.  
+   Output: XUSRTN = If input passes check sum computation, return 1.  
+                  = Else return 0.  
+  
+   The National Provider Identifier check digit is calculated using the 
+   Luhn formula for computing the modulus 10 "double-add-double  check 
+   digit. This algorithm is recognized as an ISO standard and is the 
+   specified check digit algorithm to be used for the card issuer 
+   identifier on a standard health identification card. When an NPI is used 
+   as a card issuer identifier on a standard health identification card, it 
+   is preceded by the prefix 80840, in which 80 indicates health 
+   applications and 840 indicates the United States. The prefix is required 
+   only when the NPI is used as a card issuer identifier. However, in order 
+   that any NPI could be used as a card issuer identifier on a standard 
+   health identification card, the check digit will always be calculated 
+   as if the prefix is present. This is accomplished by adding the constant 
+   24 in step 2 of the check digit calculation (as shown in the example 
+   below) when the NPI is used without the prefix. Luhn Formula for Modulus 
+   10 "double-add-double Check Digit.  
+   The Luhn check digit formula is calculated as follows: 
+     1. Double the value of alternate digits beginning with the rightmost 
+        digit. 
+     2. Add the individual digits of the products resulting from step 1 to 
+        the unaffected digits from the original number.  
+     3. Subtract the total obtained in step 2 from the next higher number 
+        ending in zero. This is the check digit. If the total obtained in 
+        step 2 is a number ending in zero, the check digit is zero.  
+    
+    $$CHKDT^XUSNPI(XUSQI,XUSIEN,XUSDATE) ; Validate Date 
+    ------------------------------------
+    Input : 
+    - XUSQI = Qualified Identifier: Required.  
+         For example: XUSQI="Individual_ID" for New Person file (#200); 
+         XUSQI="Organization_ID"for Institutions file (#4) 
+    - XUSIEN = Internal Entry Number: Required.  
+    - XUSDATE = The Effective Date value to test. Must be FM date: 
+                Required.  
+    Output: XUSRTN = If input passes date comparison, return 1.  
+                   = Else return 0.  
+  
+   - Validate XUSQI against Kernel Parameters File. If no entry, exit API 
+     and return 0.  
+   - Validate XUSIEN. If no entry, exit API and return 0. Individual_IDs 
+     should be validated against file 200. Organization_IDs should be 
+     validated against file 4. Pharmacy_IDs should be validated against 
+     file 59, then resolved to file 4 via the Related Institution pointer.  
+   - Validate XUSDATE. Effective Date must both be greater than the most 
+     recent effective date and not a future date. If not, exit API and 
+     return 0. 
+   - Return 1.  
+  
+    $$ADDNPI^XUSNPI(XUSQI,XUSIEN,XUSNPI,XUSDATE,XUSTATUS) ; Add NPI 
+    ------------------------------------------------------
+    Input : 
+    - XUSQI = Qualified Identifier: Required.  
+    - XUSIEN = Internal Entry Number: Required.  
+    - XUSNPI = National Provider Identifier: Required.  
+    - XUSDATE = Active Date: Required.  
+    - XUSTATUS = Status: Required.  
+    Output: XUSRTN = If successful, return IEN of new 42 sub-file entry.  
+                   = Else return -1^ErrorMessage.  
+  
+   - Validate XUSQI against Kernel Parameters File. If no entry, exit API 
+     and return -1^Invalid Qualified Identifier.  
+   - Validate XUSIEN. If no entry, exit API and return -1^Invalid IEN.  
+     Individual_IDs should be validated against file 200. Organization_IDs 
+     should be validated against file 4. Pharmacy_IDs should be validated 
+     against file 59. 
+   - Validate XUSDATE. Effective Date must pass $$CHKDT^XUSNPI function.  
+     If not, exit API and return -1^Invalid Effective Date.  
+   - Validate XUSTATUS. Status must be both opposite of status of the 
+     most recent effective date entry and, if no entry exists, must be  
+     Active. If not, exit API and return -1^Invalid Status.  
+   - Validate XUSNPI. NPI must pass $$CHKDGT^XUSNPI function. If not, 
+     exit API and return -1^Invalid NPI.  
+   - Use FM to add an entry for Effective Date (.01), Status (.02), and 
+     NPI (.03) in the 42 subfile of the appropriate file; Individual_IDs in 
+     file 200, Organization and Pharacy_IDs in file 4. Exit API and return 
+     the IEN of the new subfile entry.  
+  
+    $$NPI^XUSNPI(XUSQI,XUSIEN,XUSDATE) ; Look up NPI 
+    ----------------------------------
+    Input : 
+    - XUSQI = Qualified Identifier: Required. No default.  
+    - XUSIEN = Internal Entry Number: Required. No default.  
+    - XUSDATE = Date of Interest: Not required. Default: Today.  
+    Output: XUSRTN = If current NPI exists, return NPI^EffectiveDate^Status 
+                   = If invalid XUSQI or XUSIEN, return -1^ErrorMessage 
+                   = Else return 0.  
+  
+   - Validate XUSQI against Kernel Parameters File. If no entry, exit from 
+     API and return -1^Invalid Qualified Identifier.  
+   - Validate XUSIEN. If no entry, exit from API and return -1^Invalid 
+     IEN. Individual_IDs should be validated against file 200.  
+     Organization_IDs should be validated against file 4. Pharmacy_IDs 
+     should be validated against file 59; use PSS^PSO59 (dbia4827) to 
+     retrieve the institution ien for the outpatient site.  
+   - Validate XUSDATE. Default to today if not specified.  
+   - Retrieve from the 42 multiple the most recent entry relative to 
+     XUSDATE, Individual_IDs from file 200, Organization and Pharmacy IDs 
+     from file 4. 
+  
+    $$QI^XUSNPI(XUSNPI) ; Look up Qualified Identifer 
+    -------------------
+    Input : XUSNPI = National Provider Identifier: Required. No default.  
+    Output: XUSRTN = If qualified identifier entity exists, return 
+                     QualifiedIdentifier^IEN^EffectiveDate^Status 
+                   = Else return 0.  
+  
+   - Order through 'ANPI' cross references of file 4 and 200. If no entry 
+     to match XUSNPI, exit from API and return 0 .  
+   - Retain Individual_ID or Organization_ID (as appropriate for file 
+     the NPI was found in) for QualifiedIdentifier output.  
+   - Retain IEN for output. 
+   - Retrieve from the appropriate 42 multiple the most recent entry 
+     relative to today, retain EffectiveDate and Status for output.  
+   - Return QualifiedIdentifier^IEN^EffectiveDate^Status . 
+  
+   $$TAXIND^XUSTAX(XUIEN) ; Get taxonomy for an individual 
+   -----------------------
+   Extrinsic function to retrieve the taxonomy code for a given record in 
+   the NEW PERSON file (#200).  
+    
+   Input : XUIEN = IEN of the record in file #200 
+   Output: Piece 1 = Taxonomy X12 code of the record in file #200 
+           Piece 2 = Taxonomy IEN from file 8932.1 
+  
+   $$TAXORG^XUSTAX(XUIEN) ; Get taxonomy for an organization 
+   ----------------------
+   Extrinsic function to retrieve the taxonomy code for a given record in 
+   the INSTITUTION file (#4).  
+                
+   Input : XUIEN = IEN of the record in file #4 
+   Output: Piece 1 = Taxonomy X12 code of the record in file #4 
+           Piece 2 = Taxonomy IEN from file 8932.1 
+  
+  
+  
+ 2) Changes to INSTITUTION file (#4): For IDENTIFIER SUB-FILE 
+ (#4.9999) adds new EFFECTIVE DATE/TIME (#.03) and STATUS (#.04) fields,
+ and adds TAXONOMY SUB-FILE (#4.043).
+  
+  
+ 4.9999,.03      EFFECTIVE DATE/TIME  0;3 DATE 
+  
+                 INPUT TRANSFORM:S %DT="E" D ^%DT S X=Y K:Y<1 X 
+                 LAST EDITED:    APR 10, 2006 
+                 DESCRIPTION:    Describes the pair Status and Effective 
+                                 Date/Time for each reference term.  
+  
+                 RECORD INDEX:   XUMFAL (#90)    REGULAR    IR 
+                                 LOOKUP & SORTING    WHOLE FILE (#4) 
+                   Short Descr:  New x-ref 
+                     Set Logic:  S ^DIC(4,"XUMFAL",$E(X(1),1,30), 
+                                 $E(X(2),1,30),$E(X(3),1,30),$E(X(4), 
+                                 1,1),DA(1),DA)="" 
+                    Kill Logic:  K ^DIC(4,"XUMFAL",$E(X(1),1,30), 
+                                 $E(X(2),1,30),$E(X(3),1,30),$E(X(4) 
+                                 ,1,1),DA(1),DA) 
+                    Whole Kill:  K ^DIC(4,"XUMFAL") 
+                          X(1):  CODING SYSTEM  (4.9999,.01)  (Subscr 1) 
+                                 (Len 30)  (forwards) 
+                          X(2):  ID  (4.9999,.02)  (Subscr 2)  (Len 30) 
+                                 (forwards) 
+                          X(3):  EFFECTIVE DATE/TIME  (4.9999,.03)  
+                                 (Subscr 3) (Len 30)  (forwards) 
+                          X(4):  STATUS  (4.9999,.04)  (Subscr 4)  (Len 1) 
+                                 (forwards) 
+  
+ 4.9999,.04      STATUS               0;4 SET 
+  
+                                 '1' FOR ACTIVE; 
+                                 '0' FOR INACTIVE; 
+                 LAST EDITED:    APR 10, 2006 
+                 DESCRIPTION:    The Status of a reference term is either 
+                                 'ACTIVE' or 'INACTIVE', then the term 
+                                 will be accessible by end-users to 
+                                 document a particular patient event. If 
+                                 'INACTIVE', then the term will only be 
+                                 accessible by the application to display 
+                                 legacy data.  
+  
+                 RECORD INDEX:   XUMFAL (#90)    REGULAR    IR 
+                                 LOOKUP & SORTING    WHOLE FILE (#4) 
+                   Short Descr:  New x-ref 
+                     Set Logic:  S ^DIC(4,"XUMFAL",$E(X(1),1,30), 
+                                 $E(X(2),1,30),$E(X(3),1,30),$E(X(4), 
+                                 1,1),DA(1),DA)="" 
+                    Kill Logic:  K ^DIC(4,"XUMFAL",$E(X(1),1,30), 
+                                 $E(X(2),1,30),$E(X(3),1,30),$E(X(4), 
+                                 1,1),DA(1),DA) 
+                    Whole Kill:  K ^DIC(4,"XUMFAL") 
+                          X(1):  CODING SYSTEM  (4.9999,.01)  (Subscr 1) 
+                                 (Len 30)  (forwards) 
+                          X(2):  ID  (4.9999,.02)  (Subscr 2)  (Len 30) 
+                                 (forwards) 
+                          X(3):  EFFECTIVE DATE/TIME  (4.9999,.03)  
+                                 (Subscr 3) (Len 30)  (forwards) 
+                          X(4):  STATUS  (4.9999,.04)  (Subscr 4)  (Len 1) 
+                                 (forwards) 
+  
+ 4,43        TAXONOMY CODE          TAXONOMY;0 POINTER Multiple #4.043 
+  
+  
+ 4.043,.01   TAXONOMY CODE          0;1 POINTER TO PERSON CLASS FILE 
+                                    (#8932. 1) (Multiply asked) 
+  
+             LAST EDITED:      JUN 15, 2006 
+             HELP-PROMPT:      Enter the NUCC recognized taxonomy code.  
+             DESCRIPTION:      This multiple field holds the NUCC 
+                               recognized taxonomy code for an individual 
+                               or an organization.  
+  
+             CROSS-REFERENCE:  4.043^B 
+                    1)= S ^DIC(4,DA(1),"TAXONOMY","B",$E(X,1,30),DA )="" 
+                    2)= K ^DIC(4,DA(1),"TAXONOMY","B",$E(X,1,30),DA) 
+  
+  
+ 4.043,.02       PRIMARY CODE         0;2 SET 
+  
+                                 '1' FOR YES; 
+                                 '0' FOR NO; 
+                 LAST EDITED:    JUN 15, 2006 
+                 HELP-PROMPT:    Enter a 1 if this is the provider's 
+                                 primary 
+                                 taxonomy code or a 0 for non-primary. 
+                 DESCRIPTION:    Only one code can be the primary taxonomy 
+                                 code for a provider. When a specific 
+                                 taxonomy code is identified it is the 
+                                 primary code that will be the default.  
+  
+                 CROSS-REFERENCE:4.043^C 
+                      1)= S ^DIC(4,DA(1),"TAXONOMY","C",$E(X,1,30),DA)="" 
+                      2)= K ^DIC(4,DA(1),"TAXONOMY","C",$E(X,1,30),DA) 
+                      3)= C X-REF 
+  
+  
+ 4.043,.03       STATUS               0;3 SET 
+  
+                                 'A' FOR ACTIVE; 
+                                 'I' FOR INACTIVE; 
+                 LAST EDITED:    JUN 15, 2006 
+                 HELP-PROMPT:    Enter an 'A' for an active code or an 'I' 
+                                 for an inactive code.  
+                 DESCRIPTION:    If a taxonomy code listed for a provider 
+                                 is a currently active code (one they use 
+                                 today), then the status should be marked 
+                                 with an 'A'. At times a provider will no 
+                                 longer use a taxonomy code. This code will 
+                                 be marked with an 'I' for inactive. Codes 
+                                 should not be removed from a provider's 
+                                 list.  They should be activated or 
+                                 inactivated.  
+   
+               FIELD INDEX:  TAXSTATUS (#109)    REGULAR    IR 
+                             LOOKUP & SORTING    WHOLE FILE (#4) 
+               Short Descr:  NEW X-REF 
+                 Set Logic:  S ^DIC(4,"TAXSTATUS",$E(X,1,30),DA(1),DA)="" 
+                Kill Logic:  K ^DIC(4,"TAXSTATUS",$E(X,1,30),DA(1),DA) 
+                Whole Kill:  K ^DIC(4,"TAXSTATUS") 
+                      X(1):  STATUS  (4.043,.03)  (Subscr 1)  (Len 30) 
+                             (forwards) 
+  
+ 3) Updates INPUT TRANSFORM, HELP-PROMPT, and new FIELD INDEX for fields: 
+  
+ - NPI field (#41.99) of the New Person file (#200): 200,41.99     NPI      
+ NPI;1 FREE TEXT (Required) 
+  
+       INPUT TRANSFORM: K:'($$CHKDGT^XUSNPIE1(X,DA,"Individual_ID")) X 
+           HELP-PROMPT: Answer must be 10 characters in length and not 
+                        being used.  
+  
+ - NPI field (#.03) of the EFFECTIVE DATE/TIME sub-file (#200.042) in the New 
+ Person file (#200): 200.042,.03   NPI       0;3 FREE TEXT (Required) 
+  
+       INPUT TRANSFORM: K:'($$CHKDGT^XUSNPIE1(X,DA,"Individual_ID")) X 
+           HELP-PROMPT: Answer must be 10 characters in length and not 
+                        being used.  
+  
+               FIELD INDEX:      NPI42 (#112)    REGULAR    IR 
+                                 LOOKUP & SORTING    WHOLE FILE (#200) 
+                   Short Descr:  NPI42 X-REF 
+                     Set Logic:  S ^VA(200,"NPI42",$E(X,1,10),DA(1),DA)="" 
+                    Kill Logic:  K ^VA(200,"NPI42",$E(X,1,10),DA(1),DA) 
+                    Whole Kill:  K ^VA(200,"NPI42") 
+                          X(1):  NPI  (200.042,.03)  (Subscr 1)  (Len 10) 
+                                 (forwards) 
+  
+ - NPI field (#41.99) of the INSTITUTION file (#4): 4,41.99   NPI      NPI;1 
+ FREE TEXT (Required) 
+  
+     INPUT TRANSFORM: K:'($$CHKDGT^XUSNPIE1(X,DA,"Organization_ID")) X 
+         HELP-PROMPT: Answer must be 10 characters in length and not 
+                      being used.  
+  
+ - NPI field (#.03) of the EFFECTIVE DATE/TIME sub-file (#4.042) in the 
+ INSTITUTION file (#4): 4.042,.03     NPI       0;3 FREE TEXT (Required) 
+  
+     INPUT TRANSFORM: K:'($$CHKDGT^XUSNPIE1(X,DA,"Organization_ID")) X 
+         HELP-PROMPT: Answer must be 10 characters in length and not 
+                      being used.  
+  
+               FIELD INDEX:      NPI42 (#113)    REGULAR    IR 
+                                 LOOKUP & SORTING    WHOLE FILE (#4) 
+                   Short Descr:  NPI42 X-REF 
+                     Set Logic:  S ^DIC(4,"NPI42",$E(X,1,10),DA(1),DA)="" 
+                    Kill Logic:  K ^DIC(4,"NPI42",$E(X,1,10),DA(1),DA) 
+                    Whole Kill:  K ^DIC(4,"NPI42") 
+                          X(1):  NPI  (4.042,.03)  (Subscr 1)  (Len 10) 
+                                 (forwards) 
+  
+ 4) Updates Data Dictionary for Person Class (#8932.1) file. The new 
+ Identifier is created for X12 CODE (#6) field:
+  
+ IDENTIFIED BY: X12 CODE (#6) 
+       "WRITE": N % S %=^(0) D:$L($P(%,U,2)) EN^DDIOL($P(%,U,2),"","!,?20") 
+                D:$L($P(%,U,3)) EN^DDIOL($P(%,U,3),"","!,?25") 
+  
+ 5) Deletes the Pharmacy_ID, created by Kernel Patch XU*8*420, of PARAMETER 
+  file (#8989.5): KERNEL     XUSNPI QUALIFIED IDENTIFIER     Pharmacy_ID
+  
+ 6) Changes to options distributed with patch XU*8*420:
+  
+ Option Print Local NPI Reports [XUS NPI LOCAL REPORTS] 
+ Used by local facility staff to generate reports for All providers 
+ needing an NPI value and All providers without NPI numbers can now be 
+ sorted by DIVISION and or SERVICE SECTION.  Output can be produced in 
+ Printed text or it can be delimited by '^'(reports can not be spooled at 
+ this time). A summary at the end of local reports indicating the total 
+ number of providers with an NPI status and a count by status is provided.
+  
+ Modifies the display text for the option [XUS NPI ENTER NPI FOR  
+ PROVIDER] from "Enter NPI values for Providers" to "Add/Edit NPI  
+ values for Providers." 
+ This option now allows the ability to Delete or Replace NPI value once it 
+ is added. NPI value maybe deleted if it is entered in error (belongs to
+ another provider) or if it is a VALID NPI for a provider but a user still
+ wants to delete it. Please note that if a VALID NPI value is deleted, it
+ cannot be used again.
+  
+  
+ Routine Summary: 
+ ================
+  The following routine is included in this patch.  The second 
+  line of the routine now looks like: 
+       <tab>;;8.0;KERNEL;**[patch list]**;Jul 10, 1995 
+  
+ Checksums: 
+ ==========
+ Checksums obtained using CHECK^XTSUMBLD (Old Checksums) 
+  
+  Rtn Nm    Chksum Before   Chksum After    Patch List 
+  ------    -------------   ------------    ----------
+ XU8P410              N/A      1737672      **410** 
+ XUSNPI               N/A     14283877      **410** 
+ XUSNPIDA         2329487      2329814      **420,410**   
+ XUSNPIE1        22031186     26357245      **420,410** 
+ XUSNPIE2             N/A     27009350      **410** 
+ XUSNPIED        19893383      8473851      **420,410** 
+ XUSTAX               N/A      3855410      **410** 
+  
+ XU8P410 will be deleted after the installation completes.  
+  
+ List of preceding patches: 420 
+  
+ Blood Bank Clearance: 
+ =====================
+ Clearance on 5/10/2006.  
+  
+ EFFECT ON BLOOD BANK FUNCTIONAL REQUIREMENTS: Patch XU*8*410 contains changes 
+ to a package referenced in VHA OI SEPG SOP 192-023 Review of VISTA Patches for 
+ Effects on VISTA Blood Bank Software. This patch does not alter or modify any 
+ VistA Blood Bank software design safeguards or safety critical elements 
+ functions.  
+  
+ RISK ANALYSIS: Changes made by patch XU*8*410 have no effect on Blood Bank 
+ software functionality, therefore RISK is none.  
+  
+ Installation Instructions: 
+ =========================
+ 1. Users ARE allowed to be on the system during the installation. 
+    However, it is recommended that the patch be installed during 
+    non-peak time. It will take about five minutes to install the 
+    patch, but you may queue the installation if you wish.  
+  
+ 2. You DO NOT need to stop TaskMan or the background filers.  
+  
+ 3. Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This      
+    option will load the KIDS package onto your system.  
+  
+ 4. The patch has now been loaded into a Transport global on your system. 
+    You now need to use KIDS to install the Transport global. On the KIDS 
+    menu, under the 'Installation' menu, use the following options: 
+  
+                 Verify Checksums in Transport Global 
+                 Print Transport Global 
+                 Compare Transport Global to Current System 
+                 Backup a Transport Global 
+  
+    On the KIDS menu, under the 'Installation' menu, use the following 
+    option: 
+                 Install Package(s)  
+                 Select INSTALL NAME:XU*8.0*410 
+                                     ==========
+  
+ Want KIDS to Rebuild Menu Trees Upon Completion of Install? YES// NO 
+                                                                   ==
+ Want KIDS to INHIBIT LOGONs during the install? YES// NO 
+                                                       ==
+ Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// NO  
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: XU8P410
+    Before:       n/a  After:  B2965517  **410**
+Routine Name: XUSNPI
+    Before:       n/a  After: B55759384  **410**
+Routine Name: XUSNPIDA
+    Before: B45390858  After: B45442635  **420,410**
+Routine Name: XUSNPIE1
+    Before: B89054280  After: B70700540  **420,410**
+Routine Name: XUSNPIE2
+    Before:       n/a  After: B60490192  **410**
+Routine Name: XUSNPIED
+    Before: B59937422  After: B22186958  **420,410**
+Routine Name: XUSTAX
+    Before:       n/a  After:  B7294998  **410**
+
+=============================================================================
+User Information:
+Entered By  : FORT,WALLY                    Date Entered  : FEB 14, 2006
+Completed By: SINGH,GURBIR                  Date Completed: SEP 26, 2006
+Released By : TILLIS,LEWIS                  Date Released : SEP 28, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

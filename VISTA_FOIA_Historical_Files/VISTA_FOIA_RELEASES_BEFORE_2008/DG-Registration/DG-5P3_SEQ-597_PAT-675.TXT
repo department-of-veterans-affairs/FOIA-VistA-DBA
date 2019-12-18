@@ -1,0 +1,312 @@
+$TXT Created by GINSBERG,ELIOT at MNTVLL.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 11/08/05 at 07:59
+=============================================================================
+Run Date: JAN 04, 2006                     Designation: DG*5.3*675
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #597                    Status: Released
+                  Compliance Date: FEB 04, 2006
+=============================================================================
+
+Associated patches: (v)DG*5.3*277  <<= must be installed BEFORE `DG*5.3*675'
+                    (v)DG*5.3*485  <<= must be installed BEFORE `DG*5.3*675'
+                    (v)DG*5.3*631  <<= must be installed BEFORE `DG*5.3*675'
+
+Subject: REQUIRED MEANS TEST WARNING DOESN'T SHOW IN CPRS
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ Issue 1:
+ -------
+ When a patient is selected and the current Means Test is retrieved from 
+ the ANNUAL MEANS TEST #408.31 file, several conditions are checked to 
+ determine whether the patient requires a Means Test. If any of these 
+ conditions is met, the first of two possible warning messages is 
+ displayed:
+  
+ *** Patient Requires a Means Test ***
+  
+ In addition, sites can set up their own, second warning message, for
+ example, MEANS TEST REQUIRED. (Whatever message text the site chooses is
+ entered in the MEDICAL CENTER DIVISION #40.8 file, MEANS TEST TEXT #35.02
+ field. To display this message within the Character User Interface (CHUI),
+ the DISPLAY MEANS TEST REQUIRED #35.01 field is set to YES. To display the
+ message within the Graphical User Interface (GUI), the DISPLAY MEANS TEST 
+ REQ IF GUI #35.03 field is set to YES.) Exactly the same conditions that 
+ cause the first warning message to display should cause the second, 
+ site-determined warning message to display as well.
+  
+ The problem was, although the first warning message displayed reliably, 
+ the site-determined message did not always display when it should have.
+ This display problem occurred both in the Registration application (CHUI)
+ and in the CPRS application (GUI).
+  
+ Prior to this patch, the site message would display only if the STATUS 
+ #.03 field in the ANNUAL MEANS TEST #408.31 file was set to R- REQUIRED. 
+ The other conditions, any one of which would have triggered the 
+ site-determined message, were properly checked with respect to the first 
+ warning message but not the second, site-determined one. This
+ functionality was incorrect.
+  
+ This patch changes that logic to now take all of the conditions that are 
+ checked against the first warning message and apply them to the second, 
+ site-determined message so that whenever the first warning message is 
+ displayed, the second, site-determined warning message will appear on the 
+ screen as well.
+  
+ Solution 1:
+ ---------
+ Take the return value from the call to MFLG^DGMTU. If module MFLG returns
+ a non-zero value, then the same condition used to display *** Patient 
+ Requires a Means Test *** has been met. If so, look at the CHUI or GUI
+ display decision flag from above to determine whether to print the site
+ message.
+  
+ The solution must be applied to both the CHUI and GUI modules (programs
+ DPTLK5 and DPTLK6 respectively).
+  
+  
+ Issue 2:
+ --------
+ When a Z11 message coming from the Health Eligibility Center (HEC)
+ contains Catastrophically Disabled information and is read to VistA, the
+ upload routine on Vista incorrectly reported out an error message 'Not
+ enough diagnoses/procedures/conditions to qualify for CD Status.' This
+ error message displayed because the load of the Z11 message couldn't find
+ any valid conditions from the ZCD segment. (The load software was setting
+ a local variable one way and the error message software was interpreting
+ that variable in a different way.)
+  
+ Solution 2:
+ -----------
+ Modify the load routine DGENUPL2 to correctly populate the local variable
+ so the error condition can evaluate it correctly. (Note:  Issue 2 was 
+ tested by New York Harbor HCS with assistance from HEC.)
+  
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+ There is no NSR associated with this patch.
+  
+ This patch addresses the following Remedy Ticket(s):
+ ---------------------------------------------------------
+ HD0000000097359 - Required Means test warning doesn't show in CPRS
+ HD0000000100044 - Catastrophic Disability 
+  
+  
+ Overview of Remedy Ticket(s):
+ ----------------------------------
+ HD0000000097359
+ Users were complaining that the site message was not appearing. It 
+ appeared that the problem was in the CPRS module. However, as stated
+ above, there is both a CHUI and GUI problem that is stopping the message
+ from appearing.
+  
+ HD0000000100044
+ The catastrophic disability information would not be loaded to the 
+ PATIENT #2 File in VistA and the HL7 would show the error 'Not enough 
+ diagnoses/procedures/conditions to qualify for CD Status.'
+  
+  
+ Components Sent With Patch
+ --------------------------
+ ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) now looks like:
+  
+      <tab>;;5.3;REGISTRATION;**[patch list]**;Aug 13,1993
+  
+                CHECK^XTSUMBLD (version prior to Sept 2005) results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  DGENUPL2              14137535             14145657        147,222,232
+                                                             310,314,367
+                                                             397,677,631
+                                                                675
+  DPTLK5                 1628679              1635997        265,276,277
+                                                               485,675
+  DPTLK6                 4478239              4022009       265,276,277,675
+  
+  
+ # of routines changed: 3
+  
+  
+ Test Sites:
+ -----------
+ New York Harbor HCS
+ Northern California HCS
+ Tucson, AZ
+  
+  
+        ================INSTALLATION INSTRUCTIONS =================
+  
+ If installed during the normal workday, it is recommended that the 
+ following selection(s) in the OPTION #19 File be disabled to prevent
+ possible conflicts while running the KIDS Install. Other VISTA users will
+ not be affected.
+  
+     Means Test User Menu                   [DG MEANS TEST USER MENU]
+     Add a New Means Test                   [DG MEANS TEST ADD]
+     Complete a Required Means Test         [DG MEANS TEST COMPLETE]
+     Edit an Existing Means Test            [DG MEANS TEST EDIT]
+     Copay Exemption Test User Menu         [DG CO-PAY TEST USER MENU]
+     Add a Copay Exemption Test             [DG CO-PAY TEST ADD]
+     Edit an Existing Copay Exemption Test  [DG CO-PAY TEST EDIT]
+  
+ You may wish to stop the HL7 filers prior to the install to prevent
+ possible 'No Source Errors' from occurring. No transmissions will be lost
+ if the filers are not stopped first; they will be picked up once the
+ filers are restarted.
+  
+ The patch should be installed during non-peak hours, and can be loaded
+ with users on the system.
+  
+ Install Time - less than 5 minutes 
+  
+  
+ ***********************************************************
+  
+ 1.  LOAD TRANSPORT GLOBAL 
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the 
+     INSTALL/CHECK MESSAGE PackMan option.  
+              
+ 2.  START UP KIDS 
+     -------------
+     Start up the Kernel Installation and Distribution System Menu 
+     [XPD MAIN]: 
+    
+          Edits and Distribution ...  
+          Utilities ...  
+          Installation ...  
+    
+ Select Kernel Installation & Distribution System Option: INStallation 
+                                                          ---
+          Load a Distribution 
+          Print Transport Global 
+          Compare Transport Global to Current System 
+          Verify Checksums in Transport Global 
+          Install Package(s) 
+          Restart Install of Package(s) 
+          Unload a Distribution 
+          Backup a Transport Global 
+    
+ Select Installation Option: 
+    
+ 3.  Select Installation Option: 
+     ---------------------------
+     NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+            NAME, enter DG*5.3*675):
+       
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when this patch
+         is installed.  It compares all components of this patch
+         (routines, DD's, templates, etc.).
+     c.  Verify Checksums in Transport Global - This option will allow
+         you to ensure the integrity of the routines that are in the
+         transport global.
+      
+ 4.  Select Installation Option: Install Package(s) 
+                                 ------------------
+     **This is the step to start the installation of this KIDS patch: 
+    
+     a.  Choose the Install Package(s) option to start the patch
+         install.
+     b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+         YES//' answer NO (unless otherwise indicated).
+     c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+         Options, and Protocols? YES//' answer YES (unless otherwise 
+         indicated).
+     d.  When prompted 'Enter options you wish to mark as 'Out Of
+         Order':'  enter the following options:
+  
+         Means Test User Menu                   [DG MEANS TEST USER MENU]
+         Add a New Means Test                   [DG MEANS TEST ADD]
+         Complete a Required Means Test         [DG MEANS TEST COMPLETE]
+         Edit an Existing Means Test            [DG MEANS TEST EDIT]
+         Copay Exemption Test User Menu         [DG CO-PAY TEST USER MENU]
+         Add a Copay Exemption Test             [DG CO-PAY TEST ADD]
+         Edit an Existing Copay Exemption Test  [DG CO-PAY TEST EDIT]
+  
+     e.  When prompted 'Enter protocols you wish to mark as 'Out Of
+         Order':' press <Enter>.
+  
+ 5.  When the installation is complete, be sure to re-start the filers
+     if you chose to stop them.
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: DGENUPL2
+    Before: B45216618  After: B53271937  **147,222,232,310,314,367,397,
+                                          677,631,675**
+ Description of Changes:
+  Before: 
+   
+  +103       S 
+  DGCDIS("EXT",SEG(1))=$$CONVERT^DGENUPL1($P(SEG(9),$E(HLECH)),"EXT
+  ")
+   
+  After:
+   
+  DGENUPL2.INT.1
+   +103       S 
+  DGCDIS("EXT",SEG(1),1)=$$CONVERT^DGENUPL1($P(SEG(9),$E(HLECH)),"E
+  XT")
+
+Routine Name: DPTLK5
+    Before:  B3745930  After:  B3796452  **265,276,277,485,675**
+ Description of Changes:
+  Before:
+   +34        I $P(DGMTLST,U,4)'="R" Q 0
+   
+  After:
+   +36        I '$$MFLG^DGMTU(DGMTLST) Q 0
+   
+  # of differences found: 1
+
+Routine Name: DPTLK6
+    Before: B13124755  After: B12759471  **265,276,277,675**
+ Description of Changes:
+  Before:
+   +73        S DPTDIVMT=$G(^DG(40.8,DPTDIV,"MT")) I $P(DPTDIVMT,U,3)="Y" S 
+  GUIDATA(1)=1,GUIDATA(2)="MEANS TEST REQUIRED",GUIDATA(3)=$P(DPTDIVMT,U,2)
+   
+  After:
+   +73        S DPTDIVMT=$G(^DG(40.8,DPTDIV,"MT"))
+   +74        I $P(DPTDIVMT,U,3)="Y" S GUIDATA(1)=1,GUIDATA(2)="MEANS TEST 
+  REQUIRED",GUIDATA(3)=$P(DPTDIVMT,U,2)
+   
+  Before:
+   +106       I $P(DGMTLST,U,4)'="R" Q
+   +107       S DPTDIVMT=$G(^DG(40.8,DPTDIV,"MT")) I $P(DPTDIVMT,U,3)="Y" S 
+  GUIDATA(1)=1,GUIDATA(2)="MEANS TEST REQUIRED",GUIDATA(3)=$P(DPTDIVMT,U,2)
+   
+  After:
+   +108       I '$$MFLG^DGMTU(DGMTLST) Q
+   +109       S DPTDIVMT=$G(^DG(40.8,DPTDIV,"MT"))
+   +110       I $P(DPTDIVMT,U,3)="Y" S GUIDATA(1)=1,GUIDATA(2)="MEANS TEST 
+  REQUIRED",GUIDATA(3)=$P(DPTDIVMT,U,2)
+   
+  # of differences found: 2
+
+
+=============================================================================
+User Information:
+Entered By  : GINSBERG,ELIOT                Date Entered  : JUL 21, 2005
+Completed By: RUDINGER,NANCY L.             Date Completed: JAN 04, 2006
+Released By : FRANCE,KATHI                  Date Released : JAN 04, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

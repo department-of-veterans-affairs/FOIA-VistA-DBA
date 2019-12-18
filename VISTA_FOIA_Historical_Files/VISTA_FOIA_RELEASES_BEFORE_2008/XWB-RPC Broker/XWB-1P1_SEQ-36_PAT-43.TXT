@@ -1,0 +1,203 @@
+$TXT Created by FORT,WALLY at PAT-XWB.FO-OAKLAND.MED.VA.GOV  (KIDS) on Wednesday, 02/22/06 at 15:26
+=============================================================================
+Run Date: MAY 15, 2006                     Designation: XWB*1.1*43
+Package : XWB - RPC BROKER                    Priority: Mandatory
+Version : 1.1        SEQ #36                    Status: Released
+                  Compliance Date: JUN 15, 2006
+=============================================================================
+
+Associated patches: (v)XWB*1.1*35  <<= must be installed BEFORE `XWB*1.1*43'
+
+Subject: New broker long timeout fix.
+
+Category: 
+  - Routine
+
+Description:
+============
+
+  
+ Patch Tracking #: 40521063
+ Test Sites: VAMC Cleveland, VAMC Clarksburg, VAMC Dublin, VAMC Danville
+ Blood Bank Clearance: 1/5/2006
+  
+ HD: 64768
+ Problem: The original Broker and the new Broker had different timeout 
+ checks resulting in records remaining in a locked state long after client 
+ termination. Decreasing the BROKER ACTIVITY TIMEOUT caused problems with 
+ Imaging. 
+ Fix: Use the same timeout check as the original broker.
+ This patch allows the BROKER ACTIVITY TIMEOUT value to be changed
+ back to its pre XWB*1.1*35 value of (180 was our recommended value).
+  
+ HD: 122698
+ Problem: Some application is causing the NULL device to get closed.
+ Fix: Open the NULL device every time just before calling the RPC.
+  
+ The New Broker can detect a connection from the M2M Broker and with patch
+ XWB*1.1*41 can branch to it.  This will allow a site to only run one VMS
+ service.
+  
+ New routine XWBTCPMT,  This routine will help users get the broker setup. 
+ Like developers running VistA on a laptop. It has two entry points, CHECK 
+ will see that needed things like the NULL device are setup.  The other CALL 
+ will ask for an IP address and Port, and then try and make a connection to 
+ a new Broker. This can help debug the basic connection. 
+  
+ New entry point GTMLNX for use with GT.M v5.0 and a Linux xinetd service.
+  
+ This sample file goes in /etc/xinetd.d/xwbgtm
+ # default: on
+ # description: This is a test service for the new XWBserver Broker under \
+ #             GT.M/Linux
+ service xwbgtm
+ {
+         port = 9502
+         socket_type = stream
+         protocol = tcp
+         user = gtmuser
+         server = /bin/bash
+         server_args = -l /home/vista/dev/xwbgtm_start
+         passenv = REMOTE_HOST
+         type = UNLISTED
+         wait = no
+         disable = no
+ }
+ Here is the script it points to:
+ #!/bin/sh
+ #xwbgtm: This is a file to run RPCBroker as a Linux service
+ #
+ #make sure of our directory
+ cd /home/vista/dev
+ #Get the GTM profile
+ . /home/vista/dev/gtmprofile
+ #Run routine
+ mumps -run GTMLNX^XWBTCPM
+ #
+  
+   
+ Routine Summary
+ The following routines are included in this patch.  The second line of each
+ of these routines now looks like:
+  ;;1.1;RPC BROKER;**[Patch List]**;Mar 28, 1997
+  
+                  Checksum
+ Routine         Old       New      Patch List
+ XWBPRS        6653519   6720418    **35,43**
+ XWBTCPM       9208839   9409883    **35,43**
+ XWBTCPMT          n/a   3822057    **43**
+  
+ List of preceding patches: 35
+ Sites should use CHECK^XTSUMBLD to verify checksums.
+  
+ =========================================================================
+  
+ Installation:
+  
+  >>>Stop the Broker Listener 
+  >>>Stop RPC Broker application processes
+  >>>Roll and Scroll Users may remain on the system.
+  >>>TaskMan does *not* need to be put into a wait state.
+   
+  Installation:
+   
+     1.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This
+         option will load the KIDS package onto your system.
+   
+     2. Stop the Broker Listener on the server. 
+         a. VMS site running listener as a service, on one node using 
+            sysman. At the sysman prompt (node1-n where listener runs):
+                            SET ENVIRONMENT/NODE=(<node1>,<node2>,<nodeN>)
+                            DO TCPIP DISABLE SERVICE <servicename>
+               or
+          b. Listener not running as a service, and using the "controlled 
+             by listener  parameter, use the Vista menu:
+                            Stop All RPC Broker Listeners
+               or
+          c. Listener not running as a service and not using the "control 
+            by listener parameter, on each node where listener runs and for
+            each RPC port, at the programmer prompt:
+                            D STOP^XWBTCP(<portnumber>) 
+   
+     3.  During the installation, do not run any RPC-Broker-based 
+         Client/Server software (e.g., CPRS, PCMM, BCMA).  
+         No Broker-based client/server software should be running 
+         while installing this patch on the server.
+         You can identify these jobs by checking the system
+         status and verifying if any XWBTCPM or XWBTCPC (i.e., Broker
+         Handler) routines are running.  Stop any users that are using
+         Broker applications. This applies to any job in CPRS, BCMA, 
+         PCMM, CCR, iMed, Imaging, Care Management, etc.  
+         If you find any of these jobs running on the system,
+         notify users to logoff or FORCEX the jobs.  Active users 
+         will get <EDITED> or <NOROUTINE> errors.
+           
+     4.  The patch has now been loaded into a Transport global on your
+         system. Now you need to use KIDS to install the Transport global.
+         On the KIDS menu, under the 'Installation' menu, use the following
+         options:
+   
+            Verify Checksums in Transport Global
+            Print Transport Global
+            Compare Transport Global to Current System
+            Backup a Transport Global
+                   
+     5.  Roll and Scroll Users can remain on the system.
+         TaskMan can remain running.
+   
+     6.  Installation will take less than 2 minutes.
+         On the KIDS menu, under the 'Installation' menu, use the following
+         option:
+          Install Package(s)  'XWB*1.1*43'
+                               ==========
+   
+        Want KIDS to INHIBIT LOGONs during the install? YES// NO
+   
+        Want to DISABLE Scheduled Options, Menu Options, and Protocols? 
+        YES// NO
+  
+     7.  Re-enable the TCPIP service.
+         a. VMS site running listener as a service, on one node using 
+            Sysman At the SYSMAN prompt (node1-n where listener runs):
+                            SET ENVIRONMENT/NODE=(<node1>,<node2>,<nodeN>)
+                            DO TCPIP ENABLE SERVICE <servicename>
+               or
+         b. VMS site not running listener as a service, on each node where 
+            listener runs At the Cache  prompt:
+                            D ^NVSSTB 
+                            Select "Manually Start Broker Listener 
+               or
+         c. Windows/Cache  site, using the "controlled by listener  
+             parameter: Use the Vista menu "Start All RPC Broker Listeners
+               or
+         d. Windows/Cache  site, not using the "controlled by listener  
+            parameter: From the programmer prompt on each node where the
+            listener runs and for each RPC port:
+                            D STRT^XWBTCP(<portnumber>)
+  
+ ============================================================================
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: XWBPRS
+    Before: B38481438  After: B39040367  **35,43**
+Routine Name: XWBTCPM
+    Before: B53101617  After: B54122124  **35,43**
+Routine Name: XWBTCPMT
+    Before:       n/a  After:  B8829013  **43**
+
+=============================================================================
+User Information:
+Entered By  : FORT,WALLY                    Date Entered  : MAR 24, 2005
+Completed By: SINGH,GURBIR                  Date Completed: MAY 15, 2006
+Released By : PALMER,MICHAEL                Date Released : MAY 15, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

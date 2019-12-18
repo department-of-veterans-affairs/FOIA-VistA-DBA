@@ -1,0 +1,574 @@
+
+=============================================================================
+Run Date: JUL 31, 2006                     Designation: SD*5.3*478
+Package : SD - SCHEDULING                     Priority: Mandatory
+Version : 5.3       SEQ #390                    Status: Released
+                  Compliance Date: AUG 31, 2006
+=============================================================================
+
+Associated patches: (v)SD*5.3*356  <<= must be installed BEFORE `SD*5.3*478'
+                    (v)SD*5.3*379  <<= must be installed BEFORE `SD*5.3*478'
+                    (v)SD*5.3*380  <<= must be installed BEFORE `SD*5.3*478'
+                    (v)SD*5.3*403  <<= must be installed BEFORE `SD*5.3*478'
+                    (v)SD*5.3*408  <<= must be installed BEFORE `SD*5.3*478'
+                    (v)SD*5.3*414  <<= must be installed BEFORE `SD*5.3*478'
+                    (v)SD*5.3*424  <<= must be installed BEFORE `SD*5.3*478'
+                    (v)SD*5.3*439  <<= must be installed BEFORE `SD*5.3*478'
+                    (v)SD*5.3*444  <<= must be installed BEFORE `SD*5.3*478'
+                    (v)SD*5.3*445  <<= must be installed BEFORE `SD*5.3*478'
+                    (v)SD*5.3*467  <<= must be installed BEFORE `SD*5.3*478'
+
+Subject: CONSULT/SCHEDULING APPOINTMENT LINK INTERFACE
+
+Category: 
+  - Enhancement (Mandatory)
+  - Routine
+
+Description:
+============
+
+ A mechanism to create a link between appointments and either consult or
+ procedure requests and simultaneously mark the request as Scheduled (S)
+ when an appointment is made.
+  
+ I. Purpose:
+  
+    1. It provides a new option to set up the linkage between entries in 
+       the Consult Services file (#123.5) and the Clinic Stop file (#40.7).
+  
+    2. For consult services that have stop codes associated with them, the 
+       schedulers are asked if they would like to associate a consult or 
+       procedure request with an appointment.
+  
+    3. It automatically updates the status of linked consults or procedures
+       when appointments are no-showed, cancelled or rescheduled.  This
+       will increase the likelihood that medically sensitive consults are
+       re-assessed rather than lost into the system when a patient no-shows
+       a "consult-initiated" appointment.
+  
+    4. It automates the documentation of consult/procedure status for
+       appointments that are no-showed or cancelled when patient letters 
+       are printed (e.g., if a consult-linked appointment is no-showed the
+       consult will automatically be updated with the following comment,
+       "No-show letter printed").
+  
+    5. It sends a notification [via COMMENT] to the initiating provider of
+       the consult when an appointment that has been linked to a consult is
+       rescheduled, cancelled or marked as a no-show, even if the consult
+       is an interfacility consult.
+  
+    6. It adds a reason for appointment cancellation to the consult when
+       using the Scheduling option, Cancel Clinic Availability.
+    
+    7. It displays "CONS" in the Scheduling package Appointment Profile to
+       indicate a consult request has been associated with the appointment.
+  
+ Options new or changed with this patch:
+  
+ 1)      Consult Associated Stop Code Option (NEW)
+  
+ This option should be assigned to your Clinical Applications Coordinator 
+ users.
+  
+ The patch includes an option called CONSULT ASSOCIATED STOP CODE 
+ [SD ASSOCIATED STOP CODE]. This option is used to add stop codes to
+ individual Consult Services. A new multiple pointer field 'Associated Stop
+ Code' is added to REQUEST SERVICES file (#123.5). This new field points to
+ CLINIC STOP file (#40.7).  This pointer allows a Consult Request Service
+ to be assigned one or more stop codes. The option prompts for the name of
+ the Consult Request Service the user wishes to associate with a stop
+ code.  The user is then prompted to type in the 3 digit stop code to
+ associate with the consult.  The name of the service associated with that
+ stop code will be displayed, as well as a query asking the user to verify
+ that the stop code entered is the one intended.  Additional stop codes are
+ added using the same process, the program will continue to let a user know
+ how many earlier stop codes have already been added to the Consult Request
+ Service. Example:  Are you adding a second stop code to this consult? //N
+  
+ If you wish to remove an incorrect stop code from a REQUEST SERVICE, 
+ Select REQUEST SERVICES SERVICE NAME then type "@" at the associated stop
+ code prompt.
+ EXAMPLE: 
+                 Select REQUEST SERVICES SERVICE NAME: eye
+              1   EYE
+              2   EYE PHOTOGRAPHY
+              3   EYEGLASS REQUEST
+              4   EYEGLASS REQUEST(rev)       DISABLED
+         CHOOSE 1-4: 1  EYE
+         Select ASSOCIATED STOP CODE: OPTOMETRY// @
+            SURE YOU WANT TO DELETE?
+  
+ If the stop code attached to the REQUEST SERVICE is the same as the stop 
+ code of the clinic profiles into which a procedure of the parent service
+ would be scheduled, then both consults and procedures would display for
+ the clerk to make a link at the time the appointment was made.  However,
+ if the stop code of the REQUEST SERVICE is different than the stop code of
+ the clinic into which the procedure is scheduled, it would be necessary to
+ put both stop codes into the REQUEST SERVICE to allow both consults and
+ procedure requests to display for scheduling clerks.
+  
+ The stop code of the chosen clinic during the scheduling process is 
+ compared to the stop codes of any consult which could be linked to the
+ appointment.  If there is a match, and the current status of the consult
+ meets the criteria listed below, the clerk will be presented with the
+ following query: 
+        "Will this appointment be for a CONSULT/ PROCEDURE? YES//"
+ This query allows the scheduling clerk to first display, and then link, 
+ the appointment to the consult
+ Comments added at the "OTHER INFO:" prompt during the scheduling process 
+ are added to the consult or procedure automatically.
+ The consult or procedure status is automatically updated to Scheduled (S) 
+ and the comments from the Scheduling package 'OTHER INFO:' prompt are
+ added to the consult request with the date and time of the appointment.
+ The query, "Will this appointment be for a CONSULT/PROCEDURE?" will only 
+ display to the clerk if all three (3) of the following criteria are met: 
+ 1.      The stop code of selected clinic is the same as one of the stop 
+ code(s) associated with the consult/PROCEDURE request service.
+ 2.      The request is less than 365 days old.
+ 3.      The request must have one of the following four current statuses:
+ a.      Pending (P)
+ b.      Active (A) or (Active / Edit resubmitted) 
+ c.      Scheduled (S), but only if the following is true:  There has never
+ been an appointment scheduled into the same stop code between yesterday 
+ (T-1) or into the future.  For example, if the consult was marked as
+ scheduled (S) using the Consult Request Tracking options for an
+ appointment in the past, which was either no-showed or cancelled, and
+ there does not exist a future appointment (including today) made in a
+ clinic with the same stop code, then the scheduler will be offered an
+ opportunity to connect a new appointment with the a consult marked as
+ scheduled (S) and in the process update the consult with the new
+ information.  The consult will go from (S) scheduled (in the absence of a
+ future appointment) to (S) scheduled with new appointment information.  
+ This logic is employed to avoid the following scenario.  Suppose a patient
+ has an appointment at 9:00am today which was linked to a consult. If the
+ provider delays the completion of the consult, thus leaving it in a
+ scheduled (S) status and the patient attempts to schedule a follow-up 
+ appointment later in the morning, without the T-1 logic, the clerk may 
+ accidentally attach the follow-up appointment to the consult due to be 
+ completed by the provider later in the day. 
+ d.      Cancelled (X), but only if all of the following status history
+ entries are true:
+ i.      Pending (P) when consult first requested,
+ ii.     Scheduled (S) using this patch,
+ iii.    Active (A) EDIT RESUBMITTED as a result of a NO-SHOW appointment,
+ iv.     Cancelled (X) consult manually after NO-SHOW, and 
+ v.      Cancelled (X) status is less than 3 months old.
+ NOTE: This prevents the need for a patient to cycle back through primary 
+ care for a new consult when there was a recently missed appointment.  The
+ consult will change from cancelled (X) directly to scheduled (S).
+ IMPORTANT NOTE:  Consults/Procedures marked as cancelled (X), without ever
+ first being scheduled, will not display to prevent clerks from attaching 
+ appointments.
+  
+ 2)      Scheduling display (Changed).
+ The appointment display of appointment management has been changed to 
+ indicate that an appointment is associated with a consult request.  "CONS"
+ indicates that a link exists between an appointment and a consult or
+ procedure request. A link is broken only if the appointment is cancelled
+ or no-showed.  It is important to remember that the "CONS" will not
+ display if the consult is completed, cancelled, or discontinued.  For
+ example: If today is January 1st, and a consult is linked to an
+ appointment for February 1st, then "CONS" will display next to the future
+ appointment as long as the consult has not been completed.  If the patient
+ returns on January 15th and the consult is completed/cancelled or
+ discontinued at that time, the future appointment (if not cancelled) will
+ not display the "CONS," even though the link is still present.
+  
+ 3)      Canceling an appointment (Changed).
+ When an appointment with an associated consult or procedure is cancelled, 
+ the status of the request is changed to Active (A) and any cancellation
+ remarks entered in the Scheduling package are added to the consult
+ request.
+  
+ 4)  Updating an appointment to a no-show status (Changed).
+ Updating an appointment to a no-show status for an appointment which was 
+ initially linked to a consult or procedure automatically updates the 
+ consult request with a NO-SHOW comment.  Furthermore, the consult request
+ status will change from scheduled (S) to active (A) (EDIT/RESUBMITTED) and
+ then in the case of a consult re-print to allow reassessment.  The consult
+ will need to be cancelled/completed/discontinued or re-scheduled using the
+ Consult Request Tracking options, depending on the individual
+ clinic/service/hospital policy. In any case, some action is needed because
+ the consult now has an active status.  See: Service Consults 
+ Schedule-Management Report.
+  
+ 5) Auto rebook feature (Changed)..  
+ If an appointment is linked to a consult and the appointment is 
+ "auto-rebooked" for any reason (No-show, cancelled clinic), then the 
+ consult will link to the new appointment created by the auto rebook
+ option.  The consult will go from Scheduled (s) to Cancelled (x) to
+ Scheduled (s) with an update of the new appointment information.
+  
+ 6)  Cancel Clinic Availability option.  (Changed).
+ The Cancel Clinic Availability option in the Scheduling package now 
+ requests a reason for the clinic cancellation.  This "reason" will be
+ inserted into all cancelled appointments even if they are not connected to
+ consults [these can be seen using the EP (expanded entry) command in
+ appointment management].  Any consult attached to one of these cancelled
+ appointments will be made Active (A) and the "reason" for the cancellation
+ will added to the consult request.
+  
+ 7)  Multiple Clinic Display/Book option.  (Changed).
+ Multiple Clinic Display/Book [SDMULICLINIC] option will allow a linkage
+ ONLY between the initial clinic scheduled and a consult that meets the
+ criteria in paragraph #1 above.
+  
+ 8)  SERVICE CONSULTS SCHEDULE-MANAGEMENT REPORT (NEW) 
+ A new routine called SERVICE CONSULTS SCHEDULE-MANAGEMENT REPORT was 
+ created and placed on the CONSULT TRACKING REPORTS menu of the 
+ Consult/Request Tracking (GMRC) package. This report functions in a
+ similar way as the "SERVICE PENDING CONSULT RESOLUTION REPORT." It will
+ provide individual listings of all consults within a time frame and/or a
+ summary listing.  The report will identify patients placed on the EWL
+ after the initializing date/time of the consult for a SERVICE with the
+ same stop code as the consult.  
+  
+  
+  
+  
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+ 20050201- Scheduling - Consult Interface - DC VA solution
+   
+   
+ This patch addresses the following NOIS/Remedy Ticket(s):
+ ---------------------------------------------------------
+ N/A
+  
+  
+ USER DOCUMENTATION
+ ------------------
+ The user documentation is available on the Office of Information 
+ Field Office (OIFO) ANONYMOUS.SOFTWARE directories listed below:
+  
+ OIFO       FTP address                      Directory
+  
+ Albany    ftp.fo-albany.med.va.gov        anonymous.software
+ Hines     ftp.fo-hines.med.va.gov         anonymous.software
+ Salt Lake City  
+           ftp.fo-slc.med.va.gov           anonymous.software
+ VistA download site     
+           download.vista.med.va.gov       anonymous.software
+  
+ The user documentation files listed below may be obtained via FTP.
+ The preferred method is to download the files from:     
+  
+      download.vista.med.va.gov
+  
+ This method transmits the files from the first available FTP server.  
+ Sites may also elect to retrieve documentation from a specific server as 
+ shown in the above table.
+  
+ SD_53_P478_RN.PDF          Consult/Scheduling Appointment Release Notes
+ SD_53_P478_UM.PDF          Revised PIMS V. 5.3 Scheduling Module User 
+                              Manual, Appointment Menu and Supervisor Menu
+ SD_53_P478_CLASS3_IG.PDF   Installation Guide for Sites running the
+                Washington VAMC Consult/Appointment Link (Class 3) program.
+  
+  
+ The VistA Documentation Library [VDL] web site contains all end-user
+ manuals.  The address is http://www.va.gov/vdl/.  
+  
+  
+  
+ SOFTWARE RETRIEVAL
+ ------------------ 
+ The software for this patch is being distributed in a host
+ file.  The host file will contain three KIDS files.
+  
+                 Host File Name:  SD_53_P478.KID
+                         Builds:  SD*5.3*478
+                                  GMRC*3.0*52
+                                  PX*1.0*176
+  
+ Sites may retrieve the software directly using FTP from the 
+ ANONYMOUS.SOFTWARE directory at the following OI Field Offices:
+                 Albany:         ftp.fo-albany.med.va.gov
+                 Hines:          ftp.fo-hines.med.va.gov
+                 Salt Lake City: ftp.fo-slc.med.va.gov
+  
+ First available download:  download.vista.med.va.gov
+ **Note:  Use ASCII mode when transferring the .KID file
+  
+  
+ COMPONENTS SENT WITH PATCH 
+ --------------------------
+ The following is a list of the routines included in this patch.  
+ The second line of each of these routines now looks like: 
+   
+       <tab>;;5.3;Scheduling;**[patch list]**;Aug 13,1993
+   
+                              CHECK^XTSUMBLD results
+ Routine name      Before Patch          After Patch            Patch List
+ ============      ============          ===========            ==========
+ SD53P478                   N/A               558277                   478
+ SDAM1                  9372103             12398398      149,155,193,189,
+                                                                   445,478
+ SDAM10                 4276210              4618477       189,258,403,478
+ SDAM2                  9886432             10662033       250,296,327,478
+ SDAM3                  5230253              6504485        63,189,380,478
+ SDAMC                  6879302              7202732      20,28,32,46,263,
+                                                               414,444,478
+ SDAMN                  3294769              3621264                   478
+ SDAUT2                20231168             20441060       206,168,186,478
+ SDC                   14682588             16544968  15,32,79,132,167,478
+                (Note: 14710058 only if patch SD*5.3*389 (ENT) installed.)
+ SDC0                  15992934             16050250      303,330,379,398,
+                                                                   467,478
+ SDC1                   3524110              3925359       379,398,439,478
+ SDCNP                 14429730             14514600            32,116,478
+ SDCNP0                18534676             21062764           132,167,478
+ SDCNP1                16488639             18616316           398,467,478
+ SDCNP1A               19709915             20334432       167,340,398,478
+ SDCNSLT                    N/A             23008569                   478
+ SDM                   15345282             18815484 15,32,38,41,44,79,94,
+                                                      167,168,218,223,250,
+                                                           254,296,380,478
+ SDM1                  16761680             16787941    32,167,168,80,223,
+                                                       263,273,408,327,478
+ SDM1A                 15836155             16726983    26,94,155,206,168,
+                                                       223,241,263,327,478
+ SDM2                  11926165             14208581       32,132,168,356,
+                                                               434,467,478
+ SDMULT                 7926207              8110699        63,168,380,478
+ SDN                   13950201             17291344         32,79,398,478
+ SDPURG1                8973962              9039687               132,478
+ SDQQCN2                    N/A              1142425                   478 
+  
+  
+  Total number of routines - 24 
+   
+  Total number of routines modified: 21
+  Total number of new routines: 3
+  Total number of routines to delete: 1
+  
+  
+                              CHECK1^XTSUMBLD results
+ Routine name      Before Patch          After Patch            Patch List
+ ============      ============          ===========            ==========
+ SD53P478                   N/A               748840                   478
+ SDAM1                 23192764             27486316      149,155,193,189,
+                                                                   445,478
+ SDAM10                 7404313              8130933       189,258,403,478
+ SDAM2                 29301501             30409826       250,296,327,478
+ SDAM3                  8187774              9638005        63,189,380,478
+ SDAMC                 12437906             12821748      20,28,32,46,263,
+                                                               414,444,478
+ SDAMN                  6531505              7272637                   478
+ SDAUT2                30077736             31407723       206,168,186,478
+ SDC                   21498895             24772235  15,32,79,132,167,478
+                (Note: 21658031 only if patch SD*5.3*389 (ENT) installed.)
+ SDC0                  26427996             26494152      303,330,379,398,
+                                                                   467,478
+ SDC1                   4857864              5430963       379,398,439,478
+ SDCNP                 16764627             16969835            32,116,478
+ SDCNP0                25047823             29432577           132,167,478
+ SDCNP1                27171115             31981215           398,467,478
+ SDCNP1A               27493071             28182331       167,340,398,478
+ SDCNSLT                    N/A             40454930                   478
+ SDM                   27204232             33726440 15,32,38,41,44,79,94,
+                                                      167,168,218,223,250,
+                                                           254,296,380,478
+ SDM1                  34155248             34209967    32,167,168,80,223,
+                                                       263,273,408,327,478
+ SDM1A                 39690265             42131509    26,94,155,206,168,
+                                                       223,241,263,327,478
+ SDM2                  20767664             24545266       32,132,168,356,
+                                                               434,467,478
+ SDMULT                10120175             10325943        63,168,380,478
+ SDN                   23621975             30846315         32,79,398,478
+ SDPURG1               11041663             11203537               132,478
+ SDQQCN2                    N/A              2209146                   478
+  
+  
+ The following is a list of files included in this patch:
+   
+                                      UP    SEND  DATA                
+                                      DATE  SEC.  COMES  SITE   RSLV  
+ FILE #  NAME                         DD    CODE  W/FILE DATA   PTS 
+ --------------------------------------------------------------------
+ 44      HOSPITAL LOCATION           YES   NO    NO            
+ Partial DD: subDD: 44.003     fld: 688
+  
+   
+ The following is a list of fields included in this patch:
+   
+ Field Name (Number)                File Name (Number)
+ -------------------                ------------------
+ CONSULT LINK (44.003,688)          HOSPITAL LOCATION (#44)
+   
+  
+ The following is a list of templates included in this patch:
+   
+ Template Name        Type             File Name (Number)
+ -------------        ----             ------------------
+ SD ASSOCIATED STOP   INPUT TEMPLATE   REQUEST SERVICES (#123.5)
+ SDAM APPT MGT        LIST TEMPLATE
+   
+ The following is a list of options included in this patch:
+   
+ Option Name               Type               New/Modified
+ -----------               ----               ------------ 
+ SD ASSOCIATED STOP CODE   Edit               New
+  
+  
+ Test Sites:
+ -----------
+ DETROIT, MI VAMC
+ DUBLIN, GA VAMC
+ HINES, IL VAMC
+ MARYLAND HCS
+ PALO ALTO HCS
+ WASHINGTON, DC VAMC
+ WEST LA VAMC
+   
+  
+  
+   
+   
+ ==================== PRE-INSTALLATION INSTRUCTIONS =======================
+ For site that are currently running the Class 3 Washington DC VAMC 
+ Consult/Scheduling Appointment Link patch, follow the instructions
+ detailed in the SD_53_P478_CLASS3_IG.DOC document.
+  
+ ========================INSTALLATION INSTRUCTIONS ========================
+   
+  If installed during the normal workday, it is recommended that the 
+  following selection(s) in the OPTION (#19) file, and all of their 
+  descendants be disabled to prevent possible conflicts while running the 
+  KIDS Install. Other VISTA users will not be affected.
+   
+        Appointment Management             [SDAM APPT MGT]
+        Appointment Menu                   [SDAPP]    
+        Make Appointment                   [SDM]
+        PCE Encounter Data Entry           [PXCE ENCOUNTER DATA ENTRY]
+        PCE Encounter Data Entry & Delete  [PXCE ENCOUNTER ENTRY & DELETE]
+        PCE Encounter Entry Without Delete [PXCE ENCOUNTER ENTRY NO DELETE]
+        PCE Encounter Data Entry -    
+                     Supervisor            [PXCE ENCOUNTER ENTRY SUPER]
+  
+   
+  Install Time - less than 5 minutes
+   
+  1.  LOAD TRANSPORT GLOBAL 
+      ---------------------
+      Choose the PackMan message containing this patch and invoke the 
+      INSTALL/CHECK MESSAGE PackMan option.  
+               
+  2.  START UP KIDS 
+      -------------
+      Start up the Kernel Installation and Distribution System Menu 
+      [XPD MAIN]: 
+     
+           Edits and Distribution ...  
+           Utilities ...  
+           Installation ...  
+     
+  Select Kernel Installation & Distribution System Option: INStallation 
+                                                           ---
+           Load a Distribution 
+           Print Transport Global 
+           Compare Transport Global to Current System 
+           Verify Checksums in Transport Global 
+           Install Package(s) 
+           Restart Install of Package(s) 
+           Unload a Distribution 
+           Backup a Transport Global 
+     
+  Select Installation Option: 
+     
+  3.  Select Installation Option: 
+      ---------------------------
+      NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+             NAME, enter SD*5.3*478):
+        
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will not
+          backup any other changes such as DD's or templates.
+      b.  Compare Transport Global to Current System - This option will
+          allow you to view all changes that will be made when this patch
+          is installed.  It compares all components of this patch
+          (routines, DD's, templates, etc.).
+      c.  Verify Checksums in Transport Global - This option will allow
+          you to ensure the integrity of the routines that are in the
+          transport global.
+       
+  4.  Select Installation Option: Install Package(s) 
+                                  ------------------
+      **This is the step to start the installation of this KIDS patch: 
+     
+      a.  Choose the Install Package(s) option to start the patch
+          install.
+          When prompted 'Want KIDS to Rebuild Menu Trees Upon Completion of
+          Install? YES//'  Answer YES unless your system does this in a 
+          nightly TaskMan process.
+      b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+          YES//' answer NO (unless otherwise indicated)
+      c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+          Options, and Protocols? YES//' answer YES (unless otherwise
+          indicated)
+      d.  When prompted 'Enter options you wish to mark as 'Out Of
+             Order':'  Enter the following options:
+  
+        Appointment Management             [SDAM APPT MGT]
+        Appointment Menu                   [SDAPP]    
+        Make Appointment                   [SDM]
+        PCE Encounter Data Entry           [PXCE ENCOUNTER DATA ENTRY]
+        PCE Encounter Data Entry & Delete  [PXCE ENCOUNTER ENTRY & DELETE]
+        PCE Encounter Entry Without Delete [PXCE ENCOUNTER ENTRY NO DELETE]
+        PCE Encounter Data Entry -    
+                     Supervisor            [PXCE ENCOUNTER ENTRY SUPER]
+  
+  
+       e.  When prompted 'Enter protocols you wish to mark as 'Out Of 
+             Order':' press <return>
+   
+  
+  
+ ===================== POST-INSTALLATION INSTRUCTIONS =====================
+ Assign the 'Consult Associated Stop Code' [SD ASSOCIATED STOP CODE] option
+ to your Clinical Application Coordinator users.
+  
+ For site that are currently running the Class 3 Washington DC VAMC
+ Consult/Scheduling Appointment Link patch, follow the instructions
+ detailed in the SD_53_P478_CLASS3_IG.DOC document.
+
+Routine Information:
+====================
+Routine Name: SD53P478
+Routine Name: SDAM1
+Routine Name: SDAM10
+Routine Name: SDAM2
+Routine Name: SDAM3
+Routine Name: SDAMC
+Routine Name: SDAMN
+Routine Name: SDAUT2
+Routine Name: SDC
+Routine Name: SDC0
+Routine Name: SDC1
+Routine Name: SDCNP
+Routine Name: SDCNP0
+Routine Name: SDCNP1
+Routine Name: SDCNP1A
+Routine Name: SDCNSLT
+Routine Name: SDM
+Routine Name: SDM1
+Routine Name: SDM1A
+Routine Name: SDM2
+Routine Name: SDMULT
+Routine Name: SDN
+Routine Name: SDPURG1
+Routine Name: SDQQCN2
+
+=============================================================================
+User Information:
+Entered By  : YORTY,M ROBERT                Date Entered  : FEB 27, 2006
+Completed By: FAIN,ZACHARY                  Date Completed: JUL 24, 2006
+Released By : FIELDS-BARNES,JANETTE         Date Released : JUL 31, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

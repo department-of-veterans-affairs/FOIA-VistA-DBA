@@ -1,0 +1,281 @@
+$TXT Created by CHANDARANA,RISHAN at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 08/06/08 at 16:06
+=============================================================================
+Run Date: OCT 02, 2008                     Designation: DG*5.3*784
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #695                    Status: Released
+                  Compliance Date: NOV 02, 2008
+=============================================================================
+
+Associated patches: (v)DG*5.3*713  <<= must be installed BEFORE `DG*5.3*784'
+
+Subject: FIX PTF CROSS-REFERENCES AND ASIH ELIGIBILITY PROBLEM
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ This patch does the following:
+ - modifies the DISCHARGE DATE field (#70) and the DISCHARGE SPECIALTY 
+   field (#71) of the PTF file (#45).
+ - updates the technical descriptions for LOSING SPECIALTY field (#2) and 
+   the MOVEMENT DATE field (#10) of the 501 multiple subfile (#45.02) of the 
+   PTF file (#45). 
+ - updates eligibility for an ASIH movement.  
+ - recreates the trigger for the LOSING SPECIALTY field (#2) of the 
+   501 multiple subfile (#45.02).  
+  
+  ASSOCIATED REMEDY TICKETS:
+  ==========================
+  1) HD0000000174770 - Future Discharge remains in PTF after patient returns 
+                       from ASIH
+     Duplicates:
+     HD0000000217498 - PTF still shows pseudo dischage date (ASIH)
+     HD0000000219692 - PTF Screen 535 Not Pulling Treating Specialty
+     HD0000000243901 - Pseudo movement data is not removed
+  
+  2) HD0000000126121 - Hard setting of file entries in Mumps xrefs 
+  
+  3) HD0000000217141 - PTF Means Test - Admission Report incorrect
+  
+  4) HD0000000253725 - Violation of SAC standards in field 2 of the 501 
+                       multiple of the PTF file. 
+  
+  ASSOCIATED NSRs:
+  =================
+  N/A
+    
+  PARTICIPATING TEST SITES:
+  =========================
+  Buffalo, NY
+  Little Rock, AR
+  West Haven, CT
+    
+  REMEDY OVERVIEW:
+  ================
+   1) HD0000000174770 - Future Discharge remains in PTF after patient returns 
+                        from ASIH     
+   Problem:
+   ========
+   The kill logic on the "AC" cross-reference associated with the DISCHARGE
+   DATE field (#70) is not deleting the DISCHARGE DATE field (#10) in the 
+   501 multiple subfile (#45.02) of the PTF file (#45).  
+  
+   CROSS-REFERENCE:  45^AC^MUMPS 
+                     1)= S %=$S($D(^DGPT(DA,"M",1,0)):^(0),1:""),%D=
+                     +$P(%,U,10),^(0)=$P(%_"^^^^^^^^^^",U,1,9)_U_X_U
+                     _$P(%,U,11,99),^DGPT(DA,"M","AM",X,1)="" K:%D'=
+                     X ^DGPT(DA,"M","AM",%D,1) K %,%D
+  
+                     2)= S %=$S($D(^DGPT(DA,"M",1,0)):^(0),1:""),%D=
+                     +$P(%,U,10),^(0)=$P(%_"^^^^^^^^^^",U,1,9)_U_X_U
+                     _$P(%,U,11,99) K ^DGPT(DA,"M","AM",%D,1),%,%D 
+     
+   Solution:
+   =========
+   The kill logic on the "AC" cross reference has been modified to delete
+   the DISCHARGE DATE field (#10) in the 501 multiple subfile (#45.02).  
+   The cross-reference has also been modified to use the FileMan call 
+   FILE^DIE instead of relying on direct global sets.  
+  
+   CROSS-REFERENCE:  45^AC^MUMPS 
+                     1)= N DGFDA,DGMSG S DGFDA(45.02,"1,"_$$IENS^DIL
+                     F(DA),10)=X D FILE^DIE("","DGFDA","DGMSG") K DG
+                     FDA,DGMSG
+  
+                     2)= N DGFDA,DGMSG S DGFDA(45.02,"1,"_$$IENS^DIL
+                     F(DA),10)="@" D FILE^DIE("","DGFDA","DGMSG") K 
+                     DGFDA,DGMSG
+                     When a patient is discharged, this
+                     cross-reference updates the MOVEMENT DATE field
+                     (#10) in the 501 subfile (#45.02) with the 
+                     discharge date for the associated discharge
+                     movement.  
+   
+   Additionally, a description (visible above) was added to the 
+   cross-reference.  The technical description for the MOVEMENT DATE
+   field (#10) was also modified to include information about this 
+   cross-reference.
+  
+   2) HD0000000126121 - Hard setting of file entries in Mumps xrefs
+   
+   Problem:
+   ========
+   The "AD" cross-reference for the DISCHARGE SPECIALTY field (#71) contains
+   direct sets for several pieces of the 501 multiple subfile (#45.02) in the
+   PTF file (#45).  
+  
+   CROSS-REFERENCE:  45^AD^MUMPS 
+                     1)= I $D(^DGPT(DA,"M",1,0)) S $P(^(0),U,2)=X,$P
+                     (^DGPT(DA,"M",1,0),U,16)=$S($D(^DIC(42.4,X,0)):
+                     $P(^(0),U,6),1:"")
+  
+                     2)= I $D(^DGPT(DA,"M",1,0)) S $P(^(0),U,2)="",$
+                     P(^(0),U,16)=""
+  
+   Solution:
+   =========
+   The "AD" cross-reference has been modified to use the FileMan call 
+   FILE^DIE to set entries in the 501 multiple subfile (#45.02).
+  
+   CROSS-REFERENCE:  45^AD^MUMPS 
+                     1)= I $D(^DGPT(DA,"M",1,0)) N DGFDA,DGMSG S DGF
+                     DA(45.02,"1,"_$$IENS^DILF(DA),2)=X D FILE^DIE("
+                     ","DGFDA","DGMSG") K DGFDA,DGMSG
+  
+                     2)= I $D(^DGPT(DA,"M",1,0)) N DGFDA,DGMSG S DGF
+                     DA(45.02,"1,"_$$IENS^DILF(DA),2)="@" D FILE^DIE
+                     ("","DGFDA","DGMSG") K DGFDA,DGMSG
+                     When the discharge specialty is modified, this
+                     cross-reference will modify the LOSING
+                     SPECIALTY field (#2) in the 501 subfile
+                     (#45.02) with the discharge specialty
+  
+   Additionally, a description (visible above) was added to the 
+   cross-reference.  The technical description for the LOSING SPECIALTY
+   field (#2) was also modified to include information about this 
+   cross-reference.  
+  
+   3) HD0000000217141 - PTF Means Test - Admission Report incorrect
+   
+   Problem:
+   ========
+   When an ASIH movement occurs, the eligibility information is not 
+   updated in the newly created PTF record.  
+  
+   Solution:
+   =========
+   Routine DGPMV321 is being modified to update the eligibility information 
+   on transfer.  
+  
+   4) HD0000000253725 - Violation of SAC standards in field 2 of the 501 
+                        multiple of the PTF file.
+  
+   Problem:
+   ========
+   The trigger for the LOSING SPECIALTY field (#2) in the 501 multiple 
+   subfile (#45.02) of the PTF file (#45) was in violation of SAC 
+   standards.  The trigger generated by FileMan contained a $N.  
+   
+   The original trigger was created with these paramaters:
+  
+                      CREATE VALUE)= S X=$S($D(^DIC(42.4,X,0)):$P(^(0
+                      ),U,6),1:"")
+                      DELETE VALUE)= @
+                      FIELD)= SPECIALTY CDR
+   
+   Solution:
+   =========
+   The post-install routine DG53P784 will delete the original trigger and a 
+   new trigger is created in it's place.  The new trigger generated by 
+   FileMan does not contain a $N.  
+  
+   The new trigger is created with these parameters:  
+   
+                      CREATE VALUE)= LOSING SPECIALTY:MPCR ACCOUNT
+                      DELETE VALUE)= @
+                      FIELD)= SPECIALTY CDR
+  
+  
+  DATA DICTIONARY:
+  ================
+  Per problems one, two, and four, the following data dictionary components 
+  are being sent with this patch:
+  
+                                          UP    SEND  DATA                USER
+                                          DATE  SEC.  COMES  SITE   RSLV  OVER
+ FILE #      NAME                         DD    CODE  W/FILE DATA   PTS   RIDE
+ -------------------------------------------------------------------------------
+  
+ 45          PTF                          YES   NO    NO                  NO
+ Partial DD: subDD: 45         fld: 70
+                               fld: 71
+             subDD: 45.02      fld: 2
+                               fld: 10
+   DATA SCREEN: 
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+  
+  This patch may be run with users on the system. As several options are 
+  going to be out of order, it is recommended that this patch be installed 
+  during off-peak hours.  
+  Post-install routine, DG53P784, may be deleted after patch installation.  
+  Installation will take less than 5 minutes.
+   
+    
+  1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu to unload
+      the KIDS distribution included with this message.
+    
+  2.  From the Kernel Installation and Distribution System Menu, select
+      the Installation menu.
+    
+  3.  From this menu, you may elect to use the following options
+      (when prompted for INSTALL NAME, enter DG*5.3*784):
+      a.  Compare Transport Global to Current System  - this option will
+          allow you to view all changes that will be made when the patch
+          is installed.  It compares all components of the patch (routines,
+          DDs, templates, etc.).
+      b.  Verify Checksums in Transport Global - this option will
+          allow you to ensure the integrity of the routines that are in
+          the transport global.
+      c.  Print Transport Global - this option will allow you to view the
+          components of the KIDS build.
+      d.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will not
+          backup any other changes such as DD's or templates.
+    
+  4.  Use the Install Package(s) option and select the package DG*5.3*784.
+    
+  5.  When prompted, 'Want KIDS to INHIBIT LOGONs during the install?
+      NO//', respond NO.
+    
+  6.  When prompted, 'Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols? YES//', respond YES.
+  
+      When prompted, 'Enter options you wish to mark as 'Out Of Order':',
+      enter:
+  
+          Bed Control Menu ... [DG BED CONTROL]
+          Extended Bed Control [DG BED CONTROL EXTENDED]
+          Load/Edit PTF Data [DG PTF SCREEN]
+          Quick Load/Edit PTF Data [DG PTF QUICK LOAD]
+          Establish PTF Record from Past Admission [DG PTF CREATE]
+          Set Up Non-VA PTF Record [DG PTF FEE BASIS ADD]
+  
+      When prompted, 'Enter protocols you wish to mark as 'Out of Order':',
+      enter:
+          
+          DGPM MOVEMENT EVENTS 
+          DGPM TREATING SPECIALTY EVENT
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.3;Registration;**[Patch List]**;Aug 13, 1993;Build 16
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: DG53P784
+    Before:       n/a   After:   B445333  **784**
+Routine Name: DGPMV321
+    Before: B20512503   After: B22949958  **40,208,713,784**
+ 
+Routine list of preceding patches: 713
+
+=============================================================================
+User Information:
+Entered By  : CHANDARANA,RISHAN             Date Entered  : MAY 23, 2008
+Completed By: SESSLER,APRIL                 Date Completed: OCT 01, 2008
+Released By : CANNEDY,JOELLEN               Date Released : OCT 02, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

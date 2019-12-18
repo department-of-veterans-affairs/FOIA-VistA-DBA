@@ -1,0 +1,191 @@
+$TXT Created by LUNDEN,JOHN at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 06/09/04 at 11:01
+=============================================================================
+Run Date: JUN 30, 2004                     Designation: PX*1*134
+Package : PX - PCE PATIENT CARE ENCOUNTER     Priority: Mandatory
+Version : 1       SEQ #107                      Status: Released
+                  Compliance Date: JUL 31, 2004
+=============================================================================
+
+Associated patches: (v)PX*1*25     <<= must be installed BEFORE `PX*1*134'
+
+Subject: CHECK OUT CRASHES WHEN NO EXTERNAL FORM OF A FIELD IS AVAILABLE
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ Menu option, IN Check Out Interview, errors when trying to correct a
+ diagnosis. This can occur if bad data is passed to this function .
+ The program is looking for an array of data and when it is not there,
+ the program will crash. 
+ To fix this problem, an "UNKNOWN" value will be returned 
+ for all bad data and will be also displayed on the ENCOUNTER
+ DIAGNOSIS screen under the menu option IN Check Out Interview.
+   
+ ER3(S):
+ ==================
+ N/A
+  
+ ASSOCIATED NOIS:
+ ================
+  
+ STX-1203-72380 - Stacking error when trying to correct a diagnosis.
+  
+ PARTICIPATING TEST SITES:
+ ========================
+ El Paso,TX
+ Portland,OR
+ Eastern Colorado HCS
+ Fayetteville,AR 
+  
+ NOIS OVERVIEW:
+ =============
+  
+ Problem:
+ --------
+ The code assumes that a call to EN^DIQ1 will return an array of data, 
+ however, if bad data is passed to this function then you will not have 
+ this array of data and the program will crash. This problem exists in the 
+ "IN Check Out Interview" code.
+  
+ Resolution:
+ ------------
+ When looking at the return value from the EN^DIQ1 call first check to see
+ if the return array has been built. If it hasn't then return the value
+ "UNKNOWN". This will be consistent with the rest of the surrounding logic.
+  
+  
+ TECHNICAL:
+ ==========
+ Code Differences - Wrap the lookup to the returned array in a "$G".
+  
+ DNARRAT+11^PXCEPOV1:
+ --------------------
+ Before  . S:PXCEDIQ1(80,DA,3,"E")=PXCEPNAR PXCEPNAR=""
+  
+ After   . S:$G(PXCEDIQ1(80,DA,3,"E"))=PXCEPNAR PXCEPNAR=""
+  
+  
+  
+ EXTTEXT+19^PXUTL1:
+ ----------------------------
+ Before:
+         . D EN^DIQ1
+         . I PXUTDIQ1(FILE,DA,FIELD1,"E")]"" S
+                 PXTEXT=PXUTDIQ1(FILE,DA,FIELD1,"E")
+         . E  I $G(FIELD2)>0,PXUTDIQ1(FILE,DA,FIELD2,"E")]"" S 
+                 PXTEXT=PXUTDIQ1(FILE,DA,FIELD2,"E")
+         . E  I REQUIRED S PXTEXT="UNKNOWN"
+         E  I REQUIRED S PXTEXT="UNKNOWN"
+  
+ After:
+         . D EN^DIQ1
+         . I $G(PXUTDIQ1(FILE,DA,FIELD1,"E"))]"" S 
+                PXTEXT=PXUTDIQ1(FILE,DA,FIELD1,"E")
+         . E  I $G(FIELD2)>0,$G(PXUTDIQ1(FILE,DA,FIELD2,"E"))]"" S 
+                PXTEXT=PXUTDIQ1(FILE,DA,FIELD2,"E")
+         . E  I REQUIRED S PXTEXT="UNKNOWN"
+         E  I REQUIRED S PXTEXT="UNKNOWN"
+  
+  
+ DNARRAT+11^PXCEPOV1:
+ --------------------
+ Before  . S:PXCEDIQ1(80,DA,3,"E")=PXCEPNAR PXCEPNAR=""
+  
+ After   . S:$G(PXCEDIQ1(80,DA,3,"E"))=PXCEPNAR PXCEPNAR=""
+  
+  
+  
+      <tab>;;1.0;PCE PATIENT CARE ENCOUNTER;**[patch list]**;Aug 12, 1996
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  PXCEPOV1               5695017              5706679             134
+  PXUTL1                 3818132              3858119           25,134
+  
+   
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ This patch can be installed during business hours, but because some 
+ options will be out of service during the installation process it is 
+ suggested that it be queued for non-peak hours.
+ Installation will take less than 5 minutes.
+  
+ 1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu. [Note: TEXT 
+    PRINT/DISPLAY option in the PackMan menu sill display the patch text
+    only].
+  
+ 2. Review your mapped set.  If the routines are mapped, they should be
+    removed from the mapped set at this time.
+  
+ 3. From the Kernel Installation and Distribution System (KIDS) menu,
+    select the Installation menu.
+  
+ 4. From this menu, you may elect to use the following options:
+    (when prompted for INSTALL NAME enter PX*1.0*134)
+  
+    a. Backup a Transport Global - this option will create a backup message
+       of any routines exported with the patch. It will NOT backup any 
+       other changes such as DDs or templates.
+    b. Compare Transport Global to Current System - this option will allow
+       you to view all changes that will be made when the patch is 
+       installed. It compares all components of the patch (routines, DDs, 
+       templates, etc.).
+    c. Verify Checksums in Transport Global - this option will allow you
+       to ensure the integrity of the routines that are in the Transport
+       Global.
+    d. Print Transport Global - this option will allow you to view the
+       components of the KIDS build.
+  
+ 5. Use the Install Package(s) option and select the package PX*1.0*134.
+  
+ 6. When prompted 'Want KIDS to INHIBIT LOGONs during the install?YES//', 
+    respond NO
+  
+ 7. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+    Protocols? YES//', respond YES.
+  
+ 8. When prompted to select the options you would like to place out of
+    of order, enter the following:
+         
+          PXCE ENCOUNTER DATA ENTRY       
+          PXCE ENCOUNTER ENTRY & DELETE   
+          PXCE ENCOUNTER ENTRY NO DELETE  
+          PXCE ENCOUNTER ENTRY SUPER
+          APPOINTMENT MANAGEMENT
+  
+ 9. If routines were unmapped as part of step 2 (DSM for Open VMS sites
+    only), they should be returned to the mapped set once the installation
+    has run to completion.
+
+Routine Information:
+====================
+
+Routine Name:
+  - PXUTL1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PXCEPOV1
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : LUNDEN,JOHN                   Date Entered  : DEC 12, 2003
+Completed By: ILUSTRISIMO,LUCY              Date Completed: JUN 29, 2004
+Released By : CANNEDY,JOELLEN               Date Released : JUN 30, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

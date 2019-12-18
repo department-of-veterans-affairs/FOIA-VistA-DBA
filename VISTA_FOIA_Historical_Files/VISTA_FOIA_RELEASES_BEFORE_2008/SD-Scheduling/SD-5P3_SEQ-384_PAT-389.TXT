@@ -1,0 +1,276 @@
+$TXT Created by VILLELLA,ROSS at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 03/14/06 at 16:39
+=============================================================================
+Run Date: MAY 10, 2006                     Designation: SD*5.3*389
+Package : SD - SCHEDULING                     Priority: Mandatory
+Version : 5.3       SEQ #384                    Status: Released
+                  Compliance Date: JUN 10, 2006
+=============================================================================
+
+Associated patches: (v)SD*5.3*167  <<= must be installed BEFORE `SD*5.3*389'
+
+Subject: CORRECT CREATION OF ASDCN X-REF.
+
+Category: 
+  - Routine
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ This patch will address the issue with the "ASDCN" cross reference in the 
+ PATIENT FILE (2) not being created when appointments are cancelled when 
+ using the menu option CANCEL CLINIC AVAILABILITY  SDCANCEL .
+ A new option: Cancelled Clinic Report [SDAM CANCELLED CLINIC RPT] 
+ was created which uses the "ASDCN" cross reference for reporting.
+ This report has been formatted to print only in 132 column format.
+  
+ This patch also contains a one time utility routine (SD53P389)
+ which will run as a post install instruction and create the necessary
+ cross reference entry for any existing cancelled appointments that did
+ not have the cross reference created properly in the past.
+  
+                                                
+ ASSOCIATED E3R(S):
+ ==================
+ N/A
+  
+ ASSOCIATED REMEDY CALLS:
+ ========================
+ 1. HD63459 - ASDCN X-REF CORRUPT.
+ 2. HD63697 - Cancelled Appointments.
+  
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Muskogee,OK
+ N.Florida/S.Georgia HCS
+ VA Greater LA HCS
+  
+  
+ REMEDY OVERVIEW:
+ ================
+ 1. HD63459  ASDCN X-REF CORRUPT.
+  
+ Problem:
+ --------
+ The routine SDCAN only builds the "ASDCN" cross reference of the PATIENT 
+ FILE (2) for the appointment status of "C" for Cancelled by Clinic. It 
+ should build the cross reference when the appointment status is any 
+ of the following:
+  
+ "C"   Cancelled by Clinic.
+ "CA"  Cancelled by Clinic and Auto Re-book.
+ "PC"  Cancelled by Patient.
+ "PCA" Cancelled by Patient and Auto Re-book.
+  
+ Also during Cancel Clinic Availability if there are existing
+ appointments within the time frame you are cancelling, the 
+ cross reference was not being created when cancelling those 
+ appointments.
+  
+  
+ Resolution:
+ -----------
+ Modify the routine SDCAN to include the additional appointment status 
+ when creating the cross reference. Modify the SDC routine to create the 
+ cancelled appointments cross reference when the appointments are being 
+ cancelled as part of cancelling the availability for a clinic.
+  
+ 2. HD63697 Cancelled Appointments.
+  
+ Problem:
+ ========
+ Site requested a new report be created to determine the number of 
+ cancelled clinic appointments for national reporting purposes.
+  
+ Resolution:
+ ===========
+ Report created for this new functionality. This report prints patients 
+ with all cancelled clinic types and subtotals each group. The totals are 
+ then printed by Division. The following is the Option path.
+  
+         Scheduling Manager's Menu
+             OUTputs
+                 Cancelled Clinic Report
+  
+  
+  
+ The complete and updated User Manual will be posted to the VDL immediately
+ after the release of the patch.
+  
+  
+ TECHNICAL:
+ ==========
+  
+ Problem:
+ --------
+ The logic in routine SDCAN only builds the cross reference if the 
+ appointment status is EQUAL to "C". Also the option to Cancel Clinic
+ Availability is not building the cross reference when cancelling existing
+ appointments.
+  
+ Resolution:
+ -----------
+ Logic will be modified in the SDCAN routine to build the cross reference
+ if the appointment status contains a "C". This will correctly pick up the
+ additional appointment types mentioned above. The routine SDC will be 
+ modified to build the cross reference entry for appointments that are 
+ cancelled while cancelling clinic availability. In addition the routine
+ SD53P389 has been created to run as a post install instruction to 
+ go through the existing patient appointments and to make sure the cross
+ reference entries exist for each of the cancelled appointments. 
+  
+ The cross reference will now appear as follows:
+  
+         ^DPT("ASDCN",SC,DATE/TIME,PDFN)="" (null if clinic cancel)
+                                        =1  (1 if patient cancel)
+         Where:
+         SC = Pointer to Hospital Location file 44.
+         DATE/TIME = Appointment Date and Time.
+         PDFN = Patient DFN
+  
+  
+ Problem:
+ ========
+ No proper reporting method for Cancelled Appointments.
+  
+ Resolution:
+ ===========
+ Option Cancelled Clinic Report created to report on cancelled 
+ appointments. Routines include SDAMOC, SDAMOC0, SDAMOCC, SDAMOCP, 
+ SDAMOCP1.
+  
+  
+ DATA DICTIONARY CHANGES:
+ ========================
+ N/A
+  
+ ROUTINE SUMMARY:
+ ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;5.3;Scheduling;**[patch list]**;Aug 13, 1993
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  SD53P389                   N/A              1131197             389
+  SDAMOC                     N/A              7865936             389
+  SDAMOC0                    N/A              2780158             389
+  SDAMOCC                    N/A              2050584             389
+  SDAMOCP                    N/A              6869637             389
+  SDAMOCP1                   N/A              8239723             389
+  SDC                   14682588             14710058      15,32,79,132,167
+                                                                  389
+  SDCAN                   785063               788625             389
+  
+                             CHECK1^XTSUMBLD results
+  Routine name      Before Patch           After Patch        Patch List
+  ============      ============           ===========        ==========
+  SD53P389                  N/A               1936910             389
+  SDAMOC                    N/A              21770282             389
+  SDAMOC0                   N/A               4630788             389
+  SDAMOCC                   N/A               5703858             389
+  SDAMOCP                   N/A              13982690             389
+  SDAMOCP1                  N/A              17836724             389
+  SDC                  21498895              21658031     15,32,79,132,167
+                                                                  389
+  SDCAN                  833446                837101             389
+  
+ INSTALLATION INSTRUCTIONS:
+ =========================
+ This patch can be loaded with users in the system but since some options 
+ will be disabled, it is recommended that it be installed at off-peak
+ hours as SD53P389 will be run as a post installation routine. Installation
+ time will be less than 10 minutes.
+  
+ 1. Choose the PackMan message containing this patch and invoke the 
+ INSTALL/CHECK MESSAGE PackMan option.
+  
+ 2. Start up the Kernel Installation and Distribution System Menu [XPD 
+ MAIN]:
+        Edits and Distribution ...
+        Utilities ...
+        Installation ...
+  
+    Select Kernal Installation & Distribution System Option:  Installation
+                                                              ---
+  
+        1     Load a Distribution
+        2     Verify Checksums in Transport Global
+        3     Print Transport Global
+        4     Compare Transport Global to Current System
+        5     Backup a Transport Global
+        6     Install Package(s)
+              Restart Install of Package(s)
+              Unload a Distribution
+  
+ 3. From this menu, you may elect to use the following options
+    (When prompted for the INSTALL NAME. enter SD*5.3*389):
+  
+   a. Backup a Trasport Global - This option will create a backup 
+      message of any routines exported with this patch. It will not backup
+      any other changes such as DD's or templates.
+  
+   b. Compare Transport Global to Current System - This option will 
+      allow you to view all changes that will be made when this patch is
+      installed. It compares all components of this patch (routines, DD's,
+      templates, etc..)
+   
+   c. Verify Checksums in Transport Global - This option will allow 
+      you to ensure the integrity of the routines that are in the Transport
+      global.
+  
+ 4. Use the Install Package(s) option and select the package
+    SD*5.3*389.
+  
+   a. When prompted 'Want KIDS to Rebuild Menu Trees Upon Completion 
+      of Install? YES//', answer NO.
+  
+   b. When prompted 'Want KIDS to INHIBIT LOGONs during the
+      install? YES//', answer NO.
+  
+   c. When prompted 'Want to DISABLE Scheduled Options and Menu 
+      Options and Protocols? YES//', answer YES.
+      
+      When prompted to select the options you would like to mark as 
+      'Out of Order', enter the following.
+  
+      SDAM APPT MGT
+      CANCEL CLINIC AVAILABILITY
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: SD53P389
+    Before:       n/a  After:  B1936910  **389**
+Routine Name: SDAMOC
+    Before:       n/a  After: B21770282  **389**
+Routine Name: SDAMOC0
+    Before:       n/a  After:  B4630788  **389**
+Routine Name: SDAMOCC
+    Before:       n/a  After:  B5703858  **389**
+Routine Name: SDAMOCP
+    Before:       n/a  After: B13982690  **389**
+Routine Name: SDAMOCP1
+    Before:       n/a  After: B17836724  **389**
+Routine Name: SDC
+    Before: B21498895  After: B21658031  **15,32,79,132,167,389**
+Routine Name: SDCAN
+    Before:   B833446  After:   B837101  **389**
+
+=============================================================================
+User Information:
+Entered By  : HOUTCHENS,THOMAS              Date Entered  : JUL 30, 2004
+Completed By: ILUSTRISIMO,LUCY              Date Completed: MAY 04, 2006
+Released By : FIELDS-BARNES,JANETTE         Date Released : MAY 10, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

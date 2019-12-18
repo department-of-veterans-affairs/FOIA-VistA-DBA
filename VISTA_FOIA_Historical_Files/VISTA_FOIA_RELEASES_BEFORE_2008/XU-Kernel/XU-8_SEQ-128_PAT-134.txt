@@ -1,0 +1,848 @@
+$TXT Created by OGI,MICHAEL at FM22-PATCH.ISC-SF.VA.GOV  (KIDS) on THURSDAY, 03/23/00 at 11:40
+=============================================================================
+Run Date: APR 06, 2000                     Designation: XU*8*134
+Package : XU - KERNEL                          Priority: Mandatory
+Version : 8       SEQ #128                       Status: Released
+=============================================================================
+
+Associated patches: (v)A4A7*1.01*11<<= must be installed BEFORE `XU*8*134'
+                    (v)DI*22*1     <<= must be installed BEFORE `XU*8*134'
+                    (v)DI*22*4     <<= must be installed BEFORE `XU*8*134'
+                    (v)DI*22*12    <<= must be installed BEFORE `XU*8*134'
+                    (v)DI*22*16    <<= must be installed BEFORE `XU*8*134'
+                    (v)DI*22*17    <<= must be installed BEFORE `XU*8*134'
+                    (v)XU*8*135    <<= must be installed BEFORE `XU*8*134'
+                    (v)DI*22*20    <<= must be installed BEFORE `XU*8*134'
+                    (v)DI*22*21    <<= must be installed BEFORE `XU*8*134'
+                    (v)XU*8*137    <<= must be installed BEFORE `XU*8*134'
+                    (v)DI*22*29    <<= must be installed BEFORE `XU*8*134'
+
+Subject: New Person Name Standardization
+
+Category: 
+  - Data Dictionary
+  - Routine
+  - Input Template
+
+Description: 
+============
+
+  ***********************************************************************
+  *  NOTE: The New Person Name Conversion is run automatically as part  *
+  *  of the POST-INSTALL ROUTINE (POST^XLFNAME) of this patch. See      *
+  *  "POST^XLFNAME: New Person Name Conversion" below for details. It   *
+  *  is important that you read this patch description and follow the   *
+  *  installation instructions.                                         *
+  ***********************************************************************
+  
+ Further information is provided in a separate document, "NAME
+ STANDARDIZATION, Supplement to Patch Description, PATCH XU*8.0*134." This
+ document can be obtained by using FTP from the appropriate Customer
+ Service directory:
+  
+   OI FIELD OFFICE    FTP ADDRESS      DIRECTORY
+   ======================================================
+   ALBANY             152.127.1.5      anonymous.software
+   HINES              152.129.1.110    anonymous.software
+   SALT LAKE          152.131.2.1      anonymous.software
+  
+   Host File Name: KRN8_0P134.PDF
+  
+ This document can also be downloaded from the Infrastructure Documentation
+ center web page:
+  
+   http://vista.med.va.gov/infrastructure/documentation.html
+  
+  
+ Background
+ ==========
+ The Veterans Health Administration (VHA) does not enforce a uniform
+ procedure for recording names of persons in VISTA. This has led to
+ duplicate entries for individuals within systems and problems in matching
+ records across systems. Name suffixes (Jr., III etc.) have added to the
+ problems.
+  
+  
+ Purpose
+ =======
+ The main impetus of this project is to support the National Provider Index
+ (NPI) project that will assign a national number to every provider who
+ provides service to the Department of Veterans Affairs. It is necessary to
+ define a standard way for names to be entered into the NAME field (#.01)
+ of the NEW PERSON file (#200). This will help in uniquely defining all
+ providers in the file. Another benefit to this project will be the ability
+ to uniquely identify computer users across various VA facilities. This
+ will become especially important as the facilities do more data sharing,
+ and as more computer users have access to data on computers across
+ multiple facilities. It will also be a major step towards supporting data
+ exchange with COTS/GOTS products that rely on a more detailed definition
+ of person names via HL7 segments.
+  
+  
+ Brief Description
+ ================
+ This patch does the following:
+  
+ 1.  Changes the definition of the .01 field of the NEW PERSON file (#200).
+     
+ 2.  Automatically runs the New Person Name Conversion as part of the
+     POST-INSTALL ROUTINE (POST^XLFNAME). The conversion standardizes the
+     names in the .01 field of the NEW PERSON file and parses the names
+     into their component parts. (See "POST^XLFNAME: New Person Name
+     Conversion" below for details.)
+     
+ 3.  Introduces a file called the NAME COMPONENTS file (#20) to store the
+     component parts of names.
+     
+ 4.  Adds a pointer field to the NEW PERSON file to point to the NAME
+     COMPONENTS file. The new field is NAME COMPONENTS (#10.1).
+     
+ 5.  Introduces new Kernel API's useful for standardizing names in any
+     file. Also introduces new Kernel APIs and a FUNCTION to display names
+     in various formats.
+  
+  
+ Details
+ =======
+  
+ POST^XLFNAME: New Person Name Conversion
+ ----------------------------------------
+ The New Person Name Conversion is run as part of the POST-INSTALL ROUTINE
+ (POST^XLFNAME) of this patch. POST^XLFNAME loops through the entries
+ in the NEW PERSON file and:
+  
+ 1.  Converts the name stored in the NAME field (#.01) to the following
+     standard form, if it is not already in standard form:
+  
+        Family_name,Given_name<space>Middle_name<space>Suffix
+  
+     In forming the standard name, the conversion routine makes the
+     following changes to each name:
+  
+     a.  Removes any text within parentheses (), brackets [], or braces {}.
+  
+         (If any such text is deleted, the original name with the
+         parenthetical text is stored in the NOTES ABOUT NAME field in the
+         NAME COMPONENTS file. After the conversion, you can use the search
+         utility of VA FileMan to print out those entries in the NAME
+         COMPONENTS file where NOTES ABOUT NAME is not null. See the VA
+         FileMan Getting Started manual for more information on VA
+         FileMan's Search utility.)
+  
+     b.  Converts the name to uppercase.
+  
+     c.  Moves any suffixes found between two commas immediately after the
+         Family Name to the end of the name.
+  
+     d.  In the Family Name (the portion to the left of the first comma):
+  
+         (1)  Converts colons (:) and semicolons (;) to hyphens (-).
+         (2)  Removes spaces and all other punctuation except hyphens.
+  
+     e.  In the other name parts (the portion to the right of the first
+         comma):
+  
+         (1)  Converts colons, semicolons, commas (,), and periods (.) to
+              spaces.
+         (2)  Removes all punctuation except hyphens and spaces.
+  
+     f.  Removes hyphens and spaces at the beginning and end of the name.
+  
+     g.  Replaces two or more consecutive hyphens or spaces with a single
+         hyphen or space.
+  
+     h.  Converts Arabic numeral birth position suffixes 1ST, 2ND, 3RD,
+         ..., 10TH to their Roman numeral equivalents I, II, III, ..., X.
+  
+     i.  Moves any suffixes immediately to the left of the first comma to
+         the end of the name, before any suffixes already at the end of the
+         name.
+  
+     j.  Moves DR to the end of the name if it is found immediately to the
+         right of the first comma.
+  
+     k.  Removes the string "NMI" or "NMN" if it is used as the Middle
+         Name.
+  
+     l.  If the length of the resulting standard name is greater than the
+         maximum length (35) allowed by the input transform of the NAME
+         field, the following algorithm is performed to shorten the name:
+  
+         (1) Truncate Middle Name from the right-most position until only
+             the initial character is left;
+  
+         (2) Drop Suffix;
+  
+         (3) Truncate Given Name from the right-most position until only
+             the initial character is left;
+  
+         (4) Truncate Family Name from the right-most position.
+  
+         Note that since the standard form of the name is never longer than
+         the name being converted, this truncation would only occur if the
+         name stored in the .01 field is already greater than 35
+         characters. This is unlikely, since the input transform restricts
+         the name to 35 characters.
+         
+ 2.  Parses the name into its component parts: Family (Last) Name, Given
+     (First) Name(s), Middle Name, and Suffix(es). Those name parts are
+     then stored in a new NAME COMPONENTS file (#20) brought in with this
+     patch.
+  
+     In parsing the name into its component parts, the New Person Name
+     Conversion looks for Suffixes immediately to the left of the first
+     comma, and at the very end of the name. It also looks for the DR
+     suffix immediately after the first comma and looks for any suffix
+     between two commas immediately after the Family Name. The portion of
+     the name to the left of the comma, less any Suffixes, is assumed to be
+     the Family Name.
+  
+     After the conversion routine accounts for all Suffixes, it looks at
+     the portion of the name after the comma. It assumes that the first
+     space-delimited piece is the Given Name. If any other pieces are left,
+     the last one (rightmost) is assumed to be the Middle Name, and
+     anything else is appended to the end of the Given Name.
+  
+ 3.  Makes the following changes to the name components before they are
+     stored in the NAME COMPONENTS file:
+  
+     a.  Converts the name component to uppercase.
+         
+     b.  In the Family Name, converts semicolons (;) and colons (:) to
+         hyphens (-).
+         
+     c.  In the other name parts (Given Name, Middle Name, and Suffix),
+         converts semicolons, colons, and commas (,) to spaces.
+         
+     d.  Removes hyphens and spaces at the beginning and end of the name.
+         
+     e.  Replaces two or more consecutive hyphens/spaces with a single
+         hyphen/space.
+         
+     f.  Removes spaces after periods.
+         
+     g.  Removes accent graves (`) and up-arrows (^).
+  
+ 4.  Establishes a pointer from each entry in the NEW PERSON file to the
+     corresponding entry in the NAME COMPONENTS file that contains the name
+     parts.
+  
+ 5.  Record in ^XTMP all changes that were made, and any potentially
+     incorrect assumptions that were made in standardizing the name or
+     parsing the name into its component parts. The purge date recorded in
+     in the 1st ^-piece of ^XTMP("XLFNAME",0) is the current date plus 90
+     days.
+      
+ 6.  Stores in the 4th ^-piece of ^XTMP("XLFNAME",0) the record number of
+     the last record successfully converted. If the New Person Name
+     Conversion is run again if, for example, an aborted installation is
+     restarted, the conversion will continue on from this point, rather
+     than from the beginning of the file.
+     
+ The PRINT^XLFNAME entry point, described below, can be used to print the
+ information recorded in ^XTMP in step 5 above.
+  
+  
+ Information stored in ^XTMP by the New Person Name Conversion
+ -------------------------------------------------------------
+   ^XTMP("XLFNAME",0) = date run plus 90 days (purge date)
+                        ^date run
+                        ^Created by POST~XLFNAME (Post Install Conversion
+                         of XU*8.0*134)
+                        ^ien of last record successfully converted
+  
+   ^XTMP("XLFNAME",200,.01,rec) = Original Name
+                                  ^New (Standard) Name
+                                  ^Given (First) Name
+                                  ^Middle Name
+                                  ^Family (Last) Name
+                                  ^Suffix
+  
+   ^XTMP("XLFNAME",200,.01,rec,sub) = ""
+  
+ where,
+  
+     rec = The internal entry number of a record in the NEW PERSON file. 
+  
+     sub = Any of the following:
+                            
+           "DIFFERENT" The standard name is different from the original
+                       name.
+  
+           "FAMILY"    The Family Name started with ST<period>. (The
+                       conversion routine removes the period and the space,
+                       if any, that immediately follows. For example, the
+                       name "ST. JAMES,JOHN" is converted to
+                       "STJAMES,JOHN".
+  
+           "GIVEN"     There is no Given Name.
+                       
+           "MIDDLE"    There are three or more names between the comma and
+                       the Suffix(es). (The conversion routine assumes
+                       that all name parts except the last between the
+                       comma and any suffixes are part of the Given Name.
+                       Only the last part is assumed to be the Middle
+                       Name.)
+  
+           "NM"        "NMI" or NMN" appears to have been used as the
+                       Middle Name. (The conversion routine removes it from
+                       the standard name, and sets the Middle Name to null
+                       in the NAME COMPONENTS file.)
+                         
+           "NUMBER"    A name part (other than a valid numeric Suffix)
+                       contains a number.
+                        
+           "PERIOD"    The name contains periods that were removed to form
+                       the standard name.
+                       
+           "PUNC"      The name contains punctuation other than hyphens or
+                       spaces that were removed to form the standard name.
+                       
+           "SPACE"     The Family Name contains spaces that were removed to
+                       form the standard name.
+  
+           "STRIP"     The name contained parenthetical text that was
+                       stripped out of the name. The conversion routine
+                       removes text enclosed in parentheses (), brackets
+                       [], and braces {}, and stores the original name with
+                       the parenthetical text in the NOTES ABOUT NAME field
+                       (#11) in the NAME COMPONENTS file. (For example, the
+                       conversion routine changes SMITH,JOHN (TRM) to
+                       SMITH,JOHN.)
+                       
+           "SUFFIX"    This node is returned if:
+                         
+                       - Suffix(es) were found immediately to the left of
+                         the 1st comma. (The conversion routine moves them
+                         to the end of the name, before any suffixes
+                         already there.)
+                       
+                       - I, V, or X, and nothing else except valid suffixes
+                         appear immediately after the Given Name. (The
+                         conversion routine interprets it as a Middle
+                         Name.)
+  
+                       - The name immediately after the Given Name appears
+                         to be a non-numeric suffix (IV, JR, SR, DR, MD,
+                         ESQ, etc.) and everything after that also appears
+                         to be suffixes. (The conversion routine assumes
+                         that there are a Given Name and Suffixes, but no
+                         Middle Name.)
+  
+                       - M.D. or M D is found at the end of the name, or
+                         before any valid suffixes at the end of the name.
+                         (The conversion routine assumes that M and D are
+                         initials in the Given or Middle Name.)
+        
+                       - The name part before any recognizable suffixes is
+                         more than one character in length and doesn't
+                         contain a "Y" or any vowels. (It is assumed to be
+                         a suffix.)
+  
+                       - A suffix was found between commas immediately
+                         after the Family Name. (The conversion routines
+                         moves it to the end of the name.)
+                       
+           "TRUNCATE"  The standard name was truncated because it was 
+                       longer than the maximum field length.
+  
+  
+ PRINT^XLFNAME: Print Report in ^XTMP
+ ------------------------------------
+ This is the Kernel Direct Mode Utility for Name Standardization. A Direct
+ Mode Utility is a programmer call (entry point) that is made when working
+ in direct programmer mode. A Direct Mode Utility is entered at the MUMPS
+ prompt (e.g., >D ^XUP). Calls that are documented as direct mode utilities
+ cannot be used in application package code.
+  
+ This entry point prints a report of the information in the
+ ^XTMP("XLFNAME") global, which was populated during the New Person Name
+ Conversion. Information in the ^XTMP("XLFNAME") global is retained for 90
+ days. The report can be queued.
+  
+ For each name listed, the report shows what file, field, and record that
+ name came from. The report also shows the original and standardized form
+ of each name. It shows a list of codes for each name, to indicate whether
+ the name is different from its standardized form, and whether the
+ conversion routine had a potential problem in determining the component
+ parts of the name.
+  
+ PRINT^XLFNAME first prompts for a list of codes:
+  
+   Enter a list of codes to print: ALL//
+  
+ Press <RET> to accept the default "ALL" if you wish to print out all
+ the records in ^XTMP.
+  
+ If you wish to print out only those records with specific codes, you can
+ enter a list of codes, separated by commas. Only those records with a code
+ in your list will be printed. For example, if you enter 'PU,SP', only
+ those entries where punctuation was removed by the conversion routine and
+ entries where spaces were removed are printed in the report. Enter '??' at
+ the prompt to see a complete listing of codes you can enter:
+  
+  Explanation of Codes:
+  --------------------
+   D  : The standard name is different from the original name.
+   F  : The Family Name starts with ST<period>. The period and
+          following space, if any, were removed.
+   G  : There is no Given Name.
+   M  : Assumption: There is more than one Given and only one Middle Name.
+   NM : NMI or NMN was used as the Middle Name.
+   NU : A name part contains a number.
+   PE : Periods were removed.
+   PU : Punctuation was removed.
+   SP : Spaces were removed from the Family Name.
+   ST : Text in parentheses was stripped from the name.
+   SU : One or more of the following situations was encountered relating
+        to suffixes:
+        - Suffixes were found immediate to left of the first comma.
+        - I, V, or X was interpreted as a Middle Name.
+        - A name part was interpreted as a Suffix, not a Middle Name.
+        - M.D. or M D was NOT interpreted as a Suffix.
+        - A name part with no vowels was interpreted as a Suffix.
+        - A Suffix was found between commas immediately after the Family
+          Name.
+   T  : The standard name was truncated.
+                       
+ You are then prompted for a list of codes to exclude.
+  
+   Enter a list of codes to exclude: 
+  
+ Records with any code in the list you enter here will be excluded from the
+ printout. This list overrides the list of codes to include.
+  
+  
+ NAME COMPONENTS File (#20)
+ --------------------------
+ A new NAME COMPONENTS (#20) file is exported with this patch to hold the
+ component parts of a person's name:
+  
+   FAMILY (LAST) NAME (field #1)
+   GIVEN (FIRST) NAME (field #2)
+   MIDDLE NAME (field #3)
+   PREFIX (field #4)
+   SUFFIX (field #5)
+   DEGREE (field #6)
+  
+ If any of these components are edited, MUMPS cross-references
+ automatically update the name from which the components were originally
+ built.
+  
+ The NAME COMPONENTS file contains fields for degree and prefix. These
+ fields can be used in building formatted names for display, but are not
+ considered part of a standard name field and are not included as part of
+ the .01 field of the NEW PERSON file.
+  
+ The standard form of a name can contain only a limited set of punctuation,
+ as described below, but the name components stored in the NAME COMPONENTS
+ file can contain any punctuation except the accent grave (`) and the
+ up-arrow (^). New Kernel APIs will allow the programmer to take a record
+ from the NAME COMPONENTS file and construct a name in various formats,
+ such as standard form, first name first, and last name first. (See the
+ NAME STANDARDIZATION Supplement to Patch Description documentation for
+ more information on the new APIs.)
+  
+ For example, suppose the standard form of the name stored in the .01 field
+ of the NEW PERSON file is OBRIEN,JOHN A B II. The component parts of that
+ name, as stored in the NAME COMPONENTS file can be:
+  
+                 PREFIX: MR.
+     GIVEN (FIRST) NAME: JOHN
+            MIDDLE NAME: A. B.
+     FAMILY (LAST) NAME: O'BRIEN
+                 SUFFIX: JR.
+  
+ The $$NAMEFMT^XLFNAME extrinsic function can be used to return that name
+ in the following format:
+  
+   MR. JOHN A. B. O'BRIEN, JR.
+  
+ The NAME COMPONENTS file contains the following three fields to identify
+ the specific name to which the components correspond:
+  
+   FILE field (#.01). This field holds the number of the file or subfile
+   that contains the name field.
+  
+   FIELD field (#.02). This field holds the number of the field that
+   contains the name.
+  
+   IENS field (#.03). This field holds the internal entry number string
+   (IENS) of the entry that contains the name.
+  
+ The entries in the NAME COMPONENTS file that correspond to a name in the
+ NEW PERSON file will all have FILE = 200 and FIELD = .01.
+  
+ The NAME COMPONENTS file contains a field NOTES ABOUT NAME (#11), a free
+ text field that can contain notes about the entry. This field is populated
+ during the New Person Name Conversion. If during the conversion, a name is
+ found with text in parentheses (), brackets [], or braces {}, the
+ parenthetical text is stripped from the name, and the original name with
+ the parenthetical text is stored in the NOTES ABOUT NAME field.
+  
+  
+ Changes to the NEW PERSON File (#200)
+ -------------------------------------
+ 1.  The input transform will continue to check that the name entry is 3 to
+     35 characters in length, contains one and only one comma, and has at
+     least one character before and one character after the comma. In
+     addition, the input transform will call the new Name Standardization
+     API, STDNAME^XLFNAME, to parse the input into its component parts,
+     FAMILY (LAST) NAME, GIVEN (FIRST) NAME, MIDDLE NAME, and SUFFIX, and
+     will make the following changes to the input:
+  
+     a.  Convert the name to uppercase
+  
+     b.  In the Family Name (the portion to the left of the comma):
+         (1)  Convert colons (:) and semicolons (;) to hyphens (-)
+         (2)  Remove spaces and all other punctuation except hyphens
+  
+     c.  In the other name parts (the portion to the right of the comma):
+         (1)  Convert colons, semicolons, and periods (.) to spaces
+         (2)  Remove all punctuation except hyphens and spaces
+  
+     d.  Remove hyphens and spaces at the beginning and end of the name
+  
+     e.  Replace two or more consecutive hyphens or spaces with a single
+         hyphen or space
+  
+     f.  Convert numeric birth position suffixes 1ST, 2ND, 3RD, ..., 10TH
+         to their Roman numeral equivalents I, II, III, ..., X
+  
+     g.  Move any suffixes immediately to the left of the comma to the end
+         of the name, before any suffixes already at the end of the name
+  
+     h.  Move DR to the end of the name if it is found immediately to the
+         right of the comma
+  
+     i.  Move any suffixes between two commas immediately after the Family
+         Name to the end of the name.
+         
+     j.  Remove the string "NMI" or "NMN" if either is used as the Middle
+         Name.
+                         
+     The Name stored in the .01 field will have the following standard
+     format:
+  
+        Family_name,Given_name<space>Middle_name<space>Suffix
+  
+     If there is more than one Given Name, Middle Name or Suffix,
+     they can be separated by spaces.
+  
+ 2.  The Help-Prompt and Description of the .01 field will be modified to
+     show the standard form of a name, and the changes automatically made
+     to the input.
+  
+ 3.  A new NAME COMPONENTS field (#10.1) defined as a pointer to the NAME
+     COMPONENTS file will be created in the NEW PERSON file. This field
+     establishes a link between each entry in the NEW PERSON file with the
+     corresponding entry in the NAME COMPONENTS file that contains the
+     component parts of the Name.
+  
+ 4.  The traditional "B" index will be deleted and a new-style "B" index
+     will be created in its place. The new-style "B" index will have a
+     "transform for lookup" to aid in lookup. The value of the .01 field
+     will be stored in the index the same as in the data, but when the user
+     does a lookup on the file, if no match is found in the index to the
+     lookup value, FileMan will pass the lookup value through the Name
+     Standardization API, STDNAME^XLFNAME, and attempt to find a match in
+     the "B" index to the new standardized value. Cross-references with
+     transforms for lookup are a new construct supported in FileMan version
+     22.0.
+  
+ 5.  A new-style MUMPS cross-reference called "ANAME" will be created on
+     the NEW PERSON file to keep the .01 field synchronized with the
+     corresponding entry in the NAME COMPONENTS file. When the .01 field is
+     edited, the cross-reference will update the corresponding entry in the
+     NAME COMPONENTS file. When a new entry is created in the NEW PERSON
+     file, the cross-reference will create a new entry in the NAME
+     COMPONENTS file, store the component parts of the name in the fields
+     1, 2, 3, and 5 of the NAME COMPONENTS file, and stuff the pointer to
+     the entry in the NAME COMPONENTS pointer field (#10.1) in the NEW
+     PERSON file.
+  
+ 6.  The "AF" trigger cross-reference that currently updates the SIGNATURE
+     BLOCK PRINTED NAME field (#20.2) will be deleted. Instead, the
+     SIGNATURE BLOCK PRINTED NAME will be updated via a new-style MUMPS
+     cross-reference based on the FAMILY (LAST) NAME field (#1), GIVEN
+     (FIRST) NAME field (#2), MIDDLE NAME field (#3), and SUFFIX field (#5)
+     of the NAME COMPONENTS file.
+  
+ 7.  A new-style MUMPS cross-reference called "ADEG" will be created 
+     to keep the DEGREE field (#10.6) in the NEW PERSON file synchronized
+     with the DEGREE field (#6) in the NAME COMPONENTS file.
+  
+  
+ Changes to Option XUSERNEW: Add a New User to the System
+ --------------------------------------------------------
+ When you enter a name at the
+     
+        Enter NEW PERSON's name (Family,Given Middle Suffix):
+  
+ prompt, the input transform on the NAME field (#.01) of the NEW PERSON
+ file will convert the name to standard form and parse it into its
+ component parts. When the entry is added to the NEW PERSON file, the
+ new-style MUMPS cross-reference "ANAME" will automatically create an entry
+ in the NAME COMPONENTS file and populate that entry with the FAMILY (LAST)
+ NAME, GIVEN (FIRST) NAME, MIDDLE NAME, and SUFFIX of the person. The value
+ '200' will be stored in the FILE field (#.01) of the NAME COMPONENTS file
+ entry, the value '.01' will be stored in the FIELD field (#.02), and the
+ IENS of the record in the NEW PERSON file will be stored in the IENS field
+ (#.03). The record number of the entry in the NAME COMPONENTS file will be
+ stored in the NAME COMPONENTS pointer field (#10.1) of the NEW PERSON
+ file. 
+  
+ The XUSERNEW option invokes the XUNEW USER ScreenMan form. If for some
+ reason the XUNEW USER form cannot be invoked (because the terminal type
+ cannot handle screen-oriented applications, for example), the XUSERNEW
+ option invokes the XUNEW USER input template. Both the XUNEW USER form and
+ input template have been modified to allow you to edit the component parts
+ of a person's name. When the ScreenMan form is invoked, the first window
+ shown contains the fields from the NAME COMPONENTS file that were
+ populated when the NEW PERSON file entry was created:
+  
+        +----------------------------------------------------+
+        |                                    NAME COMPONENTS |
+        |        Prefix:                                     |
+        | Given (First): JOHN                                |
+        |        Middle: A. B.                               |
+        | Family (Last): O'BRIEN                             |
+        |        Suffix: JR.                                 |
+        |                                                    |
+        | OBRIEN,JOHN A B JR                                 |
+        +----------------------------------------------------+
+  
+ Here, the component parts of the name can be edited separately. At the
+ lower left of the window is the name in standard form, which is what would
+ be stored in the .01 field of the NEW PERSON file. Although Prefix can be
+ entered and stored in the NAME COMPONENTS file, it does not become part of
+ the standard name stored in .01 field of the NEW PERSON file.
+  
+ When you close the above window, you are taken to page 1 of the form. The
+ first field on that page, 'NAME...' has been modified so that if you press
+ <RET> there or edit the name displayed there, the window that displays the
+ Name Components will re-open. 
+  
+  
+ Changes to Option XUSEREDIT: Edit an Existing User
+ --------------------------------------------------
+ This option invokes the XUEXISTING USER ScreenMan form. If for some reason
+ the XUEXISTING USER form cannot be invoked (because the terminal type
+ cannot handle screen-oriented applications, for example), the XUSEREDIT
+ option invokes the XUEXISTING USER input template. Both the XUEXISTING
+ USER form and input template have been modified to allow you to edit the
+ component parts of a person's name.
+  
+ On the first page of the ScreenMan form, the first field is 'NAME...'. If
+ you edit the name displayed there, or simply press <RET> there, a window
+ that displays the Name Components will open. There you can edit the
+ component parts of the name, fields in the NAME COMPONENTS file,
+ separately. From the components, the standard form of the name is
+ displayed in the lower left side of the window. It is this standard name
+ that is stored in the .01 field of the NEW PERSON file.  Though PREFIX can
+ be entered and edited, it is never included as part of the standard name.
+  
+  
+ Changes to Option XUSERREACT: Reactivate a User
+ -----------------------------------------------
+ This option invokes the XUREACT USER ScreenMan form. If for some reason
+ the XUREACT USER form cannot be invoked (because the terminal type cannot
+ handle screen-oriented applications, for example), the XUSERREACT option
+ invokes the XUREACT USER input template. Both the XUREACT USER form and
+ input template have been modified to allow you to edit the component parts
+ of a person's name.
+  
+ The changes to the XUREACT USER form are exactly the same as those to the
+ XUEXISTING USER form described above.
+  
+  
+ Changes to $$ADD^XUSERNEW: Add New Users
+ ----------------------------------------
+ This API has been modified to prompt for the FAMILY (LAST) NAME field
+ (#1), GIVEN (FIRST) NAME field (#2), MIDDLE NAME field (#3), and SUFFIX
+ field (#5) from the NAME COMPONENTS file when a new entry is added to the
+ NEW PERSON file.
+  
+  
+ New Function XLFMTNAME: Name Formatting Function
+ ------------------------------------------------
+ A new FUNCTION will be installed in the FileMan FUNCTION file.  This
+ function can be used within the FileMan Print options, or within
+ word-processing windows used to generate forms. The new FUNCTION allows
+ the user to display names in various formats from any file containing a
+ name field that has been standardized and linked to the NAME COMPONENTS
+ file (#20). This patch standardizes the .01 field of the NEW PERSON file
+ #200, so the new FUNCTION will work on that name field.
+  
+  
+ List of Test Sites:
+ ==================
+ Battle Creek, MI
+ Clarksburg, WV
+ Palo Alto, CA
+  
+  
+ Routine Summary:
+ ===============
+ The following routines are included in this patch.  The second line of
+ these routines looks like:
+  
+   <tab>;;8.0;KERNEL;**[patch list]**;Jul 10, 1995
+  
+ CHECK^XTSUMBLD results:
+  
+   Routine Name    Before Patch    After Patch    Patch List 
+   ============    ============    ===========    ==========
+     XLFNAME           n/a           7311068         134
+     XLFNAME1          n/a           8772051         134
+     XLFNAME2          n/a           3037800         134
+     XLFNAME3          n/a           7553802         134
+     XLFNAME4          n/a          14920261         134
+     XLFNAME5          n/a          14281977         134
+     XLFNAME6          n/a            510953         134
+     XLFNENV           n/a           1143844         134
+     XUSERNEW        6995154         7347033      16,49,134
+  
+  
+ Installation Instructions:
+ =========================
+ This patch can be installed with VISTA users online. However, it is
+ recommended that it be installed or queued for install during non-peak
+ times.
+      
+ Since the POST-INSTALL ROUTINE (POST^XLFNAME) of this patch runs the New
+ Person Name Conversion, the installation may take up to several hours to
+ complete.
+  
+  1.  AXP sites: Review your mapped routine set. If any of the routines
+      listed in the ROUTINE SUMMARY section are mapped, they should be
+      removed from the mapped set at this time.
+  
+  2.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This
+      option will load the KIDS package onto your system.
+  
+      NOTE: Do NOT stop TaskMan.
+  
+  3.  The patch has now been loaded into a transport global on your system.
+      On the KIDS menu, under the 'Installation' menu, use the following
+      options:
+  
+          Verify Checksums in Transport Global
+          Print Transport Global
+          Compare Transport Global to Current System
+          Backup a Transport Global
+  
+  4.  Under the 'Installation' menu, use the following option:
+  
+          Select Installation Option: Install Package(s)
+          Select INSTALL NAME: XU*8.0*134
+                               ==========
+  
+      Answer 'NO' to 'Want KIDS to INHIBIT LOGONs during the install?'
+      Answer 'NO' to 'Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols?'
+  
+      The New Person Name Conversion is run automatically as part of the
+      POST-INSTALL ROUTINE (POST^XLFNAME). This step may take anywhere from
+      5 minutes to several hours depending on the number of entries in the
+      New Person file that need to be converted. If for some reason the
+      system goes down, and the POST-INSTALL ROUTINE aborts while it is
+      running, you can select the KIDS option "Restart Install of
+      Package(s)" to restart the installation from the post-install. The
+      POST-INSTALL ROUTINE will continue with the conversion from the last
+      record successfully converted.
+  
+  5.  AXP Sites - After the patch has been installed, rebuild your map set,
+      if necessary.
+  
+  
+ Post-Installation Instructions
+ ==============================
+ After the patch has been installed, and the conversion run, you need to
+ review the information stored in ^XTMP("XLFNAME") by the conversion, and
+ correct any names that were standardized incorrectly. This need not be
+ done immediately. ^XTMP("XLFNAME") has a purge date of 90 days after the
+ date of the install. 
+         
+  1.  From programmer mode, DO PRINT^XLFNAME to print the information
+      stored in ^XTMP by the New Person Name Conversion. (For more
+      information, see the sections "Information stored in ^XTMP by the New
+      Person Name Conversion" and "PRINT^XLFNAME: Print Report in ^XTMP",
+      above.)
+  
+  2.  Use the "Edit an Existing User" option [XUEXISTING USER] and the
+      report generated in step 1 to correct any names that were parsed or
+      standardized incorrectly. (For more information on this
+      option, see "Changes to Option XUSEREDIT: Edit an Existing User"
+      above, and the separate document exported with this patch, "NAME
+      STANDARDIZATION Supplement to Patch Description.")
+
+Routine Information:
+====================
+
+Routine Name:
+  - XLFNAME
+
+
+Routine Checksum:
+
+Routine Name:
+  - XLFNAME1
+
+
+Routine Checksum:
+
+Routine Name:
+  - XLFNAME2
+
+
+Routine Checksum:
+
+Routine Name:
+  - XLFNAME3
+
+
+Routine Checksum:
+
+Routine Name:
+  - XLFNAME4
+
+
+Routine Checksum:
+
+Routine Name:
+  - XLFNAME5
+
+
+Routine Checksum:
+
+Routine Name:
+  - XLFNAME6
+
+
+Routine Checksum:
+
+Routine Name:
+  - XLFNENV
+
+
+Routine Checksum:
+
+Routine Name:
+  - XUSERNEW
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : SCHRAM,JACK D                 Date Entered : NOV 22, 1999
+Completed By: MURPHY,MINAO J.              Date Completed: APR 05, 2000
+Released By : GIBBONS,JOE                   Date Released : APR 06, 2000
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

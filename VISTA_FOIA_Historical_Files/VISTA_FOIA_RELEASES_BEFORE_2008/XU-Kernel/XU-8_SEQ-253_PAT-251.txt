@@ -1,0 +1,619 @@
+$TXT Created by ORMSBY,SKIP at NXT.KERNEL.FO-OAKLAND.MED.VA.GOV  (KIDS) on Thursday, 06/12/03 at 14:10
+=============================================================================
+Run Date: JUN 20, 2003                     Designation: XU*8*251
+Package : XU - KERNEL                          Priority: EMERGENCY
+Version : 8       SEQ #253                       Status: Released
+                  Compliance Date: JUN 22, 2003
+=============================================================================
+
+Associated patches: (v)XU*8*134    <<= must be installed BEFORE `XU*8*251'
+                    (v)XU*8*214    <<= must be installed BEFORE `XU*8*251'
+                    (v)XU*8*230    <<= must be installed BEFORE `XU*8*251'
+                    (v)HL*1.6*96   <<= must be installed BEFORE `XU*8*251'
+                    (v)XU*8*247    <<= must be installed BEFORE `XU*8*251'
+                    (v)XU*8*267    <<= must be installed BEFORE `XU*8*251'
+
+Subject: CLINICAL TRAINEE CORE DATASET
+
+Category: 
+  - Data Dictionary
+  - Input Template
+  - Print Template
+  - Routine
+  - Other
+  - Enhancement ()
+
+Description: 
+============
+
+ Please Note:
+ **********************************************************************
+ In accordance with VHA Directive 2003-032, this patch is designated as 
+ Emergency.  Although emergency patches normally require installation 
+ within 24 hours, OI may determine that a longer time window for 
+ installation of an emergency patch is appropriate.  Sites are informed 
+ that this patch is classified as Emergency, with the requirement that it 
+ must be installed in production accounts no later than July 1, 2003.
+ ************************************************************************
+  
+ This patch was created to assist the VHA Office of Academic Affiliations 
+ (OAA) in capturing core data for VHA clinical trainees that use the 
+ Veterans Health Information System and Technology Architecture (VISTA). To
+ achieve this, a new PROGRAM OF STUDY file (#8932.2) is created, new fields
+ and a new cross-reference are added to the NEW PERSON file (#200), and the
+ forms, input templates, and print templates that are used to edit and 
+ display the data in the NEW PERSON file are modified to include the new
+ fields. New options, a print template, and a form are also provided for
+ entering and displaying clinical trainee data.
+  
+ NOTE:
+ The CLINICAL TRAINEE CORE DATASET, Supplement to Patch Description, Patch 
+ XU*8.0*251, is available in two formats.
+    
+      xu8_0p251sp.pdf                    xu8_0p251sp.doc
+    
+ The preferred retrieval method is to FTP from the ANONYMOUS.SOFTWARE 
+ directory at: DOWNLOAD.VISTA.MED.VA.GOV . This transmits the file from 
+ the first available FTP server. Sites may also elect to retrieve software 
+ directly from one of the following servers.
+    
+    OI Field Office         FTP Address                  Directory
+    ------------------------------------------------------------------
+    Albany             ftp.fo-albany.med.va.gov     ANONYMOUS.SOFTWARE
+    Hines              ftp.fo-hines.med.va.gov      ANONYMOUS.SOFTWARE
+    Salt Lake City     ftp.fo-slc.med.va.gov        ANONYMOUS.SOFTWARE
+    
+  Note:  These files must be transferred in binary or IMAGE, not
+         ASCII, mode. 
+  
+ These documents can also be downloaded from the VistA Documentation 
+ Library (VDL) Web page:
+   
+  http://www.va.gov/vdl/Infrastructure.asp?appID=10
+  
+ In addition, the patch includes functionality for generating HL7 messages 
+ of the core data being monitored for updates.  See section HL7 MESSAGING 
+ below.
+  
+  
+ Changes to NEW PERSON file (#200)
+ ---------------------------------
+ 1. This patch adds the following fields to the NEW PERSON file (#200).
+  
+ 200,12.1   CURRENT DEGREE LEVEL   12;1 POINTER TO HL7 DEGREE FILE (#771.9)
+            INPUT TRANSFORM:  S DIC("S")="I $D(^(51,""B"",""OAA""))" D ^DIC
+                              K DIC S DIC=$G(DIE),X=+Y K:Y<0 X
+            HELP-PROMPT:      Enter the current degree level upon entry into
+                              the current training program/residency at this
+                              VA medical facility.
+            DESCRIPTION:      This is the current degree level upon entry
+                              into the current training program/residency at
+                              this VA medical facility.
+            SCREEN:           S DIC("S")="I $D(^(51,""B"",""OAA""))"
+            EXPLANATION:      You will only be able to select degrees used by
+                              the Office of Academic Affiliations.
+            RECORD INDEX:     ATR (#36)   MUMPS    IR    SORTING ONLY
+  
+ 200,12.2   PROGRAM OF STUDY  12;2 POINTER TO PROGRAM OF STUDY FILE (#8932.2)
+            HELP-PROMPT:      Enter a discipline that best describes the
+                              current program of study.
+            DESCRIPTION:      This is the discipline that best describes the
+                              trainee's current program of study at this VA
+                              medical facility.
+            RECORD INDEX:     ATR (#36)   MUMPS    IR    SORTING ONLY
+  
+ 200,12.3   LAST TRAINING YEAR  12;3 NUMBER
+            INPUT TRANSFORM:  K:+X'=X!(X>2699)!(X<2000)!(X?.E1"."1N.N) X
+            HELP-PROMPT:      Enter the last year anticipated for training at
+                              this VAMC.  Enter a single 4-digit year (i.e.
+                              2005).
+            DESCRIPTION:      This is the LAST year the trainee anticipates
+                              being in a training program at this VA medical
+                              facility.
+            RECORD INDEX:     ATR (#36)   MUMPS    IR    SORTING ONLY
+  
+  
+ 2. A record-level new-style cross-reference is added to the NEW PERSON
+ file to set an index whenever fields for clinical trainees being tracked
+ by OAA is changed:
+  
+    ATR (#nn)    RECORD    MUMPS    IR    SORTING ONLY
+    
+        Short Descr:  This index keeps track of records for which clinical 
+                      trainee data is edited.
+        Description:  This new-style cross-reference has as cross-reference
+                      values all the fields in the NEW PERSON file that are
+                      being tracked by the Office of Academic Affiliations
+                      for rollup into a centralized database. When any of
+                      the fields are edited, the cross-reference logic will
+                      set an index entry that corresponds to the edited
+                      record. The index entries will look like this:
+                       
+                        ^VA(200,"ATR",ien) = FM internal date 
+                       
+                      "ATR" stands for "ATrainee." 
+                       
+                      None of the field-type cross-reference values are 
+                      used as subscripts in the index, since we are only
+                      interested in recording the IENs of the records that
+                      are edited and the date the index entry is set. A
+                      separate queuable option will loop through the
+                      entries in this index, and send via HL7 messages the
+                      clinical trainee data of each record to the Office of
+                      Academic Affiliations.
+  
+                      Note that the index will only be set if the
+                      person is a Clinical Trainee, that is, if the
+                      PROGRAM OF STUDY (#12.2) field is filled in.
+    
+          Set Logic:  S ^VA(200,"ATR",DA)=$G(DT)
+           Set Cond:  S X=X1(11)!X2(11)
+         Kill Logic:  K ^VA(200,"ATR",DA)
+         Whole Kill:  K ^VA(200,"ATR")
+    
+               X(1):  NAME  (200,.01)
+               X(2):  STREET ADDRESS 1  (200,.111)
+               X(3):  STREET ADDRESS 2  (200,.112)
+               X(4):  STREET ADDRESS 3  (200,.113)
+               X(5):  CITY  (200,.114)
+               X(6):  STATE  (200,.115)
+               X(7):  ZIP CODE  (200,.116)
+               X(8):  SSN  (200,9)
+               X(9):  EMAIL ADDRESS  (200,.151)
+              X(10):  CURRENT DEGREE LEVEL  (200,12.1)
+              X(11):  PROGRAM OF STUDY  (200,12.2)
+              X(12):  LAST TRAINING YEAR  (200,12.3)
+              X(13):  SERVICE/SECTION  (200,29)
+              X(14):  TITLE  (200,8)
+              X(15):  TERMINATION DATE  (200,9.2)
+              X(16):  DOB  (200,5)
+  
+  
+ New file: PROGRAM OF STUDY (#8932.2)
+ -------------------------------------
+ 3. The PROGRAM OF STUDY file is created to hold the list of the programs
+ of study that can be associated with a clinical trainee. This file is 
+ pointed to by the new PROGRAM OF STUDY field (#12.2) in the NEW PERSON 
+ file (#200). The data dictionary for the file is as follows:
+  
+    STORED IN ^USC(8932.2,  (23 ENTRIES)
+    DATA          NAME                  GLOBAL        DATA
+    ELEMENT       TITLE                 LOCATION      TYPE
+    -----------------------------------------------------------------------
+                  DD ACCESS: @
+                  WR ACCESS: ^
+                 DEL ACCESS: @
+               LAYGO ACCESS: ^
+               AUDIT ACCESS: @
+    
+    POINTED TO BY: PROGRAM OF STUDY field (#12.2) of the NEW PERSON File 
+                       (#200) 
+                   
+    INDEXED BY:    NAME (B)
+    
+    8932.2,.01    NAME                   0;1 FREE TEXT (Required)
+    
+                  INPUT TRANSFORM:  K:$L(X)>150!($L(X)<3)!'(X'?1P.E) X
+                  LAST EDITED:      AUG 13, 2002 
+                  HELP-PROMPT:      Answer must be 3-150 characters in 
+                                    length. 
+                  DESCRIPTION:      This is the name of the program of
+                                    study.  
+                  FIELD INDEX:      B (#233)    REGULAR    IR
+                                    LOOKUP & SORTING
+                      Short Descr:  Regular lookup index on the .01 field 
+                                    of the file.
+                        Set Logic:  S ^USC(8932.2,"B",$E(X,1,150),DA)=""
+                       Kill Logic:  K ^USC(8932.2,"B",$E(X,1,150),DA)
+                       Whole Kill:  K ^USC(8932.2,"B")
+                             X(1):  NAME  (8932.2,.01)  (Subscr 1)
+                                    (Len 150)  (forwards)
+    
+  
+ The PROGRAM OF STUDY file is sent with the following data:
+  
+    PROGRAM OF STUDY LIST
+    NAME
+    -----------------------------------------------------------------------
+    AUDIOLOGY
+    CHAPLAINCY
+    DENTISTRY
+    DIETETICS
+    HEALTH INFORMATION
+    HEALTH SERVICES RESEARCH & DEVELOPMENT
+    IMAGING (RADIOLOGIC/ULTRASOUND TECH, ETC.)
+    LABORATORY
+    MEDICAL RESIDENT/FELLOW
+    MEDICAL POST-RESIDENCY PHYSICIAN IN VA SPECIAL FELLOWSHIP (AMBULATORY 
+     CARE, NATIONAL QUALITY SCHOLARS, WOMEN'S HEALTH, ETC.)
+    MEDICAL STUDENT
+    MEDICAL/SURGICAL SUPPORT (RESPIRATORY TECH, BIOMED TECH, ETC.)
+    NURSE ANESTHETIST
+    NURSING
+    OPTOMETRY
+    OTHER
+    PHARMACY
+    PHYSICIAN ASSISTANT
+    PODIATRY
+    PSYCHOLOGY
+    REHABILITATION (OT, PT, KT, ETC.)
+    SOCIAL WORK
+    SPEECH - LANGUAGE PATHOLOGY
+  
+  
+ Option: Add a New User to the System [XUSERNEW]
+   Form: XUEXISTING USER
+   Input Template: XUNEW USER
+ -------------------------------------------------------
+ 4. The form and input template used by the Add a New User to the System
+ option are modified to include the fields in the NEW PERSON (#200) file 
+ identified by OAA as core clinical trainee data elements. Some of the 
+ fields to be added already exist in the NEW PERSON file; others are added 
+ to the NEW PERSON file by this patch. If the person is assigned a Program 
+ of Study, it is assumed that the user is a Clinical Trainee. If the person
+ entering the data responds "YES" to "Is this person a Clinical Trainee?",
+ the following field is made required:
+  
+   12.2  PROGRAM OF STUDY
+  
+  
+ Option: Edit an Existing User [XUSEREDIT]
+   Form: XUEXISTING USER
+   Input Template: XUEXISTING USER
+ -------------------------------------------------
+ 4. The same changes made to the form and input template used by the Add a
+ New User to the System [XUSERNEW] option are made to the form XUEXISTING
+ USER and input template XUEXISTING USER used by the Edit an Existing User
+ [XUSEREDIT] option. See "Option: Add a New User to the System [XUSERNEW]"
+ above for a description of those changes.
+  
+  
+ Option: Reactivate a User [XUSERREACT]
+   Form: XUREACT USER
+   Input Template: XUREACT USER
+ ----------------------------------------------
+ 5. The same changes made to the form and input template used by the Add a
+ New User to the System [XUSERNEW] option are made to the form XUREACT
+ USER and input template XUREACT USER used by the Reactivate a User
+ [XUSERREACT] option. See "Option: Add a New User to the System [XUSERNEW]"
+ above for a description of those changes.
+  
+  
+ Option: User Inquiry [XUSERINQ]
+   Print Template: XUSERINQ
+ ---------------------------------------
+ 6. The print template XUSERINQ used by the User Inquiry option was 
+ modified to display the following fields from the NEW PERSON file for
+ clinical trainees:
+  
+    12.1  CURRENT DEGREE LEVEL
+    12.2  PROGRAM OF STUDY
+    12.3  LAST TRAINING YEAR
+  
+ Option: OAA Clinical Trainee [XU-CLINICAL TRAINEE MENU]
+   Type: Menu
+ -------------------------------------------------------
+ 7.  This is the menu that contain the Clinical Trainee, items #8 and 
+ #9,but each site can make this menu available to any user that needs
+ to access the data.
+  
+ Option: Edit Clinical Trainee [XU-CLINICAL TRAINEE EDIT]
+   Form: XU-CLINICAL TRAINEE
+ --------------------------------------------------------
+ 8. This new option invokes a new form that can be used to edit the 
+ clinical trainee data for users in the NEW PERSON file that haven't been
+ terminated. This new option is attached to OAA Clinical Trainee 
+ [XU-CLINICAL TRAINEE MENU], which in turn is attached to the User
+ Management [XUSER] menu.  Each site can make this option available to
+ any user that will be entering this data.
+  
+  
+ Option: Inquiry Clinical Trainee [XU-CLINICAL TRAINEE INQUIRY]
+   Print Template: XU-CLINICAL TRAINEE INQUIRY
+ --------------------------------------------------------
+ 9.  This new option invokes a new print template that can be used to
+ display the clinical trainee data for users in the NEW PERSON file.  This
+ new option is attached to OAA Clinical Trainee [XU-CLINICAL TRAINEE MENU],
+ which in turn is attached to the UserManagement [XUSER] menu.  Each site
+ can makethis option available to any user that will need to view this
+ data.
+                                 
+  
+ Routine: XUSER2
+ ---------------
+ 10. This routine is modified to add a new REQ entry point that can be 
+ called from the XUEXISTING USER, XUNEW USER, XUREACT USER, and XU-CLINICAL
+ TRAINEE forms. This entry point makes fields #12.1, 12.2, and 12.3 
+ available or unavailable for editing, and makes those fields along with
+ the other fields being tracked by OAA required or not required, depending
+ on whether the person is designated as a clinical trainee.
+  
+ Blood Bank Team Coordination:
+ ============================
+ Clearance - October 3, 2002
+    
+  
+ Thanks to Test Sites:
+ ====================
+  BRONX, NY
+  HEARTLAND-EAST HCS
+  HUDSON VALLEY HCS
+  NEW YORK HCS
+  VA GREATER LOS ANGELES HCS
+   
+ Routine Summary:
+ ===============
+ The following routines are included in this patch. The second line of the
+ routines now look like:
+  
+   <tab>;;8.0;KERNEL;**[patch list]**;Jul 10, 1995
+  
+ CHECK^XTSUMBLD results:
+  
+   Routine Name   Before Patch    After Patch     Patch List
+   ============   ============    ===========     ==========
+     XUOAAHL7       -N/A-           6297569       251
+     XUSER2         1370035         1854730       267,251
+  
+ HL7 Messaging
+ =============================
+ This patch also includes the necessary functionality to generate a batch
+ of messages periodically sent to the Office of Academic Affilitations'
+ database.
+  
+ This patch transports the following HL7 messaging related entries:
+  
+ - XUOAAHL7 (routine)
+ - XUOAA SEND HL7 MESSAGE (option from the Option, #19, file)
+ - XUOAA PMU and XUOAA ACK (HL7 protocols from the Protocol, #101, file)
+ - XUOAA PMU and XUOAA ACK (HL7 applications from the HL7 Application 
+   Parameter, #771, file)
+ - XUOAA (logical link from the HL7 Logical Link, #870, file)
+ - XUOAA CLIN TRAINEE (Mail Group from the MAIL GROUP, #3.8, file)
+  
+ Option Summary: 
+ ================
+  
+ NAME: XUOAA SEND HL7 MESSAGE            MENU TEXT: Send HL7 PMU message
+   TYPE: run routine                     CREATOR: GARCIA,JOSE LUIS JR
+   PACKAGE: KERNEL
+  DESCRIPTION:   This option is used to send an HL7 PMU message to the 
+ Office of
+  Academic Affiliations (OAA).  
+   ROUTINE: OAA^XUOAAHL7                 SCHEDULING RECOMMENDED: YES
+   UPPERCASE MENU TEXT: SEND HL7 PMU MESSAGE
+  
+ **** see Special Post installation instructions for scheduling of this 
+      option *******
+  
+ HL7 Protocol Summary: 
+ ================
+  
+ NAME: XUOAA PMU                         TYPE: event driver
+   CREATOR: GARCIA,JOSE
+  DESCRIPTION:   This HL7 event protocol is one of two protocols used to
+  generate Update Personnel Record (PMU) messages.  This particular 
+ protocol
+  represents the sending system.  
+   SENDING APPLICATION: XUOAA PMU        TRANSACTION MESSAGE TYPE: PMU
+   EVENT TYPE: B02                       VERSION ID: 2.4
+   RESPONSE PROCESSING ROUTINE: D RECACK^XUOAAHL7
+ SUBSCRIBERS: XUOAA ACK
+  
+ NAME: XUOAA ACK                         TYPE: subscriber
+   CREATOR: GARCIA,JOSE
+  DESCRIPTION:   This HL7 event protocol is one of two protocols used to
+  generate Update Personnel Record (PMU) messages.  This particular 
+ protocol
+  represents the receiving system.  
+   RECEIVING APPLICATION: XUOAA ACK      EVENT TYPE: B02
+   LOGICAL LINK: XUOAA                   RESPONSE MESSAGE TYPE: ACK
+   PROCESSING ROUTINE: Q                 SENDING FACILITY REQUIRED?: YES
+  
+ HL7 Application Parameter Summary: 
+ ================
+  
+ NAME: XUOAA PMU                         ACTIVE/INACTIVE: ACTIVE
+   COUNTRY CODE: USA
+  
+ NAME: XUOAA ACK                         ACTIVE/INACTIVE: ACTIVE
+   COUNTRY CODE: USA
+  
+ HL7 Logical Link Summary: 
+ ================
+  
+ NODE: XUOAA                             LLP TYPE: MAILMAN
+   AUTOSTART: Enabled                    QUEUE SIZE: 10
+   MAIL GROUP: XUOAA CLIN TRAINEE
+  
+ **** see Special Post installation instructions for enabling and starting 
+ this HL7 logical link *******
+  
+  
+ Mail Group Summary: 
+ ================
+  
+ NAME: XUOAA CLIN TRAINEE                TYPE: public
+  COORDINATOR: GARCIA,JOSE
+  DESCRIPTION:   This is the mail group used by the HL7 MailMan logical 
+  link for sending out the HL7 PMU messages to support the Office of
+  Academic Affiliations' Clinical Trainee Core Data Set project.
+   ORGANIZER: GARCIA,JOSE
+ REMOTE MEMBER: AIMCDATA@LRN.VA.GOV
+  
+  
+ Installation Instructions:
+ =========================
+ This patch can be installed with VISTA users online. However, it is
+ recommended that it be installed or queued for install during non-peak
+ times.
+  
+ TaskMan does not need to be STOPPED or placed in a WAIT state.
+  
+ The installation of this patch (step 3, below) should take less than one
+ minute.
+  
+   1.  AXP/DSM sites: Review your mapped routine set. If any of the
+ routine(s) listed in the ROUTINE SUMMARY section are mapped, they should
+ be removed from the mapped set at this time.
+  
+   2.  Use the "INSTALL/CHECK MESSAGE" option on the PackMan menu. This
+ option loads the patch into a Transport Global on your system.
+  
+   3.  On the KIDS menu, select the "Installation" menu, and use the
+ following options to install the Transport Global:
+  
+        Verify Checksums in Transport Global
+        Print Transport Global
+        Compare Transport Global to Current System
+        Backup a Transport Global
+        Install Package(s)
+  
+        Select INSTALL NAME: XU*8.0*251
+                             ==========
+        Want KIDS to Rebuild Menu Trees Upon Completion of Install? YES
+                                                                    ===
+        Want KIDS to INHIBIT LOGONs during the install? NO
+                                                        ==
+        Want to DISABLE Scheduled Options, Menu Options, and Protocols? NO
+                                                                        ==
+  
+   4.  AXP/DSM sites: Answer NO to the question "Want to MOVE routines to
+ other CPUs?"
+  
+   5.  AXP/DSM sites: After the patch has been installed, if any routines
+ were removed from the mapped set in Step 1 above, rebuild your map set.
+  
+  
+ =========================================================================
+                 Special Post Installation Instructions
+ =========================================================================
+ To enable the generation of HL7 messages, the following four parts are 
+ needed to be completed:
+  
+ ===== Part 1. Edit the OPTION(#19) file to allow option
+ XUOAA SEND HL7 MESSAGE to be scheduled.
+  
+ *Example: 
+ Select Systems Manager Menu Option: VA FileMan
+  
+           VA FileMan Version 22.0
+  
+ Select VA FileMan Option: Enter or Edit File Entries
+  
+ INPUT TO WHAT FILE: OPTION// 
+ EDIT WHICH FIELD: ALL// SCHEDULING RECOMMENDED  
+ THEN EDIT FIELD: 
+  
+ Select OPTION NAME: XUOAA SEND HL7 MESSAGE       Send HL7 PMU message
+ SCHEDULING RECOMMENDED: Y YES
+  
+  
+ Select OPTION NAME:<return> 
+  
+ Select VA FileMan Option: 
+  
+  
+ ===== Part 2. Scheduling the Option XUOAA SEND HL7 MESSAGE
+  
+ Use TaskMan to schedule the option XUOAA SEND HL7 MESSAGE on a weekly 
+ basis. 
+  
+  
+ ===== Part 3: Enabling AUTOSTART in the XUOAA HL7 logical link:
+  
+ INPUT TO WHAT FILE: PROTOCOL// HL LOGICAL LINK    (205 entries)
+ EDIT WHICH FIELD: ALL// AUTOSTART  
+ THEN EDIT FIELD: 
+  
+ Select HL LOGICAL LINK NODE:    XUOAA
+ AUTOSTART: 1  Enabled
+  
+ Select HL LOGICAL LINK NODE:
+  
+  
+ ====== Part 4: Starting the XUOAA HL7 logical link
+  
+ Select OPTION NAME: HL MAIN MENU       HL7 Main Menu
+  
+  
+           Systems Link Monitor
+           Filer and Link Management Options ...
+           Message Management Options ...
+           Interface Developer Options ...
+           Site Parameter Edit
+  
+ Select HL7 Main Menu Option: FILer and Link Management Options
+  
+  
+    SM     Systems Link Monitor
+    FM     Monitor, Start, Stop Filers
+    LM     TCP Link Manager Start/Stop
+    SA     Stop All Messaging Background Processes
+    RA     Restart/Start All Links and Filers
+    DF     Default Filers Startup
+    SL     Start/Stop Links
+    PI     Ping (TCP Only)
+    ED     Link Edit
+    ER     Link Errors ...
+  
+ Select Filer and Link Management Options Option: SL  Start/Stop Links
+  
+ This option is used to launch the lower level protocol for the
+ appropriate device.  Please select the node with which you want
+ to communicate
+  
+ Select HL LOGICAL LINK NODE: XUOAA  
+ The LLP was last shutdown on JUN 12, 2003 13:37:12.
+  
+  
+      Select one of the following:
+  
+           F         FOREGROUND
+           B         BACKGROUND
+           Q         QUIT
+  
+ Method for running the receiver: B// ACKGROUND
+ Job was queued as 318120.
+  
+  
+    SM     Systems Link Monitor
+    FM     Monitor, Start, Stop Filers
+    LM     TCP Link Manager Start/Stop
+    SA     Stop All Messaging Background Processes
+    RA     Restart/Start All Links and Filers
+    DF     Default Filers Startup
+    SL     Start/Stop Links
+    PI     Ping (TCP Only)
+    ED     Link Edit
+    ER     Link Errors ...
+  
+ Select Filer and Link Management Options Option: 
+
+Routine Information:
+====================
+
+Routine Name:
+  - XUOAAHL7
+
+
+Routine Checksum:
+
+Routine Name:
+  - XUSER2
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : OGI,MICHAEL                    Date Entered : AUG 08, 2002
+Completed By: SINGH,GURBIR                  Date Completed: JUN 20, 2003
+Released By : TILLIS,LEWIS                  Date Released : JUN 20, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

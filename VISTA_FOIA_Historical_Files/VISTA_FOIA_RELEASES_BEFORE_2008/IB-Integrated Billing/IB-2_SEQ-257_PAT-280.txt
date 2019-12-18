@@ -1,0 +1,353 @@
+$TXT Created by KOPP,TERRY at DEVVCC.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 09/16/04 at 15:46
+=============================================================================
+Run Date: OCT 06, 2004                     Designation: IB*2*280
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #257                      Status: Released
+                  Compliance Date: NOV 06, 2004
+=============================================================================
+
+
+Subject: HIPAA ENHANCEMENTS CLEAN UP
+
+Category: 
+  - Routine
+  - Other
+
+Description:
+============
+
+ **************************** IMPORTANT NOTE *****************************
+ This patch MUST be installed IMMEDIATELY after installing patch 
+ IB*2.0*232.  Failure to do so may cause data problems with E_claims that
+ will bring the wrath of the clearinghouse down on you.
+ *************************************************************************
+  
+ Associated patches: (v)IB*2.0*263   <<= must be installed BEFORE
+                                         `IB*2.0*280'
+                     (v)IB*2.0*240   <<= must be installed BEFORE
+                                         `IB*2.0*280' 
+                     (v)IB*2.0*232   <<= must be installed BEFORE
+                                         `IB*2.0*280' 
+  
+ This patch will correct problems discovered very late in the testing
+ of patch IB*2.0*232 (EDI Enhancements).
+  
+    1. Some users were not able to add care units to the IB PROVIDER ID 
+       CARE UNIT file (#355.95).
+       This was because a variable allowing the addition of the record
+       (DLAYGO) was not set.  This has been added to the code and the
+       problem was corrected.
+       Routine affected: IBCEP4A
+  
+    2. The correct secondary provider id was not being pulled for pharmacy
+       claims when the pharmacy id was assigned to a care unit AND another
+       id was set up with the following characteristics for the same
+       provider/insurance company:
+       - it was assigned to the same form type as the pharmacy id
+       - it was assigned to either an INPATIENT, an OUTPATIENT or both care
+         types (the pharmacy id would be an 'RX' care type)
+       - it had a care unit assigned to it also
+       The code was changed to pull the correct pharmacy secondary provider
+       id onto a pharmacy claim.
+  
+      Note the check sum for routine IBCEP3 will remain unchanged after 
+      the patch is installed because only comments were changed in that
+      routine. Routines affected: IBCEP2, IBCEP3
+  
+    3. Output Formatter changes have been made for the transmitted bill
+       form.  These changes are made in the pre-installation routine
+       IBY280PR.
+       - Two entries in the IB FORM FIELD CONTENT file (#364.7) are being
+         deleted as they were moved by patch 232 and the old data was not
+         removed.  The entry #'s deleted from this file are 158 and 210. 
+         In addition, entry #390 was sent to replace entry #158.
+       - The entry for the billing facility provider id has been changed to
+         allow the site to use the output formatter override on this data
+         for the transmission form.  The data is output in the CI1-7 
+         record in the 837 IB TRANSMISSION form and the change was made in
+         entry #1316 in the IB FORM SKELETON DEFINITION file (#364.6).
+       - The transmission fields for the institutional data for Form
+         Locator 56 will no longer allow any data to be transmitted.  The
+         entry #'s changed in the IB FORM FIELD CONTENT file (#364.7) are
+         906, 907, 908, 909, 910.
+          
+    4. A problem has been found when storing electronic explanation of
+       benefits (EEOBs) where multiple line item remark codes are being
+       sent by the payers.  Up until this point, all but the last one was
+       discarded. This patch allows for all of the remark codes to be
+       stored.  The post-installation will move all existing data 
+       in the LINE ITEM REMARK CODE field (#3.01) and the LINE ITEM REMARK
+       CODE TEXT field (#3.02) of the EXPLANATION OF BENEFITS file
+       (#361.1), 835 LINE LEVEL ADJUSTMENTS SUB-FIELD (#361.115) to a new
+       multiple field so the data in the existing electronic explanation of
+       benefits (EEOBs) is not lost.  Once moved, the old LINE ITEM 
+       REMARK CODE data is deleted.  Routines affected: IBCEOB0, IBCECSA5,
+       IBY280PO
+  
+    5. A new edit has been added to the billing authorization edits that
+       prevents an insurance bill from being authorized if the COB payer
+       sequence is not one of the following: PRIMARY, SECONDARY, TERTIARY. 
+       A new error entry for IB324 has been added to the IB ERROR file
+       (#350.8) to report the error.  Routine affected: IBCBB1
+  
+    6. A few of the TRICARE intermediaries are requiring the sites to
+       send a network id as a performing provider secondary id.  This
+       id must be the provider's SSN, but must still be identified as a
+       network ID on the electronically submitted claims.  Since this data
+       already exists in VistA and it would be a huge burden on sites to
+       enter this data a second time as a network ID, the system will
+       automatically output the provider's SSN qualified as a network ID if
+       the following two conditions are true:
+          1) The insurance company's ELECTRONIC PLAN TYPE field (#.15) in 
+             the GROUP INSURANCE PLAN file (#355.3) is identified as a
+             TRICARE insurance.
+          2) There is no other network ID defined for the insurance
+             company/provider combination.
+  
+    7.  When patch IB*2.0*240 was installed, it changed the EDI code to
+        identify CHAMPUS/TRICARE insurance from CH to TR.  This caused all
+        electronic TRICARE claims to be rejected.  This patch returns the
+        EDI code for TRICARE (CHAMPUS) back to CH in the ELECTRONIC PLAN
+        TYPE field (#.15) in the GROUP INSURANCE PLAN file (#355.3) and
+        changes any 'TR' data in that field in the entries in the file
+        back to 'CH'.
+  
+    8. The pre-install also corrects several data-related problems
+       introduced by the original EDI Enhancements patch IB*2.0*232.
+       a.  All provider id types in the file (#355.97) have been updated
+           with the correct X12 codes.
+       b.  A trigger cross reference (#1) on the field now called 
+           DELETE 2006 4.1 (#4.1) in the INSURANCE COMPANY file (#36) is
+           deleted. This cross reference triggered a field that no longer
+           exists (ALTERNATE PERF PROV ID SOURCE).
+       c. In the INSURANCE COMPANY file (#36), if this is the first time
+          patch IB*2*280 has been installed at the site, the data for the
+          parameters for PERFORMING PROVIDER SECONDARY ID TYPE (UB) (field
+          #4.02) and for PERFORMING PROVIDER SECONDARY ID TYPE (HCFA)
+          (field #4.01) is deleted.
+       d. In patch IB*2.0*232, the remote mail group member for mail group
+          MCR was removed mistakenly.  This patch puts it back in to
+          prevent loss of receipt of status messages at the site for claims
+          that were sent before the patch 232 installation.
+  
+  
+   The following is a list of files included in this patch:
+   --------------------------------------------------------- 
+   File: GROUP INSURANCE PLAN (#355.3)
+         Field: ELECTRONIC PLAN TYPE (#.15)
+  
+  
+   This patch addresses the following New Service Request (NSR):
+   -------------------------------------------------------------
+   There is no NSR associated with this patch.
+  
+  
+   This patch addresses the following NOIS message(s):
+   --------------------------------------------------
+   BED-0904-10431       TriCare claims rejecting
+   NYH-0804-12097       Syntax: 63 375520 SBR 9TR
+   HWH-0804-41716       Tricare Claims Rejecting - TR in the Identified 
+                        Data Element
+  
+  
+ Test Sites:
+ -----------
+ CENTRAL PLAINS HCS
+ CENTRAL TEXAS HCS
+ EASTERN COLORADO HCS
+ INDIANAPOLIS                                                       
+            
+  
+ Other 'add-on' pilot sites also tested the software. 
+  
+        ================INSTALLATION INSTRUCTIONS =================
+   
+  It is recommended this patch be installed outside of normal business 
+  hours to avoid any complications resulting from Integrated Billing
+  users on the system.  Installation will take less than 5 minutes.  
+  Other VISTA users will not be affected.  The following menus/options 
+  should be disabled prior to the start of the installation:
+   
+         Billing Clerk's Menu            [IB BILLING CLERK MENU]
+         Billing Supervisor Menu         [IB BILLING SUPERVISOR MENU]
+         Integrated Billing Master Menu  [IB MANAGER MENU]
+   
+  Install Time - less than 5 minutes
+  
+    1.   LOAD TRANSPORT GLOBAL 
+         ---------------------
+         Choose the PackMan message containing this patch and invoke the 
+         INSTALL/CHECK MESSAGE PackMan option.  
+   
+    2.   DISABLE ROUTINE MAPPING   (DSM for Open VMS sites only) 
+         -----------------------
+         Disable routine mapping on all systems for the routines listed in 
+         step 3 below.  
+        
+  NOTE:  If the routines included in this patch are not currently in 
+                Your mapped routine set, please skip this step.
+  
+    3.  COMPONENTS SENT WITH PATCH IB*2*280
+        -----------------------------------
+        The following is a list of the routines included in this patch.  
+        The second line of each of these routines now looks like: 
+   
+      <tab>;;2.0;INTEGRATED BILLING;**[patch list]**;21-MAR-94
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  IBCBB1                16120102             16099428       27,52,80,93,106
+                                                         51,151,148,153,137
+                                                                232,280
+  IBCECSA5              14392627             15390816       137,135,263,280
+  IBCEF74               19367427             21276290           232,280
+  IBCEOB0               23853864             24365381           135,280
+  IBCEP2                16361218             18894285       137,181,232,280
+  IBCEP3                 9164022              9164022       137,207,232,280
+  IBCEP4A               18271696             18584149         137,232,280
+  IBY280PO                   N/A              2423532             280
+  IBY280PR                   N/A              4549434             280
+   
+   Total number of routines in the patch: 9
+       Total number of routines modified: 7
+            Total number of new routines: 2
+        Total number of deleted routines: 0
+  
+    4.   START UP KIDS 
+         -------------
+         Start up the Kernel Installation and Distribution System Menu 
+         [XPD MAIN]: 
+     
+              Edits and Distribution ...  
+              Utilities ...  
+              Installation ...  
+     
+    Select Kernel Installation & Distribution System Option: INStallation 
+                                                             ---
+              Load a Distribution 
+              Print Transport Global 
+              Compare Transport Global to Current System 
+              Verify Checksums in Transport Global 
+              Install Package(s) 
+              Restart Install of Package(s) 
+              Unload a Distribution 
+              Backup a Transport Global 
+     
+  
+    Select Installation Option: 
+     
+    5.   Select Installation Option: 
+         --------------------------
+        The following steps are OPTIONAL - 
+        
+         a.  Backup a Transport Global - This option will create a backup
+             message of any routines exported with this patch. It will not
+             backup any other changes such as DD's or templates.
+         b.  Compare Transport Global to Current System - This option will
+             allow you to view all changes that will be made when this
+             patch is installed.  It compares all components of this patch
+             (routines, DD's, templates, etc.).
+         c.  Verify Checksums in Transport Global - This option will allow
+             you to ensure the integrity of the routines that are in the
+             transport global.
+       
+    6.   Select Installation Option: Install Package(s) 
+                                     ----------------
+         **This is the step to start the installation of this KIDS patch: 
+     
+         a.  Choose the Install Package(s) option to start the patch
+              install. When prompted for the INSTALL NAME, enter 
+              IB*2.0*280
+         b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+              YES//' answer NO (unless otherwise indicated)
+         c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+              Options, and Protocols? YES//' answer YES (unless otherwise
+              indicated)
+         d.  When prompted 'Enter options you wish to mark as 'Out Of
+              Order':'  Enter the following options:
+    
+             Billing Clerk's Menu            [IB BILLING CLERK MENU]
+             Billing Supervisor Menu         [IB BILLING SUPERVISOR MENU]
+             Integrated Billing Master Menu  [IB MANAGER MENU]
+   
+         e.  When prompted 'Enter protocols you wish to mark as 'Out Of 
+              Order':' press <return>.
+   
+    7.   REBUILD MAPPED ROUTINE(S)  (DSM for Open VMS sites only)
+        -------------------------
+        Optional - Include the routines distributed with this patch
+        in the mapped routine set.
+       
+        NOTE: This step is only necessary if you performed step 2 or 
+              if you wish to include the routines in your mapped set.
+
+Routine Information:
+====================
+
+Routine Name:
+  - IBCEP2
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCEP3
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCEP4A
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBY280PR
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBY280PO
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCBB1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCEOB0
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCECSA5
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCEF74
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : KOPP,TERRY M                  Date Entered  : JUL 30, 2004
+Completed By: TORRANCE,LORI                 Date Completed: OCT 04, 2004
+Released By : JACKSON,SHERYL                Date Released : OCT 06, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

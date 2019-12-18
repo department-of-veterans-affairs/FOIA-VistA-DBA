@@ -1,0 +1,221 @@
+$TXT Created by THEROUX,JOHN at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 08/16/04 at 10:07
+=============================================================================
+Run Date: OCT 18, 2004                     Designation: DG*5.3*607
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #534                    Status: Released
+                  Compliance Date: NOV 18, 2004
+=============================================================================
+
+Associated patches: (v)DG*5.3*425  <<= must be installed BEFORE `DG*5.3*607'
+
+Subject: DISPLAY PATIENT RECORD FLAG TEXT
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch corrects Patient Record Flag displays when patient lookups
+ are done from within Screenman.
+   
+   ASSOCIATED NOISes:
+   ==================
+   LEB-1103-21660       PRF displays with label printing in pharmacy
+     Duplicates:
+   POR-1203-50211       Problem with WARD ADMINISTRATION TIMES [PSBO WA] 
+   BAC-0504-40163       Patient Record Flag notification problem
+   MIW-0304-41323       List manager fails with certain patients
+   ISB-0504-32140       BCMA problems with Patient Flag functionality
+  
+   ASSOCIATED E3R(s):
+   ==================
+   N/A
+     
+   PARTICIPATING TEST SITES:
+   =========================
+   Milwaukee,WI 
+   Minneapolis,MN 
+   Lebanon,PA 
+   Portland,OR 
+   San Diego,CA
+   
+   NOIS OVERVIEW:
+   ==============
+   Problem:
+   ========
+   BCMA users are reporting that when doing patient lookups from
+   within ScreenMan, the Patient Record Flag warning displays are garbled.
+   This may be occuring in other packages as well, although we know
+   of no other NOIS calls having been filed.
+  
+   Resolution:
+   ===========
+   Routine DGPFUT1 has been modified as follows:
+   1. The DIR call in the $$ASKDET function has been replaced with YN^DICN.
+   2. The DISPACT subroutine has been modified to display only four 
+      active Patient Record Flag assignments at a time when the 
+      application is a ScreenMan application.
+   3. The DISPPRF subroutine makes a call to CLRMSG^DDS and REFRESH^DDSUTL
+      after displaying Patient Record Flag assignment details.
+   
+   ROUTINE SUMMARY:
+   ================
+   The following is a list of the routine(s) included in this patch.  The
+   second line of each of these routine(s) will look like:
+  
+ Enter RETURN to continue or '^' to exit: 
+          <tab>;;5.3;Registration;**[patch list]**;Aug 13, 1993
+            
+                            CHECK^XTSUMBLD results
+    Routine name   Before Patch       After Patch         Patch List
+    ============   ============       ===========         ==========
+    DGPFUT1         5456616              6018721          425,607
+  
+ Technical Information:
+ =======================
+  
+ Changes to DGPFUT1:
+  
+  
+  Routine: DGPFUT1
+  
+ * OLD *  DGPFUT1 ;ALB/RBS - PRF UTILITIES CONTINUED ; 7/21/03 12:29pm
+ * NEW *  DGPFUT1 ;ALB/RBS - PRF UTILITIES CONTINUED ; 6/10/04 12:29pm
+ * OLD *   ;;5.3;Registration;**425**;Aug 13, 1993
+ * NEW *   ;;5.3;Registration;**425,607**;Aug 13, 1993
+ * ADD *   N DGCNT  ;flag display count
+ * ADD *   N DGRET  ;return
+ * ADD *   ;
+ * ADD *   I $D(DDS) D CLRMSG^DDS
+ * OLD *   W !!,">>> Active Patient Record Flag(s):"
+ * NEW *   W:'$D(DDS) !! W ">>> Active Patient Record Flag(s):"
+ * ADD *   S DGCNT=0
+ * ADD *   . I $D(DDS),DGCNT=4 D
+ * ADD *   . . W !,"Press RETURN to continue..."
+ * ADD *   . . R DGRET:$S('$D(DTIME):300,1:DTIME)
+ * ADD *   . . D CLRMSG^DDS
+ * ADD *   . . W ">>> Active Patient Record Flag(s):"
+ * ADD *   . . S DGCNT=0
+ * ADD *   . S DGCNT=DGCNT+1
+ * ADD *   W:'$D(DDS) !
+ * ADD *   Q
+ * ADD *   ;
+ * DEL *   W !
+ * DEL *   Q
+ * DEL *   ;
+ * DEL *  ASKDET(DGPFOUT) ; Prompt to ask User for Displaying Flag Details
+ * DEL *   ; Input:   None
+ * OLD *   ; Output:  1 = Yes, view flag details
+ * NEW *  ASKDET() ;does user want to display flag details?
+ * ADD *   ;
+ * ADD *   ; Input:
+ * ADD *   ;   None
+ * ADD *   ;
+ * ADD *   ; Output:
+ * ADD *   ;  Function value - return 1 on YES; otherwise 0
+ * ADD *   ;
+ * ADD *   N YN,%,%Y
+ * ADD *   F  D  Q:"^YN"[YN
+ * DEL *   ;          0 = No, quit
+ * DEL *   ;    DGPFOUT = [Optional] Returns 1 if Timeout or Up-arrow
+ * DEL *   ;
+ * DEL *   N DIR,X,Y,DIRUT,DTOUT,DUOUT,DIROUT
+ * DEL *   S DIR(0)="Y",DIR("B")="YES"
+ * OLD *   S DIR("A")="Do you wish to view active patient record flag
+ details"                                                       
+ * NEW *   . W !,"Do you wish to view active patient record flag details"
+ * ADD *   . S %=1  ;default to YES
+ * ADD *   . D YN^DICN
+ * ADD *   . S YN=$S(%=-1:"^",%=1:"Y",%=2:"N",1:"?")
+ * ADD *   . I YN="?" D:$D(DDS) CLRMSG^DDS W !,"Enter either 'Y' or 'N'."
+ * ADD *   ;I $D(DDS) D REFRESH^DDSUTL
+ * ADD *   Q (YN="Y")
+ * ADD *   ;
+ * DEL *   D ^DIR
+ * DEL *   S DGPFOUT=$S(+$G(DIRUT):1,1:0)  ;timeout or up-arrow
+ * DEL *   W:(+Y'=1) !
+ * DEL *   Q $S(+Y'=1:0,1:1)
+ * DEL *   ;
+ * ADD *   ; Supported References:
+ * ADD *   ;   DBIA #10096 Z OPERATING SYSTEM FILE (%ZOSF)
+ * ADD *   ;   DBIA #10150 ScreenMan API: Form Utilities
+ * ADD *   ;
+ * DEL *   ; prompt to ask User for Displaying Flag Details
+ * DEL *   Q:'$$ASKDET()
+ * DEL *   ;
+ * ADD *   ;
+ * ADD *   ; prompt and display assignment details
+ * OLD *   D EN^DGPFLMD(DGDFN,.DGPFAPI)  ;ListMan
+ * NEW *   I $$ASKDET() D EN^DGPFLMD(DGDFN,.DGPFAPI)  ;ListMan
+ * ADD *   ;
+ * ADD *   ; cleanup display for ScreenMan
+ * ADD *   I $D(DDS) D  D CLRMSG^DDS D REFRESH^DDSUTL
+ * ADD *   . ;set right margin to zero - needed for Cache
+ * ADD *   . N X
+ * ADD *   . S X=0 X ^%ZOSF("RM")
+  
+   
+  INSTALLATION INSTRUCTIONS:
+  ==========================
+   
+  This patch may be run with users on the system, however it modifies 
+  a routine used by the Patient Lookup process and will affect many
+  users.  It should be installed during off peak hours. 
+  
+  Installation will take less than 2 minutes.
+   
+  1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu to unload
+      the KIDS distribution included with this message.
+   
+  2.  Review your mapped set. If the routine listed in the ROUTINE
+      SUMMARY section is mapped, it should be removed from the mapped 
+      set at this time.
+   
+  3.  From the Kernel Installation and Distribution System Menu, select
+      the Installation menu.
+   
+  4.  From this menu, you may elect to use the following options
+      (when prompted for INSTALL NAME, enter DG*5.3*607):
+   
+      a.  Compare Transport Global to Current System  - this option will
+          allow you to view all changes that will be made when the patch
+          is installed.  It compares all components of the patch (routines,
+          DDs, templates, etc.).
+      b.  Verify Checksums in Transport Global - this option will
+          allow you to ensure the integrity of the routines that are in
+      c.  Print Transport Global - this option will allow you to view the
+          components of the KIDS build.
+    
+  5.  Use the Install Package(s) option and select the package DG*5.3*607.
+   
+  6.  When prompted ' Want KIDS to INHIBIT LOGONs during the install?
+      YES//', respond NO.
+   
+  7.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols? YES//', respond NO.
+   
+  8.  If the routine was unmapped as part of step 2, it should be returned
+      to the mapped set once the installation has run to completion.
+
+Routine Information:
+====================
+
+Routine Name:
+  - DGPFUT1
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : THEROUX,JOHN                  Date Entered  : JUN 09, 2004
+Completed By: BOWEN,MARY JANE               Date Completed: OCT 18, 2004
+Released By : ALEXANDER,DIANNE              Date Released : OCT 18, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

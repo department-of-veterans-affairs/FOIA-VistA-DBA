@@ -1,0 +1,234 @@
+$TXT Created by CURTIS,RICHARD L at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 07/12/04 at 07:35
+=============================================================================
+Run Date: OCT 06, 2004                     Designation: SD*5.3*341
+Package : SD - SCHEDULING                     Priority: Mandatory
+Version : 5.3       SEQ #310                    Status: Released
+                  Compliance Date: NOV 06, 2004
+=============================================================================
+
+Associated patches: (v)SD*5.3*321  <<= must be installed BEFORE `SD*5.3*341'
+
+Subject: 9020 ERRORS/MST FOR NON-VETS
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ When a patient is initially registered as a veteran and claims Military 
+ Sexual Trauma (MST) and their veteran status is later updated to NO,
+ subsequent encounter transmissions, via the Ambulatory Care Nightly
+ Transmission to NPCDB, generate an error for code 9020.
+  
+ ASSOCIATED E3R(s):
+ ==================
+ N/A
+  
+ PARTICIPATING TEST SITES
+ ========================
+ Cleveland, OH
+ Portland, OR
+ Fargo, ND
+ Wilmington, DE 
+  
+ ASSOCIATED NOIS:
+ ================
+ NOP-0201-11934      - 9020 ERRORS/MST FOR NON-VETS
+  
+ duplicates:
+      BIR-0301-32307 - MST/INELIGIBLE VET
+      TUA-0502-31780 - Error Code 9020
+      MAD-0702-41149 - MILITARY SEXUAL TRAUMA
+      BAY-1002-30480 - Unable to clear error code 9020
+  
+ NOIS OVERVIEW:
+  
+ 1.  NOP-0201-11934
+  
+     Problem:
+     --------
+     In cases where a patient is initially registered as a veteran and
+     reports Military Sexual Trauma (MST) and then their veteran status
+     is later updated to NO, all subsequent encounter transmissions
+     error for code 9020 - Veteran status inconsistent with classification
+     type question.
+  
+     Resolution:
+     -----------
+     Validation logic will be changed to look at the patient's eligibility
+     at the time of the encounter rather than at the patient's veteran
+     status.  Additionally, a new input parameter, the pointer to the
+     Outpatient Encounter file (409.68), will be added to the validation
+     logic for error code 9020 in file 409.76.
+  
+ TECHNICAL:
+ ==========
+  
+ The logic for the classification question information in the validation
+ utility routine, SCMSVUT1, will be changed as follows:
+  
+ The pointer to file 409.68 will be added as a new parameter at linetag
+ CLAVET - variable name ENCPTR:
+  
+ CLAVET(DATA,DFN,TYPE,ENCPTR)
+  
+ The existing line of code at CLAVET+9, which pulls the patient's veteran
+ status, will be removed, i.e.:
+  
+ S VET=$P($G(^DTP(DFN,"VET")),U,1)
+  
+ Also, the existing line of code at CLAVET+13, which bases the accuracy of
+ the data on whether or not the patient claims environmental contaminants.
+ This may have been valid at one time, but not since the addition of
+ classification types MST, HNC and CV, i.e.:
+  
+ I VET'="",DATA'="" Q $$EC^SDC022(DFN)
+  
+ This line will be replaced with the following:
+  
+ I VET'="",DATA'="" Q $$SCR^SDC021(TYPE,DFN,SDDT,ENCPTR)
+  
+ The following logic will be added starting at CLAVET+9:
+  
+ I '$D(TYPE) Q 0
+ N VET,SDELGO,SDDT
+ S ENCPTR=$G(ENCPTR)
+ S SDDT=+$G(^SCE(ENCPTR,0)) S:'SDDT SDDT=$$DT^XLFDT()
+ S SDELGO=$$EL^SDC022(DFN,ENCPTR)
+ S VET=$P(SDELGO,U,5)
+  
+ Finally, the Validation Logic for error 9020 in File 409.76 will be
+ changed with post-init routine SC341PST, as follows:
+  
+    From:  S RES=$$CLAVET^SCMSVUT1(DATA,DFN,TYPE)
+      To:  S RES=$$CLAVET^SCMSVUT1(DATA,DFN,TYPE,ENCPTR)
+  
+ ROUTINE SUMMARY:
+ ================
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+  
+     <tab>;;5.3;Scheduling;**[patch list]**;AUG 13,1993
+  
+                            CHECK^XTSUMBLD results
+ Routine name      Before Patch          After Patch         Patch List
+ ============      ============          ===========         ==========
+ SCMSVUT1               2958306              3488241     66,143,180,239,
+                                                        247,258,296,295,
+                                                        321,341
+ SC341PST              n/a                    357894         341
+  
+ Note:  Post-init routine SC341PST will be deleted after installation.
+                                                          
+  
+ **********************INSTALLATION INSTRUCTIONS************************
+  
+ If the patch is installed during the normal workday, it is recommended
+ that the menu option shown in item 7a below be disabled.  This patch
+ can be installed with users on the system; however, it should not be
+ installed while the Ambulatory Care Nightly Transmission to NPCDB is running.
+  
+ Installation should take less than 5 minutes.
+  
+ 1.  LOAD TRANSPORT GLOBAL
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the
+     INSTALL/CHECK MESSAGE PackMan option.
+  
+ 2.  DISABLE ROUTINE MAPPING   (DSM for Open VMS sites only)
+     -----------------------
+     Disable routine mapping on all systems for the routines listed in
+     the routine summary.
+  
+     NOTE:  If the routine(s) included in this patch are not currently in
+     your mapped routine set, please skip this step.
+  
+ 3.  START UP KIDS
+     -------------
+     Start up the Kernel Installation and Distribution System Menu
+     [XPD MAIN]:
+  
+           Edits and Distribution ...
+           Utilities ...
+           Installation ...
+  
+     Select Kernel Installation & Distribution System Option:  INStallation
+                                                               ---
+  
+     1.    Load a Distribution
+     2.    Verify Checksums in Transport Global
+     3.    Print Transport Global
+     4.    Compared Transport Global to Current System
+     5.    Backup a Transport Global
+     6.    Install Package(s)
+           Restart Install of Package(s)
+           Unload a Distribution
+  
+ 4.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter SD*5.3*341):
+  
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with the patch.  It will NOT
+         backup any other changes such as DDs and templates.
+  
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when the patch
+         is installed.  It compares all components of the patch
+         (routines, DDs, templates, etc.).
+  
+     c.  Verify Checksums in Transport Global - This option will ensure
+         the integrity of the routines that are in the transport global.
+  
+ 5.  Use the Install Package(s) option and select the package SD*5.3*341.
+  
+ 6.  When prompted "Want KIDS to INHIBIT LOGINS during
+     install? YES//" respond NO.
+  
+ 7.  When prompted "Want to DISABLE Scheduled Options, Menu Options,
+     and Protocols? YES//" respond YES.
+  
+     a.  When prompted "Enter options you wish to mark as "Out of Order":"
+         Enter the following option:
+  
+         SCDX AMBCAR NIGHTLY XMIT   Ambulatory Care Nightly Transmission
+                                    to NPCDB
+  
+     b.  When prompted "Enter protocols you wish to mark as "Out of
+         Order":" just press return.
+  
+ 8.  REBUILD MAPPED ROUTINE(s)   (DSM for Open VSM sites only)
+     -------------------------
+     Optional - Include the routines distributed with this patch in
+     the mapped routine set.
+  
+     NOTE:  This step is only necessary if you performed step 2 or if
+     you wish to include the routines in your mapped set. 
+
+Routine Information:
+====================
+
+Routine Name:
+  - SCMSVUT1
+
+
+Routine Checksum:
+
+Routine Name:
+  - SC341PST
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : CURTIS,RICHARD                Date Entered  : JAN 20, 2004
+Completed By: DAWSON,TIM                    Date Completed: OCT 04, 2004
+Released By : FIELDS-BARNES,JANETTE         Date Released : OCT 06, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,236 @@
+$TXT Created by HICKS,BRENT at DEV.DEV.FO-HINES.MED.VA.GOV  (KIDS) on Wednesday, 10/20/04 at 13:43
+=============================================================================
+Run Date: DEC 27, 2004                     Designation: RA*5*55
+Package : RA - RADIOLOGY/NUCLEAR MEDICINE     Priority: Mandatory
+Version : 5        SEQ #46                      Status: Released
+                  Compliance Date: JAN 27, 2005
+=============================================================================
+
+Associated patches: (v)RA*5*43     <<= must be installed BEFORE `RA*5*55'
+                    (v)RA*5*48     <<= must be installed BEFORE `RA*5*55'
+
+Subject: Fix to add Addendums and secondary Dx codes via VR Systems
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This is a maintenance patch for fixing bugs and providing minor 
+ enhancements.
+  
+ NOIS:
+   TAM-0404-31926     Radiology Package TalkStation 
+   UNY-0303-12249     Secondary Dx upon upload
+   DUR-0504-31839     Receiving error message after install of AGFA Talk
+                      Technology
+   ATG-0704-31802     Secondary diagnostic code not being processed
+  
+  
+ Third party dictation equipment, in this case Talkstation, uses HL7 
+ messaging to transport patient diagnostic reports into VistA. The HL7 
+ messages allow each patients report to have multiple diagnoses. 
+  
+ The software tries to protect against errors and tests the lists of
+ diagnoses of each patient to insure there are no duplicate diagnoses being
+ sent. If so, it provides a warning message to the radiology staff. 
+  
+ The problem in the software is evidenced when there are several patients
+ in a report with multiple diagnoses. If the diagnoses overlap, a 
+ 'duplicate diagnosis' error is generated.
+  
+ The local variable array that is holding the list of diagnoses of
+ each patient is not cleared between patients.  The solution is to kill 
+ the local array at the beginning of each patient's report import.
+  
+ Another problem is evidenced when the secondary diagnoses that were 
+ entered from Talkstation did not get stored in the Vista Radiology case 
+ record.  Also, when the exam consists of 2 or more cases that are 
+ supposed to share the same report (i.e., a printset), the secondary 
+ diagnoses did not get stored in the other cases' records.
+  
+ Routine RAHLO has been modified to kill the variable RASECDX when a new 
+ patient report is being looked at for diagnoses. Routine RAHLO1 has been
+ modified to remove code that kills secondary diagnosis codes.  RAHLO1 has
+ also has been amended so that when copying a report IEN to other members
+ of the same printset, the processing will also copy the secondary
+ diagnosis codes.
+  
+  
+ NOIS:
+   ATG-0304-32534 
+  
+ Third party dictation equipment, in this case Talkstation, uses HL7 
+ messaging to transport patient diagnostic reports into VistA. The HL7 
+ messages allow each patients report to have multiple diagnoses. 
+  
+ The software tries to create a variable containing the primary diagnosis 
+ and an array that contains secondary diagnoses.  It gets this data from a 
+ ^TMP global and assumes that the last subscript of the first node of the 
+ diagnosis grouping will be the number one (1), when in fact it can be any 
+ number depending on the sequence of OBX segments in the incoming message.
+  
+ Routine RAHLO2 has been amended to not assume that the first entry in the 
+ diagnosis group will have a subscript of one.
+  
+  
+ NOIS:
+ RIC-0704-20624    Talk Station Addendum problem
+ DUB-0604-30823    Talkstation HL7 messages hanging
+ TAM-0704-31542    <UNDEFINED>PRT+13~RARTR
+  
+ Third party dictation equipment uses HL7 messaging to transport patient
+ reports into VistA. These HL7 messages are designed to, amongst 
+ other functionality, add Addendums to previously entered reports.  
+ Currently this functionality is not operating due to a crash in the 
+ routine RARTR.  
+ The RARTR routine is designed to either write an electronic alert (this 
+ is background processing) detailing the fact that an Addendum has been 
+ added by a COTS product or send the alert text to a designated device 
+ i.e. a printer (this is foreground processing).  These two actions are 
+ dependant on whether the routine is being run in the background or in the 
+ foreground, which is determined by the RAUTOE variable.  At the beginning 
+ of the routine RARTR a variable is set to the form feed system variable 
+ IOF, this is later used within the foreground processing.  When this 
+ routine is run in the background the IOF variable does not exist and 
+ therefore causes a crash, however this variable is never used within the 
+ background processing.  A change has been made to the RARTR routine to 
+ only set the Radiology variable to IOF when processing is running in the 
+ foreground.
+  
+  
+ -- Documentation --
+  
+    There are no documentation changes associated with this patch.
+   
+  
+ -- Test Sites --
+                                 
+ 1.  Tampa
+ 2.  Atlanta
+ 3.  Richmond
+ 4.  Hines
+ 5.  Northport 
+  
+  
+ The second line of the routine now looks like:
+ ;;5.0;Radiology/Nuclear Medicine;**[Patch List]**;Mar 16, 1998
+  
+                        CHECK^XTSUMBLD results
+ Name          Before Patch       After Patch       Patch List
+ ----------------------------------------------------------------
+ RAHLO         16358930           16572164          4,8,27,55
+ RAHLO1        19898773           19974108          4,5,12,17,21,27,48,55
+ RAHLO2        8120473            7948095           55
+ RARTR         16336163           16252459          5,13,16,27,43,55
+  
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+ The install time for this patch should take less than 5 minutes.  Since 
+ the changes apply to a routine that may be used by Vista applications that
+ invoke EN1^RAHLO, this patch must be installed when there are no Rad/Nuc
+ Med users on the system.  Talkstation and Powerscribe links, if any, 
+ should be brought down before this patch can be installed.  Also, if your 
+ site uses a non-Radiology HL7 link to upload Radiology reports, that link 
+ must be brought down.  For example, sites using TIU to upload Radiology 
+ reports need to bring that TIU link down, if that link uses routine 
+ TIUKURA which calls EN1^RAHLO.
+  
+  
+  NOTE:  MailMan and Kernel patches must be current on the target system to
+         avoid problems loading and installing this patch.
+   
+  1. If the above routines are mapped, disable mapping for them.
+  
+  2. Use the 'INSTALL/CHECK MESSAGE' option of your PackMan menu to load
+     the KIDS distribution onto your system.
+   
+  3. On the 'Kernel Installation & Distribution System' Menu (KIDS), select
+     the 'Installation' menu.
+   
+     From this menu you may choose the following options prior to
+     installing this patch:
+   
+      a. Backup a Transport Global - this option will create a backup
+         message of any routines exported with the patch.  It will NOT
+         backup any other changes such as data dictionaries or templates.
+  
+      b. Compare Transport Global to Current System - this option will
+         allow you to view all changes that will be made when the patch is 
+         installed.  It compares all components of the patch (routines,
+         DDs, templates, etc.)
+   
+      c. Verify Checksums in Transport Global - this option will allow you
+         to ensure the integrity of the routine that is in the transport
+         global.
+   
+  4. Use the 'Install Package(s)' option under the 'Installation' menu.
+        When prompted for INSTALL NAME, enter: RA*5.0*55.
+   
+        When prompted "Want KIDS to Rebuild Menu Trees Upon Completion of 
+        Install? YES//, respond NO if you don't want to rebuild menu trees
+        now; otherwise, respond YES.
+  
+        When prompted "Want KIDS to INHIBIT LOGONs during the install?
+        YES//", respond NO.
+   
+        When prompted "Want to DISABLE Scheduled Options and Menu Options?
+        YES//", respond YES.      
+         When prompted "Enter options you wish to mark
+        as 'Out of Order':", enter the following to disable all Rad/Nuc Med
+        options:
+      
+           RA*
+   
+        When prompted "Enter protocols you wish to mark as 'Out of
+        Order':", enter the following to disable all Rad/Nuc Med protocols:
+   
+           RA*
+   
+     5. Verify that the patch installation completed correctly by using the
+        KIDS 'Utilities...' [XPD UTILITY] option 'Install File Print' [XPD
+        PRINT INSTALL FILE] and selecting this patch (RA*5.0*55).
+  
+     6. On a mapped system, rebuild your map set.
+
+Routine Information:
+====================
+
+Routine Name:
+  - RARTR
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAHLO
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAHLO1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RAHLO2
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : HICKS,BRENT                   Date Entered  : AUG 05, 2004
+Completed By: PATRICK,PAT                   Date Completed: DEC 15, 2004
+Released By : RIDINGS,SCOTT                 Date Released : DEC 27, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

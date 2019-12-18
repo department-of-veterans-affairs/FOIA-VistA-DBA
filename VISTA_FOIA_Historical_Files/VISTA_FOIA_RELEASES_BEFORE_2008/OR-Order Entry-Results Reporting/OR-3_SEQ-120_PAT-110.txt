@@ -1,0 +1,253 @@
+$TXT Created by NABER,DAVID A at DEVCUR.ISC-SLC.VA.GOV  (KIDS) on MONDAY, 01/07/02 at 08:47
+=============================================================================
+Run Date: JAN 15, 2002                     Designation: OR*3*110
+Package : OR - ORDER ENTRY/RESULTS REPORTING Priority: Mandatory
+Version : 3       SEQ #120                       Status: Released
+=============================================================================
+
+Associated patches: (v)OR*3*3     <<= must be installed BEFORE `OR*3*110'
+                    (v)OR*3*7     <<= must be installed BEFORE `OR*3*110'
+                    (v)OR*3*48     <<= must be installed BEFORE `OR*3*110'
+                    (v)OR*3*85     <<= must be installed BEFORE `OR*3*110'
+                    (v)OR*3*92     <<= must be installed BEFORE `OR*3*110'
+                    (v)OR*3*95     <<= must be installed BEFORE `OR*3*110'
+                    (v)OR*3*108    <<= must be installed BEFORE `OR*3*110'
+                    (v)OR*3*116    <<= must be installed BEFORE `OR*3*110'
+
+Subject: Order updates
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+ This patch will fix a few problems related to order signing and
+ order creation.  
+  
+ In particular, this patch solves the problem of an incorrect nature
+ of order being assigned to an order.  This can occur when there are two
+ or more orders to be signed and the orders are being released as
+ "written on chart".  If one of the orders does not require a signature
+ it gets assigned a nature of order of "written" even though it doesn't
+ require a signature.  This was causing some confusion when an order
+ would show written as the nature of order yet the order remained
+ unsigned.  This patch changes the logic so that each order is evaluated 
+ to determine if it requires a signature or not.  This was happening in 
+ both the list manager and GUI interfaces. This patch will update the list 
+ manager interface while patch OR*3*125 will fix the GUI interface.
+  
+ This patch also resolves a problem with releasing radiology orders
+ from hold.  Depending on the nature of order associated with the 
+ radiology reason, an order being put on hold from radiology may require
+ a signature.  If so, when the exam is scheduled in radiology the
+ hold action that was created in CPRS does not get released appropriately
+ and the order maintains the "HOLD" on the order and the start date is not
+ updated to the correct date/time. With this update a corresponding 
+ release action is created if the nature of order required a hold action.  
+ The order will now update and display as expected.
+  
+ This patch also includes a change to the orderable items enter/edit code 
+ so that upon deletion of an orderable item extraneous nodes are not left
+ in the orderable items global.  Previously, if you deleted an entry, the
+ SET multiple would not be deleted and the corresponding nodes would be 
+ inadvertently left.  A post-init will check for any extraneous nodes and 
+ will delete any that are found.  In addition, the post-init will also 
+ re-index the B cross reference for the orderable items file as a few 
+ sites have reported missing B nodes.
+  
+ In addition, this patch will make a change to the validation procedure 
+ that was added in patch OR*3*95.  A problem has been reported concerning 
+ pointer type prompts.  When the validation procedure runs it returns the 
+ internal entry number (IEN) along with the text of the .01 field.  The
+ VALUE field of the RESPONSES multiple then gets set to this two piece
+ value rather than just the IEN, which causes the user to have to make a
+ selection in the GUI rather than having it default correctly.  Any 
+ entries that currently have both the IEN and the .01 text will be 
+ corrected in the post-init.
+  
+ * NOTE: If you need to re-run the post-init you'll need to D ^ORY110.  The
+ post-init can be run more than once should it be required.
+  
+ NOIS CALLS
+ ==========
+  
+ CTX-0401-71952     Late Tray Orders
+  
+ Under certain circumstances it was possible for an order that did not 
+ require a signature to be assigned the wrong nature of order.  If an 
+ ORELSE key holder was releasing orders as "written on chart" and there 
+ was at least one order that required a signature in addition to the one 
+ that did not require a signature all orders would be assigned the same 
+ nature of order, regardless of signature requirements.  With this change 
+ the logic has been updated to check to see if each order requires a 
+ signature or not.  If it doesn't then the nature of order is left at 
+ electronic.  This was causing confusion for the user who would see the 
+ nature listed as "written" and that no signature was required.
+  
+ RIC-0401-21699     Clarification of Patch RA*5*18
+  
+ When placing radiology procedures on hold it is possible to have a 
+ radiology reason associated with a nature of order that requires a 
+ signature and creates a hold action.  If the order going on hold created 
+ an action then when the order was scheduled from radiology the order did 
+ not get released from hold appropriately.  This caused the order to not 
+ update correctly and it would also display "hold" in the order text, 
+ which was incorrect.  With this patch, when a radiology order is 
+ scheduled a check is made to see if the order was placed on hold and then 
+ appropriately releases it from hold.
+  
+ ISA-1101-10231     B Cross Reference not consistently set in 101.43
+ MWV-1001-20272     printing from orderable items
+  
+ When attempting to do a filemanager print from the orderable items file 
+ the site noticed that the results were different depending on what method 
+ you used for sorting.  This led to the discovery that certain B cross 
+ references were missing in the orderable items file.  It was determined 
+ that a previous patch did not consistently re-index the B cross reference 
+ but was not noted until now as CPRS does not rely on the B cross 
+ reference.  In addition, during the investigation of this problem it was 
+ noted that some entries in the orderable items file had extraneous "9" 
+ nodes (SET multiple).  It was determined that the code for handling 
+ deletion of orderable items was not working correctly and has been 
+ updated so that deletions do not leave extraneous nodes.  As a result of 
+ these problems a post-init was required that would get rid of the 
+ extraneous nodes as well as re-index the B cross reference.
+  
+ HOU-1001-72651     Procedures now require selection of service
+ GRJ-1101-51398     NEW PROC QUICK ORDERS REQUIRE SEL OF SVC
+ FAR-1101-40578     Problems with Procedure Service not being defined
+ DUR-1201-31300     FLAGGED ORDERABLE ITEM TO TEAM FOR OUTPAITIENT NOT 
+                    FIRING
+  
+ When a procedure is ordered and only one service is available it shows in 
+ the list box but still needs to be selected before the order can be 
+ accepted.  Previously, if the procedure quick order only had one 
+ selectable service the service would be listed as the default and grayed 
+ out.  The validation process that was added in patch OR*3*95 
+ inadvertently returned the internal entry number and the .01 field text. 
+ Previously, it returned only the internal entry number.  The 
+ validation process has been updated and the post-init will remove any 
+ pointer values that have more than the internal entry number stored.
+  
+ ROUTINE SUMMARY:
+ ================
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+  
+  <tab>;;3.0;ORDER ENTRY/RESULTS REPORTING;**[patch list]**;Dec 17, 1997
+  
+                             CHECK^XTSUMBLD results
+  Routine name         Before Patch          After Patch         Patch List
+  ============         ============          ===========         ==========
+  ORCDLG1                  25547421             25738105        60,71,95,110
+  ORCHTAB3                 16196746             16300358      27,45,86,92,110
+  ORCMEDT1                 17048123             17096324        8,46,57,95,110
+  ORCSIGN                  24039806             24577650     7,56,48,79,108,110
+  ORMRA                    12710179             15131843        3,53,92,110
+  ORWORR                   12723689             12824242       10,92,116,110
+  ORY110                        N/A              8404851            110
+  
+ INSTALLATIONS INSTRUCTIONS:
+ ===========================
+ This patch should be loaded during non-peak hours to minimize disruption
+ to users who can remain on the system during installation. Installation
+ will take approximately 5 minutes.  Systems with heavy user loads
+ or performance problems may take longer. If you choose to rebuild your
+ menus, installation will take longer.  
+  
+ This installation includes a post-init which will re-index the B cross
+ reference of the orderable items file.  The post-init will also start a
+ background job that will remove any erroneous pointer information from the
+ ORDERABLE ITEMS multiple and the RESPONSES multiple in the ORDER file.  
+ The user who installs the patch will receive an email message when the 
+ background job completes.
+  
+ * NOTE: If you need to re-run the post-init you'll need to D ^ORY110.  The
+ post-init can be run more than once should it be required.
+  
+ 1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+  
+ 2.  Review your mapped set.  If any of the routines listed in the
+     ROUTINE SUMMARY section are mapped, they should be removed
+     from the mapped set at this time.
+  
+ 3.  From the Kernel Installation and Distribution System (KIDS) Menu,
+     select the Installation menu.
+  
+ 4.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter OR*3.0*110):
+          a.  Backup a Transport Global
+          b.  Compare Transport Global to Current System
+          c.  Verify Checksums in Transport Global
+  
+ 5.  Use the Install Package(s) option and select patch OR*3.0*110.
+  
+ 6.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+     Protocols? YES//', respond YES. When prompted to select the options
+     would like to put out of order, enter the following:
+        
+         OR OE/RR MENU CLINICIAN          CPRS Clinician Menu
+         OR OE/RR MENU NURSE              CPRS Nurse Menu
+         OR OE/RR MENU WARD CLERK         CPRS Ward Clerk Menu
+  
+ 7.  If routines were unmapped as part of step 2, they should be returned
+     to the mapped set once the installation has run to completion.
+
+Routine Information:
+====================
+
+Routine Name:
+  - ORCSIGN
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORMRA
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORCMEDT1
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORCDLG1
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORY110
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORCHTAB3
+
+
+Routine Checksum:
+
+Routine Name:
+  - ORWORR
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : NABER,DAVID A                 Date Entered : JUN 15, 2001
+Completed By: INSLEY,MARCIA                 Date Completed: JAN 14, 2002
+Released By : GIVENS,DALE S                Date Released : JAN 15, 2002
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

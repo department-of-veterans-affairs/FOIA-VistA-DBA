@@ -1,0 +1,271 @@
+$TXT Created by BEUSCHEL,GARY at MAILMAN.ISC-SF.VA.GOV  (KIDS) on THURSDAY, 05/17/01 at 10:19
+=============================================================================
+Run Date: JUL 03, 2001                     Designation: XM*7.1*179
+Package : XM - MAILMAN                         Priority: Mandatory
+Version : 7.1       SEQ #185                     Status: Released
+=============================================================================
+
+Associated patches: (v)XM*7.1*177  <<= must be installed BEFORE `XM*7.1*179'
+
+Subject: HONOR TASKMAN REQUESTS TO STOP
+
+Category: 
+  - Routine
+  - Other
+  - Enhancement (Mandatory)
+
+Description: 
+============
+
+ Patch XM*7.1*179
+  
+ E3R 15242
+ Test Sites:  Puget Sound HCS
+ Make tasked options XMCLEAN, XMAUTOPURGE, XMPURGE, and XMUT-CHKFIL honor
+ TaskMan stop requests.
+  
+ Improve the description for options XMCLEAN, XMAUTOPURGE, XMPURGE, XMSTAT,
+ and XMUT-CHKFIL.  Change option XMPURGE from an "action" type to a
+ "run routine" type.  (Pre-init XMYPRE11 will help do this.)
+  
+ Here, then, are the options:
+  
+ NAME: XMCLEAN                           MENU TEXT: Clean out waste baskets
+   TYPE: run routine                     CREATOR: POSTMASTER
+  DESCRIPTION:   This option empties users' WASTE baskets, that is, it deletes
+  all the messages in users' WASTE baskets in the MAILBOX file 3.7.  Messages in
+  the MESSAGE file 3.9 are not affected.  
+   
+  It is recommended that this option be scheduled to run daily, right before
+  option XMAUTOPURGE.  
+   ROUTINE: CLEAN^XMA3                   SCHEDULING RECOMMENDED: YES
+   UPPERCASE MENU TEXT: CLEAN OUT WASTE BASKETS
+  
+  
+ NAME: XMPURGE                           MENU TEXT: Purge Unreferenced Messages
+   TYPE: run routine                     CREATOR: POSTMASTER
+  DESCRIPTION:   This  option, if scheduled, does exactly what option
+  XMAUTOPURGE does, and then stops.  
+   
+  This  option, if run interactively, does exactly what option XMAUTOPURGE does,
+  and then it does exactly what option XMSTAT does, and then it stops.  
+   
+  You should NOT schedule this option.  
+   ROUTINE: SCAN^XMA3
+   UPPERCASE MENU TEXT: PURGE UNREFERENCED MESSAGES
+  
+  
+ NAME: XMAUTOPURGE
+   MENU TEXT: Automatic Purge of MailMan Messages
+   TYPE: run routine                     CREATOR: POSTMASTER
+  DESCRIPTION:   This option automatically purges unreferenced MailMan messages,
+  that is, it deletes from file 3.9, MESSAGE, any messages which are not in 
+  anyone's basket.  It is strongly recommended that this option be scheduled to
+  run daily, right after option XMCLEAN.  
+   
+  The following messages are considered 'referenced', and will not be purged: 
+   - Messages in user baskets 
+   - Messages in transit (arriving or being sent) 
+   - Server messages 
+   - Messages being edited (including aborted edits) 
+   - Messages which have been latered 
+   
+  Several fields in file 4.3, MAILMAN SITE PARAMETERS, influence the behavior of
+  this option.  Here they are, but feel free to look at their Data Dictionary
+  descriptions for more information on them: 
+   
+  4.301 - NO-PURGE DAYS BUFFER - MailMan does not purge any messages created or
+  received in the last few days.  You choose how many days.  The default is 2.  
+   
+  142   - NO-PURGE DAYS BUFFER (LOCAL) - MailMan does not purge local messages
+  created in the last few days.  You choose how many days.  The default is 7.  
+   
+  4.304 - WEEKDAY DAYS TO PURGE - On Saturdays, MailMan goes through the entire
+  MESSAGE file looking for messages to purge.  On the other days of the week,
+  however, MailMan has the option of only looking at messages created or
+  received recently.  You choose how many days.  The default is to go through
+  the entire MESSAGE file.  It is strongly recommended that you set this field
+  to something reasonable, like 30 to 60 days.  (But only if you follow the
+  recommendation to schedule this option to run daily.  Otherwise leave this
+  field blank.) 
+   
+  4.303 - AUTOMATIC INTEGRITY CHECK - MailMan gives you the option of running
+  the MAILBOX file portion of the integrity checker (option XMUT-CHKFIL) before
+  it actually purges the unreferenced messages.  The M xref on file 3.7 is used
+  to determine whether a message is referenced (in someone's basket) or not.  If
+  the M xref is messed up, then the purge might delete messages it shouldn't, or
+  leave message it should delete.  The integrity checker ensures that the M xref
+  is correct.  You choose whether to run it or not.  The default is to run it. 
+  The recommendation is to run it.  However, if you find that it is simply
+  taking too long, you may opt not to run it.  If you opt not to run it, then it
+  is recommended that you schedule option XMUT-CHKFIL to run monthly, because
+  globals can and do become corrupted.  
+   INDEPENDENTLY INVOCABLE: NO
+   ROUTINE: EN^XMA3                      TIMESTAMP: 55536,32239
+   TIMESTAMP OF PRIMARY MENU: 54318,54986
+   SCHEDULING RECOMMENDED: YES
+   UPPERCASE MENU TEXT: AUTOMATIC PURGE OF MAILMAN MES
+  
+  
+ NAME: XMSTAT                            MENU TEXT: Message statistics
+   TYPE: run routine                     CREATOR: POSTMASTER
+   PACKAGE: MAILMAN
+  DESCRIPTION:   This interactive option displays information about past purges
+  and about current mailbox usage.  This option should not be scheduled.  
+   
+  First, it displays the types and results of the last 20 purges of the MESSAGE
+  file 3.9.  It tells you whether the purge was an unreferenced message purge
+  (option XMPURGE or XMAUTOPURGE), or a date purge (option XMPURGE-BY-DATE).  It
+  tells you when it started and ended, how long it took, how many messages were
+  purged, and how many were left.  
+   
+  Next, it displays information about each user in the MESSAGE file 3.7.  It
+  tells you how many messages they have in their mailboxes, when they last
+  logged on, and when they last used MailMan.  
+   ROUTINE: STAT^XMA3                    UPPERCASE MENU TEXT: MESSAGE STATISTICS
+  
+  
+ NAME: XMUT-CHKFIL
+   MENU TEXT: Check MailMan Files for Errors
+   TYPE: run routine                     CREATOR: BEUSCHEL,GARY
+   LOCK: XUPROG                          PACKAGE: MAILMAN
+  DESCRIPTION:   This option checks for and corrects errors in the MAILBOX file
+  3.7 and the MESSAGE file 3.9.  It checks important fields and cross
+  references.  
+   
+  It is recommended that this option be run monthly or every few months, or
+  whenever there seems to be a database problem.  
+   
+  It produces a report of the errors detected, and what, if anything, it did to
+  fix them.  If it didn't fix them, it tells you what you can do to fix them.  
+   
+  Although the system will not fail because of errors detected, your users may
+  call you about the problems they experience.  This utility will allow you to
+  detect them first and correct them before anyone knows.  
+   ROUTINE: CHKFILES^XMUT4               SCHEDULING RECOMMENDED: YES
+   UPPERCASE MENU TEXT: CHECK MAILMAN FILES FOR ERRORS
+  
+ NOTE: This patch should be installed during off hours, when user activity
+ is at a minimum.  It requires MailMan patch XM*7.1*177.
+ ============================================================================ 
+  
+ ROUTINES:
+ The second line of the routine now looks like:
+        ;;7.1;MailMan;**[patch list]**;Jun 02, 1994
+  
+               Before          After
+ Name          Checksum        Checksum        Patch List
+ ------------------------------------------------------------------------
+ XMA3          17147624        11956377        37,54,69,50,179
+ XMA30          7080895        10546676        37,50,179
+ XMUT4         13628025        13898092        50,74,108,179
+ XMUT41         5625084         6742163        108,179
+ XMUT4B        20142397            1683        50,108,179
+ XMUT4BA       16544870            2138        50,108,136,179
+ XMUT4C         7618380         8586474        10,22,50,108,136,177,179
+ XMYPRE11        687829          239841        163,179
+ * Checksums produced by CHECK^XTSUMBLD
+  
+ This patch introduces no new routines.
+ ===========================================================================
+  
+ INSTALLATION:
+ NOTE: This patch should be installed during off hours, when user activity
+ is at a minimum.  It requires MailMan patch XM*7.1*177.
+ 1.  Users may be on the system during installation of this patch.
+ 2.  DSM Sites: If any of these routines is mapped, disable mapping for the 
+     affected routine(s).  
+ 3.  On the PackMan menu, use the 'INSTALL/CHECK MESSAGE' option.  This loads 
+     the patch into a Transport Global on your system.  
+ 4.  You do not need to stop TaskMan or the background filer.
+     Users may be on the system.
+ 5.  On the KIDS:Installation menu, use the following options to install the
+     Transport Global:
+        Verify Checksums in Transport Global
+        Print Transport Global
+        Compare Transport Global to Current System
+        Backup a Transport Global
+        Install Package(s)
+  Select INSTALL NAME:    XM*7.1*179    Loaded from Distribution  <date/time>
+                          ==========
+  Install Questions:
+  Want KIDS to Rebuild Menu Trees Upon Completion of Install? YES//YES
+                                                                   ===
+  Want KIDS to INHIBIT LOGONs during the install? YES// NO
+                                                        ==
+  Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// NO
+                                                                        ==
+  Enter the Device you want to print the Install messages.
+  You can queue the install by enter a 'Q' at the device prompt.
+  Enter a '^' to abort the install.
+  
+  DEVICE: HOME// <It's up to you, you may queue it if you wish.>
+                 -----------------------------------------------
+  (Just don't queue it for a time when XMCLEAN, XMAUTOPURGE, or XMUT-CHKFIL
+   will be running!)
+ 7.  DSM Sites: After patch has installed, rebuild your map set, if necessary.
+ ===========================================================================
+
+Routine Information:
+====================
+
+Routine Name:
+  - XMA3
+
+
+Routine Checksum:
+
+Routine Name:
+  - XMA30
+
+
+Routine Checksum:
+
+Routine Name:
+  - XMUT4
+
+
+Routine Checksum:
+
+Routine Name:
+  - XMUT41
+
+
+Routine Checksum:
+
+Routine Name:
+  - XMUT4B
+
+
+Routine Checksum:
+
+Routine Name:
+  - XMUT4BA
+
+
+Routine Checksum:
+
+Routine Name:
+  - XMUT4C
+
+
+Routine Checksum:
+
+Routine Name:
+  - XMYPRE11
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : BEUSCHEL,GARY                  Date Entered : APR 20, 2001
+Completed By: SINGH,GURBIR                  Date Completed: JUN 27, 2001
+Released By : GRAY,STEPHEN                  Date Released : JUL 03, 2001
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,539 @@
+$TXT Created by NAM,ELLEN at IIV.FELIX.DAOU.COM  (KIDS) on Wednesday, 12/14/05 at 11:18
+=============================================================================
+Run Date: FEB 06, 2006                     Designation: IB*2*300
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #297                      Status: Released
+                  Compliance Date: MAR 09, 2006
+=============================================================================
+
+Associated patches: (v)IB*2*184    <<= must be installed BEFORE `IB*2*300'
+                    (v)IB*2*251    <<= must be installed BEFORE `IB*2*300'
+                    (v)IB*2*271    <<= must be installed BEFORE `IB*2*300'
+
+Subject: IIV HL7 MODIFICATIONS & RESPONSE PROCESSING CHANGES
+
+Category: 
+  - Routine
+  - Other
+
+Description:
+============
+
+ This patch addresses several items related to the Insurance Identification
+ and Verification (IIV) functionality that were identified as problems or
+ concerns. We have included functionality requested by the Health Level
+ Seven (HL7) team to ensure compliance. Invalid data translations occurred
+ sporadically due to the fact that some VistA data and payer responses
+ contained characters utilized as HL7 and/or X12 delimiters. The software
+ has been adjusted to allow for this possibility. The patch also addresses
+ the revised mapping of HL7 fields.
+  
+  
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+ There is no NSR associated with this patch.
+  
+  
+ This patch addresses the following Remedy Ticket(s):
+ ----------------------------------------------------
+ 1. HD65482    IIV TRANSMISSION QUEUE PROBLEM AFTER IB*2*271 INSTALL
+               (original ticket HD65372)
+ 2. HD64010    Parsing Issue
+ 3. HD90732    Error while processing response message from the EC
+  
+  
+ Overview of Remedy Ticket(s):
+ -----------------------------
+ 1. HD65482 IIV TRANSMISSION QUEUE PROBLEM AFTER IB*2*271 INSTALL
+        
+ Problem:
+ --------
+ IIV Transmission Queue entry 3185 has a status of Response Received. None
+ of the associated responses have this status.
+  
+ Resolution:  
+ -----------
+ When the first payer response to an identification inquiry to Cache is
+ received, the associated response shell created is now updated with the
+ responding payer IEN, replacing the ~NO PAYER place holder.
+  
+  
+ 2. HD64010 Parsing Issue (NOIS: FAR-0604-41959)
+  
+ Problem:
+ --------
+ The data sent back from the payers sometimes contains characters that are
+ used by the HL7 standard as delimiters. When this situation occurs, the
+ incoming HL7 message is parsed incorrectly into the various data values.
+  
+ Resolution:
+ -----------
+ IIV now encodes any data value that is an HL7 delimiter before
+ transmitting the IIV insurance inquiry to Austin. Upon receiving an
+ inbound IIV HL7 message, IIV now decodes any data value that was an HL7
+ delimiter that Austin encoded before sending to VistA.
+  
+  
+ 3. HD90732 Error while processing response message from the EC
+  
+ Problem:
+ --------
+ Certain sites were receiving dollar amounts with more than two decimals
+ for the Monetary Amount field (#.08) in the ELIGIBILITY/BENEFIT subfile
+ (#365.02). VistA was rejecting these due to formatting requirements of no
+ more than 2 decimal places.
+  
+ Resolution:
+ -----------
+ The code was modified to round the amount to 2 decimal places prior to
+ storing the value in VistA.
+  
+  
+ Overview of Patch Items:
+ ------------------------
+  
+ 1) Changes required to HL7 Mapping
+    -------------------------------
+    The HL7 messages that were used with IIV upon introduction of patch
+    IB*2.0*184 were allowed on a temporary basis, so the patch release
+    would meet the HIPAA deadline. Changes have been made as a result of
+    Veterans Affairs (VA) requests to revise the HL7 mapping employed by
+    IIV. These changes, approved by Pete Rontey, were incorporated in this
+    patch and are transparent to the users.
+  
+  
+ 2) Data Received Includes HL7 Delimiters
+    (Remedy Ticket #HD64010/NOIS: FAR-0604-41959)
+    ---------------------------------------------
+    Some data parsing issues were identified which uncovered a problem that
+    occurred when data sent to or returned from the payer included HL7
+    delimiters. An algorithm was developed whereby outbound messages that
+    included such data would be encoded, and Austin would subsequently
+    decode it. Similarly, with inbound messages, Austin will encode all
+    designated HL7 delimiters, and the VistA side of response processing
+    will decode the messages to retain the values transmitted by the payers.
+  
+  
+ 3) Remove X12 Delimiter from VistA Data
+    ------------------------------------
+    In order to prevent any potential problems, the asterisk, which is an
+    X12 delimiter, has been removed from all IIV HL7 messages generated for
+    payer inquiries.
+  
+  
+ 4) Under Rare Circumstances Payer Response was Not Filed
+    Optimally (Remedy Ticket #: HD65482)
+    -----------------------------------------------------
+    As part of the post installation process of patch IB*2.0*271, it was
+    determined that there was an issue that needed to be addressed
+    concerning responses to identification inquiries to Cache. When a
+    payer response was returned, it would go through the logic of finding
+    the response shell associated with the payer to update the status to
+    response received. In this case, the original payer is the ~NO PAYER
+    pseudo payer, and a match could not be made. As a result, the response
+    was logged as unsolicited for the payer. To correct this situation, new
+    logic was built into the response process to handle ~NO PAYERS
+    differently. The new logic will recognize the response as a match when
+    the first payer response is received and will update the entry in the
+    IIV RESPONSE file (#365) appropriately. This required changes to the
+    IIV Payer Report and the IIV Statistical Report.
+  
+  
+ 5) Round all dollar figures to the nearest penny
+    (Remedy Ticket # HD90732)
+    ---------------------------------------------
+    Certain sites were receiving dollar amounts with more than two decimals.
+    VistA was rejecting these due to formatting requirements of no more than
+    two decimal places. The code was modified to round the amount to two
+    decimal places prior to storing the value in VistA.
+  
+  
+ 6) As Per the VA's Recommendation, Moved to Multi-Threaded
+    -------------------------------------------------------
+    Since the change to the multi-threaded listener, recommended by the HL7
+    team, the IIV Server Logical Link was rendered obsolete. As a result,
+    this patch removes the IIV Server Logical Link along with the code that
+    retrieved information from it. Thus, the application dependency on the
+    IP address and port number for routing has been removed as requested by
+    Veterans Health Administration (VHA). This change eliminates the need
+    for DBIA #4241. DBIA #4241 is now obsolete with the release of this
+    patch, IB*2.0*300.
+  
+  
+ 7) Renamed the 'VERIFICATION DATE/TIME field (#365,1.19)
+    -----------------------------------------------------
+    The 'VERIFICATION DATE/TIME' field (#365,1.19) in the IIV RESPONSE file
+    (#365) was not utilized by IIV. Therefore, instead of creating a new
+    field in the IIV RESPONSE file (#365) to capture data, this pre-
+    existing field was redefined. This field is now the 'PAYER UPDATED
+    POLICY' field.
+  
+  
+ 8) Modified code to stop sending the same inquiry every 3 days
+    -----------------------------------------------------------
+    Every time the payer asks VistA to resend an inquiry message via an
+    HL7 message, VistA obliged. It was then noticed that sometimes the
+    payer continuously asked VistA to resend the same message. VistA has
+    been modified, so that once the payer has asked VistA to resend the
+    same inquiry message for the second time, without specifying how many
+    days to wait before sending, VistA will mark the message as
+    'Response Received' rather than retransmit it to the Payer.
+  
+  
+ 9) Accepted the HL7 data field POLICY number and stored within the
+    IIV RESPONSE File (#365) and displayed on the IIV Response Report
+    ---------------------------------------------------------------
+    Previously the patient's insurance policy number included in the HL7
+    record was not utilized. It will now be stored in the IIV RESPONSE File
+    (#365) and displayed on the IIV Response Report, IIV Ambiguous Policy
+    Report, and the IIV Inactive Policy Report.
+  
+  
+ 10) Changed the security key on the Payer Maintenance Menu option
+     [IBCNE PAYER MAINTENANCE MENU]
+     ---------------------------------------------------------------
+     Previously the Payer Maintenance Menu option was locked with the
+     "IBCNE IIV SUPERVISOR" security key. The option has been modified
+     so that this option is now locked with the "IB SUPERVISOR" security
+     key.
+  
+  
+ Components Sent With Patch
+ --------------------------
+  
+ The following is a list of the routines included in this patch.
+ The second line of each of these routines now looks like:
+  
+      ;;2.0;INTEGRATED BILLING;**[patch list]**;21-MAR-94
+  
+                        CHECK^XTSUMBLD results
+  
+ Routine         Before Patch     After Patch     Patch List
+ -------         ------------     -----------     ----------
+ IBCNEDE          4757465          4762940         184,271,300
+ IBCNEDEP        12413574         12869260         184,271,300
+ IBCNEDEQ         5458540          5882048         184,271,300
+ IBCNEHL1             n/a          6279892         300
+ IBCNEHL2             n/a          8008115         300
+ IBCNEHL3             n/a         12289023         300
+ IBCNEHL4             n/a          6312764         300
+ IBCNEHLD         1795577          1736065         184,271,300
+ IBCNEHLI         3017378          3308571         184,252,251,271,300
+ IBCNEHLK          613776           613866         184,300
+ IBCNEHLM         7873640          7529986         184,251,300
+ IBCNEHLO          427667           391398         184,300
+ IBCNEHLP        13139616     (deleted at site)    184,252,271
+ IBCNEHLQ         6209619          8813470         184,271,300
+ IBCNEHLR         8622113     (deleted at site)    184,252,271
+ IBCNEHLS        11770281     (deleted at site)    184,271
+ IBCNEHLT        11491529         14110083         184,251,271,300
+ IBCNEHLU          585851          5577521         184,300
+ IBCNERP4         3825717         14038083         184,271,300
+ IBCNERP5        12923181         10703693         184,271,300
+ IBCNERPE        21424444         21789612         271,300
+ IBY300PS             n/a              n/a         (post install routine)
+  
+  
+                        CHECK1^XTSUMBLD results
+  
+ Routine         Before Patch     After Patch     Patch List
+ -------         ------------     -----------     ----------
+ IBCNEDE         20803060         21001833         184,271,300
+ IBCNEDEP        94875041         95024002         184,271,300
+ IBCNEDEQ        23685960         27345351         184,271,300
+ IBCNEHL1             n/a         32619299         300
+ IBCNEHL2             n/a         48954965         300
+ IBCNEHL3             n/a         72666983         300
+ IBCNEHL4             n/a         25894966         300
+ IBCNEHLD         4387851          4191710         184,271,300
+ IBCNEHLI         7261424          8071384         184,252,251,271,300
+ IBCNEHLK          906706           906841         184,300
+ IBCNEHLM        22623949         21111301         184,251,300
+ IBCNEHLO          600205           523295         184,300
+ IBCNEHLP        76489309    (deleted at site)     184,252,271
+ IBCNEHLQ        30801715         41231894         184,271,300
+ IBCNEHLR        44471872    (deleted at site)     184,252,271
+ IBCNEHLS        65873110    (deleted at site)     184,271
+ IBCNEHLT        59932024         69606344         184,251,271,300
+ IBCNEHLU          971602         16427486         184,300
+ IBCNERP4        13084938         61874953         184,271,300
+ IBCNERP5        59387291         48772624         184,271,300
+ IBCNERPE        67284569         68650966         271,300
+ IBY300PS             n/a              n/a         (post install routine)
+  
+  
+ Total Number of modified routines - 14
+ Total Number of new routines - 5
+ Total Number of deleted routines - 3 
+ Total number of routines - 19  ****
+  
+ *NOTE:
+       IBCNEHLP, IBCNEHLR, and IBCNEHLS are IIV response processing
+               routines that are now obsolete with this patch and
+               therefore are simply being deleted by this patch.
+               Routines IBCNEHL1, IBCNEHL2, IBCNEHL3, and IBCNEHL4
+               replace and enhance the functionality that was being
+               performed by IBCNEHLP, IBCNEHLR,
+               and IBCNEHLS.
+       IBY300PS, the post init routine, is auto-deleting.
+  
+   
+ The following is a list of files included in this patch:
+  
+                                      UP    SEND  DATA
+                                      DATE  SEC.  COMES  SITE   RSLV
+ FILE #   NAME                        DD    CODE  W/FILE DATA   PTS
+ --------------------------------------------------------------------
+ 365      IIV RESPONSE                YES   YES   NO
+   
+  
+ The following is a list of fields included in this patch:
+  
+ Field Name (Number)                File Name (Number)
+ -------------------                ------------------
+ PAYER UPDATED POLICY (1.19)        IIV RESPONSE (365)
+ POLICY NUMBER (1.2)                IIV RESPONSE (365)
+  
+  
+ The following is a list of the options included in this patch:
+  
+ Option Name                    Type            New/Modified
+ ------------                   -----           ------------- 
+ IBCNE PAYER MAINTENANCE MENU   Menu            Modified
+ IBCNE PAYER EDIT               Run Routine     Modified
+ IBCNE PAYER LINK               Run Routine     Modified
+  
+  
+ The following is a list of the HL7 Application Parameters included in 
+ this patch:
+  
+ HL7 Application Parameter
+ -------------------------
+ IIV EC                                    SEND TO SITE
+ IIV VISTA                                 SEND TO SITE
+  
+  
+ The following is a list of the HL Logical Links included in this patch:
+  
+ HL Logical Link
+ ---------------
+ IIV SERVER                                DELETE AT SITE
+   
+  
+ ===================== Documentation Retrieval ========================
+  
+ The IB*2.0*300 documentation is available on the ANONYMOUS.SOFTWARE
+ directory at one of the OI Field Offices.
+  
+ The Vista Documentation Library will be updated with these new
+ manuals. 
+  
+ *These files should be downloaded in BINARY format.*
+  
+ Sites may retrieve documentation in one of the following ways:
+  
+ 1.  The preferred method is to FTP the files from 
+     download.vista.med.va.gov, which will transmit 
+     the files from the first available FTP server.
+  
+ 2.  Sites may also elect to retrieve documentation directly 
+     from a specific server as follows:
+  
+     Albany                    ftp.fo-albany.med.va.gov
+     Hines                     ftp.fo-hines.med.va.gov
+     Salt Lake City            ftp.fo-slc.med.va.gov
+  
+ The documentation includes:
+  
+      File Name                     Description
+      ---------                     -----------
+      IB_2_P300_TM.PDF              Technical Manual
+      IB_2_P300_UM.PDF              User Manual
+  
+ ===================================================================
+  
+  
+ Test Sites:
+ -----------
+ Connecticut VA HCS WEST HAVEN (VAMC - 689)
+ Detroit
+ Kansas City
+  
+  
+ Pre/Post Installation Overview
+ ------------------------------
+ The post-installation process will issue an IIV Registration Message to
+ inform Austin that we are using the new HL7 messaging format.
+  
+  
+  
+        ================INSTALLATION INSTRUCTIONS =================
+  
+ If installed during the normal workday, it is recommended that the
+ following selection(s) in the OPTION (#19) file, and all of their
+ descendants be disabled to prevent possible conflicts while running the
+ KIDS Install. Other VISTA users will not be affected.
+  
+          *** MENU OPTIONS FOR SITE TO DISABLE ***
+  
+      IIV NIGHTLY PROCESS [IBCNE IIV BATCH PROCESS]
+      PROCESS INSURANCE BUFFER [IBCN INSURANCE BUFFER PROCESS]
+      PAYER MAINTENANCE MENU [IBCNE PAYER MAINTENANCE MENU]
+      PAYER EDIT (Activate/Inactivate) [IBCNE PAYER EDIT]
+      LINK INSURANCE COMPANIES TO PAYERS [IBCNE PAYER LINK]
+  
+ Install Time - less than 5 minutes
+  
+  
+     ************** PRE-INSTALLATION INSTRUCTIONS **************
+  
+ Make sure the IIV NIGHTLY PROCESS [IBCNE IIV BATCH PROCESS] is not running
+ through TaskMan.
+  
+ The 'IIV SERVER' HL Logical Link must be stopped.  If it is running, use
+ the Start/Stop Links [HL START] option to stop the 'IIV SERVER' HL Logical
+ Link prior to performing the install.  This is required as the post install
+ routine will be deleting this logical link.
+  
+     ***********************************************************
+  
+  
+ 1.  LOAD TRANSPORT GLOBAL
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the
+     INSTALL/CHECK MESSAGE PackMan option.
+  
+ 2.  START UP KIDS
+     -------------
+     Start up the Kernel Installation and Distribution System Menu
+     [XPD MAIN]:
+  
+          Edits and Distribution ...
+          Utilities ...
+          Installation ...
+  
+ Select Kernel Installation & Distribution System Option: INStallation
+                                                          ---
+          Load a Distribution
+          Print Transport Global
+          Compare Transport Global to Current System
+          Verify Checksums in Transport Global
+          Install Package(s)
+          Restart Install of Package(s)
+          Unload a Distribution
+          Backup a Transport Global
+  
+ Select Installation Option:
+  
+ 3.  Select Installation Option:
+     ---------------------------
+     NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+            NAME, enter IB*2.0*300):
+  
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when this patch
+         is installed.  It compares all components of this patch
+         (routines, DD's, templates, etc.).
+     c.  Verify Checksums in Transport Global - This option will allow
+         you to ensure the integrity of the routines that are in the
+         transport global.
+  
+ 4.  Select Installation Option: Install Package(s)
+                                 ------------------
+     **This is the step to start the installation of this KIDS patch:
+  
+     a.  Choose the Install Package(s) option to start the patch
+         install.
+     b.  When prompted 'Want KIDS to Rebuild Menu Trees Upon Completion of
+         Install? YES//' answer NO
+     c.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+         YES//' answer NO
+     d.  When prompted 'Want to DISABLE Scheduled Options, Menu
+         Options, and Protocols? YES//' answer YES (unless otherwise
+         indicated)
+     e.  When prompted 'Enter options you wish to mark as 'Out Of
+         Order':'  Enter the following options:
+     
+           IIV NIGHTLY PROCESS [IBCNE IIV BATCH PROCESS]
+           PROCESS INSURANCE BUFFER [IBCN INSURANCE BUFFER PROCESS]
+           PAYER MAINTENANCE MENU [IBCNE PAYER MAINTENANCE MENU]
+           PAYER EDIT (Activate/Inactivate) [IBCNE PAYER EDIT]
+           LINK INSURANCE COMPANIES TO PAYERS [IBCNE PAYER LINK]
+  
+     f.  When prompted 'Enter protocols you wish to mark as 'Out Of
+         Order':' press <return>.
+  
+  
+     ************** POST-INSTALLATION INSTRUCTIONS **************
+  
+ The post-installation process will issue an IIV Registration Message to
+ inform Austin that your site is now using the new HL7 messaging format.
+  
+     ************************************************************
+ 
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: IBCNEDE
+    Before: B20803060  After: B21001833  **184,271,300**
+Routine Name: IBCNEDEP
+    Before: B94875041  After: B95024002  **184,271,300**
+Routine Name: IBCNEDEQ
+    Before: B23685960  After: B27345351  **184,271,300**
+Routine Name: IBCNEHL1
+    Before:            After: B32619299  **300**
+Routine Name: IBCNEHL2
+    Before:            After: B48954965  **300**
+Routine Name: IBCNEHL3
+    Before:            After: B72666983  **300**
+Routine Name: IBCNEHL4
+    Before:            After: B25894966  **300**
+Routine Name: IBCNEHLD
+    Before:  B4387851  After:  B4191710  **184,271,300**
+Routine Name: IBCNEHLI
+    Before:  B7261424  After:  B8071384  **184,252,251,271,300**
+Routine Name: IBCNEHLK
+    Before:   B906706  After:   B906841  **184,300**
+Routine Name: IBCNEHLM
+    Before: B22623949  After: B21111301  **184,251,300**
+Routine Name: IBCNEHLO
+    Before:   B600205  After:   B523295  **184,300**
+Routine Name: IBCNEHLP
+    Before: B76489309  After:    Delete  
+Routine Name: IBCNEHLQ
+    Before: B30801715  After: B41231894  **184,271,300**
+Routine Name: IBCNEHLR
+    Before: B44471872  After:    Delete  
+Routine Name: IBCNEHLS
+    Before: B65873110  After:    Delete  
+Routine Name: IBCNEHLT
+    Before: B59932024  After: B69606344  **184,251,271,300**
+Routine Name: IBCNEHLU
+    Before:   B971602  After: B16427486  **184,300**
+Routine Name: IBCNERP4
+    Before: B13084938  After: B61874953  **184,271,300**
+Routine Name: IBCNERP5
+    Before: B59387291  After: B48772624  **184,271,300**
+Routine Name: IBCNERPE
+    Before: B67284569  After: B68650966  **271,300**
+Routine Name: IBY300PS
+    Before:            After:   B389194  **300**
+
+=============================================================================
+User Information:
+Entered By  : WHITE,DARLENE                 Date Entered  : FEB 14, 2005
+Completed By: KUREK,STANLEY M               Date Completed: FEB 06, 2006
+Released By : GANUS,MAUNETTE                Date Released : FEB 06, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

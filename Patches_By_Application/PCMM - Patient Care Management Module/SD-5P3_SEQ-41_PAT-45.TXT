@@ -1,0 +1,217 @@
+$TXT Created by WHELAN,ROBERT at MNTVBB.ISC-ALBANY.VA.GOV  (KIDS) on FRIDAY, 06/28/96 at 13:36
+=============================================================================
+Run Date: JUL 09, 1996                     Designation: SD*5.3*45
+Package : SD - SCHEDULING                      Priority: Mandatory
+Version : 5.3        SEQ #41                    Status: Released
+=============================================================================
+
+Associated patches: (v)SD*5.3*41   <<= must be installed BEFORE `SD*5.3*45'
+                    (v)XU*8*32     <<= must be installed BEFORE `SD*5.3*45'
+
+Subject: PCMM FIXES
+
+Category: 
+  - Data Dictionary
+  - Routine
+
+Description: 
+============
+
+  This patch includes a number of changes associated with the Primary
+  Care Management Module (SD*5.3*41 and DG*5.3*84).  This patch should be 
+  applied AFTER SD*5.3*41 has been installed.
+          ===== ========= === ==== =========
+  
+  - There is an environment check routine, SD5345EN, which is used during 
+    the KIDS installation to ensure that SD*5.3*41 (PCMM patch) and 
+    XU*8*32 (Support for RPC Broker) have been loaded.
+  
+  - Fix to Hospital Location File
+    Two fields in the HOSPITAL LOCATION File (#44) were incorrectly
+    exported with SD*5.3*41.  This patch returns the values of the
+    following fields to their pre-SD*5.3*41 states:
+         DEFAULT PROVIDER (Field #16)
+         PROVIDER (Field #.01 of the PROVIDER multiple (#2600))
+    For each of these fields, the screen is set to call $$SCREEN^DGPMDD 
+    instead of checking the AK.PROVIDER key directly.
+  
+  - Fix to Find Next Available Appointment
+    The functionality added in SD*5.3*41 required the user to enter both 
+    a clinic and a team in order to use the Find Next Available 
+    Appointment option [SDNEXT].  After this patch, the user will not be
+    required to enter values for either clinic or team.  If neither 
+    clinic nor team are entered, no output will be generated.  Two 
+    routines were modified to make this change: SDNEXT and SCRPU1.
+  
+  - Speedup to Team Position Lookup
+    One of the beta sites reported a serious performance delay when very 
+    large team positions were selected in the Client software.  This was 
+    a result of the calculation of the current number of patients 
+    assigned being inefficient.  SCAPMCU1 was modified to make this 
+    change.
+  
+  - Fix for reports for patients without the PRIMARY ELIGIBILITY CODE 
+    Field (#.361) of the PATIENT File (#2).  Several of the PCMM reports 
+    will error out if the .361 field is null and there is data for at 
+    least one of the other fields that are on the .36 node of the PATIENT 
+    file (e.g., the DISABILITY RET. FROM MILITARY? field (#.362).  After 
+    this patch, these errors will not occur.  SCRPU3 was modified to make 
+    this change.
+  
+  - Changes to MailMan generation routines
+    At MSM sites, changes to either patient team assignments or patient
+    team position assignments in PCMM's client software resulted in the
+    change being recorded, but the system would hang.  The cause of this
+    is a result of MailMan 'talking' in a non-interactive environment.  
+    By setting ZTQUEUED prior to the MailMan call, this problem is 
+    eliminated.  SCMCTMM and SCMCTPM were modified to make this change.
+  
+  - Fix for sites with USE USR CLASS FUNCTIONALITY Field (#801) of the 
+    SCHEDULING PARAMETERS File (#404.91) set to 'YES'.  In the SC PCMM 
+    GUI WORKSTATION option (PCMM's GUI interface), when a user was 
+    assigning a staff member to a position, an 'ELIST' error would occur 
+    at the workstation and an undefined variable at S1+8^DICL2 would 
+    occur on the server.  SCMCPR1 was modified to make this change.
+  
+  
+  ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;5.3;Scheduling;**[patch list]**;AUG 13, 1993
+  
+                             CHECK^XTSUMBLD results
+  Routine name         Before Patch          After Patch      Patch List
+  ============         ============          ===========      ==========
+  SCAPMCU1                  7304034              6572700        41,45
+  SCMCPR1                   1414042              1418188        41,45
+  SCMCTMM                   9305457              9381511        41,45
+  SCMCTPM                   8523043              8601122        41,45
+  SCRPU1                    8395660              8499448        41,45
+  SCRPU3                    5817902              5820135        41,45
+  SD5345EN                      N/A              1897900          45
+  SDNEXT                    7376135              7387384        41,45
+  
+  
+  INSTALLATION INSTRUCTIONS:
+  ==========================
+  This patch should be loaded during non-peak hours to minimize 
+  disruption to users.  Installation will take less than 5 minutes.  If 
+  you have not installed the PCMM patch (SD*5.3*41), you cannot install 
+  this patch (SD*5.3*45).  Once you have installed the PCMM patch 
+  (SD*5.3*41) you would then need to install SD*5.3*45 immediately after. 
+  
+  1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+  
+  2.  Review your mapped set.  If any of the routines listed in the
+      ROUTINE SUMMARY section are mapped, they should be removed
+      from the mapped set at this time.
+  
+  3.  From the Kernel Installation and Distribution System Menu, select 
+      the Installation menu.  
+  
+  4.  From this menu, you may elect to use the following options
+      (when prompted for INSTALL NAME, enter SD*5.3*45):
+      a.  Backup a Transport Global - this option will create a backup
+          message of any routines exported with the patch.  It will NOT
+          backup any other changes such as DDs or templates.
+      b.  Compare Transport Global to Current System  - this option will
+          allow you to view all changes that will be made when the patch
+          is installed.  It compares all components of the patch 
+          (routines, DDs, templates, etc.).
+      c.  Verify Checksums in Transport Global - this option will
+          allow you to ensure the integrity of the routines that are in
+          the transport global.
+  
+  5.  Use the Install Package(s) option and select the package SD*5.3*45.
+  
+  6.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols? YES//', respond YES.  When prompted to select the
+      options you would like to place out of order, enter the following:
+        SDNEXT                          Find Next Available Appointment   
+        SDBUILD                         Set up a Clinic
+        SC PCMM PT LIST W/TEAM ASSIGN   Patient w/Team Assignments
+        SC PCMM DETAIL LIST PTS         Detailed Patient Enrollments
+        SC PCMM PRACT DEMO              Practitioner Demographics
+        SC PCMM PRACT PATIENTS          Practitioner's Patients
+        SC PCMM IND TEAM PROFILE        Individual Team Profile
+        SC PCMM SUM LIST OF TEAMS       Summary of Teams
+        SC PCMM LIST TEAM'S PATIENTS    Team's Patients
+        SC PCMM LIST TEAM'S MEMBERS     Team's Members
+        SC PCMM GUI WORKSTATION         PCMM GUI Workstation
+  
+  7.  MSM sites:  Please ensure you answer YES when asked if you want 
+      to move the routines to other systems and indicate the appropriate 
+      CPUs.
+  
+  8.  If routines were unmapped as part of step 2, they should be 
+      returned to the mapped set once the installation has run to 
+      completion.
+  
+  9.  After you have installed SD*5.3*45 on all systems, you may delete 
+      the environment check routine, SD5345EN.
+
+Routine Information:
+====================
+
+Routine Name:
+  - SCMCPR1
+
+
+Routine Checksum:
+
+Routine Name:
+  - SCMCTMM
+
+
+Routine Checksum:
+
+Routine Name:
+  - SCAPMCU1
+
+
+Routine Checksum:
+
+Routine Name:
+  - SCMCTPM
+
+
+Routine Checksum:
+
+Routine Name:
+  - SCRPU1
+
+
+Routine Checksum:
+
+Routine Name:
+  - SCRPU3
+
+
+Routine Checksum:
+
+Routine Name:
+  - SDNEXT
+
+
+Routine Checksum:
+
+Routine Name:
+  - SD5345EN
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : WHELAN,ROBERT E               Date Entered : JUN 06, 1996
+Completed By: INSLEY,MARCIA                 Date Completed: JUL 09, 1996
+Released By : WILSON,PAT                    Date Released : JUL 09, 1996
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

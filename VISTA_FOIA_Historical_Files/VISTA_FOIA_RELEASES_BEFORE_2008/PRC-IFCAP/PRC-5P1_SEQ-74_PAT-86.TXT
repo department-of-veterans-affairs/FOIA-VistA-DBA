@@ -1,0 +1,219 @@
+$TXT Created by HOLLOWAY,THOMAS at MNTVBB.FO-WASH.MED.VA.GOV  (KIDS) on Thursday, 08/04/05 at 12:07
+=============================================================================
+Run Date: OCT 26, 2005                     Designation: PRC*5.1*86
+Package : PRC - IFCAP                         Priority: Mandatory
+Version : 5.1        SEQ #74                    Status: Released
+                  Compliance Date: NOV 26, 2005
+=============================================================================
+
+Associated patches: (v)PRC*5.1*81  <<= must be installed BEFORE `PRC*5.1*86'
+
+Subject: DYNAMED - STOCKROOM BOC AND RECEIVING REPORT ISSUES
+
+Category: 
+  - Routine
+
+Description:
+============
+
+  This patch corrects two issues related to the interface between the
+  DynaMed inventory system and IFCAP.
+  
+  The first issue relates to the inappropriate use of BOC 2696, and the 
+  second to a problem that occurs when a Receiving Report is deleted
+  prior to being signed.
+   
+  ***************************  NOTE  *************************************
+  *    The changes distributed in this patch will only affect sites      *
+  *    using the DynaMed software but ALL SITES should load this         *
+  *    patch in order to maintain proper patch sequences.                *
+  ************************************************************************
+      
+  
+  ASSOCIATED REMEDY TICKETS:
+  =========================
+  1. HD105149     DynaMed Stockroom BOC issue
+  2. HD105152     DynaMed -- Receiving Report Cancellation Issue
+  
+     
+  PARTICIPATING TEST SITES:
+  =========================
+  Salisbury, NC
+  Bay Pines, FL
+  Upstate New York HCS
+    
+     
+  REMEDY OVERVIEW:
+  ==============
+  1. HD105149     DynaMed Stockroom BOC issue
+     
+    Problem:
+    -------- 
+    In DynaMed, a BOC (Budget Object Code) is associated with every item in
+    a Stockroom.  That BOC can be any valid BOC associated with Cost Centers
+    of the Stockroom's Fund Control Point.
+    In IFCAP, BOC 2696 is only valid for items in the Supply Fund Warehouse.
+    If the Stockroom user in DynaMed attaches BOC 2696 to an item and the 
+    Warehouse issues the item, the IV transaction send to IFCAP references 
+    2696 as the Buyer's BOC for this item.  IFCAP accepts the transaction
+    and updates the running balances for the Stockroom and Warehouse Fund 
+    Control Points.  When the IV transaction is forwarded to FMS, however,
+    the transaction rejects and the General Ledger is not updated.
+    
+    Resolution:
+    -----------
+    Modify the software processing the HL7 message from DynaMed to validate
+    that IV transactions do not have 2696 as a Buyer's BOC.  If a message
+    does contain this BOC, reject the transaction before updating IFCAP's
+    running balances and creating the IV transaction for FMS by sending an
+    Application Error message back to DynaMed indicating that the transaction
+    has been rejected because of an invalid Buyer's BOC.
+   
+    Note:
+    -----
+    The correct name for BOC 2696 is:  Supply Fund Inventory - Held for Sale.
+    If your BUDGET OBJECT CODE file [#420.2] has a different value for 2696
+    you should consider correcting it.  The official reference for this is
+    VA HANDBOOK 4671.2 which can be found at: 
+        http://www.va.gov/publ/direc/finance/v4671_2hr1.htm
+    The name can be edited with menu option:
+    BUDGET UTILITIES MENU
+       FCP/CC/BOC Management Menu
+          BOC Management Menu
+             Add/Edit BOC
+     
+  2. HD105152     DynaMed -- Receiving Report Cancellation Issue
+     
+     Problem:
+     --------           
+     Using the option 'Receipt of Purchase Order' [PRCHPM PO REC], if the 
+     user decides to delete a Receiving Report (RR) without printing or
+     editing the report, there is no electronic signature code associated
+     with it, so the system treats the RR as a cancellation and is sent to 
+     DynaMed.
+  
+     Resolution:
+     ----------- 
+     Modified the system to not send these cancellations to DynaMed.    
+  
+                
+  ROUTINE SUMMARY 
+  ===============
+   
+  The following is a list of the routines included in this patch.  
+  The second line of each of these routines now looks like: 
+   
+             <tab>;;5.1;IFCAP;**[patch list]**;Oct 20, 2000
+   
+                            CHECK^XTSUMBLD results
+   
+   Routine        Before Patch      After Patch      Patch List
+   --------       ------------      -----------      ----------
+   PRCV442A           12286904         12666661        81,86
+   PRCV442B           12034077         11833414        81,86
+   PRCVIBH            21831711         22129867        81,86
+    
+  
+                          CHECK1^XTSUMBLD results
+  
+   Routine        Before Patch      After Patch      Patch List
+   --------       ------------      -----------      ----------
+   PRCV442A           47663562         50305344        81,86
+   PRCV442B           43908570         43609146        81,86
+   PRCVIBH            96641654         98169766        81,86
+  
+       Number of Routines = 3
+    
+                                
+         ================INSTALLATION INSTRUCTIONS =================
+  
+  This patch can be installed with users on the system, however several 
+  options will need to be disabled (see step 4).  If your site uses the 
+  DynaMed software, the patch should be installed when DynaMed users are 
+  off of the system.  Install Time - less than 5 minutes.
+     
+  1.   LOAD TRANSPORT GLOBAL 
+       ---------------------
+       Choose the PackMan message containing this patch and invoke the 
+       INSTALL/CHECK MESSAGE PackMan option.  
+     
+  2.   START UP KIDS 
+       -------------
+       Start up the Kernel Installation and Distribution System Menu 
+       [XPD MAIN]: 
+     
+              Edits and Distribution ...  
+              Utilities ...  
+              Installation ...  
+     
+       Select Kernel Installation & Distribution System Option: INStallation 
+                                                                ---
+              Load a Distribution 
+              Print Transport Global 
+              Compare Transport Global to Current System 
+              Verify Checksums in Transport Global 
+              Install Package(s) 
+              Restart Install of Package(s) 
+              Unload a Distribution 
+              Backup a Transport Global 
+   
+  3.   Select Installation Option: 
+       ---------------------------
+       NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+              NAME, enter PRC*5.1*86):
+     
+       a.  Backup a Transport Global - This option will create a backup
+           message of any routines exported with this patch. It will not
+           backup any other changes such as DD's or templates.
+       b.  Compare Transport Global to Current System - This option will
+           allow you to view all changes that will be made when this patch
+           is installed.  It compares all components of this patch
+           (routines, DD's, templates, etc.).
+       c.  Verify Checksums in Transport Global - This option will allow
+           you to ensure the integrity of the routines that are in the
+           transport global.
+     
+  4.   Select Installation Option: Install Package(s) 
+                                   ------------------
+       **This is the step to start the installation of this KIDS patch: 
+     
+       a. Choose the Install Package(s) option to start the patch install.
+   
+       b. When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+          YES//' answer NO
+   
+       c. When prompted 'Want to DISABLE Scheduled Options, Menu Options, 
+          and Protocols? YES//' answer YES
+      
+       d. When prompted 'Enter options you wish to mark as 'Out Of 
+          Order':'  Enter the following options:
+     
+          Amendment Processing              [PRCFA AMENDMENT PROCESSING]
+          Process Receiving Report          [PRCFA RECEIVING REPORT]
+          Process Purchase Card Menu        [PRCH PROCESS PC]
+          Receipt of Purchase Order         [PRCHPM PO REC]
+          Delete a Receiving Report         [PRCHPM PO DEL REC]
+          New Purchase Order                [PRCHPC PO ADD]
+          Edit an Incomplete Purchase Order [PRCHPC PO EDIT]
+     
+       e. When prompted 'Enter protocols you wish to mark as 'Out Of 
+          Order':' press <return>.
+
+Routine Information:
+====================
+Routine Name: PRCV442A
+Routine Name: PRCV442B
+Routine Name: PRCVIBH
+
+=============================================================================
+User Information:
+Entered By  : HOLLOWAY,THOMAS J             Date Entered  : JUL 28, 2005
+Completed By: WERNER,GARY                   Date Completed: OCT 21, 2005
+Released By : NELSON,VICKI M                Date Released : OCT 26, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

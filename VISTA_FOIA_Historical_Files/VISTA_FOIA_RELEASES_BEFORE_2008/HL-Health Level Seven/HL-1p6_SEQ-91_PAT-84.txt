@@ -1,0 +1,668 @@
+$TXT Created by HSU,RAYMOND J at FM22-PATCH.FO-OAKLAND.MED.VA.GOV  (KIDS) on Monday, 01/05/04 at 14:53
+=============================================================================
+Run Date: FEB 10, 2004                     Designation: HL*1.6*84
+Package : HL - HEALTH LEVEL SEVEN     HL      Priority: Mandatory
+Version : 1.6        SEQ #91                    Status: Released
+                  Compliance Date: MAR 12, 2004
+=============================================================================
+
+Associated patches: (v)HL*1.6*64   <<= must be installed BEFORE `HL*1.6*84'
+                    (v)HL*1.6*75   <<= must be installed BEFORE `HL*1.6*84'
+                    (v)HL*1.6*82   <<= must be installed BEFORE `HL*1.6*84'
+
+Subject: CACHE/VMS MULTILISTENER & REMOVE TASK FROM RUNNING LIST
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ This patch addresses four issues.  All sites must ensure the complete
+ resolution of issue #1 below.  Depending on your site's environment, your 
+ site may have to follow the instructions for resolving one or more 
+ issues.  To assist in planning your site's strategy, select your site's 
+ strategy from the section 'Site-Specific Strategies' below.
+  
+  
+ ISSUES:
+ =======
+ 1) Changing VistA HL7 M routines and file DD for resolving the following:
+  
+    A. Ensure that TaskMan properly removes HL7 terminated tasks from its
+       running task list; and 
+    B. Changes to VistA HL7 package to replace the Taskman-based
+       multi-listener logical links with the external TCP/IP Services in
+       OpenVMS.
+  
+    This issue applies to all sites;
+  
+ 2) Creating OpenVMS TCP/IP Services for Cache/VMS:
+  
+    This provides instructions for creating new HL7 TCP/IP services.
+    This issue applies to Cache/VMS Sites and Cache/NT sites migrating to
+    Cache/VMS;
+  
+ 3) Creating OpenVMS TCP/IP Services for DSM/VMS:
+  
+    This provides instructions for replacing existing HL7 TCP/IP services.
+    This applies to DSM/VMS Sites; and 
+  
+ 4) Migrating sites from DSM/VMS to Cache/VMS:
+  
+    This provides instructions for replacing existing HL7 TCP/IP services.
+  
+  
+ Site/Specific Strategies:
+ =========================
+ CACHE/NT:
+ ---------
+ Complete resolution for issue #1.
+  
+  
+ CACHE/NT migrating to CACHE/VMS:
+ --------------------------------
+ Complete resolution for issue #1 now; then complete resolution for 
+ issue #2 when the actual migration takes place.
+  
+  
+ CACHE/VMS:
+ ---------
+ Complete resolution for issues #1 and #2 now.
+  
+  
+ DSM/VMS:
+ --------
+ Complete resolution for issue #1.  Optionally complete resolution for 
+ issue #3.
+  
+  
+ DSM/VMS migrating to CACHE/VMS:
+ -------------------------------
+ Complete resolution for issue #1 now; then complete resolution #4 when
+ the actual migration takes place.
+  
+  
+ ISSUE DESCRIPTIONS:
+ ===================
+  
+ Issue #1 Description
+ ----------------------
+ Note: This applies to all sites.
+  
+ A. 
+ When a site shuts down their LLPs using menu OPTION: Start/Stop Links [HL 
+ START] or OPTION: Stop All Messaging Background Processes [HL STOP ALL],
+ the task stops properly, but TaskMan retains the task in its running task
+ list.
+  
+ This patch, along with patch XU*8*225 'ZISTCP and ZU Fixes' will ensure 
+ that TaskMan properly removes terminated tasks from its running task list.
+  
+ This patch may be installed before or after patch XU*8*225.  However, this
+ particular fix will only work after both patches have been installed.
+  
+ B.
+ VistA sites that are running Cache/NT and that are migrating to a
+ Cache/VMS environment will no longer use the HL7 options to start or stop 
+ their multi-listener logical links.  Instead, these sites will use the 
+ functionality provided by TCP/IP Services in OpenVMS.
+  
+ This patch will include the necessary code changes in VistA HL7 to 
+ disable the use of the HL7 options to start and stop multi-listener 
+ logical links in Cache/VMS environments.
+  
+ New cross-reference in field #400.03 in the HL LOGICAL LINK file (#870).
+ STANDARD DATA DICTIONARY #870 -- HL LOGICAL LINK FILE   
+ STORED IN ^HLCS(870,  (219 ENTRIES)   SITE: SF CIOFO, KERNEL PATCH 
+  
+ DATA          NAME                  GLOBAL        DATA
+ ELEMENT       TITLE                 LOCATION      TYPE
+ --------------------------------------------------------------------------
+ 870,400.03    TCP/IP SERVICE TYPE    400;3 SET
+               CROSS-REFERENCE:  870^E 
+                                 1)= S ^HLCS(870,"E",$E(X,1,30),DA)=""
+                                 2)= K ^HLCS(870,"E",$E(X,1,30),DA)
+  
+  
+ Issue #2 Description
+ ----------------------
+ Note: This applies only to sites that are Cache/VMS and sites that are 
+       migrating from Cache/NT to Cache/VMS .
+  
+ Warning: After installation of this patch, Cache/VMS sites will no longer 
+          have the capability of starting their multi-listeners through the
+          HL7 options; therefore, Cache/VMS sites must immediately create
+          and enable their multi-listeners as TCP/IP services, as described
+          in the 'Special Instructions for VMS Sites that Use TCP/IP
+          Services' section below.
+  
+ This patch includes the necessary code changes to the VistA HL7 package to
+ facilitate a multi-listener using an external service (TCP/IP service) for
+ Cache/VMS sites. Once this patch is installed, Cache'/VMS sites will only
+ be able to use an external service (TCP/IP service) to start up their HL7
+ multi-listener. VistA HL7 will no longer support the M-based HL7
+ multi-listener on Cache'/VMS systems for the reasons described below.
+  
+ New VMS sites running Cache' can experience a problem related to IP 
+ address. The problem occurs because the site's IP address is known by the
+ old NT cluster alias IP.  In the new operating system environment, this
+ address can float from node to node depending on which node is booted
+ first.  Also, the new operating system has additional flexibility in that
+ multiple task managers can be run concurrently.  When NT sites start their
+ "IP/port=5000" listener using menu OPTION: TCP Link Manager Start/Stop [HL
+ START/STOP LINK MANAGER], task may or my not run on the cluster alias
+ node. Further complicating the problem, the listener job can stop and be
+ automatically restarted by TaskMan, again floating to whatever TaskMan
+ node is least busy.
+  
+ The HL Logical Link file (#870) has a field called Startup Node (#400.06).
+ This field allows for the specification of a node of a TaskMan box:volume
+ pair.  But, Cache sites cannot currently run TaskMan in DCL context, and 
+ so cannot enable the box:volume pair transfer.  Even if DCL context was
+ enabled, the listener still points to a node that may or may not be the
+ current cluster alias IP.
+  
+ Issue #3 Description
+ -----------------------
+ Note: This applies only to sites that are running DSM/VMS
+  
+ Existing DSM sites that are currently using the HLSEVEN TCPIP service are 
+ using the IEN of file HL LOGICAL LINK (#870) as a parameter to the 
+ corresponding HLSEVEN.COM file.  This is a potential problem if the 
+ actual port of the TCPIP service is not the same as that of the 
+ entry in the HL LOGICAL LINK file.  
+  
+ There is now an option for these sites to use the actual tcp port number
+ as the parameter.  A new command file, HLS5000DSM.COM is included as part 
+ of this patch for those sites that would like to use this new option.
+  
+ Issue #4 Description
+ -----------------------
+ Note: This applies to DSM/VMS Sites Migrating to Cache/VMS:
+  
+ Existing DSM/VMS sites that are migrating to Cache/VMS should replace 
+ their existing HL7 TCP/IP services to new ones that match their new Cache 
+ environment.
+  
+  
+ NOISs:       
+ ======       
+ - MON-0600-50185  VAFHM LLP DURING SHUTDOWN NOT CLEANING RUNNING TASK
+  
+ - PUG-0102-50236  HL7 Port 5000 Listener Service
+     
+ - ROS-1202-52059  Problem with HL*1.6*84
+  
+ - PRE-1202-60189  VAPRE will not shutdown
+  
+ - MON-1102-52188  VAFHM NOT PINGABLE BY OTHER SITES BUT WE SHOW WORKING
+  
+ - COS-1102-41819  DNS Lookup failure
+  
+ - SPO-1102-51704  HL7 Listener is not responding as expected
+  
+ - REN-0902-60711  LISTENER NOT WORKING PROPERLY
+  
+ - MON-0102-51786  VAxxx LLP TASKMAN TASK STAYS RUNNING FOR LONG TIME
+  
+ Test sites: 
+ ==========  
+ San Francisco VAMC
+ Roseburg
+ Reno VAMC
+ Salt Lake City
+ VISN2 (Albany)
+ MPI
+  
+ Routine Information:
+ ====================
+ The following routines are included in this patch.  The second line of 
+ each of these routines now looks like:
+  
+  ;;1.6;HEALTH LEVEL SEVEN;<Patch List>;Oct 13,1995
+  
+              Pre-patch     Post-patch
+  Routine      Checksum       Checksum    Patch List
+  --------------------------------------------------------------------
+  HLCS2        10941124       11097974    **14,40,43,49,57,58,82,84**
+  HLCSLNCH     13101795       13824142    **6,19,43,49,57,75,84**
+  HLCSTCP       5175308        5383135    **19,43,49,57,58,64,84**
+  HLCSTCPA       NEW            602115    **84**
+  HLPAT84        NEW            374264    **84**
+  
+ Sites should use CHECK^XTSUMBLD to verify checksums.
+ Routine HLPAT84 will be automatically deleted after installation and will
+ not be able to verify the checksum after the install.
+  
+  
+ General Installation Instructions (All sites):
+ ==============================================
+ Note:  This addresses issue #1
+  
+ Warning: After installation of this patch, Cache/VMS sites will no longer 
+          have the capability of starting their multi-listeners through the
+          HL7 options; therefore, Cache/VMS sites must immediately create
+          and enable their multi-listeners as TCP/IP services, as described
+          in the 'Special Instructions for VMS Sites that Use TCP/IP
+          Services' section below.
+  
+    1.  Users are allowed to be on the system during the installation.
+  
+    2.  VMS SITES: Review your mapped routine set.  If any of the
+        routines listed in the ROUTINE SUMMARY section are mapped, they
+        should be removed from the mapped set at this time.
+  
+    3.  Shutdown all Logical Links, incoming and outgoing filers, and
+        the Link Manager using the Filer and Link Management options
+        listed below:
+  
+          Stop All Messaging Background Processes [HL STOP ALL]
+          TCP Link Manager Start/Stop [HL START/STOP LINK MANAGER]
+  
+        VMS SITES ONLY: Disable all HL7 TCP/IP services for this
+        installation.
+  
+    4.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This
+        option will load the KIDS package onto your system.
+  
+    5.  This patch is now loaded into a transport global on your
+        system. The next step is to use KIDS to install the Transport
+        global. To do this, use the 'Installation [XPD INSTALLATION 
+        MENU]' menu.  You should use each of the following 'Installation'
+        menu options in the order shown below:
+  
+          Verify Checksums in Transport Global
+          Print Transport Global
+          Compare Transport Global to Current System
+          Backup a Transport Global
+          Install Package(s)
+  
+        When using the 'Install Package(s)' menu option to install 
+        the patch build, you will be asked several questions.  The 
+        questions asked, and the answers you should supply, are 
+        shown below.
+  
+          INSTALL NAME: <HL*1.6*84>
+          Want KIDS to INHIBIT LOGONS during the install?  <NO>
+          Want to DISABLE Scheduled Options, Menu Options, and
+          Protocols?  <NO>
+  
+    6.  For VMS sites: Follow the steps for 'Special Instructions for VMS 
+        Sites that Use TCP/IP Services' below; then, continue with the rest
+        of the steps here.
+  
+    7.  Start up all Logical Links and incoming and outgoing filers using
+        the Filer and Link Management Option's 'Restart/Start All Links
+        and Filers [HL TASK RESTART]' menu option.
+  
+        (Note that links that do not have "autostart" enabled will need
+        to be restarted manually.)
+  
+        VMS Sites:  If you previously disabled an HL7 TCP/IP service for 
+        this installation, you may enable it now.
+  
+    8.  VMS Sites:  After the patch has been installed, rebuild your
+        map set, if necessary.
+  
+    9.  Start Link Manager using the 'TCP Link Manager Start/Stop [HL
+        START/STOP LINK MANAGER]' menu option. 
+  
+   10.  The above steps complete resolution of issue #1
+  
+ Special Instructions for VMS Sites that Use TCP/IP Services:
+ ============================================================ 
+ Note:  This addresses issues #2, 3 , and 4
+  
+       For Cache/VMS sites and sites migrating from Cache/NT to Cache/VMS:
+       -------------------------------------------------------------------
+       Note: this addresses issue #2
+  
+        To create a new TCPIP service, follow the instructions given in 
+        the document 'HL7 Multi-Listeners using TCP/IP Services for
+        OpenVMS: Supplement to Patch Description', which can be downloaded
+        from the website mentioned below in the 'Downloading Supplement
+        Files' section.  Specifically follow the instructions in section 5,
+        Creating a Multi-Threaded Listener for Cache on OpenVMS.
+  
+        As part of the creation of the TCP/IP service, you will need to 
+        place the DCL login command file HLS5000CACHE.COM in your VMS
+        environment. See the section 'Downloading Supplement Files' below.
+  
+        For DSM/VMS sites:
+        ------------------
+        Note: this addresses issue #3
+  
+        To replace the existing HLSEVEN TCPIP service, follow the
+        instructions given in the document 'HL7 Multi-Listeners using
+        TCP/IP Services for OpenVMS: Supplement to Patch Description',
+        which can be downloaded from the website mentioned below in the
+        'Downloading Supplement Files' section.  Specifically follow the
+        instructions in section 4, Replacing an Existing HLSEVEN Service
+        with the HLS5000DSM Service for DSM on OpenVMS.
+  
+        As part of the creation of the TCP/IP service, you will need to 
+        place the DCL login command file HLS5000DSM.COM in your VMS
+        environment. See the section 'Downloading Supplement Files' below.
+  
+        For sites migrating from DSM/VMS to Cache/VMS:
+        ----------------------------------------------
+        Note: this addresses issue #4
+                                                               
+  
+  
+        To replace any existing HL7 TCP/IP service, including the HLSEVEN 
+        service, follow the instructions given in the document 'HL7 
+        Multi-Listeners using TCP/IP Services for OpenVMS: Supplement to
+        Patch Description', which can be downloaded from the website
+        mentioned below in the 'Downloading Supplement Files' section.  
+        Specifically follow the instructions in section 6, Migration
+        Instructions for DSM/VMS to Cache/VMS.
+      
+        As part of the creation of the TCP/IP service, you will need to 
+        place the DCL login command file HLS5000CACHE.COM in your VMS
+        environment. See the section 'Downloading Supplement Files' below.
+  
+ Downloading Supplement Files:
+ =============================
+  
+ HL7 Multi-Listeners using TCP/IP Services for OpenVMS:Supplement to Patch
+ Description, patch HL*1.6*84:
+ ----------------------------------------------------------
+ This document can be downloaded from the VistA Document Library at 
+  
+ http://www.va.gov/vdl/
+  
+ The direct hyperlink to the document is
+  
+ http://www.va.gov/vdl/VistA_Lib/Infrastructure/Health_Level_7_(HL7)/hl71_6
+ p84.pdf
+  
+ DCL Login Command Files:
+ ========================
+ The DCL login command files, HLS5000CACHE.COM and HLS5000DSM.COM, are
+ included below, and they can be copied & pasted into a VMS file directly
+ from this message. Alternatively, the same DCL login command files
+ will be available for downloading from the [.SOFTWARE] directory at the
+ following ftp sites:
+  
+ CIO Field Office   FTP Address               Directory
+ ---------------------------------------------------------------------
+ Albany             ftp.fo-albany.med.va.gov  [anonymous software] 
+ Hines              ftp.fo-hines.med.va.gov   [anonymous software] 
+ Salt Lake City     ftp.fo-slc.med.va.gov     [anonymous software]
+  
+ Copy and Paste Method:
+ ----------------------
+ Your site may want to copy one or both of the DCL login command files as 
+ follows:
+  
+ 1. If you don't have an HLSEVEN user account, follow the instructions on 
+    how to create one as described in the TCP/IP Services for OpenVMS:
+    Supplement to Patch Description document. 
+  
+ 2. Set your VMS default directory to the HLSEVEN user home directory 
+  
+    $ SET DEFAULT USER$:[HLSEVEN] or equivalent of the HLSEVEN user.
+  
+ 2. Copy file from below into your MS Windows buffer by highlighting the
+    entire text of the HLS5000CACHE.COM file below.
+  
+ 3. Create the HLS5000CACHE.COM file in your home directory
+    
+    $ CREATE HLS5000CACHE.COM
+  
+ 4. Paste the contents of your windows buffer and use CTRL Z to close file.
+  
+ 5. For the HLS5000DSM.COM file, repeat steps 2 through 4.
+  
+  
+ Using FTP Method:
+ ----------------- 
+ Your site may want to get one or both of the DCL login command files as 
+ follows:
+  
+ $ ftp ftp.isc-albany.med.va.gov
+ 220 ISC1A1.ISC-ALBANY.MED.VA.GOV FTP Server (Version 5.3) Ready.
+ Connected to ISC-ALBANY.MED.VA.GOV. 
+ Name (ISC-ALBANY.MED.VA.GOV:garcia): ANONYMOUS
+ 331 Guest login OK, send ident as password.
+ Password: 
+ 230 Guest login OK, access restrictions apply.
+ FTP> SET DEF [.SOFTWARE]
+ 250-CWD command successful.
+ 250 New default directory is VA4$:[ANONYMOUS.SOFTWARE]
+ FTP> ascii
+ 200 TYPE set to ASCII.
+ FTP> get HLS5000CACHE.COM
+ 200 TYPE set to IMAGE.
+ 200 PORT command successful.
+ 150 Opening data connection for 
+ VA4$:[ANONYMOUS.SOFTWARE]HLS5000CACHE.COM; (10.6
+ .21.14,49225) (3294 bytes)
+ 226 Transfer complete.
+ local: SYS$SYSDEVICE:[HLSEVEN]HLS5000CACHE.COM;2  remote: HLS5000CACHE.COM
+ 3294 bytes received in 00:00:00.02 seconds (114.89 Kbytes/s)
+ FTP> get HLS5000DSM.COM
+ 200 PORT command successful.
+ 150 Opening data connection for VA4$:[ANONYMOUS.SOFTWARE]HLS5000DSM.COM; 
+ (10.6.2
+ 1.14,49226) (3364 bytes)
+ 226 Transfer complete.
+ local: SYS$SYSDEVICE:[HLSEVEN]HLS5000DSM.COM;2  remote: HLS5000DSM.COM
+ 3364 bytes received in 00:00:00.01 seconds (193.24 Kbytes/s)
+ FTP> EXIT
+ 221 Goodbye.
+ $
+  
+  
+  
+ HLS5000CACHE.COM
+ ----------------
+  
+ $! HLS5000CACHE.COM - for incoming tcp connect requests with port=5000 and
+ $! using "cache" command line to enter the M environment
+ $! File name HLS5000CACHE.COM is recommended to be changed to reflect the
+ $! change of the TCPIP port number.  For example, file name could be
+ $! changed to HLS6788CACHE.COM if port=6788.
+ $!
+ $!this file is copied and modified from HLSEVEN.COM
+ $! Revision History:
+ $! Patch HL*1.6*19 & HL*1.6*56--Documentation only
+ $! Patch HL*1.6*70--HL71_6P70.COM
+ $! Patch HL*1.6*84--HLS5000CACHE.COM and HLS5000DSM.COM
+ $!-------------------------------------------------------------
+ $ set noon        !Don't stop
+ $ set noverify    !change as needed   
+ $! set verify     !change as needed
+ $ purge/keep=5 sys$login:*.log !Purge log files only
+ $ set proc/priv=(share)  !Required for MBX device
+ $ x=f$trnlnm("sys$net")  !This is our MBX device
+ $! 
+ $ write sys$output "Opening "+x !This can be viewed in the log file
+ $! Check status of the BG device before going to either DSM or Cache'
+ $ cnt=0
+ $ CHECK:
+ $ stat=f$getdvi("''x'","STS")
+ $ if cnt .eq. 10
+ $ then
+ $ write sys$output "Could not open ''x' - exiting"
+ $ goto EXIT
+ $ else
+ $    if stat .ne. 16
+ $    then
+ $    cnt=cnt+1
+ $    write sys$output "''cnt'> ''x' not ready!"
+ $    wait 00:00:01 !Wait one second to assure connection
+ $    goto CHECK
+ $    else
+ $    write sys$output "''x' is now ready for use - entering DSM or Cache"
+ $!-------------------------------------------------------------
+ $! **START OF INFORMATION ONLY SECTION**
+ $! This section describes the basic commands for starting a generic 
+ $! listener.
+ $! For DSM, replace 5000 below with the actual port number, and change 
+ $! the file name to reflect the change of the port number as recommended 
+ $! above.
+ $! dsm/env=dsmmgr/uci=vah/vol=rou/data="''x'^5000" port^hlcstcpa
+ $! For Cache, replace 5000 below with the actual port number, and change 
+ $! the file name to reflect the change of the port number as recommended 
+ $! above.
+ $! port=port number
+ $! cache "-U" "VAH" "port^hlcstcpa"
+ $! **END OF INFORMATION ONLY SECTION**
+ $!-------------------------------------------------------------
+ $! **Be sure the command line(s) in the COMMAND LINE SECTION
+ $! **below is correct for your system and if access control is enabled,
+ $! **that this account has access to this uci,vol & routine.
+ $! **An entry in file 870 for this logical link with the specified
+ $! **unique port number and its device type as "MS"(Multi-threaded
+ $! **server) must be existed.
+ $!
+ $!-------------------------------------------------------------
+ $! COMMAND LINE SECTION:
+ $! =====================
+ $!-------------------------------------------------------------
+ $! for DSM, replace 5000 below with the actual port number, and change 
+ $! the file name to reflect the change of the port number as recommended 
+ $! above.
+ $! dsm/env=dsmmgr/uci=vah/vol=rou/data="''x'^5000" PORT^HLCSTCPA
+ $!-------------------------------------------------------------
+ $! For Cache, replace 5000 below with the actual port number, and change 
+ $! the file name to reflect the change of the port number as recommended 
+ $! above.
+ $ PORT=5000
+ $ cache "-U" "VAH" "PORT^HLCSTCPA"
+ $ endif
+ $ exit:
+ $ logout/brief
+  
+  
+ HLS5000DSM.COM
+ --------------
+  
+ $! HLS5000DSM.COM - for incoming tcp connect requests with port=5000 and
+ $! using "DSM" command line to enter the M environment
+ $! File name HLS5000DSM.COM is recommended to be changed to reflect the
+ $! change of the TCPIP port number.  For example, file name could be
+ $! changed to HLS6788DSM.COM if port=6788.
+ $!
+ $!this file is copied and modified from HLSEVEN.COM
+ $! Revision History:
+ $! Patch HL*1.6*19 & HL*1.6*56--Documentation only
+ $! Patch HL*1.6*70--HL71_6P70.COM
+ $! Patch HL*1.6*84--HLS5000CACHE.COM and HLS5000DSM.COM
+ $!-------------------------------------------------------------
+ $ set noon        !Don't stop
+ $ set noverify    !change as needed   
+ $! set verify     !change as needed
+ $ purge/keep=5 sys$login:*.log !Purge log files only
+ $ set proc/priv=(share)  !Required for MBX device
+ $ x=f$trnlnm("sys$net")  !This is our MBX device
+ $! 
+ $ write sys$output "Opening "+x !This can be viewed in the log file
+ $! Check status of the BG device before going to either DSM or Cache'
+ $ cnt=0
+ $ CHECK:
+ $ stat=f$getdvi("''x'","STS")
+ $ if cnt .eq. 10
+ $ then
+ $ write sys$output "Could not open ''x' - exiting"
+ $ goto EXIT
+ $ else
+ $    if stat .ne. 16
+ $    then
+ $    cnt=cnt+1
+ $    write sys$output "''cnt'> ''x' not ready!"
+ $    wait 00:00:01 !Wait one second to assure connection
+ $    goto CHECK
+ $    else
+ $    write sys$output "''x' is now ready for use - entering DSM or Cache"
+ $!-------------------------------------------------------------
+ $! **START OF INFORMATION ONLY SECTION**
+ $! This section describes the basic commands for starting a generic 
+ $! listener.  
+ $! For DSM, replace 5000 below with the actual port number, and 
+ $! change the file name to reflect the change of the port number 
+ $! as recommended above.
+ $! dsm/env=dsmmgr/uci=vah/vol=rou/data="''x'^5000" port^hlcstcpa
+ $! For Cache, replace 5000 below with the actual port number, and 
+ $! change the file name to reflect the change of the port number as 
+ $! recommended above.
+ $! port=port number
+ $! cache "-U" "VAH" "port^hlcstcpa"
+ $! **END OF INFORMATION ONLY SECTION**
+ $!-------------------------------------------------------------
+ $! **Be sure the command line(s) in the COMMAND LINE SECTION
+ $! **below is correct for your system and if access control is 
+ $! **enabled, that this account has access to this uci,vol & routine.
+ $! **An entry in file 870 for this logical link with the specified
+ $! **unique port number and its device type as "MS"(Multi-threaded
+ $! **server) must be existed.
+ $!
+ $! **Also, comment or uncomment the appropriate lines for your system.
+ $!
+ $!-------------------------------------------------------------
+ $! COMMAND LINE SECTION:
+ $! =====================
+ $!-------------------------------------------------------------
+ $! for DSM, replace 5000 below with the actual port number, and change 
+ $! the file name to reflect the change of the port number as recommended 
+ $! above.
+ $ dsm/env=dsmmgr/uci=vah/vol=rou/data="''x'^5000" PORT^HLCSTCPA
+ $!-------------------------------------------------------------
+ $! For Cache, replace 5000 below with the actual port number, and change 
+ $! the file name to reflect the change of the port number as recommended 
+ $! above.
+ $! PORT=5000
+ $! cache "-U" "VAH" "PORT^HLCSTCPA"
+ $ endif
+ $ exit:
+ $ logout/brief 
+
+Routine Information:
+====================
+
+Routine Name:
+  - HLCSTCP
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCS2
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSLNCH
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSTCPA
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLPAT84
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : BEUSCHEL,GARY                 Date Entered  : OCT 02, 2001
+Completed By: SINGH,GURBIR                  Date Completed: FEB 03, 2004
+Released By : GAYFIELD,LISA                 Date Released : FEB 10, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

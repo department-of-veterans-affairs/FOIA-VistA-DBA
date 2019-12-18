@@ -1,0 +1,503 @@
+
+=============================================================================
+Run Date: AUG 31, 2005                     Designation: IB*2*260
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #281                      Status: Released
+                  Compliance Date: OCT 01, 2005
+=============================================================================
+
+Associated patches: (v)IB*2*266    <<= must be installed BEFORE `IB*2*260'
+                    (v)IB*2*267    <<= must be installed BEFORE `IB*2*260'
+                    (v)IB*2*275    <<= must be installed BEFORE `IB*2*260'
+
+Subject: CLINICAL INDICATOR DATA CAPTURE
+
+Category: 
+  - Routine
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ This patch is being distributed to provide enhancements to the Integrated
+ Billing package to take advantage of some of the Clinical Indicator Data 
+ Capture (CIDC) enhancements in other packages.
+  
+  
+  
+ Functional Description
+ ----------------------
+  
+ Claims Tracking:
+ ----------------
+ The Claims Tracking module of Integrated Billing is being enhanced to 
+ evaluate outpatient billable events differently.  With the release of 
+ CIDC enhancements, data collection of exemptions (SC/AO/IR/EC/MST/HNC/CV) 
+ will be done at the purpose of visit (diagnosis) level.  Therefore, when 
+ the nightly Claims Tracking module evaluates outpatient events to 
+ determine if they are billable the following list of items will be 
+ reviewed in this order:
+  
+      1.  Purpose of Visit/Diagnosis (V POV # 9000010.07 file)
+      2.  Outpatient Event/Encounter (Visit #9000010 file)
+  
+ If any of the Purpose of Visit(s) for a CPT/Procedure are related to one
+ of the exemptions, then the CPT/Procedure is considered non-billable.  If
+ there are no billable CPT/Procedures for a Visit, then the Visit is
+ considered non-billable by Claims Tracking.
+  
+ When the Claims Tracking module is active for prescription billing, the 
+ software will now evaluate any exemptions that were specified for the 
+ prescription and flag the event as not billable if applicable.
+  
+ When the Claims Tracking module is active for prosthetic billing the 
+ software will now pick up prosthetic events at time of shipment instead 
+ of waiting for time of delivery.  The patient exemptions will also be 
+ evaluated.
+  
+  
+ Autobiller:
+ -----------
+ The Autobiller module of Integrated Billing is being enhanced to utilize 
+ CPT/Procedure to Purpose of Visit/Diagnosis association if the 
+ association exists.  When the Autobiller runs nightly and bills are 
+ created, if the association exists in the PCE package, the association 
+ will automatically be stored in the bill to assist in data entry of 
+ billing information.
+  
+ When a prescription bill is being created in the Autobiller the software 
+ will now populate the diagnosis code(s) associated with the prescription 
+ as specified by the clinician during the ordering process if they exist, 
+ if they do not, the default diagnosis that is currently being used will 
+ continue to be used.
+  
+  
+ Enter/Edit Billing Information [IB EDIT BILLING INFO]:
+ ------------------------------------------------------
+ This option is being enhanced to pick up diagnosis code(s) that were 
+ specified in the ordering process of a prosthetic device.  When a 
+ prosthetic device is selected from Screen 5 the diagnosis code will be 
+ automatically added to the bill if it does not already exist.  Also if a 
+ prosthetic device is flagged as being exempt for SC or one of the 
+ treatment factors a message will be displayed to the user indicating such
+ during the selection.
+  
+ When a bill has prescriptions added to claim, the IB software will now 
+ automatically associate the diagnosis codes specified at time of order if 
+ they exist, if they do not exist the default diagnosis code will continue 
+ to be associated with the claim.  Additionally if there is an exemption 
+ reason identified in the Outpatient Pharmacy package the list of
+ prescriptions to add to a bill will display the first exemption reason
+ found.
+  
+ When a bill has a procedure that is added to where anesthesia minutes 
+ would normally be entered, a look up of anesthesia start and stop times 
+ from the Surgery Package for the bill from/to date will be displayed for 
+ selection.  Assuming one or more of the start/stop times are selected the 
+ total minutes of the selection will be automatically populated in the 
+ minutes on the bill for review by the billing staff.
+  
+ Screen 5, Option 3 is enhanced to display the REASON NOT BILLABLE (CLAIMS 
+ TRACKING #356 file, field #.19) if an Outpatient Encounter is already
+ marked as not billable to assist with not selecting an outpatient visit.
+  
+ Screen 5, option 4 has been enhanced.  Billers have the option of 
+ selecting procedures for a bill.  If the bill is a professional bill and
+ the associated diagnosis is known; the diagnosis will be automatically
+ added to the bill if it is not already there and the diagnosis to CPT
+ associations will be populated.
+  
+  
+ Observation Start/Stop Times:
+ -----------------------------
+ Observation Institutional charges require the number of hours the patient 
+ was in observation for the charge to calculate.  However, in most cases 
+ the observation data is displayed in start and stop times rather than 
+ total hours.  Therefore, when entering Observation procedures that require
+ hours the following updates were made: 
+  
+ -  Displays any Observation Discharge that was discharged within 72 hours
+    of the procedure's date.
+ -  Asks for the observation start date/time and end/date time, using the
+    last observation discharge admit/discharge dates as the defaults.
+ -  Calculates the total hours and uses that as the Observation Procedure's
+    Hours default.
+  
+ An Observation Discharge is any inpatient stay discharged from one of the 
+ following Treating Specialties:
+  
+     18    NEUROLOGY OBSERVATION
+     23    SPINAL CORD INJURY OBSERVATION
+     24    MEDICAL OBSERVATION
+     36    BLIND REHAB OBSERVATION
+     41    REHAB MEDICINE OBSERVATION
+     65    SURGICAL OBSERVATION
+     94    PSYCHIATRIC OBSERVATION
+  
+  
+ CIDC Question Switch:
+ ---------------------
+ A new parameter switch has been included to control how CIDC functions in 
+ all the applications when appropriate.  A new menu option "Edit the CIDC
+ Insurance Switch [IB CIDC INSURANCE SWITCH]"  is included in this patch
+ attached to the "System Manager's Integrated Billing Menu [IB SITE MGR
+ MENU]." It is locked with the IB SUPERVISOR security key.  The choices for
+ the CIDC switch are:
+  
+         0 = Don't ask any patients
+         1 = Ask for patients only with active billable insurance
+         2 = Ask for all patients
+  
+ With installation of the patch this parameter is already set to 0; Don't 
+ Ask (CIDC related questions) for any patients.  Great care should be
+ exercised when changing this option as it will effect how other CIDC
+ related applications interact with both providers and back door users.  
+ This switch should remain in the "off" position, as delivered.  Sites in 
+ VISN 10 that are testing the Patient Financial Services (PFSS) 
+ application may change the setting to best meet testing requirements of 
+ PFSS.
+  
+  
+  
+ PFSS Status Switch:
+ -------------------
+ As a precursor to the PFSS project a new file PFSS SITE PARAMETERS (#372) 
+ is being added with a supported API of $$SWSTAT^IBBAPI to return the 
+ status of PFSS at the current site.  The post install will automatically 
+ set the PFSS switch to off and no menu option is currently being provided 
+ to change this status as the status needs to be set to off for all 
+ sites.  It is important that sites do not locally try to modify the 
+ switch status stored in the new file. A menu option will be provided in a 
+ subsequent patch when it is appropriate.
+  
+  
+  
+  
+ Technical Description
+ --------------------
+ IB20P260 is the post init routine that will set the CIDC switch to 0 
+ during the post install process.  The post init will also set the PFSS
+ switch to OFF and record the date/time in the new PFSS SITE PARAMETERS 
+ (#372) file. This routine will automatically be deleted after the install
+ is completed.
+  
+ IBBAPI is the main API entry point for applications and is being updated 
+ to include a new entry point ($$CIDC(DFN)) to allow other packages to 
+ determine if CIDC questions should be prompted for the patient.  This API 
+ evaluates the switch status and the patient's current active billable 
+ insurance status.  Also included is the new entry point for checking the 
+ current status of PFSS at the local site ($$SWSTAT).
+  
+ IBBASCI is the processing routine for the $$CIDC^IBBAPI(DFN) call.
+  
+ IBBASWCH is the processing routine for the $$SWSTAT^IBBAPI call.
+  
+ IBBDOC is updated to document the new CIDC and PFSS Status API.
+  
+ IBTRKR3 is being enhanced to evaluate the billing exemptions now being 
+ collected when the Claims Tracking module runs for pharmacy events and 
+ flag the appropriate reason not billable if applicable.
+  
+ IBTRKR41 is being enhanced to use the new billable evaluation when the 
+ claims tracking module runs evaluating outpatient events.
+  
+ IBTRKR5 is being enhanced to pick up prosthetic billable events at time 
+ if shipment and to use new CIDC data captured in the evaluation of those 
+ events.
+  
+ IBCCPT is being modified to provide the CPT to diagnosis association for 
+ when outpatient events are being looked up.
+  
+ IBCCPT1 is being added to provide the CPT to diagnosis association for 
+ IBCCPT and to evaluate if a certain CPT is billable or not.
+  
+ IBCD3 is being modified to utilize the enhanced procedure evaluation from 
+ IBCU81 and utilize the CPT to diagnosis relationship being provided by 
+ IBCCPT.
+  
+ IBCOPV and IBCOPV1 are being modified to display the reason not billable 
+ if one exists for an outpatient encounter in Screen 5, Option 3.
+  
+ IBCU81 is being modified to provide enhanced billable visit evaluation to 
+ determine if the visit is billable or not.
+  
+ IBCSC5B is being modified to display a billing exemption if specified and 
+ automatically populate the diagnosis code from the RECORD OF PROS 
+ APPLIANCE/REPAIR (#660) file.
+  
+ IBCSC5C is being modified to associate the diagnosis codes from the 
+ PRESCRIPTION (#52) file if they exist in place of the default diagnosis.  
+ If they do not exist then the default will continue to be utilized if it 
+ exists.  Additionally if an exemption reason exists in the PRESCRIPTION 
+ (#52) file, the first exemption reason found will be displayed.
+  
+ IBCU7 is being modified to call SROMIN^IBCU74 when a procedure could have 
+ anesthesia minutes associated.  Additionally it is being modified to call 
+ the new line tag OBSHOUR^IBCU74 to support the observation enhancements 
+ included.
+  
+ IBCU74 is being modified to include a new line tag of SROMIN.  This new 
+ line tag will utilize a new Surgery API to look up anesthesia start and 
+ stop times.  The time(s) selected will be populated in the minutes field 
+ of the bill.  Also a new line tak of OBSHOUR is being added for the 
+ observation enhancements included.
+  
+  
+ Test Sites
+ ----------
+ Loma Linda, CA
+ Cleveland, OH
+ Dayton, OH
+ Boston, MA
+ Memphis, TN
+ Charleston, SC
+  
+  
+  
+ COMPONENTS SENT WITH PATCH:
+ ---------------------------
+  
+ DATA DICTIONARY CHANGES:
+                                          UP    SEND  DATA                USER
+                                          DATE  SEC.  COMES  SITE   RSLV  OVER
+ FILE #      NAME                         DD    CODE  W/FILE DATA   PTS   RIDE
+ -------------------------------------------------------------------------------
+  
+ 372         PFSS SITE PARAMETERS         YES   YES   NO 
+  
+  
+  
+ NEW GLOBAL:
+ To assist in planning for system growth and placement of new global in 
+ your appropriate volume(s), the following information is provided. No 
+ global growth is expected with this release and installation as the file 
+ that occupies this global is static with only one entry. New estimates 
+ for the global growth will be available in future software releases. This 
+ version will require less than 1 MB of disc space.
+  
+      ^IBBAS - MOSTLY STATIC
+  
+  
+  
+  ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;2.0;INTEGRATED BILLING;**[patch list]**;21-MAR-94
+  
+                             CHECK^XTSUMBLD results
+    Routine name      Before Patch          After Patch         Patch List
+    ============      ============          ===========         ==========
+  * IB20P260                   N/A              1734948             260
+    IBBAPI                  369261               411020       256,228,267,260
+    IBBASCI                    N/A              1591335             260
+    IBBASWCH                   N/A              6718587             260
+    IBBDOC                  208954               211310           267,260
+    IBCCPT                22355407             24736464       55,62,52,91,106
+                                                            125,51,148,174,182
+                                                                245,266,260
+    IBCCPT1                    N/A              7373545             260
+    IBCD3                 14112591             14738667       14,55,52,91,106
+                                                            125,51,148,160,137
+                                                                210,245,260
+    IBCOPV                 8466890              8503634      27,91,106,124,174
+                                                                    260
+    IBCOPV1               10446196             11114803           106,260
+    IBCSC5B                9513585             11043503          4,52,260
+    IBCSC5C               13593377             16183490      27,52,130,51,160
+                                                                    260
+    IBCU7                 21559976             22022081      62,52,106,125,51
+                                                            137,210,245,228,260
+    IBCU74                 8920693             16856816           228,260
+    IBCU81                 6185277              6543848      55,91,106,124,160
+                                                                  174,260
+    IBTRKR3               12752380             10362215      13,43,121,160,247
+                                                                  275,260
+    IBTRKR41               6135683             10233989      43,55,91,132,174
+                                                                  247,260
+    IBTRKR5                8601810             10733437           13,260
+  
+   * Routine is automatically deleted at the completion of the install.
+  
+        Total number of routines - 18
+  
+ OPTION:
+    IB CIDC INSURANCE SWITCH                       SEND TO SITE
+    IB SITE MGR MENU                               USE AS LINK FOR MENU ITEMS
+  
+ PARAMETER DEFINITION:
+    IB CIDC INSURANCE CHECK                        SEND TO SITE
+  
+  
+ NOTE: Some sites have DSS QuadraMed Interface software, if your site does 
+ not you may see "Reference to routine '^VEJDIBE1' That isn't in this UCI,"
+ when running XINDEX.  This error message will not cause any problems
+ as the software checks for the existence of the routine prior to trying to
+ call it.
+  
+  
+ SOFTWARE AND DOCUMENTATION RETRIEVAL
+ ====================================
+ The software for this patch is being distributed in host file 
+ PX_CLINICAL_INDICATOR_DATA_CAPTURE.KID.  The host file will contain six 
+ KIDS builds.
+ The builds contained in the CIDC multi-package distribution are:
+  
+       Package                         Patch
+       -------                          ---------
+       PCE PATIENT CARE ENCOUNTER      PX*1.0*124
+       INTEGRATED BILLING              IB*2.0*260
+       RADIOLOGY/NUCLEAR MEDICINE      RA*5.0*41
+       SURGERY                         SR*3.0*119
+       PROSTHETICS                     RMPR*3.0*78
+       OUTPATIENT PHARMACY             PSO*7.0*143
+   
+   
+ Please refer to the 'Software and Documentation Retrieval' section of the 
+ PX*1.0*124 patch description for instructions on how to acquire the patch 
+ software and install instructions.
+  
+  
+      The documentation for this patch can be found in the following
+      [ANONYMOUS.SOFTWARE] directories:
+    
+                                    Preferred Address
+                                    -------------------------
+       First available FTP server   download.vista.med.va.gov
+    
+       Specific Field Office        FTP Address
+       ---------------------        ------------------------
+       Albany                       ftp.fo-albany.med.va.gov
+       Hines                        ftp.fo-hines.med.va.gov
+       Salt Lake City               ftp.fo-slc.med.va.gov
+    
+    
+    File Name               Description              Format    FTP Protocol
+    --------------          -------------            -------   ------------
+    IB_20_P260_UM_CP.PDF    User Manual Change Pages  PDF      Binary
+    IB_P260_RN.PDF          Release Notes             PDF      Binary
+
+Routine Information:
+====================
+
+Routine Name:
+  - IBTRKR5
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBTRKR41
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCCPT
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCCPT1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCD3
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCU81
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBTRKR3
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCSC5B
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCSC5C
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCU7
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCU74
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCOPV
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCOPV1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBBAPI
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBBASCI
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBBDOC
+
+
+Routine Checksum:
+
+Routine Name:
+  - IB20P260
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBBASWCH
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : ZEIGLER,EDWARD L              Date Entered  : DEC 23, 2003
+Completed By: LYNCH,MARY F.                 Date Completed: AUG 26, 2005
+Released By : BOTTINI,STEVE                 Date Released : AUG 31, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

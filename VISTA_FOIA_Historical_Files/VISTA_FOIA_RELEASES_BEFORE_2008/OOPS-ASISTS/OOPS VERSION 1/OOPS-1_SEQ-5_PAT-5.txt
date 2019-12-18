@@ -1,0 +1,682 @@
+$TXT Created by HOWELL,LYNN at MNTVBB.ISC-ALBANY.VA.GOV  (KIDS) on MONDAY, 11/29/99 at 11:10
+=============================================================================
+Run Date: JAN 19, 2000                     Designation: OOPS*1*5
+Package : OOPS - ASISTS                        Priority: Mandatory
+Version : 1         SEQ #5                     Status: Released
+=============================================================================
+
+Associated patches: (v)OOPS*1*1    <<= must be installed BEFORE `OOPS*1*5'
+                    (v)OOPS*1*2    <<= must be installed BEFORE `OOPS*1*5'
+                    (v)OOPS*1*3    <<= must be installed BEFORE `OOPS*1*5'
+                    (v)XM*DBA*130  <<= must be installed BEFORE `OOPS*1*5'
+
+Subject: ASISTS NATIONAL DATABASE ENHANCEMENT
+
+Category: 
+  - Data Dictionary
+  - Enhancement (Mandatory)
+  - Other
+  - Routine
+
+Description: 
+============
+
+    
+    *** The Y2K Moratorium Blanket Waiver approved November 17, 1999
+        authorizes this patch for installation at sites BEFORE December 15,
+        1999 or after January 15, 2000.
+  
+ NOTE:  Patch XM*999*130 must be installed prior to installation of this
+        patch. It sets up the queue necessary for transmitting ASISTS 2162
+        data to the AAC.
+  
+  
+ Patch OOPS*1*5 includes enhancements to ASISTS so that statistical 
+ reporting can be performed on incidents occurring nationwide.  
+ Functionality is incorporated in this patch to extract pertinent 2162 data 
+ from facilities and to transmit that data to the ASISTS National Database 
+ (NDB) on a monthly basis.  Reports will be periodically generated from the NDB
+ to identify systematic trends and support prevention programs concerning 
+ front line health care worker exposure to bloodborne pathogens.
+  
+ This patch also has modifications necessary to support the production of 
+ the desired reports.  An updated "ASISTS User Manual" describing the new
+ functionality introduced in this patch is available on the VHA Technical
+ Software Services Web Page:
+    http://vista2.med.va.gov/warboard/anotebk.asp?proj=242&Type=Active. 
+ This documentation will be located in the Project Documents/Manuals
+ section on the page.
+    
+ The ASISTS NDB in Austin requires the SSN Field (#5), the DATE OF BIRTH 
+ Field (#6), and the SEX Field (#7) to be completed in order to accept the 
+ ASISTS record.  The new options check to make sure these fields have been 
+ collected and if not, a FORUM mail message is sent to the OOPS NDB MESSAGES 
+ Mail Group with the Case Number and the missing field(s) identified.  The 
+ record will be transmitted to the Austin Automation Center (AAC) in the 
+ first transmission after the fields have been completed.  The Create 
+ Accident/Illness Report [OOPS CREATE CASE] has been modified so these 
+ fields can be answered for all cases except those that have a PERSONNEL 
+ STATUS (#2) of 'EMPLOYEE' or 'NON-PAID EMPLOYEE'.  For these cases, the fields 
+ should be populated from the appropriate files, either the PAID EMPLOYEE 
+ File (#450) or the NEW PERSON File (#200).  If the fields are not correct 
+ in the PAID File (#450), contact the appropriate individual in the Personnel 
+ Office to request an update to the record.
+  
+ A pre-installation routine will be run that converts existing station 
+ numbers from a free text field to the pointer value from the Institution 
+ File (#4) for that Station Number.  Also, during the installation, the 
+ installer is prompted to enter a Station Number, using the Institution file 
+ for the lookup, that will be 'stuffed' into any case that has a 'blank' 
+ Station Number.  This will assure that each case has a Station Number since 
+ it has been made a required field.  Installation cannot be completed 
+ without entering a Station Number when requested.
+  
+ A post-installation routine will run to update the ASISTS Critical
+ Tracking Issues Listing (#2261.2) and the ASISTS Device/Equipment 
+ Listing (#2261.7).  It also updates the cross reference index for the 
+ STATION NUMBER Field (#13).
+   
+ Changes to this patch are described below:
+  
+ 1. EXTRACT AND TRANSMIT DATA TO THE ASISTS NATIONAL DATABASE
+   
+    New options have been created that will extract and 
+    transmit identified data elements from the ASISTS package 
+    to the AAC (Austin Automation Center) on a regularly 
+    scheduled basis as well as on an as needed manual basis.  
+    In order for a case to be transmitted, it must have a  
+    'Closed' status. If a case is 'Closed', then reopened, 
+    the data will be re-transmitted to the AAC the next time 
+    a transmission occurs.  
+    
+    A mail group, OOPS NDB MESSAGES, will be created during 
+    the installation.  Users for this mail group should be 
+    individuals who need to be notified of error messages or 
+    return messages from the AAC. The group must have at 
+    least one member added.
+   
+    The new option, Scheduled Transmit National Database (2162) 
+    Data [OOPS SCHEDULED XMIT 2162 DATA], should be scheduled 
+    to run on the 5th working day of each month, eight (8) 
+    hours after the close of normal business hours.  The IRM or
+    designated group or the facility should schedule this.  Error 
+    checking is preformed to assure that the system is set up 
+    as required for mailing the mail messages and that the 
+    mail messages are created correctly.  If an error occurs, 
+    a message will be sent to the new mail group, OOPS NDB 
+    MESSAGES advising of the problem.  After the system setup 
+    has been corrected, the data will need to be manually
+    transmitted to the AAC.  
+   
+    The new menu option, Manual Transmit of National Database 
+    (2162) Data [OOPS MANUAL 2162 DATA XMIT] should be used 
+    for manual transmission.  A new security key, OOPS XMIT 
+    2162 DATA, is required to access this menu option from 
+    the OOPS SAFETY MENU and should be assigned to an 
+    appropriate user.  This option will allow for queuing, if 
+    desired.
+    
+    The following menu options have been added:
+   
+    Manual Transmit of National Database (2162) Data
+                                                  [OOPS MANUAL 2162 DATA XMIT]
+    Scheduled Transmit National Database (2162) Data   
+                                                  [OOPS SCHEDULED XMIT 2162 DATA]
+   
+   
+ 2. ADD AND MODIFY FIELDS IN THE ASISTS ACCIDENT REPORTING FILE (#2260)
+   
+    The following fields have been added:
+   
+      MEDICAL EMERGENCY (#29.5)
+        This field describes how the incident relates to a
+        medical emergency.  The data type for this field is 
+        set of codes.  It is used on Supervisor portion of the 
+        2162.  The set of codes are:
+             1 - Normal Operations (No Emergency)
+             2 - Medical Emergency
+             3 - Clean-up Following Medical Emergency
+   
+      EQUIPEMENT/DEVICE FAILURE OCCURRED (# 42.5)
+        This is a Yes/No field which indicates that the 
+        incident resulted from an Equipment/Device Failure.  It 
+        is used on the Supervisor portion of 2162.
+   
+      PERSON ENTERING STUB RECORD (#56)
+        This field will record the individual entering the stub 
+        record.  It is collected on the 2162 and is printed on the 
+        Accident report.
+   
+      DATE TRANSMITTED TO NDB (#57)
+        This field will be used to determine the most recent 
+        date 2162 data was transmitted to the NDB.  It is used
+        for NDB data extraction.
+   
+    The following fields have been modified:
+   
+      STATION NUMBER (#13)
+        Changed the data type from free text to pointer.
+        The STATION NUMBER has been made a required field
+        and a new cross reference was added.
+   
+      DATE/TIME OF OCCURRENCE (#4)
+        Modified input transform to prevent future date entry.
+    
+    The following fields' set of codes have been enhanced by 
+    adding the following codes:
+   
+      PERSONNEL STATUS (#2)
+        The following new codes have been added:
+             '7'   Medical Student 
+             '8'   Nursing Student 
+             '9'   Other Student
+            '10'   Resident Physician
+  
+      AREA EXPOSED TO BODILY FLUID (#39)
+        The following new code has been added:
+              'B'  Both Eyes and Mouth
+   
+   
+ 3. UPDATE TABLE FILES
+   
+    The following Table Files have been updated by adding new 
+    entries and modifying several descriptions:
+     
+      ASISTS Critical Tracking Issues (2261.2)
+      ASISTS Purpose for Using Sharps (2261.5)
+      ASISTS Occurrence of Sharps Injury (2261.6)
+      ASISTS Device/Equipment (2261.7)
+   
+      These files should not be altered at the station.
+      
+            
+ 4. ADD NEW FIELDS TO THE 2162
+   
+    The MEDICAL EMERGENCY Field (#29.5) and the 
+    EQUIP/DEVICE FAILURE OCCURRED Field (#42.5) have been 
+    added to the 2162 form.
+   
+    The following menu options have been modified:
+   
+    Edit Report of Incident        [OOPS SAFETY SUP ENTRY]
+    Edit Report of Incident        [OOPS SUP ENTRY]
+     
+  
+ 5. COLLECT THE INDIVIDUAL ENTERING THE STUB RECORD
+   
+    Added a new field PERSON ENTERING STUB RECORD (#56) and 
+    modified the system to automatically capture the 
+    individual who is entering the Stub record.  This field 
+    is a pointer to the NEW PERSON File (#200).  The data 
+    will be displayed on the Print Report of Accident.
+   
+    The following menu options have been modified:
+     
+    Create Accident/Illness Record [OOPS CREATE CASE]
+    Print Report of Accident       [OOPS SAFETY PRINT]
+    Print Report of Accident       [OOPS SUP PRINT]
+    Print Report of Accident       [OOPS UNION PRINT] 
+  
+    E3R:11891
+   
+   
+ 6. ADD ERROR CHECKING ON DATE FIELDS IN THE CA1/CA2
+  
+    Error checking has been implemented on certain date fields to prevent  
+    invalid date sequences.  Modifications were made to prevent the DATE/TIME 
+    OF OCCURRENCE (#4) from being a future date.  In addition, error checking 
+    has been introduced to prevent the entry of dates prior to the DATE/TIME OF 
+    OCCURRENCE (#4) on the following fields in the ASISTS ACCIDENT REPORTING 
+    FILE (#2260):
+  
+        DATE/TIME INJURY OCCURRED (#109)
+        DATE OF THIS NOTICE (#110)
+        DATE/TIME WORK STOPPED (#142)
+        DATE PAY STOPPED (#143)
+        DATE 45 DAY PERIOD BEGAN (#144)
+        DATE/TIME RETURNED TO WORK (#145)
+        FIRST DATE MEDICAL CARE (#161)
+        DATE NOTICE RECEIVED (#175)
+        DATE FIRST AWARE OF ILLNESS (#214)
+        DATE FIRST REALIZED CAUSE (#215)
+        FIRST DATE MEDICAL CARE (#250)
+        DATE NOTICE RECEIVED (#252)
+        DATE/TIME WORK STOPPED (#253)
+        DATE/TIME PAY STOPPED (#254)
+        DATE/TIME RETURNED TO WORK (#256)
+   
+      The following menu options have been modified:
+   
+      Edit CA-1 & CA-2                 [OOPS EMP ENTRY] 
+      Edit Report of Incident          [OOPS SAFETY SUP ENTRY]
+      Edit Employee CA-1 & CA-2        [OOPS SAFETY EMP ENTRY]
+      Edit Report of Incident          [OOPS SUP ENTRY]
+      Edit Employee CA-1 & CA-2        [OOPS SUP EMP ENTRY]
+   
+      NOIS:   ISP-0899-N2364
+       E3R:   11827
+  
+  
+ 7. MOVE SAFETY OFFICER COMMENT PROMPT AND MAKE CORRECTIVE ACTION A REQUIRED 
+    FIELD
+  
+    The SAFETY OFFICER COMMENT Field (#55) has been moved to display below the 
+    CORRECTIVE ACTION Field (#47) in the Complete Report of Accident (2162) 
+    [OOPS SAFETY ENTER 2162] Option.  This will allow Safety Officers to view 
+    that field (if completed by the Supervisor) prior to entering their 
+    Comments. Corresponding ordering was made on the Print Report of Accident.
+  
+    Additionally, the CORRECTIVE ACTION Field (#47) has been made required.  
+    This was achieved programmatically, not by modifying the data dictionary.
+  
+      The following menu options have been modified:
+   
+      Complete Report of Accident (2162)    [OOPS SAFETY ENTER 2162]
+      Edit Report of Incident               [OOPS SAFETY SUP ENTRY]
+      Print Report of Accident              [OOPS SAFETY PRINT]
+      Edit Report of Incident               [OOPS SUP ENTRY]
+      Print Report of Accident              [OOPS SUP PRINT]
+      Print Report of Accident              [OOPS UNION PRINT]
+     
+      E3R:   12154
+  
+   
+ 8. ADD NEW PERSONNEL STATUS Categories
+   
+    New categories have been added to the PERSONNEL STATUS 
+    Field (#2).  This will enable creating a CA1 or CA2 when 
+    required for individuals other than PAID employees.  See 
+    item 2 above for the new codes. A CA1/2 will be able to
+    be generated for any of these new categories and the 
+    individual does not have to be in the New Person File (#200).
+   
+    The following menu options have been modified:
+  
+      Create Accident/Illness Record [OOPS CREATE CASE]  
+      Edit CA-1 & CA-2               [OOPS EMP ENTRY]
+      Edit Employee CA-1 & CA-2      [OOPS SAFETY EMP ENTRY]
+      Print Report of Accident       [OOPS SAFETY PRINT]    
+      Print Accident Report Status   [OOPS SAFETY PRINT STATUS]
+      Edit Report of Incident        [OOPS SAFETY SUP ENTRY]
+      Edit Employee CA-1 & CA-2      [OOPS SUP EMP ENTRY]     
+      Edit Report of Incident        [OOPS SUP ENTRY]
+      Print Report of Accident       [OOPS SUP PRINT]
+      Print Accident Report Status   [OOPS SUP PRINT STATUS]
+      Log of Federal Occupational 
+           Injuries and Illnesses    [OOPS LOG]
+      Log of Needlestick Incidents   [OOPS NEEDLESTICK LOG]
+      Print Accident Report Status   [OOPS UNION PRINT STATUS]
+   
+   
+ 9. CHANGE STATION NUMBER FIELD (#13) DATA TYPE
+   
+    The data type for the STATION NUMBER Field (#13) has been
+    changed from free text to a pointer which points to the 
+    Institution File (#4).  If an employee has a case opened, 
+    the system will 'pull' that employee's station number 
+    from the PAID EMPLOYEE File (#450) and will use that 
+    value as the default.  Other individuals having a case 
+    'Opened' will not have a default value.  This field has 
+    been made required and a prompt has been added in the 
+    Create Accident/Illness Record option [OOPS CREATE CASE] 
+    for entering the data.
+   
+    In conjunction with the changes above three reports have 
+    been modified to sort by STATION NUMBER.  They are the:
+  
+            Log of Federal Occupational Injuries and Illnesses
+            Log of Needlestick Incidents
+            Print Accident Report Status
+   
+    After existing prompts, the system will prompt:
+       
+    Run report for 'ALL' Stations? Yes//
+    
+    If the default 'Yes' response is accepted, the report 
+    will include all valid cases (based on other report 
+    parameter inputs), with a new header for each new station 
+    being printed.  
+       
+    If a 'No' response is entered, the user will then be
+    prompted:
+   
+    Select STATION NUMBER:
+    
+    The system will do a lookup on the Institution File (#4),
+    allowing the user to select one Station.  The report will 
+    only include valid cases for the selected Station.
+   
+    The selection process explained above is used for all 
+    three reports.
+   
+    The following menu options have been modified:
+   
+      Create Accident/Illness Record [OOPS CREATE CASE]
+      Log of Federal Occupational 
+           Injuries and Illnesses    [OOPS LOG]
+      Log of Needlestick Incidents   [OOPS NEEDLESTICK LOG]
+      Print Report of Accident       [OOPS SAFETY PRINT]
+      Print Accident Report Status   [OOPS SAFETY PRINT STATUS]
+      Print Report of Accident       [OOPS SUP PRINT]
+      Print Accident Report Status   [OOPS SUP PRINT STATUS]
+      Print Report of Accident       [OOPS UNION PRINT]
+      Print Accident Report Status   [OOPS UNION PRINT STATUS]
+  
+    E3R:   12158
+  
+   
+ 10. ADD ERROR CHECKING TO REDUCE DUPLICATE STUB RECORDS
+  
+     The Create Accident/Illness Record [OOPS CREATE CASE] has been modified to 
+     help identify and reduce the number of duplicate case entries.  When a case 
+     is entered, if there is another 'Open' case with the same SSN as the one  
+     entered, the system will display information about potential duplicate 
+     cases and prompt the user if the case being entered is a duplicate of one 
+     of the displayed cases.  If it is (a 'Y'es response is entered), the system 
+     will automatically delete the current case and exit the option.  
+  
+     -----------------------------------------------------------------------
+     An example follows:
+    
+     Select ASISTS Supervisor Menu Option:  
+                                Create Accident/Illness Record
+    
+     Case number 2000-00032 will be assigned to this incident.
+  
+     PERSONNEL STATUS.........: 7  Medical Student
+     PERSON INVOLVED..........: COULDBE,ANYONE
+     SSN......................: 111111111
+  
+     The following case(s) are Open with SSN: ***********
+  
+     CASE NUMBER: 2000-00021                  PERSON INVOLVED: DOE, JOHN
+     PERSONNEL STATUS: Medical Student        TYPE OF INCIDENT: Struck 
+     DATE/TIME OF OCCURRENCE: OCT 28, 1999@13:15
+     CASE STATUS: Open                        INJURY/ILLNESS: Injury
+     SUPERVISOR: HOWELL,LYNN                  SECONDARY SUPERVISOR: BAUMANN,SCOTT
+     PERSON ENTERING STUB RECORD: HOWELL,LYNN
+  
+     Is the Current entry a DUPLICATE Case: ? YES
+  
+     This Case will be DELETED!
+  
+     Case 2000-00033 deleted
+   
+     ----- End of Example -------------------------------------------------
+  
+     NOIS:  MWV-0899-21503
+      E3R:  11797
+   
+  
+ This patch addresses the following NOIS messages:
+ ------------------------------------------------- 
+ ISP-0899-N2364
+ MWV-0899-21503
+   
+ This patch addresses the following E3Rs:
+ ----------------------------------------
+ 11797, 11891, 11827, 12154, 12158 
+  
+    
+          ================ INSTALLATION INSTRUCTIONS =================
+  
+ If installed during the normal work day it is recommended that the
+ following menu options (File #19) and all of their descendants be
+ disabled to prevent possible conflicts while running the KIDS Install.  
+ Other VISTA users will not be affected.
+     
+  [OOPS EMP HEALTH MENU]       ASISTS Employee Health Menu
+  [OOPS EMP MENU]              ASISTS Employee Menu 
+  [OOPS SAFETY MENU]           ASISTS Safety Officers Menu
+  [OOPS SUP MENU]              ASISTS Supervisor Menu
+  [OOPS UNION MENU]            ASISTS Union Menu
+   
+  Install Time - estimate 10 minutes
+  
+   1.   LOAD TRANSPORT GLOBAL 
+        ---------------------
+        Choose the PackMan message containing this patch and invoke the 
+        INSTALL/CHECK MESSAGE PackMan option.  
+              
+   2.   DISABLE ROUTINE MAPPING   (DSM for Open VMS sites only) 
+        -----------------------
+        Disable routine mapping on all systems for the routines listed in 
+        step 3 below.  
+        NOTE:  If the routines included in this patch are not currently in 
+        your mapped routine set, please skip this step.
+   
+   3.   COMPONENTS SENT WITH PATCH 
+        ------------------------
+        The following is a list of the routines included in this patch.  
+        The second line of each of these routines now looks like: 
+   
+            ;;1.0;ASISTS;**[patch list]**; Jun 01, 1998 
+   
+                       CHECK^XTSUMBLD results
+  
+      Routine        Before Patch     After Patch     Patch List 
+      -------        ------------     -----------     ----------
+      OOPSCC              6810030        9192180      3,5
+      OOPSDIS             3554893        3554915      3,5
+      OOPSEMP1           15521919       18812313      1,3,5
+      OOPSLOG            12307824        9363185      1,2,5
+      OOPSNDB              New           9603220      5
+      OOPSNDBX             New           4573142      5
+      OOPSPRT            14740326       14480032      2,3,5
+      OOPSPRT1            4604598        6503072      2,3,5
+      OOPSSOF1            1764570        1764570      1,5
+      OOPSSOF2             657653         916470      1,5
+      OOPSSUP1            8369259        8406143      1,3,5
+      OOPSSUP2           17517650       18813240      3,5
+      OOPSSUP3            3785203        4641922      3,5
+      OOPSUTL4            3259467        4011019      3,5
+      OOPSVAL1            4471808        4653372      1,3,5
+      OOPSXP5              New           2358045      5
+  
+                      Total number of routines:  16
+  
+      The following MAIL GROUP has been added:   OOPS NDB MESSAGES
+  
+      The following SECURITY KEY has been added: OOPS XMIT 2162 DATA
+   
+  
+   4.   START UP KIDS 
+        -------------
+        Start up the Kernel Installation and Distribution System Menu 
+        [XPD MAIN]: 
+    
+             Edits and Distribution ...  
+             Utilities ...  
+             Installation ...  
+    
+   Select Kernel Installation & Distribution System Option: INStallation 
+                                                            ---
+             Load a Distribution 
+             Print Transport Global 
+             Compare Transport Global to Current System 
+             Verify Checksums in Transport Global 
+             Install Package(s) 
+             Restart Install of Package(s) 
+             Unload a Distribution 
+             Backup a Transport Global 
+    
+   Select Installation Option: 
+    
+   5.   Select Installation Option: 
+        --------------------------
+        NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+               NAME, enter OOPS*1.0*5):
+   
+        a.  Backup a Transport Global - This option will create a backup
+            message of any routines exported with this patch  Options, and 
+            Protocols? YES//' answer YES.
+        b.  Compare Transport Global to Current System - This option will
+            allow you to view all changes that will be made when this patch
+            is installed.  It compares all components of this patch
+            (routines, DD's, templates, etc.).
+        c.  Verify Checksums in Transport Global - This option will allow
+            you to ensure the integrity of the routines that are in the
+            transport global.
+       
+   6.   Select Installation Option: Install Package(s) 
+                                    ----------------
+        **This is the step to start the installation of this KIDS patch: 
+     
+        a.  Choose the Install Package(s) option to start the patch install.
+        b.  A pre-install routine will ask for the STATION NUMBER to be used
+            to populate Cases without a STATION NUMBER.  
+   
+   ------------------------------------------------------------------------
+            An example session is shown:
+  
+            Install Questions for OOPS*1.0*5
+  
+            Enter Station Number to Populate blank Station # Fields: ?
+                Answer with INSTITUTION NAME, or STATION NUMBER, or OFFICAL
+                VA NAME, or CURRENT LOCATION
+            Do you want the entire 281-Entry INSTITUTION List? N  (No)
+  
+            Enter Station Number to use in populating blank Station # fields.
+  
+            Enter Station Number to Populate blank Station # Fields: 301
+                                                          301  BOSTON-RO  MA 
+  
+            Then after the Incoming Files have been 'pulled' in the system
+            will prompt the user to enter the coordinator for the new
+            mail group.  An example session is shown below:
+  
+            Incoming Mail Groups:
+  
+            Enter the Coordinator for Mail Group 'OOPS NDB MESSAGES': HOWELL,LYNN
+  
+            ------------------  End Example  -------------------
+  
+        c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+            Options, and Protocols? YES//' answer YES.
+        d.  When prompted 'Enter options you wish to mark as 'Out Of
+            Order':'  Enter the following options:
+   
+            [OOPS EMP HEALTH MENU]       ASISTS Employee Health Menu 
+            [OOPS EMP MENU]              ASISTS Employee Menu  
+            [OOPS SAFETY MENU]           ASISTS Safety Officers Menu
+            [OOPS SUP MENU]              ASISTS Supervisor Menu
+            [OOPS UNION MENU]            ASISTS Union Menu
+   
+        e. When prompted 'Enter protocols you wish to mark as 'Out Of Order':
+           press <return>.
+
+Routine Information:
+====================
+
+Routine Name:
+  - OOPSCC
+
+
+Routine Checksum:
+
+Routine Name:
+  - OOPSDIS
+
+
+Routine Checksum:
+
+Routine Name:
+  - OOPSEMP1
+
+
+Routine Checksum:
+
+Routine Name:
+  - OOPSLOG
+
+
+Routine Checksum:
+
+Routine Name:
+  - OOPSNDB
+
+
+Routine Checksum:
+
+Routine Name:
+  - OOPSNDBX
+
+
+Routine Checksum:
+
+Routine Name:
+  - OOPSPRT
+
+
+Routine Checksum:
+
+Routine Name:
+  - OOPSPRT1
+
+
+Routine Checksum:
+
+Routine Name:
+  - OOPSSOF1
+
+
+Routine Checksum:
+
+Routine Name:
+  - OOPSSOF2
+
+
+Routine Checksum:
+
+Routine Name:
+  - OOPSSUP1
+
+
+Routine Checksum:
+
+Routine Name:
+  - OOPSSUP2
+
+
+Routine Checksum:
+
+Routine Name:
+  - OOPSSUP3
+
+
+Routine Checksum:
+
+Routine Name:
+  - OOPSUTL4
+
+
+Routine Checksum:
+
+Routine Name:
+  - OOPSVAL1
+
+
+Routine Checksum:
+
+Routine Name:
+  - OOPSXP5
+
+ This is a pre/post installation routine which can be deleted after 
+ installation.  It converts the STATION NUMBER from free text to a pointer 
+ value, populates the new STATION NUMBER cross reference, and updates table 
+ files.
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : HOWELL,LYNN                    Date Entered : SEP 02, 1999
+Completed By: WALLACE,TRACIE                Date Completed: JAN 19, 2000
+Released By : MORRIS,DELISA                 Date Released : JAN 19, 2000
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

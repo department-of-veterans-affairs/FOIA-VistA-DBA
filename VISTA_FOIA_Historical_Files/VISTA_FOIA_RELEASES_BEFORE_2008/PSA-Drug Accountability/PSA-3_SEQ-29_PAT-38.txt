@@ -1,0 +1,222 @@
+$TXT Created by FRANCE,VENESSA at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 03/23/04 at 16:31
+=============================================================================
+Run Date: JUL 06, 2004                     Designation: PSA*3*38
+Package : PSA - DRUG ACCOUNTABILITY           Priority: Mandatory
+Version : 3        SEQ #29                      Status: Released
+                  Compliance Date: AUG 06, 2004
+=============================================================================
+
+Associated patches: (v)PSA*3*15    <<= must be installed BEFORE `PSA*3*38'
+
+Subject: Problem with Option 'Controlled Connection by NDC Match'
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch will modify the Report Potential NDC Matches option to use the same
+ criteria as the Controlled Connection by NDC Match.
+ 
+ This patch does not conflict with CoreFLS.
+  
+ ASSOCIATED NOIS:
+ ================
+ CLL-0803-40614	Problem with Option 'Controlled Connection by NDC Match'
+  
+ ASSOCIATED E3R:
+ ===============
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Chillicothe, OH - DSM
+ El Paso, Texas - NT
+ Fayetteville, AR - Cache/VMS
+ Providence, RI - DSM
+  
+ NOIS OVERVIEW:
+ ==============
+ 1.CLL-0803-40614	Problem with Option 'Controlled Connection by NDC Match'
+  
+ Problem:
+ --------
+ The Report Potential NDC Matches should loop through the same data as option
+ Controlled Connection by NDC Match.
+  
+ Resolution:
+ ----------- 
+ Need to modify the Report Potential NDC Match report to use the same data
+ gathering criteria as the Controlled Connection by NDC Match.
+ The entries that are already linked to the item master file and display the
+ message "Item already linked..." will no longer be displayed. 
+   
+ Technical:
+ ==========
+ CLL-0803-40614	Problem with Option 'Controlled Connection by NDC Match'
+  
+ Problem:
+ --------
+ 
+ Menu option Report Potential NDC Matches uses additional criteria to eliminate
+ data from showing up on the report. 
+  
+ Before:
+ -------
+ PSALND  ;BIR/LTL-Report Potential NDC Matches ;7/23/97
+         ;;3.0; DRUG ACCOUNTABILITY/INVENTORY INTERFACE;**15**; 10/24/97
+ ...
+ START   ;compiles and prints data for report
+         N DIRUT,PSAPG,POP,PSA,PSAB,PSAD,PSADD,PSAIT,PSALN,PSARPDT,X,Y S(PSA,PSA
+ D,PSAPG,PSAOUT)=0,Y=DT D DD^%DT S PSARPDT=Y D HEADER
+ LOOP    F  S PSAD=$O(^PSDRUG(PSAD)) G:'PSAD QUIT D:$Y+7>IOSL HEADER G:PSAOUT
+ QUIT W:'(PSAD#100) "." I $P($G(^PSDRUG(PSAD,2)),U,4)]"" SPSAD(1)=$P($G(^(2)),U,
+ 4) D:'$D(^PSDRUG(PSAD,"I"))  G:$G(PSAOUT) QUIT
+         .S PSAIT=$$ITEM^PSAUTL(PSAD(1))
+         .Q:'PSAIT!($O(^PSDRUG(PSAD,441,"B",+PSAIT,0)))
+         .I $D(^PRC(441,PSAIT,0)) D:$O(^PSDRUG("AB",PSAIT,0))
+ USED    ..S PSADD=$O(^PSDRUG("AB",PSAIT,"")) W !,"**"_$P(^PSDRUG(PSADD,0),U)_"
+ is already linked to Item #"_PSAIT_"**"
+         .W !!,"NDC:  "_$P(^PSDRUG(PSAD,2),U,4),?40,"Item Number: "_$P(^PRC(441,
+ PSAIT,0),U),!
+         .W !,$E($P(^PSDRUG(PSAD,0),U),1,39)
+         .I $L($G(^PRC(441,+PSAIT,1,1,0)))<40,'$O(^PRC(441,+PSAIT,1,1)) W ?40,$G(
+ ^PRC(441,+PSAIT,1,1,0)) Q
+         .K ^UTILITY($J,"W") S DIWL=40,DIWR=80,DIWF="W"
+         .F  S PSA=$O(^PRC(441,+PSAIT,1,+PSA)) Q:'PSA  S X=$G(^PRC(441,+PSAIT,1,+
+ PSA,0)) D:$Y+3>IOSL HEADER Q:$G(PSAOUT)  D ^DIWP D ^DIWW
+         .S PSA=0
+ ...
+ 
+  
+ After:
+ ------
+ PSALND  ;BIR/LTL-Report Potential NDC Matches ;7/23/97
+         ;;3.0; DRUG ACCOUNTABILITY/INVENTORY INTERFACE;**15,38**; 10/24/97
+ ...
+ START   ;compiles and prints data for report
+         ;PSA*3.0*38;IOFO BAY PINES;VGF - set var PSAIA if item in item master
+ file is inactive, no longer checking Drug File IFCAP cross reference
+         N DIRUT,PSAPG,POP,PSA,PSAB,PSAD,PSADD,PSAIT,PSALN,PSARPDT,X,Y,PSAIA S
+ (PSA,PSAD,PSAPG,PSAOUT)=0,Y=DT D DD^%DT S PSARPDT=Y D HEADER
+ LOOP    F  S PSAD=$O(^PSDRUG(PSAD)) G:'PSAD QUIT D:$Y+7>IOSL HEADER G:PSAOUT
+ QUIT W:'(PSAD#100) "." I $P($G(^PSDRUG(PSAD,2)),U,4)]"" SPSAD(1)=$P($G(^(2)),U,
+ 4) D:'$D(^PSDRUG(PSAD,"I"))  G:$G(PSAOUT) QUIT
+         .S PSAIT=$$ITEM^PSAUTL(PSAD(1))
+         .Q:'PSAIT
+         .S PSAIA=0
+         .I $D(^PRC(441,PSAIT,3)),$P(^(3),U)=1 S PSAIA=1
+         .Q:PSAIA
+         .I $D(^PRC(441,PSAIT,0)) Q:$O(^PSDRUG("AB",PSAIT,0))
+         .W !!,"NDC:  "_$P(^PSDRUG(PSAD,2),U,4),?40,"Item Number: "_$P(^PRC(441,
+ PSAIT,0),U),!
+         .W !,$E($P(^PSDRUG(PSAD,0),U),1,39)
+         .I $L($G(^PRC(441,+PSAIT,1,1,0)))<40,'$O(^PRC(441,+PSAIT,1,1)) W ?40,
+ $G(^PRC(441,+PSAIT,1,1,0)) Q
+         .K ^UTILITY($J,"W") S DIWL=40,DIWR=80,DIWF="W"
+         .F  S PSA=$O(^PRC(441,+PSAIT,1,+PSA)) Q:'PSA  S X=$G(^PRC(441,+PSAIT,1,+
+ PSA,0)) D:$Y+3>IOSL HEADER Q:$G(PSAOUT)  D ^DIWP D ^DIWW
+         .S PSA=0...
+  
+ DATA DICTIONARY CHANGES:
+ ========================
+ N/A
+  
+ TEMPLATES:
+ ==========
+ N/A
+  
+ ROUTINE SUMMARY:
+ ================
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+ 
+      <tab>;;3.0; DRUG ACCOUNTABILITY/INVENTORY INTERFACE;**[patch list]**;
+ 10/24/97
+ 
+                             CHECK^XTSUMBLD results
+ Routine name      Before Patch          After Patch         Patch List
+ ============      ============          ===========         ==========
+ PSALND                 7678923              7273104            15,38
+ 
+ Total number of routines - 1
+  
+ DISTRIBUTION:
+ =============
+ This patch is exported using KIDS.
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ This patch can be installed during business hours, but because the option 
+ will be out of service during the installation process it is suggested 
+ that it be queued for non-peak hours.
+ Installation will take less than 5 minutes.
+  
+ 1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu. [Note:
+    TEXT PRINT/DISPLAY option in the PackMan menu will display the
+    patch text only].
+      
+ 2. (DSM for Open VMS sites only) Disable routine mapping on all systems
+    for the routines listed in the Routine Summary.  
+  
+       NOTE:  If the routines included in this patch are not currently in 
+       your mapped routine set, please skip this step.
+ 
+ 3. From the Kernel Installation and Distribution System (KIDS)
+    menu, select the Installation menu.
+  
+ 4. From this menu, you may elect to use the following options:
+    (when prompted for INSTALL NAME, enter PSA*3.0*38)
+     
+    a.  Backup a Transport Global - this option will create a backup
+        message of any routines exported with the patch.  It will
+        NOT backup any other changes such as DDs or templates.
+    b.  Compare Transport Global to Current System  - this option
+        will allow you to view all changes that will be made when
+        the patch is installed.  It compares all components of the
+        patch (routines, DDs, templates, etc.).
+    c.  Verify Checksums in Transport Global - this option will
+        allow you to ensure the integrity of the routines that are
+        in the transport global.
+    d.  Print Transport Global - this option will allow you to view
+        the components of the KIDS build.
+     
+ 5. Use the Install Package(s) option and select the package
+    PSA*3.0*38
+     
+ 6. When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+    YES//', respond NO
+     
+ 7. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+    Protocols? YES//', respond YES.  When prompted to select the options
+    you would like to place out of order, enter the following:
+ 
+ 		PSA NDC REPORT       Report Potential NDC Matches
+  
+ 8. If routines were unmapped as part of step 2 (DSM for Open VMS sites
+    only), they should be returned to the mapped set once the installation 
+    has run to completion.
+  
+
+Routine Information:
+====================
+
+Routine Name:
+  - PSALND
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : FRANCE,VENESSA                Date Entered  : DEC 24, 2003
+Completed By: ANDERSON,MAXINE               Date Completed: JUL 01, 2004
+Released By : LYTTLE,KIM M                  Date Released : JUL 06, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

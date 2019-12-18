@@ -1,0 +1,352 @@
+
+=============================================================================
+Run Date: FEB 05, 2008                     Designation: DG*5.3*771
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #683                    Status: Released
+                  Compliance Date: MAR 07, 2008
+=============================================================================
+
+
+Subject: DISABLE Z07 CONSISTENCY CHECKS (CC 75-76, 78, 306-307, & 409)
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ I. OVERVIEW
+  
+ **** NOTE   Any existing instances of the Z07 inconsistencies 
+ that appear on the Inconsistent Data Elements Report [DG 
+ CONSISTENCY PRINT] before installation of this patch will remain 
+ on the report after installation even if the data is corrected.  
+ Sites need to run the option Purge Inconsistent Data Elements 
+ [DG CONSISTENCY PURGE] before the installation in order to clear 
+ the Inconsistent Date file (#38.5).  Entries in the Inconsistent 
+ Data file will be rebuilt the next time the nightly IVM Background 
+ [IVM BACKGROUND JOB] job is run.  Running the Purge Inconsistent Data 
+ Elements option is a one-time solution for these circumstances.
+  
+ This patch will be distributed as a hostfile with IVM*2.0*127.  Please
+ refer to the IVM patch description for details of the IVM portion of this 
+ distribution.
+  
+ Several consistency checks that can prevent an HL7 Z07 (full data 
+ transmission) message from being sent to the Health Eligibility Center 
+ (HEC) are turned off by this patch concerning the Z07 generation.  the 
+ following registration consistency checks are affected:
+  
+ -       (#75)- CONFLICT TO DT BEFORE FROM DT - This inconsistency results 
+ when a conflict to date is prior to a conflict from date.  The following 
+ date fields can trigger this inconsistency: SOMALIA FROM DATE, SOMALIA TO 
+ DATE, YUGOSLAVIA FROM DATE, YUGOSLAVIA TO DATE, PANAMA FROM DATE, PANAMA 
+ TO DATE, GRENADA FROM DATE, GRENADA TO DATE, LEBANON FROM DATE, LEBANON 
+ TO DATE, VIETNAM FROM DATE, VIETNAM TO DATE, GULF WAR FROM DATE, GULF WAR 
+ TO DATE.
+  
+ -       (#76) - INACCURATE CONFLICT DATE - This inconsistency results 
+ when a conflict from and/or to date is not within the designated date 
+ ranges for the specific conflict.  The following date fields can trigger 
+ this inconsistency: SOMALIA FROM DATE, SOMALIA TO DATE, YUGOSLAVIA FROM 
+ DATE, YUGOSLAVIA TO DATE, PANAMA FROM DATE, PANAMA TO DATE, GRENADA FROM 
+ DATE, GRENADA TO DATE, LEBANON FROM DATE, LEBANON TO DATE, VIETNAM FROM 
+ DATE, VIETNAM TO DATE, GULF WAR FROM DATE, GULF WAR TO DATE.
+  
+ -       (#78) - INACCURATE COMBAT DT/LOC - This inconsistency results 
+ when the COMBAT from and/or to date is not within the designated date 
+ range for the specified COMBAT LOCATION.
+  
+ ** NOTE - With regard to the registration consistency checks, these items 
+ will continue to be generated via the Load/Edit Patient Data [DG LOAD 
+ PATIENT DATA] and/or the Register a Patient [DG REGISTER PATIENT] 
+ options; however, they will no longer prevent data updates from being 
+ transmitted to the HEC.
+  
+ Patch DG*5.3*653, Enrollment VistA Changes Release 1, implemented 
+ additional consistency checks that can prevent a HL7 Z07 transmission 
+ from being sent to the HEC.  The following inconsistencies are not 
+ viewable via the registration module and can only been seen via the 
+ Inconsistent Data Elements Report [DG CONSISTENCY PRINT] or the Z07 Build 
+ Consistency Check [DG Z07 CONSISTENCY CHECK] options.  This patch turns 
+ off the following Z07 consistency checks:
+  
+ -       (#306) - VALID SSN/PSEUDO SSN REQUIRED - This inconsistency will 
+ be result via the nightly IVM BACKGROUND JOB when the patient has an 
+ event to be transmitted to the HEC and they do not have a valid SSN or 
+ Pseudo SSN.
+  
+ -       (#307) - PSEUDO SSN REASON REQUIRED - This inconsistency will 
+ result via the nightly IVM BACKGROUND JOB when the patient has an event 
+ to be transmitted to the HEC and the following is true:  a Pseudo SSN 
+ number is entered for a person (patient), spouse, or other dependents and 
+ a Pseudo SSN reason is not present for the effected individual. 
+  
+ -       (#409) - AGREE TO PAY DEDUCT INVALID - A Means Test is present, 
+ the status of the test is either MT Co-Pay Required, GMT Co-Pay Required 
+ or Pending Adjudication and Agree to pay Deductible is null.
+  
+ Because many records fail to pass these consistency checks, patient data
+ (both financial and administrative) is prevented from ever reaching the 
+ HEC database.  This patch contains a post-install routine that updates 
+ the USE FOR Z07 CHECK (#6) field in the INCONSISTENT DATA ELEMENTS file 
+ (#38.6) and allows the Z07 messages to be sent even if conditions causing 
+ failure of CC 75, 76, 78, 306, 307 or 409 are present.
+  
+ VHA Directive 2007-019, VETERANS HEALTH INFORMATION AND TECHNOLOGY 
+ ARCHITECTURE (VISTA) CONSISTENCY CHECKS, will be amended to exclude those 
+ 6 consistency checks from preventing the transmission of the Z07 message 
+ to HEC.
+  
+  
+ II. ASSOCIATED REMEDY TICKETS & NEW SERVICE REQUESTS
+  
+ 1. Associated Remedy Tickets:
+    -----------------------------------------
+    NONE
+  
+    
+ 2. Associated New Service Request(s):
+    -----------------------------------------
+    NONE 
+  
+  
+  PARTICIPATING TEST SITES:
+  =========================
+  Altoona
+  West Los Angeles
+  Madison 
+  
+ III. FUNCTIONAL OVERVIEW
+  
+ Problem:
+  
+ If a patient has Military Service information with inaccurate conflict 
+ dates or combat locations, or has an invalid SSN / Pseudo SSN,  or is
+ missing a Pseudo SSN reason, the patient's data will not be transmitted to
+ HEC due to the following consistency checks:
+  
+ -        75 - CONFLICT TO DT BEFORE FROM DT
+ -        76 - INACCURATE CONFLICT DATE
+ -        78 - INACCURATE COMBAT DT/LOC
+ -       306 - VALID SSN/PSEUDO SSN REQUIRED
+ -       307 - PSEUDO SSN REASON REQUIRED
+ -       409 - AGREE TO PAY DEDUCT INVALID
+   
+  Solution:
+  
+  A post-install routine will update the records for consistency check 75,
+  76, 78, 306, 307 and 409 in the INCONSISTENT DATA ELEMENTS file #38.6.  
+  Field #6, USE FOR Z07 CHECK, is changed from 'YES' to 'NO'.
+  
+               
+ IV. TECHNICAL COMPONENTS
+  
+  
+  ROUTINE SUMMARY:
+  ================
+ The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+    OLD CHECKSUM METHOD RESULTS:
+  
+      <tab>;;5.3;Registration;**[patch list]**;Aug 13, 1993
+  
+                             CHECK^XTSUMBLD results
+  
+  Routine name     Before Patch   After Patch      Patch List
+  ============     ============   ===========      ==========
+  DG53771P             N/A          490615            771
+    
+ SOFTWARE DOCUMENTATION AND RETRIEVAL:
+ =====================================
+  
+  The user documentation is available on the Office of Information 
+  Field Office (OIFO) ANONYMOUS.SOFTWARE directories listed below:
+   
+  OIFO       FTP address                      Directory
+   
+  Albany    ftp.fo-albany.med.va.gov        anonymous.software
+  Hines     ftp.fo-hines.med.va.gov         anonymous.software
+  Salt Lake City  
+            ftp.fo-slc.med.va.gov           anonymous.software
+ VistA download site     
+            download.vista.med.va.gov       anonymous.software
+   
+  The user documentation files listed below may be obtained via FTP.
+  
+  The preferred method is to download the files from:
+       download.vista.med.va.gov
+   
+ This method transmits the files from the first available FTP server.  
+ Sites may also select to retrieve documentation from a specific server as 
+ shown in the above table.
+   
+ Filename                 Description                FTP Mode
+ --------                 -----------                --------
+ DG_5_3_P771_SADT_UM.pd   PIMS V.5.3 ADT Supervisor  ADT Menu User Manual
+                                                     Binary
+  
+  
+ SOFTWARE RETRIEVAL:
+ ===================
+  
+  The software for this patch is being distributed in a host
+  file.  The host file will contain two KIDS build.
+   
+                  Host File Name:  DG_53_P771.KID
+  
+                          Builds:  DG*5.3*771
+                                   IVM*2.0*127
+   
+  Sites may retrieve the software directly using FTP from the 
+  ANONYMOUS.SOFTWARE directory at the following OI Field Offices:
+                  Albany:         ftp.fo-albany.med.va.gov
+                  Hines:          ftp.fo-hines.med.va.gov
+                  Salt Lake City: ftp.fo-slc.med.va.gov
+  
+   
+  First available download:  download.vista.med.va.gov
+  **Note:  Use ASCII mode when transferring the .KID file
+   
+   
+  INSTALLATION INSTRUCTIONS:
+  ==========================
+  Sites need to run the following options prior to the installation of this
+  patch.  Any Z07 inconsistencies inactivated in this patch that are on the
+  Inconsistent Data Elements Report [DG CONSISTENCY PRINT] at the time of
+  the installation will remain on the list.  In order to remove them this
+  report should be run and the inconsistencies fixed.  If this course is
+  not practical, sites must run the Purge Inconsistent Data Elements [DG
+  CONSISTENCY PURGE] option to remove these inconsistencies from the
+  report. The inconsistencies that are not being inactivated will re- 
+  appear on the report once the IVM Background Job is run [IVM BACKGROUND
+  JOB].  Failure to clean up this report before the installation of this
+  patch could result in these inconsistencies, which are no longer
+  valid, remaining indefinitely on the report.
+  
+  If installed during the normal workday, it is recommended the 
+  following menu options be disabled to prevent possible
+  conflicts while running the KIDS Install. Other VISTA users
+  will not be affected.
+      
+     [DG REGISTER PATIENT]                Register a Patient
+     [DG LOAD PATIENT DATA]               Load/Edit Patient Data
+   
+  Install Time - less than 5 minutes
+   
+    1.    Retrieve the KIDS host file per software retrieval directions 
+          above.
+   
+    2.    Place the host file into a directory that is accessible from the 
+          account into which you are installing.
+   
+    3.   START UP KIDS 
+         -------------
+         Start up the Kernel Installation and Distribution System Menu 
+         [XPD MAIN]:
+   
+   
+            Edits and Distribution ...
+            Utilities ...
+            Installation ...
+   
+  Select Kernel Installation & Distribution System Option: INStallation
+   
+   
+     1      Load a Distribution
+     2      Verify Checksums in Transport Global
+     3      Print Transport Global
+     4      Compare Transport Global to Current System
+     5      Backup a Transport Global
+     6      Install Package(s)
+            Restart Install of Package(s)
+            Unload a Distribution
+   
+      Select Installation Option: 1  Load a Distribution
+  
+      Enter a Host File: DG_53_P771.KID
+   
+           
+    4.   START UP KIDS 
+         -------------
+         Start up the Kernel Installation and Distribution System Menu 
+         [XPD MAIN]: 
+  
+              Edits and Distribution ...  
+              Utilities ...
+              Installation ...  
+     
+    Select Kernel Installation & Distribution System Option: INStallation 
+                                                             ---
+              Load a Distribution 
+              Print Transport Global 
+              Compare Transport Global to Current System 
+              Verify Checksums in Transport Global 
+              Install Package(s) 
+              Restart Install of Package(s) 
+              Unload a Distribution 
+              Backup a Transport Global 
+     
+    Select Installation Option:
+    5.   Select Installation Option: 
+         --------------------------
+         NOTE: The following are OPTIONAL (When prompted for the INSTALL
+                NAME, enter DG*5.3*771):
+        
+         a.  Backup a Transport Global - This option will create a backup
+             message of any routines exported with this patch. It will
+             not backup any other changes such as DD's or templates.
+         b.  Compare Transport Global to Current System - This option 
+             will allow you to view all changes that will be made when 
+             this patch is installed.  It compares all components of this 
+             patch (routines, DD's, templates, etc.).
+         c.  Verify Checksums in Transport Global - This option will
+             allow you to ensure the integrity of the routines that are 
+             in the transport global.
+       
+    6.   Select Installation Option: Install Package(s) 
+                                     ----------------
+         **This is the step to start the installation of this KIDS patch: 
+     
+        a.  Choose the Install Package(s) option to start the patch
+            install.  Enter DG*5.3*771 when prompted for a build name.
+        b.  When prompted  Want KIDS to Rebuild Menu Trees Upon Completion
+            of the Install?  YES//  answer NO
+        c.  When prompted 'Want KIDS to INHIBIT LOGONs during the
+            install?  YES//' answer NO (unless otherwise indicated).
+        d.  When prompted 'Want to DISABLE Scheduled Options, Menu
+            Options, and Protocols? YES//' answer YES (unless otherwise 
+            indicated).
+        e.  When prompted 'Enter options you wish to mark as 'Out Of
+            Order':' Enter the following options:
+    
+            [DG REGISTER PATIENT]        Register a Patient
+            [DG LOAD PATIENT DATA]       Load/Edit Patient Data
+   
+        g. If prompted 'Delay Install (Minutes):  (0-60):  0//'
+           answer "0" (unless otherwise indicated).
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.3;Registration;**[Patch List]**;Aug 13, 1993;Build 18
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: DG53771P
+    Before:       n/a   After:   B739719  **771**
+
+=============================================================================
+User Information:
+Entered By  : DESMOND,LINDA                 Date Entered  : OCT 30, 2007
+Completed By: CURTIN,EDNA                   Date Completed: FEB 05, 2008
+Released By : GROOMS,ANTHONY E              Date Released : FEB 05, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

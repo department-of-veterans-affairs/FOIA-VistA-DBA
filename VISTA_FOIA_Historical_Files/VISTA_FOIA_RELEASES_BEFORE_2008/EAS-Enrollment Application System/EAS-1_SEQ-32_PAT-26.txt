@@ -1,0 +1,351 @@
+$TXT Created by HUA,PATRICK at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 06/18/03 at 15:15
+=============================================================================
+Run Date: AUG 28, 2003                     Designation: EAS*1*26
+Package : EAS - ENROLLMENT APPLICATION SYSTEM Priority: Mandatory
+Version : 1        SEQ #32                      Status: Released
+                  Compliance Date: SEP 28, 2003
+=============================================================================
+
+Associated patches: (v)EAS*1*10    <<= must be installed BEFORE `EAS*1*26'
+
+Subject: CLEANUP FOR PATIENT MERGE
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch addresses three separate issues.  For issue #1, option "EAS MT 
+ 30 DAY LETTER PRINT" was introduced with patch EAS*1.0*3 (MEANS TEST 
+ BLOCKING AND REPORTING).  This option contains a reference to routine 
+ ANAMMT6, which does not exist.  Because this option is queued to run from 
+ a background job, the process can be started by the option without any 
+ problem, despite the incorrect reference.  However, the incorrect 
+ reference should be removed.  This patch, EAS*1.0*26, will update the 
+ ROUTINE field (#25) in the OPTION file (#19) to remove the reference.
+  
+ For issue #2, when merging two entries using the "EAS MERGE DUP MT/COPAY 
+ DEP" option, both entries remain despite the message indicating that the 
+ merge was successful.  The merge option left an erroneous entry in the 
+ "C" cross-reference of the PATIENT RELATION file (#408.12) after a 
+ merge.  Re-indexing of the cross-reference pointers are not being done 
+ after a call to DIK, which deletes the data.  This leave the 
+ cross-reference pointing to a deleted, non-existing record.  The delete 
+ section of the merge process will be updated to re-index the 
+ cross-reference pointers after each deletion.
+  
+ For issue #3, there are instances where veterans are listed multiple 
+ times for the same Means Test.  When the user tries to delete these 
+ duplicates in an effort to complete the Means Test, the software does not 
+ allow them to do so.  This is due to the cross-reference in PATIENT 
+ RELATION (#408.12) file being corrupted.  Even though an entry for the 
+ patient already exists in the PATIENT RELATION file, another new entry 
+ for the patient is added into the PATIENT RELATION file because the 
+ corresponding cross-reference does not exist.  A post-install has been 
+ included with this patch, EAS*1.0*26, to cleanup the duplicate patient 
+ entries by rebuilding the appropriate, missing cross-reference for any 
+ entry that contains the anomaly.
+  
+ When the cleanup process is complete, a MailMan message will be sent with 
+ recap/record count.
+  
+ Sample Messages:
+  
+ Message #1 (West LA):
+  
+    Subj: EAS*1.0*26: PATIENT MERGE CLEANUP - SUMMARY REPORT  [#41262311]
+    08/12/03@14:03  14 lines
+    From: DG PACKAGE  In 'IN' basket.   Page 1  *New*
+    -----------------------------------------------------------------------
+    CLEANUP PROCESSING
+    ------------------
+  
+    The cleanup has run to completion.  Here are the results:
+  
+      Start Date/Time: Aug 12, 2003 1:53:51 pm
+        End Date/Time: Aug 12, 2003 2:03:02 pm
+  
+    Current Counts:
+           Total Patient Records Processed: 389127
+                 Total Anomalies Corrected: 12
+                      Percentage Completed: 100%
+  
+    Enter message action (in IN basket): Ignore//
+  
+  
+ Message #2 (Manchester):
+  
+    Subj: EAS*1.0*26: PATIENT MERGE CLEANUP - SUMMARY REPORT  [#541331]
+    08/15/03@13:18  14 lines
+    From: DG PACKAGE  In 'IN' basket.   Page 1
+    -----------------------------------------------------------------------
+    CLEANUP PROCESSING
+    ------------------
+  
+    The cleanup has run to completion.  Here are the results:
+  
+      Start Date/Time: Aug 15, 2003 1:18:18 pm
+        End Date/Time: Aug 15, 2003 1:18:55 pm
+  
+    Current Counts: 
+           Total Patient Records Processed: 64112
+                 Total Anomalies Corrected: 0
+                      Percentage Completed: 100%
+  
+    Enter message action (in IN basket): Ignore//
+  
+  
+ Message #3 (Baltimore):
+  
+    Subj: EAS*1.0*26: PATIENT MERGE CLEANUP - SUMMARY REPORT  [#28473761]
+    08/14/03@15:05  14 lines
+    From: DG PACKAGE  5 of 5 responses read.  In 'INSTALLED PATCHES'
+    basket.
+    Page 1
+    -----------------------------------------------------------------------
+    CLEANUP PROCESSING
+    ------------------
+  
+    The cleanup has run to completion.  Here are the results:
+  
+      Start Date/Time: Aug 14, 2003 3:00:09 pm
+        End Date/Time: Aug 14, 2003 3:05:06 pm
+  
+    Current Counts: 
+           Total Patient Records Processed: 228735
+                 Total Anomalies Corrected: 3
+                      Percentage Completed: 100%
+  
+    Enter message action (in IN basket): Ignore//
+  
+  
+ The cleanup process is capable of being stopped and restarted.  If 
+ stopping the process is necessary, it can be aborted using the TASKMAN 
+ USER menu.  You'll need to enter the TaskMan ID for the process and 
+ choose STOP TASK from the options list.  To restart the process, get into 
+ the programmer prompt and type D START^EAS126.  The process will resume 
+ where it stopped.
+  
+  
+ This patch addresses the following E3R(s):
+ ------------------------------------------
+ There are no E3Rs associated with this patch.
+  
+  
+ This patch addresses the following NOIS message(s):
+ ---------------------------------------------------
+ FRE-0103-60853 - Veteran is listed twice for the same means test
+  
+ BHH-0203-40111 - EAS MERGE DUP MT/COPAY DEP option not working
+  
+ ISB-0403-30184 - Rtn ANAMMT6 referenced
+  
+ Overview of NOIS Message(s):
+ ---------------------------
+ FRE-0103-60853 - Veteran is listed twice for the same means test
+  
+ PROBLEM: There is a veteran who is listed twice for the same means test 
+ and the user is unable to delete the duplicate.  This is preventing the 
+ user from completing the means test.
+  
+ RESOLUTION: The cross-reference in PATIENT RELATION (#408.12) file is 
+ corrupted and does not exist.  A cleanup will be made to loop through all 
+ the entries in the 408.12 file and re-build any missing cross-reference.
+  
+ BHH-0203-40111 - EAS MERGE DUP MT/COPAY DEP option not working
+  
+ PROBLEM: When merging two entries using the "EAS MERGE DUP MT/COPAY DEP" 
+ option, both entries remain despite the message indicating that the merge 
+ was successful.
+  
+ RESOLUTION: The merge process will be updated to re-index the 
+ cross-reference pointers after each deletion.
+  
+ ISB-0403-30184 - Rtn ANAMMT6 referenced
+  
+ PROBLEM: Routine ANAMMT6 is referenced in option "EAS MT 30 DAY LETTER 
+ PRINT" and no such routine exists.
+  
+ RESOLUTION: Update the ROUTINE field (#25) of the OPTION file (#19) to 
+ remove the entry from the "EAS MT 30 DAY LETTER PRINT" entry.
+  
+  
+ Test Sites:
+ -----------
+ Baltimore
+ Manchester
+ West LA
+   
+   
+        ================INSTALLATION INSTRUCTIONS =================
+   
+  
+ This patch can be loaded with users on the system, however, it should be 
+ installed during period of minimum usage.  Installation time will vary 
+ from site to site dependent upon the number of records which exist in 
+ your PATIENT RELATION file (#408.12).  The times below will give you an 
+ estimation of how long the installation will take.  The following 
+ installation times are taken from the test sites of this patch:
+  
+                                                    TOTAL PATIENT RELATION
+  SITE EVALUATED      PLATFORM     INSTALL TIME     RECORDS REVIEWED
+  --------------      --------     ------------     ----------------------
+  BALTIMORE, MD       DSM/VMS         5 minutes            228,000+
+  MANCHESTER, NH      CACHE/NT        1 minute              64,000+ 
+  WEST LA, CA         DSM/VMS        10 minutes            389,000+
+                                      
+   
+   1.   LOAD TRANSPORT GLOBAL 
+        ---------------------
+        Choose the PackMan message containing this patch and invoke the 
+        INSTALL/CHECK MESSAGE PackMan option.
+   
+   2.   DISABLE ROUTINE MAPPING   (DSM for Open VMS sites only) 
+        -----------------------
+        Disable routine mapping on all systems for the routines listed in 
+        step 3 below.
+   
+        NOTE:  If the routines included in this patch are not currently in 
+               your mapped routine set, please skip this step.
+   
+   3.   COMPONENTS SENT WITH PATCH 
+        ------------------------
+        The following is a list of the routines included in this patch.  
+        The second line of each of these routines now looks like:
+   
+      <tab>;;1.0;ENROLLMENT APPLICATION SYSTEM;**[patch list]**;MAR 15,2001
+   
+                                   CHECK^XTSUMBLD results
+        Routine name  Before Patch   After Patch       Patch List
+        ============  ============   ===========   ===================
+        EAS126        N/A            11465305      26
+        EASXDR1       16374075       16400913      10,26
+   
+         Total number of routines - 2
+   
+         Total number of routines modified: 1
+         Total number of new routines: 1
+   
+   4.   START UP KIDS 
+        -------------
+        Start up the Kernel Installation and Distribution System Menu 
+        [XPD MAIN]:
+   
+             Edits and Distribution ...  
+             Utilities ...  
+             Installation ...
+   
+   Select Kernel Installation & Distribution System Option: INStallation 
+                                                            ---
+             Load a Distribution 
+             Print Transport Global 
+             Compare Transport Global to Current System 
+             Verify Checksums in Transport Global 
+             Install Package(s) 
+             Restart Install of Package(s) 
+             Unload a Distribution 
+             Backup a Transport Global
+   
+   Select Installation Option:
+    
+   5.   Select Installation Option: 
+        --------------------------
+        NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+               NAME, enter EAS*1.0*26):
+   
+        a.  Backup a Transport Global - This option will create a backup
+            message of any routines exported with this patch. It will not
+            backup any other changes such as DD's or templates.
+        b.  Compare Transport Global to Current System - This option will
+            allow you to view all changes that will be made when this patch
+            is installed.  It compares all components of this patch
+            (routines, DD's, templates, etc.).
+        c.  Verify Checksums in Transport Global - This option will allow
+            you to ensure the integrity of the routines that are in the
+            transport global.
+   
+   6.   Select Installation Option: Install Package(s) 
+                                    ----------------
+        **This is the step to start the installation of this KIDS patch:
+   
+        a.  Choose the Install Package(s) option to start the patch
+            install.
+        b.  When prompted 'Want KIDS to INHIBIT LOGONs during the
+            install? YES//' answer NO.
+        c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+            Options, and Protocols? YES//' answer NO.
+   
+   7.   REBUILD MAPPED ROUTINE(S)  (DSM for Open VMS sites only)
+        -------------------------
+        Optional - Include the routines distributed with this patch
+        in the mapped routine set.
+   
+        NOTE: This step is only necessary if you performed step 2 or 
+              if you wish to include the routines in your mapped set.
+
+Routine Information:
+====================
+
+Routine Name:
+  - EAS126
+
+ This is the post install process which will perform a cleanup of the 
+ corrupted data.  The cleanup will identify all entries in the patient 
+ relation file that does not have a "C" cross-reference and rebuild it 
+ accordingly.
+
+Routine Checksum:
+
+Routine Name:
+  - EASXDR1
+
+ Original code:
+  
+         S MRGROOT="^TMP($J,""EASXDR1"",""B"")"
+         K ^TMP($J,"EASXDR1"),^TMP($J,"EASXDR")
+         S ^XTMP("EASXDR1",0)=$$FMADD^XLFDT($$NOW^XLFDT(),10)_U_
+ $$NOW^XLFDT()_U_"EASXDR1 - DUPLICATE PATIENT RELATION MERGE"
+  
+  
+ DEL(ROOT,IEN)   ;delete entries
+         Q:'IEN "1^INVALID INPUT PARAMETER"
+         N DA,DIK,MSG,X,Y,FILE
+         S FILE=$TR($P(ROOT,"(",2),",")
+         S MSG="1^DELETE ERROR "_ROOT_IEN  ;default to error condition
+         M ^XTMP("EASXDR1","DATA",DFNFR,FILE,IEN)=@(ROOT_IEN_")")
+         S DA=IEN,DIK=ROOT D ^DIK S MSG="0^RECORD DELETED"
+         Q MSG
+  
+  
+ Modified code:
+  
+         S MRGROOT="^TMP($J,""EASXDR1"",""B"")"
+         K ^TMP($J,"EASXDR1"),^TMP($J,"EASXDR")
+         S ^XTMP("EASXDR1",0)=$$FMADD^XLFDT($$NOW^XLFDT(),45)_U_
+ $$NOW^XLFDT()_U_"EASXDR1 - DUPLICATE PATIENT RELATION MERGE"
+  
+  
+ DEL(ROOT,IEN)   ;delete entries
+         Q:'IEN "1^INVALID INPUT PARAMETER"
+         N DA,DIK,MSG,X,Y,FILE
+         S FILE=$TR($P(ROOT,"(",2),",")
+         S MSG="1^DELETE ERROR "_ROOT_IEN  ;default to error condition
+         M ^XTMP("EASXDR1","DATA",DFNFR,FILE,IEN)=@(ROOT_IEN_")")
+         S DA=IEN,DIK=ROOT D ^DIK,IX^DIK S MSG="0^RECORD DELETED"
+         Q MSG
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : HUA,PATRICK                   Date Entered  : FEB 12, 2003
+Completed By: MULLER,RICHARD                Date Completed: AUG 28, 2003
+Released By : GROOMS,ANTHONY E              Date Released : AUG 28, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

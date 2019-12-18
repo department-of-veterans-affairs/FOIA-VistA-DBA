@@ -1,0 +1,330 @@
+$TXT Created by GINSBERG,ELIOT at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 04/27/05 at 14:39
+=============================================================================
+Run Date: MAY 02, 2005                     Designation: DG*5.3*618
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #569                    Status: Released
+                  Compliance Date: JUN 02, 2005
+=============================================================================
+
+Associated patches: (v)DG*5.3*456  <<= must be installed BEFORE `DG*5.3*618'
+
+Subject: Clean Up Pointers in PATIENT RELATION and INCOME PERSON Files
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch, DG*5.3*618, will perform a cleanup of the PATIENT RELATION 
+ (#408.12) file.  Bad records in the INCOME PERSON (#408.13) file that are
+ pointed to by records in the PATIENT RELATION (#408.12) file will be
+ deleted along with the corresponding entries in file #408.12 that contain
+ "bad" or null pointers.
+  
+ Additionally, linked records in the INDIVIDUAL ANNUAL INCOME (#408.21)
+ file and the INCOME RELATION (#408.22) file will be purged.
+  
+ The patch also further bulletproofs the existing code to quit if the 
+ PATIENT (#2) file record passed to the routine DGMTDD is not a valid 
+ entry.  This check prevents the system from generating erroneous nodes in 
+ the ^DPT global and thus prevents the errors noted in the Remedy tickets 
+ associated with this patch.
+  
+  
+  
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+ There is no NSR associated with this patch.
+  
+  
+ This patch addresses the following NOIS (Remedy) message(s):
+ ------------------------------------------------------------
+ BIL-0601-31384  -  EXCEPTION 209 (HD0000000063220)
+ MAN-1103-11505  -  DANGLING NODES IN FILE 2 (HD0000000063667)
+ UNY-0204-11526  -  File 408.13 missing over 1000 entries (HD0000000063768)
+ CTX-0304-71946  -  Missing entries in file 408.13 (HD0000000063826)
+ SBY-0604-31769  -  ERROR - <UNDEF>SSN+21~DGMTDD1:2 (HD0000000064004)
+ SLC-0604-50930  -  File #408.13 missing 200+ Entries (HD0000000063986)
+ MOU-0704-30911  -  Income Person File (HD0000000064045)
+ SBY-0904-32111  -  ZDP+4^DGMTUTL2:1 (HD0000000064255)
+  
+  
+ Overview of NOIS Message(s):
+ ----------------------------
+ BIL-0601-31384  -  EXCEPTION 209 (HD0000000063220)
+  
+ Problem:
+ --------
+ Certain data fields (#.14 CURRENT MEANS TEST STATUS, #991.01 INTEGRATION
+ CONTROL NUMBER, #991.02 ICN CHECKSUM, #991.03 COORDINATING MASTER OF
+ RECORD, #991.04 LOCALLY ASSIGNED ICN) remain in the PATIENT (#2) file
+ when a record is deleted.
+  
+ Resolution:
+ -----------
+ The PATIENT record with these dangling nodes is incomplete.  The records 
+ incorrectly pointing to it from files #408.13, #408.21 and #408.22 will 
+ be deleted.
+  
+ MAN-1103-11505  -  DANGLING NODES IN FILE 2 (HD0000000063667)
+  
+ Problem:
+ --------
+ Records within the PATIENT (#2) file are partially stubbed in with no
+ valid #.01 field.  These records are pointed to by the PATIENT RELATION
+ (#408.12) file.
+  
+ Resolution:
+ -----------
+ Find PATIENT (#2) file records that the PATIENT RELATION (#408.12) file 
+ records point to, that do not exist or have the missing #.01 field value
+ and delete the corresponding PATIENT RELATION (#408.12) file record.
+  
+ UNY-0204-11526     File 408.13 missing over 1000 entries (HD0000000063768)
+  
+ Problem:
+ --------
+ Errors were reported during an Integrated Billing process.  During an 
+ attempt to access some Means Test information, the billing process ran 
+ across some missing INCOME PERSON (#408.13) file entries.  These missing
+ #408.13 entries were pointed to by the PATIENT RELATION (#408.12) file.
+  
+ Resolution:
+ -----------
+ Locate and purge all PATIENT RELATION (#408.12) file entries that contain 
+ pointers to records in the INCOME PERSON (#408.13) file that do not exist 
+ within that file.
+  
+  
+ CTX-0304-71946     Missing entries in file 408.13 (HD0000000063826)
+ SBY-0604-31769     ERROR - <UNDEF>SSN+21~DGMTDD1:2 (HD0000000064004)
+ SLC-0604-50930     File #408.13 missing 200+ Entries (HD0000000063986)
+ MOU-0704-30911     Income Person File (HD0000000064045)
+ SBY-0904-32111     ZDP+4^DGMTUTL2:1 (HD0000000064255)
+  
+ Problem:
+ --------
+ These report the same error as the UNY-0204-11526 NOIS above.
+  
+ Resolution:
+ -----------
+ Correct in the same manner as NOIS UNY-0204-11526 above.
+  
+  
+ MAILMAN MESSAGES
+ ================
+ The following MailMan messages will be sent at the completion of the 
+ cleanup process.  You will receive a summary message with a re-cap of how 
+ many records were processed and purged.  The MailMan message will also 
+ contain details of the orphaned #408.12 records that were purged.  There 
+ may be multiple detail messages created depending on the number of bad 
+ records found.
+  
+ Examples:
+ =========
+  
+ SUMMARY MESSAGE
+ ---------------
+ Subj: Cleanup Dangling 408.12 records process COMPLETED on Mar 23, 2005
+ [#1984208] 03/23/05@16:31  17 lines
+ From: POSTMASTER  In 'IN' basket.   Page 1  *New*
+ --------------------------------------------------------------------------
+ -----
+ Cleanup Dangling 408.12 records process COMPLETED on Mar 23, 2005@16:31:56
+                     Summary Information
+ CLEANUP OF FILE #408.12 RECORDS COMPLETED WITH 1 RECORDS DELETED!!
+  
+ Message number: 1
+  
+ Total 408.12 Records Processed:                                   3,554
+   Purged file #408.12 records:                                        1
+     Bad or missing file #2 pointer (field #.01 or #.03):              1
+     Bad or missing file #408.13 pointer (field #.03):                 0
+     Null or bad variable pointer (field #.03):                        1
+   Purged file #408.21 records:                                        2
+   Purged file #408.22 records:                                        2
+  
+  
+  
+ Detail changes to follow in subsequent mail messages.
+  
+ DETAIL MESSAGE
+ --------------
+ Subj: Cleanup Dangling 408.12 records process COMPLETED on Mar 23, 2005
+ [#1984209] 03/23/05@16:31  12 lines
+ From: POSTMASTER  In 'IN' basket.   Page 1  *New*
+ --------------------------------------------------------------------------
+ -----
+ Cleanup Dangling 408.12 records process COMPLETED on Mar 23, 2005@16:31:56
+                      Detail Information
+ CLEANUP OF FILE #408.12 RECORDS COMPLETED WITH 1 RECORDS DELETED!!
+  
+ Message number: 2
+  
+ File 408.12, record 1025 had a bad pointer to patient '201 (field #.01)
+   and bad variable pointer 50102 (field #.03)
+     Deleting related ien 1557 in file #408.21
+       Deleting related ien 1564 in file # 408.22
+     Deleting related ien 4511 in file #408.21
+       Deleting related ien 4521 in file # 408.22
+  
+ Test sites:
+  
+ West LA (Integrated)
+ Central Texas (Integrated)
+ Upstate NY (Large)
+ Puget Sound (Integrated)
+  
+   
+         ================INSTALLATION INSTRUCTIONS =================
+   
+   
+ This patch can be loaded with users on the system, however, it should be
+ installed during period of minimum usage.
+   
+     Install Time - 5 Minutes.
+   
+   
+ 1.   LOAD TRANSPORT GLOBAL
+      ---------------------
+      Choose the PackMan message containing this patch and invoke the
+      INSTALL/CHECK MESSAGE PackMan option.
+   
+ 2.   DISABLE ROUTINE MAPPING   (DSM for Open VMS sites only)
+      -----------------------
+      Disable routine mapping on all systems for the routines listed in
+      step 3 below.
+   
+      NOTE: If the routines included in this patch are not currently in
+            your mapped routine set, please skip this step.
+   
+ 3.   COMPONENTS SENT WITH PATCH
+      --------------------------
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+   
+       <tab>;;5.3;Registration;**618**;Aug 13, 1993
+   
+                             CHECK^XTSUMBLD results
+ Routine name      Before Patch         After Patch         Patch List
+ ============      ============         ===========         ==========
+ DG53618           N/A                  12355368            618
+ DG53618M          N/A                  5035271             618
+ DGMTDD            5849491              5917286             33,182,411,456,
+                                                            618
+  
+          Total number of routines - 3
+  
+  
+ 4.   START UP KIDS
+      -------------
+      Start up the Kernel Installation and Distribution System Menu
+      [XPD MAIN]:
+   
+               Edits and Distribution ...
+               Utilities ...
+               Installation ...
+   
+      Select Kernel Installation & Distribution System Option: INStallation
+                                                               ---
+               Load a Distribution
+               Print Transport Global
+               Compare Transport Global to Current System
+               Verify Checksums in Transport Global
+               Install Package(s)
+               Restart Install of Package(s)
+               Unload a Distribution
+               Backup a Transport Global
+   
+     Select Installation Option:
+   
+ 5.   Select Installation Option:
+      --------------------------
+      NOTE: The following are OPTIONAL - (When prompted for the INSTALL
+            NAME, enter DG*5.3*618):
+   
+      a. Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+      b. Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when this
+         patch is installed.  It compares all components of this patch
+         (routines, DD's, templates, etc.).
+      c. Verify Checksums in Transport Global - This option will allow
+         you to ensure the integrity of the routines that are in the
+         transport global.
+   
+ 6.   Select Installation Option: Install Package(s)
+                                  ----------------
+      **This is the step to start the installation of this KIDS patch:
+   
+      a. Choose the Install Package(s) option to start the patch install.
+      b. When prompted 'Want KIDS to INHIBIT LOGONs during the
+         install? YES//' answer NO.
+      c. When prompted 'Want to DISABLE Scheduled Options, Menu
+         Options, and Protocols? YES//' answer NO (unless otherwise
+         indicated)
+   
+   
+ 7.   REBUILD MAPPED ROUTINE(S)  (DSM for Open VMS sites only)
+      -------------------------
+      Optional - Include the routines distributed with this patch
+      in the mapped routine set.
+   
+      NOTE: This step is only necessary if you performed step 2 or
+            if you wish to include the routines in your mapped set.
+
+Routine Information:
+====================
+
+Routine Name:
+  - DGMTDD
+
+ Original Code:
+ --------------
+         N DFN,DGCS,DGDT,DGIX,DGMTI,DGMTS
+         S DFN=$P($G(^DGMT(408.31,DA,0)),U,2),
+               DGCS=$P($G(^DPT(DFN,0)),U,14),(DGDT,DGMTS)=""
+         S DGMTI=+$$MTIENLT^DGMTU3(1,DFN,"")
+  
+  
+  
+ Modified Code:
+ --------------
+         N DFN,DGCS,DGDT,DGIX,DGMTI,DGMTS,DGNAM
+         S DFN=$P($G(^DGMT(408.31,DA,0)),U,2),
+               DGCS=$P($G(^DPT(DFN,0)),U,14),(DGDT,DGMTS)=""
+         ;
+         S DGNAM=$P($G(^DPT(DFN,0)),"^",1)
+         Q:DGNAM=""
+         Q:'$D(^DPT("B",DGNAM))
+         ;
+         S DGMTI=+$$MTIENLT^DGMTU3(1,DFN,"")
+
+Routine Checksum:
+
+Routine Name:
+  - DG53618
+
+
+Routine Checksum:
+
+Routine Name:
+  - DG53618M
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : NAPOLIELLO,GREG               Date Entered  : AUG 11, 2004
+Completed By: RUDINGER,NANCY L.             Date Completed: MAY 02, 2005
+Released By : GROOMS,ANTHONY E              Date Released : MAY 02, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

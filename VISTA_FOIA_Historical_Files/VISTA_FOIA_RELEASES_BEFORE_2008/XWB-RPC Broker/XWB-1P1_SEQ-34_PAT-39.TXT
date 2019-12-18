@@ -1,0 +1,225 @@
+$TXT Created by CHAN,ALAN at PAT-XWB.FO-OAKLAND.MED.VA.GOV  (KIDS) on Tuesday, 05/06/03 at 15:17
+=============================================================================
+Run Date: OCT 26, 2005                     Designation: XWB*1.1*39
+Package : XWB - RPC BROKER                    Priority: Mandatory
+Version : 1.1        SEQ #34                    Status: Released
+                  Compliance Date: NOV 26, 2005
+=============================================================================
+
+Associated patches: (v)XWB*1.1*32  <<= must be installed BEFORE `XWB*1.1*39'
+
+Subject: Remote Data View cleanup
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ Test sites:      VA GREATER LOS ANGELES HCS 
+                  SALISBURY VAMC
+                  SAN FRANCISCO VAMC
+  
+ Blood Bank Clearance: 5/28/2003
+  
+ NOIS:            LAH-0203-61516  HL7 Issues associated with TMP
+                  PRO-0303-10983  HL7 ERROR FOR MPI TRANSMISSION
+                  SBY-0203-30078  $ZE= GENACK+2^XWB2HL7B:1, %DSM-E-UNDEF 
+   
+ PATCH DESCRIPTION 
+  
+ Some sites have reported large amount of data stored in the ^TMP global
+ under the "HLA" subscript that was not ever being cleaned up.  This is
+ a result of the Remote Data View application not cleaning up ^TMP("HLA")
+ after using it to build the response message.
+  
+ This patch fixes this by cleaning up ^TMP("HLA").
+  
+ In addition, some sites have reported errors indicating
+ undefined variable HL("FS") at GENACK+2^XWB2HL7B:1.
+ This particular problem is a result of not protecting the
+ environment between the Remote Data View application
+ and the Remote Procedure.
+  
+ Therefore, this patch will address this issue in
+ the Remote Data View application by Newing certain
+ HL* variables prior to calling the Remote Procedure. 
+  
+ The following routines are included in this patch.  The second line of 
+ each
+ of these routines now looks like:
+  ;;1.1;RPC BROKER;**[Patch List]**;Mar 28, 1997
+  
+                   Checksum
+  Routine         Old       New      Patch List
+  XWB2HL7      10964744  11014026    **12,18,20,22,27,32,39**
+  XWB2HL7B      9524542   9195942    **12,22,39**
+  
+  List of preceding patches: 32
+  Sites should use CHECK^XTSUMBLD to verify checksums.
+   
+  Installation Instructions (less than 5 minutes): 
+  ==========================
+    1.  Users are allowed to be on the system during the installation.
+  
+    2. Shutdown all Logical Links, incoming and outgoing filers, and
+       the Link Manager using the Filer and Link Management options
+       listed below:
+  
+         Stop All Messaging Background Processes [HL STOP ALL]
+         TCP Link Manager Start/Stop [HL START/STOP LINK MANAGER]
+  
+    3. Disable all HL7-related OpenVMS TCPIP services 
+       for this installation.  This will prevent new connections to a 
+       service.  Also, ensure that existing connections are gracefully 
+       shutdown as illustrated below.
+  
+       What follows is a sample session using OpenVMS TCPIP services to 
+       disable the service HLS5000CACHE that listens on port 5000.  In this
+       illustration, the corresponding file 870 is node VASFC, which is
+       the standard main listener for San Francisco:
+  
+       DISABLE THE HL7 TCPIP SERVICE
+       -----------------------------
+       $ TCPIP
+       TCPIP> DISABLE SERVICE HLS5000CACHE
+       TCPIP> SHOW SERVICE HLS5000CACHE    
+  
+       Service      Port  Proto   Process       Address       State
+  
+       HLS5000CACHE   5000  TCP     HLS5000CACHE    0.0.0.0       Disabled
+       
+       LOCATE EXISTING CONNECTIONS
+       ---------------------------
+       After the HLS5000CACHE service is disabled, we can check if any 
+       remaining connections still exist.  The following shows one
+       connection that existed before the HLS5000CACHE service was 
+       disabled:
+  
+       TCPIP> SHOW DEV /PORT=5000                              
+                                   Port                       Remote
+       Device_socket  Type    Local  Remote  Service           Host
+  
+       bg2540      STREAM    5000    2581  HLS5000CACHE       10.6.17.221
+  
+  
+       TERMINATE EXISTING CONNECTIONS
+       ------------------------------
+       Using Fileman, locate the entries in file 870 corresponding to the
+       services you are disabling.  In our example, the HLS5000CACHE 
+       service represents the San Francisco VAMC main listener (port 5000):
+  
+       NODE: VASFC                         LLP TYPE: TCP
+        DEVICE TYPE: Multi-threaded Server STATE: 1 server
+        AUTOSTART: Enabled         TIME STARTED: AUG 05, 2004@09:55:55
+        SHUTDOWN LLP ?: NO                 TCP/IP PORT: 5000
+        TCP/IP SERVICE TYPE: MULTI LISTENER   
+  
+       Shutting down any remaining connections will require to set the 
+       field SHUTDOWN LLP ? to YES and to remove the value of the field
+       TIME STARTED.
+  
+       Select HL LOGICAL LINK NODE: VASFC
+       SHUTDOWN LLP ?: NO// Y  YES
+       TIME STARTED: AUG 5,2004@09:55:55// @
+           SURE YOU WANT TO DELETE? Y  (Yes)
+  
+       You can check after one or two minutes to verify that no 
+       connections for HLS5000CACHE exist:
+  
+       TCPIP> SHOW DEV /PORT=5000   
+                            
+       %TCPIP-W-NODEVSOCK, device_socket not found
+  
+  
+       RESET THE SHUTDOWN LLP ? FIELD
+       ------------------------------
+       Finally, reset the field "SHUTDOWN LLP ?  as follows
+  
+       Select HL LOGICAL LINK NODE: VASFC
+       SHUTDOWN LLP ?: YES// NO  NO
+  
+    4.  Run the 'CLEAN old Job Nodes in XUTL' [XQ XUTL $J NODES] option.
+        This option is located on the 'Operations Management'
+        [XUSITEMGR] option.
+  
+        If the ^TMP global is locally translated to each node, then run
+        this option on each node of the cluster. Otherwise, simply run this
+        option where you have a multi-threaded listener.  Note, this option
+        is silent:
+  
+        Select Operations Management Option: CLEAN old Job Nodes in XUTL
+  
+    5.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu to 
+        load the KIDS package onto your system.  
+  
+    6.  Before actually installing the software contained in this transport
+        global, you should take the time to review what will happen when
+        the software is installed, and take other actions such as backing
+        up the software that is about to be overwritten.  The menu options 
+        shown below should be used when performing review and backup 
+        tasks.  
+  
+           Verify Checksums in Transport Global 
+           Print Transport Global 
+           Compare Transport Global to Current System 
+           Backup a Transport Global 
+  
+    7.  Patch XWB*1.1*39 is now loaded into a transport global on your 
+        system.  The next step is to use KIDS to install the 
+        transport global.  This is done using the 'Installation' menu's 
+        'Install Package(s) [XPD INSTALL BUILD]' menu option.  When 
+        using this menu option to install the patch build, you will be 
+        asked several questions.  The questions, and the answers you 
+        should supply, are shown below.  
+  
+        INSTALL NAME:  <XWB*1.1*39> 
+        Want KIDS to INHIBIT LOGONS during the install?  <NO> 
+        Want to DISABLE Scheduled Options, Menu Options, 
+          and Protocols?  <NO> 
+  
+    8.  Follow the HL7 menu path to the option Restart/Start All Links and 
+        Filers to startup all Logical Links and incoming and outgoing
+        filers:
+  
+           Filer and Link Management Options -> 
+              RA  Restart/Start All Links and Filers 
+         
+           NOTE: Links that do not have "Autostart" enabled will need to 
+                 be restarted manually) 
+   
+    9.  Start Link Manager using the option: TCP/IP Link Manager 
+        Start/Stop. 
+  
+   10.  If you previously disabled an HL7-related OpenVMS TCPIP service
+        for this installation, you may enable it now:  
+  
+        Using the same service as in step 4 above, 
+   
+        ENABLE THE HL7 TCPIP SERVICE
+        ----------------------------
+        $ TCPIP
+        TCPIP> ENABLE SERVICE HLS5000CACHE
+        TCPIP> SHOW SERVICE HLS5000CACHE    
+   
+        Service      Port  Proto   Process       Address       State
+   
+        HLS5000CACHE   5000  TCP     HLS5000CACHE    0.0.0.0       Enabled
+
+Routine Information:
+====================
+Routine Name: XWB2HL7
+Routine Name: XWB2HL7B
+
+=============================================================================
+User Information:
+Entered By  : CHAN,ALAN                     Date Entered  : MAR 19, 2003
+Completed By: SINGH,GURBIR                  Date Completed: SEP 23, 2005
+Released By : PALMER,MICHAEL                Date Released : OCT 26, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,658 @@
+$TXT Created by GARDNER,JEFF at DAYT12.FO-BAYPINES.MED.VA.GOV  (KIDS) on Thursday, 12/22/05 at 12:24
+=============================================================================
+Run Date: JAN 18, 2006                     Designation: VDEF*1*3
+Package : VDEF - VDEF                         Priority: Mandatory
+Version : 1         SEQ #1                      Status: Released
+                  Compliance Date: FEB 18, 2006
+=============================================================================
+
+Associated patches: (v)XU*8*339    <<= must be installed BEFORE `VDEF*1*3'
+
+Subject: FIX FALSE ALERTS AND QUEUE PROCESSOR NOT STARTING
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ PLEASE READ THE ENTIRE DESCRIPTION AND INSTALLATION INSTRUCTIONS
+ BEFORE INSTALLING THIS PATCH.
+  
+  
+ DESCRIPTION:
+ ============
+  
+ This patch fixes 4 problems in the VistA Data Extraction Framework
+ (VDEF) V1.0 functionality:
+  
+  1) Adds the name of the Request Queue to the VDEF Alert message.
+  
+  2) Eliminates false VDEF Alerts.
+  
+  3) Eliminates the problem of VDEF Request Queue processor not being
+     restarted by TaskMan.
+  
+  4) No longer sets the flag for unread VDEF Alerts to be sent to a mail
+     group supervisor.
+  
+ This patch also includes numerous enhancements to the VistA Data
+ Extraction Framework (VDEF) functionality:
+  
+  1) In the VDEF Configuration and Status Menu [VDEF CONFIGURATION MENU],
+     the options marked below with an asterisk now return to the option
+     prompt instead of going back to the main VDEF Configuration and Status
+     Menu.
+  
+       Site   Site-Wide Parameters
+     * Req    Request Queue Parameters
+     * ActR   Activate/Inactivate Requestor
+     * SusR   Suspend/Run Request Queue
+     * Cust   VDEF Custodial Package Activate/Inactivate
+     * API    VDEF Event API Activate/Inactivate
+       Stat   Status of VDEF components
+     * Sch    Request Processor Schedule
+  
+  2) A new process, the "VDEF Request Queue Monitor  has been added to
+     monitor the VDEF Request Queue process and restart it when it stops
+     if the state of the Request Queue is Running. This new monitor is
+     automatically started by the VDEF Startup option. This process is
+     hardcoded to run every 10 minutes. The VDEF Request Queue Monitor will
+     also automatically requeue any Checked Out and Errored Out VDEF
+     requests.
+  
+  3) VDEF Alert messages are now prefixed with the date & time of the
+     alert in the format MM/DD/YY@HH:MM:SS.
+  
+  4) Original VDEF Alert message texts are clearer in context.
+  
+  5) New VDEF Alerts have been added.
+     - VDEF CHECKED OUT MONITOR FAILED TO START. CHECK ERROR TRAP.
+     - RECORD <IEN> IN QUEUE <QUEUE NAME> HUNG IN CHECKED OUT STATUS.
+     - VDEF REQUEST PROCESS <QUEUE NAME> FAILED TO START. CHECK ERROR
+       TRAP.
+     - VDEF QUEUE PROCESS MONITOR DID NOT START. CHECK ERROR TRAP.
+     - VDEF HAS REQUEUED CHECKED OUT RECORDS. NO ACTION NEEDED.
+     - VDEF HAS REQUEUED ERRORED OUT RECORDS. NO ACTION NEEDED.
+     - VDEF QUEUE PROCESS MONITOR HAS EXITED.
+     - VDEF QUEUE '"_QUEUE_"' AUTO-RESTARTED. NO ACTION REQUIRED.
+     - VDEF QUEUE '"_QUEUE_"' IS SUSPENDED. PLEASE START IT.
+     - VDEF REQUEST QUEUE PROCESSOR FOR "_$P(QUEUE,U)_" HAS EXITED.
+  
+  6) All VDEF alerts will send a MailMan message to the VDEF developer
+     On FORUM that includes the alert text, the site name and ID and
+     the date & time of the alert.
+  
+  7) Includes a new program VDEFKIDS that has two APIs, VDEFKIDS
+     and POSTIN^VDEFKIDS.  These APIs are defined in the build as the
+     Environment Check and post install routines.  Although the
+     Pre-install routine does pre-installation type functions, it is
+     defined in the build as the Environment Check routine, NOT the
+     Pre-install routine. This is to prevent any VDEF* routines that
+     are in the build from being filed over actively running routines
+     causing an EDITED error trap error. By the time KIDS runs the
+     Pre-Install routine, ALL the routines in the build have already
+     been loaded whereas when the Environment routine is run, no other
+     programs in the build have been installed.
+  
+     The pre-install routine will:
+      - suspend all VDEF Request Queues
+      - stop the TaskMan tasks associated with these queues
+      - stop the VDEF checked out request monitor
+      - stop the VDEF Request Queue process monitor
+  
+     The post-install routine (in production systems only) will:
+      - un-suspend all VDEF Request Queues (change state to running)
+      - create new TaskMan tasks for these queues
+      - start the VDEF checked out request monitor
+      - start the VDEF Request Queue process monitor
+  
+  8) The Status of VDEF components [VDEF Status] option screen has been
+     modified. See the example that follows.
+      - The VMS Process ID associated with the VDEF Request Queue process
+        task has been added.
+      - The TaskMan task status has been added.
+      - The counter for Processed requests has been deleted.  This was
+        useless information because it was simply a count of the number
+        of records in the VDEF Request Queue that are in the Processed
+        status and the fact that the count stopped at ">100".
+      - The counter for Queued Up has been changed to display the actual
+        number up to a maximum of 1000. If more than 1000 are queued up,
+        the display will show "> 1000 .
+      - The description "Requests in the queue  has been changed to
+        "Requests waiting for purge 
+  
+    (example)
+    Request Processor Status
+      MAINTENANCE: Running and not Scheduled
+      Current Task # [Proc]: 7399750 [21663B42]
+      Requests waiting for purge: 14      Last request#: 14
+      Checked Out(0)  Queued Up(0)  Errored Out(0)
+  
+  9) Changed the M lock used to protect the VDEF Request Queue so that
+     it doesn't prevent using FileMan to access the VDEF queue file.
+  
+ 10) Creates the new Application "VDEF ALERTS" and the new Mail Group
+     "VDEF NATIONAL ALERTS" and changes the VistA Mail Group for VDEF
+     Alerts from the HL7 group to the new VDEF group.
+  
+ 11) Removed the Scheduled task from the Status of VDEF components [VDEF
+     Status] display and added the TaskMan status of the task.
+  
+ 12) Removed the XQASUPV variable from the alert call so that VDEF
+     alerts are no longer forwarded to unread alerts supervisor mail
+     group.
+  
+ 13) Added the date and time and the TaskMan task status to the VDEF
+     Status display.
+  
+  
+ IRM NOTES:
+ ===========
+ Before installing this patch, make sure you have completely installed 
+ XU*8.0*339 and run the '% program' conversion RELOAD^ZTMGRSET utility.
+  
+ This patch REQUIRES Kernel patch XU*8.0*339 which fixes a bug in the
+ $$ASKSTOP^%ZTLOAD() API and also creates a new API JOB^%ZTLOAD().
+ VDEF requires both of these to be updated by the XU*8.0*339 patch in
+ Order for VDEF*1*3 to install.
+  
+ This VDEF patch uses the $$JOB^%ZTLOAD functionality released with
+ XU*8.0*339. Please confirm that the post-KIDS install steps for XU*8.0*339
+ have been done.  The following MUMPS code should indicate that XU*8.0*339 
+ is in the second line of the %ZTLOAD routine:
+ >ZL %ZTLOAD ZP +1:+2
+  
+ For the duration of the installation of this patch, all VDEF Request
+ Queue processors that were in the Running state will be temporarily 
+ suspended.  The pre-install and post-install routines will suspend and 
+ then restart all Request Queue processors that were in the Running state 
+ after installation of this patch.  VDEF messages will continue to 
+ accumulate in the queues during suspension and will start processing 
+ again after the patch has completed installation. This is the equivalent 
+ of you using the VDEF Configuration and Status Menu option "SusR 
+ Suspend/Run Request Queue  to suspend and restart the Request Queues.
+  
+ When you see the message "Waiting for processes to quit . .", there
+ will be approximately a 5 second wait.
+  
+ PLEASE NOTE: The VDEF Post-install program will not start the VDEF 
+ processes on test or Legacy systems that have the Test System flag set.
+  
+  
+ IRM S POST-INSTALLATION REQUIREMENTS
+ ====================================
+ 1. NEW MAIL GROUP AND APPLICATION FOR VDEF ALERTS
+    After you have installed this patch, there will be a new Application
+    named VDEF ALERTS which will have the Mail Group VDEF NATIONAL ALERTS
+    assigned to it.  The new Mail Group will not have any local members in
+    it. YOU MUST ASSIGN THE LOCAL MEMBERS.  It will have the remote member
+    GARDNER.JEFF@FORUM.VA.GOV. Please verify these that these two new
+    definitions are correctly set up. If a site does not have the Mail
+    Group VDEF NATIONAL ALERTS, VDEF will continue the alerts to the HL7
+    Mail Group.
+  
+ 2. MODIFY THE  VDEF STARTUP OPTION  SCHEDULED TASK.
+    Using the TaskMan option  Schedule/Unschedule Options , edit the
+    parameters for the task VDEF STARTUP OPTION as indicated in the screen
+    example shown here.
+  
+                            Edit Option Schedule
+      Option Name: VDEF STARTUP OPTION           
+      Menu Text: VDEF STARTUP OPTION                 TASK ID: 5998624
+  ___________________________________________________________________
+    QUEUED TO RUN AT WHAT TIME: (Enter current date/time + 5 minutes)
+  DEVICE FOR QUEUED JOB OUTPUT: 
+   QUEUED TO RUN ON VOLUME SET: 
+        RESCHEDULING FREQUENCY: 300S  (Enter 300S)
+               TASK PARAMETERS: 
+              SPECIAL QUEUEING: Startup Persistent (Change from STARTUP
+                                                    to Startup Persistent
+  
+  
+ This patch addresses the following New Service Request (NSR):
+ =============================================================
+ There is no NSR associated with this patch.
+  
+  
+ This patch addresses the following Remedy ticket(s):
+ ====================================================
+ 65927,99499,100952,102184,102329,103092,103286,104402,105065,106497
+ 106674,107101,107142,107326,107508,107589,107773,107927,108431,108661
+ 108873,108915,109469,109521,109627,109638,109715,109725,110057,110285
+ 110501,110688,110765,110891,111109,112391,112642
+  
+  
+ Overview of Patch Items:
+ ========================
+ 1) A pre-install routine, PREIN^VDEFKIDS, is included in this patch that
+    suspends VDEF Request Queue processing through the duration of this
+    patch installation. It also stops and deletes the TaskMan tasks driving
+    the processes and the VDEF monitor processes.
+  
+ 2) A post-install routine, POSTIN^VDEFKIDS, is included in this patch
+    that restarts VDEF Request Queues after installation of this patch.
+    It also creates new VDEF monitor tasks.
+  
+ 3) The routine VDEFUTIL has been changed to not set the flag for an 
+    unread VDEF Alert to be sent to the supervisor. This program has also
+    been changed to prefix the date & time to the VDEF alert text and to
+    use the new VDEF alert mail group to send a MailMan message to the VDEF
+    developer whenever a VDEF alert occurs.
+  
+ 4) The routine VDEFCONT has been changed to eliminate the false VDEF
+    Alerts from being generated.  It has also been changed to include
+    the name of the Request Queue in the VDEF Alert message.
+  
+ 5) The routine VDEFREQ has been changed to eliminate the problem of
+    TaskMan not restarting the VDEF Request Queue processor EN^VDEFREQ.
+    Instead, VDEFREQ does not re-schedule itself with TaskMan but uses
+    an M HANG command loop based on the number of seconds in file
+    #579.3, field .05 - CHECK-OUT TIME LIMIT.
+  
+ 6) The routine VDEFMNU has been changed to display the VMS process ID
+    for the Request Queue Task in the Status of VDEF components [VDEF
+    Status] display. The counter for Processed Requests has been dropped
+    from the Status of VDEF components [VDEF Status] display. It was
+    useless information.
+  
+ 7) The routine VDEFQM has been changed to incorporate two VDEF APIs
+    that will requeue requests that are stuck in the Checked Out or
+    Errored Out state.
+  
+ 8) A new routine VDEFMON has been created to monitor the Request Queue
+    process and restart it if it dies as well as automatically re-queuing
+    requests that have Errored Out or get stuck in the Checked Out status.
+  
+ 9) There are no VDEF global changes in this patch.
+  
+  
+ Test Sites:
+ ===========
+ BAY PINES
+ EL PASO
+ LOUISVILLE
+ MARYLAND (Integrated)
+ MEMPHIS
+ PHILADELPHIA
+ PHOENIX
+ SAN FRANCISCO
+  
+  
+ LOCATION OF DOCUMENTATION FOR THIS PATCH
+ ========================================
+ The documentation files for VDEF may be retrieved from one of the 
+ following OI Field Office ANONYMOUS.SOFTWARE directories.
+  
+   OI Field Office         FTP Address
+   -------------------     ---------------
+   Albany                  ftp.fo-albany.med.va.gov
+   Hines                   ftp.fo-hines.med.va.gov
+   Salt Lake City          ftp.fo-slc.med.va.gov
+   VistA Download Site     download.vista.med.va.gov
+  
+   File Name          Description
+   -----------------  -------------------------------------
+   VDEF_1_0_3_IG.pdf  VDEF V1.0 Installation and User Guide
+   VDEF_1_0_3_TM.pdf  VDEF V1.0 Technical Manual
+  
+ The retrieval format for both files is BINARY.
+  
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+  
+ Install Time - less than 5 minutes
+  
+ 1. LOAD TRANSPORT GLOBAL
+    ---------------------
+    Choose the PackMan message containing this patch and invoke the
+    INSTALL/CHECK MESSAGE PackMan option.  The build includes an
+    Environment check routine VDEFKIDS.
+  
+ Loading Distribution...
+  
+    VDEF*1.0*3
+ Will first run the Environment Check Routine, VDEFKIDS
+  
+ 2. COMPONENTS SENT WITH PATCH
+    --------------------------
+    Routine Summary
+    The following routines are included in this patch.  The second line
+    of each of these routines now looks like:
+    ;;1.0;VDEF;**3**;Dec 28, 2004
+  
+                  Checksum
+ Routine         Old       New      Patch List
+ VDEFCONT      8818367   8818367    **3**
+ VDEFKIDS     13711730   5283479    **3**
+ VDEFMNU      47567743  14047707    **3**
+ VDEFMON       8468795   3113945    **3**
+ VDEFQM       12629742  12740824    **3**
+ VDEFREQ       7914740   7914740    **3**
+ VDEFUTIL      5715842   5715842    **3**
+  
+ Sites should use CHECK^XTSUMBLD to verify checksums.
+  
+ NOTE: The above checksums are based on your site having installed
+ VDEF*1*3 v12. If you are installing VDEF*1*3 for the first time or if you 
+ did not install VDEF*1*3 v12, your old checksums will not match those in 
+ the above list.
+  
+ If you are installing VDEF*1*3 for the first time and all your current
+ VDEF* programs are V1.0, your old checksums should be:
+ VDEFCONT    10134570
+ VDEFKIDS         N/A
+ VDEFMNU     12329753
+ VDEFMON          N/A
+ VDEFQM      11427789
+ VDEFREQ      7981911
+ VDEFUTIL     1413855
+  
+ 3. START UP KIDS
+    -------------
+    Start up the Kernel Installation and Distribution System Menu
+    [XPD MAIN]:
+         Edits and Distribution
+         Utilities
+         Installation
+  
+    Select Kernel Installation & Distribution System Option:
+      INStallation
+  
+         Load a Distribution
+         Print Transport Global
+         Compare Transport Global to Current System
+         Verify Checksums in Transport Global
+         Install Package(s)
+         Restart Install of Package(s)
+         Unload a Distribution
+         Backup a Transport Global
+  
+      Select Installation Option:
+  
+ 4. Select Installation Option:
+    ---------------------------
+    When prompted for the INSTALL NAME, enter VDEF*1.0*3.
+  
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when this
+         patch is installed.  It compares all components of this patch
+         (routines, DD's, templates, etc.).
+     c.  Verify Checksums in Transport Global - This option will allow
+         you to ensure the integrity of the routines that are in the
+         transport global.
+  
+ 5. Select Installation Option: Install Package(s)
+    ----------------------------------------------
+    Select INSTALL NAME: VDEF*1.0*3   Loaded from Distribution
+      MM/DD/YY@HH:MM
+        => VDEF*1*3 v12
+  
+    Select Installation Option: INstall Package(s)
+  
+      => VDEF*1*3 v12
+  
+    This Distribution was loaded on Dec 22, 2005@11:48:44 with header of
+    VDEF*1*3 v12
+    It consisted of the following Install(s):
+      VDEF*1.0*3   Checking Install for Package VDEF*1.0*3
+  
+    Will first run the Environment Check Routine, VDEFKIDS
+  
+    Suspending Request Queues and stopping associated TaskMan jobs
+  
+    Stopping the MONITOR^VDEFCONT task
+  
+    Stopping the MONITOR^VDEFMON task
+  
+    Waiting for processes to quit  . . .
+  
+    Install Questions for VDEF*1.0*3
+  
+  
+    Incoming Mail Groups:
+  
+    Enter the Coordinator for Mail Group 'VDEF NATIONAL ALERTS':  //
+     <enter your name>   
+  
+    Want KIDS to INHIBIT LOGONs during the install? YES// NO
+    Want to DISABLE Scheduled Options, Menu Options, and Protocols?
+    YES// NO
+  
+    Enter the Device you want to print the Install messages.
+    You can queue the install by enter a 'Q' at the device prompt.
+    Enter a '^' to abort the install.
+  
+    DEVICE: HOME//   TCP
+  
+  
+     Install Started for VDEF*1.0*3 : 
+                   Dec 22, 2005@11:50:14
+  
+    Build Distribution Date: Dec 22, 2005
+  
+     Installing Routines:
+                   Dec 22, 2005@11:50:14
+  
+     Installing PACKAGE COMPONENTS: 
+  
+     Installing MAIL GROUP
+  
+     Installing HL7 APPLICATION PARAMETER
+                   Dec 22, 2005@11:50:14
+  
+     Running Post-Install Routine: POSTIN^VDEFKIDS
+  
+    (NOTE: the next 4 lines will not be displayed in a test or Legacy
+     Environment installation. Instead it will display:
+     "VDEF is not started on test systems. 
+  
+    Running Post-Install Routine: POSTIN^VDEFKIDS
+  
+    Starting the Request Queues and associated Tasks
+  
+    Starting the MONITOR^VDEFCONT task
+  
+    Starting the MONITOR^VDEFMON task
+  
+    Updating Routine file...
+  
+    Updating KIDS files...
+  
+    VDEF*1.0*3 Installed.
+  
+                Dec 22, 2005@11:50:14                                   
+  
+    NO Install Message sent
+  
+    100% Complete  
+  
+    Install Completed
+  
+  
+ BUILD COMPONENTS
+ =================
+  
+ ENVIRONMENT CHECK :  VDEFKIDS            DELETE ENV ROUTINE: No
+  PRE-INIT ROUTINE :                      DELETE PRE-INIT ROUTINE: No
+  POST-INIT ROUTINE : POSTIN^VDEFKIDS     DELETE POST-INIT ROUTINE: No
+  PRE-TRANSPORT RTN : 
+  
+ ROUTINE:
+  VDEFCONT                                SEND TO SITE
+  VDEFMNU                                 SEND TO SITE
+  VDEFMON                                 SEND TO SITE
+  VDEFQM                                  SEND TO SITE
+  VDEFREQ                                 SEND TO SITE
+  VDEFUTIL                                SEND TO SITE
+  
+ REQUIRED BUILDS:                         ACTION:
+  VDEF 1.0                                Don't install, remove global
+  XU*8.0*339                              Don't install, remove global
+  
+  
+  
+ POST INSTALLATION CHECKS:
+ =========================
+ 1) Verify that the three VDEF tasks shown in the example exist after
+    the install is complete.  The EN^VDEFREQ and MONITOR^VDEFMON tasks
+    should be ACTIVE while the MONITOR^VDEFCONT task, which runs only
+    briefly, may be scheduled or active.
+  
+    (example task list)
+  
+    Task list  Dec 22, 2005 11:26 am                             Page 1
+ ----------------------------------------------------------------------
+ 7399750: EN^VDEFREQ, VDEF Request Processor for MAINTENANCE.  No device.
+          DAYT12.  From Today at 11:26,  By you.  Started running Today
+          at 11:26. Job #: 560347970 [21663B42]
+ ----------------------------------------------------------------------
+ 7399752: MONITOR^VDEFMON, VDEF Request Processor Monitor.  No device.
+          DAYT12,ROU.  From Today at 11:26,  By you.
+          Started running Today at 11:26.  Job #: 560552879 [21695BAF]
+ ----------------------------------------------------------------------
+ 7399751: MONITOR^VDEFCONT, VDEF Checked Out Monitor.  No device. 
+          DAYT12,ROU. From Today at 11:26,  By you. Scheduled for Today
+          at 11:27
+ ----------------------------------------------------------------------
+  
+ 2) Run the Status of VDEF components [VDEF Status] display and verify the
+    following:
+    - Requestor status is Activated
+    - Request Processor Status is "Running"
+    - Task status is "Active-Running"
+    - the Current Task # matches the task # for the EN^VDEFREQ task.
+  
+  (example of the Status of VDEF components [VDEF Status] display)
+  
+                       VDEF Status - Dec 22, 2005@11:50:14
+ Logical Link Status
+   VDEFVIE1: stopped or caught up
+   VDEFVIE2: stopped or caught up
+   VDEFVIE3: stopped or caught up
+  
+ Requestor Status
+   MAINTENANCE: Activated        Dest.: VISTA HL7    Req. Queue: 
+ MAINTENANCE
+  
+ Request Processor Status
+   MAINTENANCE: Running
+   Current Task # [Proc]: 7410052 [21A53BA8]  Task status: Active-
+   Running
+   Requests waiting for purge: 0      Last request#: 
+   Checked Out(0)  Queued Up(0)  Errored Out(0)
+  
+ IMPORTANT NOTES ON THE Status of VDEF components [VDEF Status] DISPLAY
+ ======================================================================
+ The "Request Processor Status" is simply the status flag of the process in
+ a VDEF global. It is possible to have the status "Running" even if the VMS
+ process of the task had died.
+  
+ IF THE REQUEST QUEUE PROCESSOR TASK (EN^VDEFREQ) IS RUNNING:
+ The Request Processor Status will show "Running" and the task status will 
+ show "Active-Running".
+  
+ IF THE REQUEST QUEUE PROCESSOR TASK (EN^VDEFREQ) IS SUSPENDED BY SITE 
+ USING the VDEF Configuration and Status Menu:
+ The Request Processor Status will show "Suspended" and the task status 
+ will show "Interrupted".
+  
+                       VDEF Status - Dec 22, 2005@11:50:14
+ Logical Link Status
+   VDEFVIE1: stopped or caught up
+   VDEFVIE2: stopped or caught up
+   VDEFVIE3: stopped or caught up
+  
+ Requestor Status
+   MAINTENANCE: Activated      Dest.: VISTA HL7    Req. Queue: MAINTENANCE
+  
+  Request Processor Status
+   MAINTENANCE: Suspended
+   Current Task # [Proc]: 7410053 [0]  Task status: Interrupted
+   Requests waiting for purge: 0      Last request#: 
+   Checked Out(0)  Queued Up(0)  Errored Out(0)
+  
+ IMPORTANT:
+ IF THE REQUEST QUEUE PROCESSOR TASK (EN^VDEFREQ) IS RUNNING BUT THE VMS 
+ PROCESS HAS STOPPED:
+ The Request Processor Status will STILL show "Running" and the task status
+ will STILL show "Active-Running".
+  
+ This is because of the way that an application communicates with TaskMan 
+ to stop a task. It makes a request to TaskMan to stop the task and waits 
+ for the status of the task to go to "stop requested". Then the application
+ quits back to TaskMan and only then does TaskMan update the task status to
+ stopped or interrupted.  If the VMS process for the EN^VDEFREQ task had
+ died, then the VDEFREQ program is not running and cannot quit back to
+ TaskMan.  This is why the TaskMan task status stays "Active-Running".
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: VDEFCONT
+    Before: B40975842  After: B37180716  **3**
+ Description of Changes:
+  The routine VDEFCONT has been changed to eliminate the false VDEF Alerts
+  from being generated.  It also adds the missing Request Queue name to the
+  Alert message text.
+
+Routine Name: VDEFKIDS
+    Before:            After: B14851717  **3**
+ Description of Changes:
+  New program to run pre-install processes that shut down VDEF processes 
+  and then restart them after the install.
+
+Routine Name: VDEFMNU
+    Before: B43970546  After: B48929533  **3**
+ Description of Changes:
+  Modified to include in the display, the VMS process ID of the TaskMan task
+  for the Request Queue process.
+
+Routine Name: VDEFMON
+    Before:            After:  B8239134  **3**
+ Description of Changes:
+  New program that monitors the EN^VDEFREQ queue processor and restarts it 
+  if it stops.
+
+Routine Name: VDEFQM
+    Before: B53152750  After: B65969413  **3**
+ Description of Changes:
+  New code added to this program to the VDEF monitor MONITOR^VDEFMON to 
+  automatically requeue requests that have errored out or get stuck in the 
+  Checked Out state.
+
+Routine Name: VDEFREQ
+    Before: B29489552  After: B31819768  **3**
+ Description of Changes:
+  The routine VDEFREQ has been changed to eliminate the problem of TaskMan
+  not restarting the VDEF Request Queue processor EN^VDEFREQ. Instead,
+  VDEFREQ does not re-schedule itself with TaskMan but uses a M HANG command
+  loop based on the number of seconds in file #579.3, field .05 - CHECK-OUT
+  TIME LIMIT.
+
+Routine Name: VDEFUTIL
+    Before:  B4358238  After: B20448090  **3**
+ Description of Changes:
+  The routine VDEFUTIL has been changed to allow a VDEF Alert to be unread
+  for 7 days before sending the Alert to the supervisor.  The old value was
+  1.
+
+
+=============================================================================
+User Information:
+Entered By  : GARDNER,JEFF                  Date Entered  : AUG 25, 2005
+Completed By: MURPHY,ELISA                  Date Completed: JAN 13, 2006
+Released By : WHELAN,ROBERT E               Date Released : JAN 18, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

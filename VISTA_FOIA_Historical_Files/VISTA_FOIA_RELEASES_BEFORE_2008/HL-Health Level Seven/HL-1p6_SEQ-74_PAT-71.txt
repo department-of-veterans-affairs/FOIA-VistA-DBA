@@ -1,0 +1,151 @@
+$TXT Created by CHAN,ALAN at NXT.KERNEL.ISC-SF.VA.GOV  (KIDS) on MONDAY, 01/14/02 at 16:07
+=============================================================================
+Run Date: MAR 08, 2002                     Designation: HL*1.6*71
+Package : HL - HEALTH LEVEL SEVEN            Priority: Mandatory
+Version : 1.6        SEQ #74                    Status: Released
+=============================================================================
+
+Associated patches: (v)HL*1.6*64   <<= must be installed BEFORE `HL*1.6*71'
+
+Subject: Corrupt HL7 Message Headers
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+ Test sites: Bay Pines, Grand Junction, Sheridan, Tampa,
+             Milwaukee, and Iron Mountain
+  
+ Patch HL*1.6*71 addresses the following NOIS:
+  
+    1. ISH-1100-40056  mpi/pd: commit ack issue, 'MSH' multiple corruption
+    2. MAC-0101-61601  corrupted MSH multiple (773) 
+    3. ISA-1101-11782  HL7 MESSAGE TRUNCATED ON REMOTE USER LOGGING
+  
+ Patch HL*1.6*71 fixes the corruption of the MSH Header where the MSH 
+ segment is received a second time after the body of the HL7 message has
+ been received.  What occurs is that the current VistA HL7 TCP/IP code
+ attempts to reset itself when incomplete data is received.  This usually
+ happens when a timeout has expired and the complete MSH segment has not
+ been received. When this happens, VistA HL7 drops original MSH Header. The
+ original body of the message is now left without the header. Next, the
+ sender of the original message resends a repeat of the original MSH Header
+ and the body again. The outcome is shown below:
+  
+   1) Message body.
+   2) Message (MSH) header.
+   3) Message body. 
+  
+ VistA HL7 now read 1) the Message body and 2) the Message Header as the
+ original message header itself. 
+  
+ After the installation of this patch (HL*1.6*71), VistA HL7 listeners will
+ no longer attempt to reset after timeouts have occurred, once a start
+ block has been received.
+  
+ This patch also fixes the problem where VistA HL7 will attempt to process 
+ an incomplete message.  These incomplete messages are the result of a
+ timeout occurring before the end-block character (<EB>) is reached while
+ reading inbound data.  Also, network performance issues may contribute to
+ the occurrence of Read timeouts.  Furthermore, large inbound messages (100
+ lines or more) with relatively short Read timeouts on the receiving side
+ can also increase the likelihood of receiving incomplete messages. This
+ patch will discard all incomplete messages as if no data had been
+ received.  At which point, the sender of the HL7 message needs to resend
+ the message again to ensure guaranteed delivery.
+  
+  
+ Routine Information:
+ ====================
+ The following routines are included in this patch.  The second line
+ of each of these routines now looks like:
+  
+   ;;1.6;HEALTH LEVEL SEVEN;<patchlist>;JUL 17,1995
+  
+                    Checksum
+   Routine         Old         New            2nd Line
+   ========     ========     ========     =====================     
+   HLCSTCP1      5081718      5982461     **19,43,57,64,71**
+  
+   List of preceding patches: 64
+   Sites should use CHECK^XTSUMBLD to verify checksums.
+  
+  
+ Installation Instructions: 
+ ==========================
+  
+   1.  Users are allowed to be on the system during the installation.  
+  
+   2.  DSM SITES: Review your mapped set.  If any of the routines listed in
+       the Routine Summary section are mapped, they should be removed from 
+       the mapped set at this time.  
+  
+   3.  Shutdown all Logical Links and incoming and outgoing filers, and
+       the Link Manager. Use the options:
+  
+         Filer and Link Management Options -> 
+             SA     Stop All Messaging Background Processes
+             LM     TCP/IP Link Manager Start/Stop
+  
+       For DSM sites ONLY, disabled all HL7 UCX Services 
+       for this installation.
+  
+   4.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This 
+       option will load the KIDS package onto your system.  
+  
+   5.  The patch has now been loaded into a Transport global on your 
+       system. You now need to use KIDS to install the Transport global.  
+       On the KIDS menu, under the 'Installation' menu, use the following 
+       options: 
+  
+          2 Verify Checksums in Transport Global 
+          3 Print Transport Global 
+          4 Compare Transport Global to Current System 
+          5 Backup a Transport Global 
+          6 Install Package(s) 
+              INSTALL NAME: HL*1.6*71 
+                            =========
+  
+         Answer 'NO' to 'Want KIDS to INHIBIT LOGONS during the install?'.  
+  
+         Answer 'NO' to 'Want to DISABLE Scheduled Options, Menu Options, 
+          and Protocols?'.  
+  
+   6.  Startup all Logical Links and incoming and outgoing filers. Use the 
+  
+         Filer and Link Management Options -> 
+             RA     Restart/Start All Links and Filers 
+         (Note that links that do not have "autostart" enabled will need to 
+         be restarted manually) 
+  
+       For DSM sites ONLY, if you previously disabled an HL7 UCX Service 
+       for this installation, you may now enable it.  
+  
+   7.  DSM Sites: Rebuild your mapped set if necessary.  
+  
+   8.  Start Link Manager using the option: "TCP/IP 
+         Link Manager Start/Stop." 
+
+Routine Information:
+====================
+
+Routine Name:
+  - HLCSTCP1
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : CHAN,ALAN                      Date Entered : NOV 21, 2000
+Completed By: SINGH,GURBIR                  Date Completed: MAR 06, 2002
+Released By : APOLONIO,AUGUSTO              Date Released : MAR 08, 2002
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

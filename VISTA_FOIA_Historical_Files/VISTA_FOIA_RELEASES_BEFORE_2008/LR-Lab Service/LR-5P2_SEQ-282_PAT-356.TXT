@@ -1,0 +1,656 @@
+$TXT Created by UNDERHILL,GARDNER III at DAYT17.FO-BAYPINES.MED.VA.GOV  (KIDS) on Friday, 03/02/07 at 12:22
+=============================================================================
+Run Date: MAR 15, 2007                     Designation: LR*5.2*356
+Package : LR - LAB SERVICE                    Priority: Mandatory
+Version : 5.2       SEQ #282                    Status: Released
+                  Compliance Date: APR 15, 2007
+=============================================================================
+
+Associated patches: (v)LR*5.2*256  <<= must be installed BEFORE `LR*5.2*356'
+                    (v)LR*5.2*286  <<= must be installed BEFORE `LR*5.2*356'
+
+Subject: PSI-06-025 CHANGE DISPLAY OF REFERENCE, CRITICAL & THERAPEUTIC RANGES
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ EFFECT ON BLOOD BANK FUNCTIONAL REQUIREMENTS: Patch LR*5.2*356 does not 
+ contain any changes to the VISTA BLOOD BANK Software as defined by VHA 
+ DIRECTIVE 2004-058 titled VISTA BLOOD BANK SOFTWARE VERSION 5.2.
+  
+ EFFECT ON BLOOD BANK FUNCTIONAL REQUIREMENTS: Patch LR*5.2*356 does not 
+ alter or modify any software design safeguards or safety critical 
+ elements functions.
+  
+ RISK ANALYSIS: Changes made by patch LR*5.2*356 have no effect on Blood 
+ Bank software functionality, therefore RISK is none.
+  
+ VALIDATION REQUIREMENTS BY OPTION: Because of the nature of the changes 
+ made, no specific validation requirements exist as a result of 
+ installation of this patch.
+  
+ ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  
+ This patch will correct a problem with the display of Reference, Critical 
+ and Therapeutic ranges in the Laboratory Test Description in the Lab Test
+ information option of the Tools menu in CPRS GUI by routine LR7OR4. It 
+ will correct a problem with the display of reference ranges with the
+ patient's laboratory test data in both CPRS GUI and the Laboratory Package
+ by routines LR7OGMC, and LRRP1.
+  
+  
+ ASSOCIATED REMEDY TICKET:
+ =========================
+ HD0000000130907  Tools menu Lab test option
+  
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Tennessee Valley HCS
+ West LA HCS
+ VA Heartland East HCS
+ Upstate New York HCS
+  
+  
+ REMEDY TICKET OVERVIEW:
+ =======================
+  
+ Problem (1):  
+ ------------
+ Some laboratory tests have only the high value of the reference range
+ defined. These tests currently will display the data in this manner:
+  
+      Reference range: - 100
+  
+ This single value can be incorrectly interpreted as a negative.  Although
+ it is displayed in CPRS GUI, the display is generated on the server by a
+ Laboratory package routine - LR7OR4.
+  
+ Solution:
+ ---------
+ A laboratory test with only the low value defined will now display in this
+ manner:
+  
+      Reference range low: 10
+  
+ If the low value is free text, it will now display in this manner:
+      Reference range: NORMAL
+  
+ A laboratory test which only has the high value defined will now display
+ in this manner:
+  
+      Reference range high: 100
+  
+ If the high value is free text, it will now display in this manner:
+      Reference range : >1500
+  
+ A laboratory test with both low and high values defined will now display 
+ in this manner:
+  
+      Reference range low  : 10 
+      Reference range high : 100
+  
+ And if both low and high values are defined and free text, it will 
+ display:
+      Reference range low  : NORMAL
+      Reference range high : SEE COMMENTS
+  
+  
+ Problem (2):
+ ------------
+ Some laboratories store embedded MUMPS code for reference ranges whose 
+ values are based on the patient's sex, the patient's age, or both the
+ patient's sex and age. This is currently being displayed as straight MUMPS
+ code but is not useful to the users who are unable to read MUMPS code.
+ Currently, it might display in this manner:
+  
+ Example # 1, based on patient's sex:
+     Reference range: $S(SEX="M":39.8,1:34.9) - $S(SEX="M":53,1:46.0)
+  
+ Example # 2, based on patient's age:
+     Reference range: $S(AGE<65:">4.0",AGE=65:">4.0",1:">3.5")
+  
+ The routine LR7OR4 displays this data as well.
+  
+ Solution:
+ ---------
+ Modify LR7OR4 to translate the MUMPS into a readable format.
+ Example # 1 for ranges based on patient's sex: 
+      Reference range
+          Male low  : 39.8
+          Male high : 53
+          Female low  : 34.9
+          Female high : 46.0
+  
+ Example # 2 for ranges based on patient's age:  
+      Reference range
+          If Age is less than 65 the low is >4.0
+          If Age is equal to 65 the low is >4.0
+          Default low: >3.5
+  
+ For ranges based on both the patient's sex and age the possible
+ combinations of age and sex made breaking this out into more detail prone
+ to error. It has been decided with the agreement of EVS to not break out 
+ the embedded M code. This is what will print if the range contains both 
+ sex and age:
+     Reference range - Age and sex dependent range values, please contact 
+                       lab for specifics
+  
+  
+ Problem (3): 
+ ------------
+ The reference ranges when displayed with the patient's laboratory test
+ results will display a dash high_value when the low value is null.
+ (example: - 123). This is true in both CPRS GUI and in VistA.
+  
+ The laboratory package routines LR7OGMC, LRRP1, and LR7OSUM5 handle this 
+ formatting for the different reporting options on the Lab tab in CPRS GUI.
+  
+ Solution:
+ ---------
+ Modify LR7OGMC, LRRP1, LR7OSUM5, LR70SUM6 to check the low and high
+ reference values and format the display of the reference range values
+ accordingly.
+  
+ Example # 1 If both the low and high reference values are defined then
+ the output will be formatted:  50 to 123
+  
+ Example # 2 If only the low reference value is defined and it is numeric 
+ the output will be formatted:  low: 50
+  
+ Example # 3 If only the low reference value is defined and it is 
+ alphanumeric the output will be formatted:  NORMAL
+  
+ Example # 4 If only the high reference value is defined and it is numeric
+ the output will be formatted:  high: 123
+  
+ Example # 5 If only the high reference value is defined and it is 
+ alphanumeric the output will be formatted:  POS
+  
+  
+ Problem (4):
+ ------------
+ This is an issue discovered by the test sites during testing. The 
+ modification of the reference range display for the vertical cumulative
+ reports had the side effect of making the horizontal cumulative report lab
+ test headers to be crowded and unreadable.
+  
+ Solution:
+ ---------
+ Further modification of LR7OSUM5 to change the way the horizontal 
+ cumulative reports created the lab test headers. This is an example of the
+ reformatted horizontal cumulative report headers:
+  
+                        ---- LAB TEST GROUP ----
+  
+ SPECIMIAN            TEST 1        TEST 2        TEST 3        TEST 4
+ Ref range low         low           low
+ Ref range high        high                        high
+                      units         units         units         units
+ --------------------------------------------------------------------------
+  
+ The low and high values are given their own line to print. If a lab test 
+ has both, then both will print. If a lab test has only the low or high
+ defined, it will print on the appropriate line. If the lab test has
+ neither defined, then nothing will print as in the example above.
+  
+  
+ Problem (5):
+ ------------
+ This is an issue discovered by the test sites during testing. The 
+ Miscellaneous test section of the cumulative report was not printing with
+ the new formatting. In addition, if the lab test only had the high
+ reference range value defined it did not print.
+  
+ Solution:
+ ---------
+ Modification of LR70SUM6 to print the method of reference range value 
+ display and correct the issue of the lab test with high value reference
+ range only not being displayed. This is an example of the revised and
+ corrected output from LR7OSUM6:
+  
+                         ---- MISCELLANEOUS TESTS ----
+  
+    DATE    TIME   SPECIMEN          TEST         VALUE         Ref ranges
+ --------------------------------------------------------------------------
+ 10/04/2006 17:54  BLOOD             CML-F:       201 H          high: 200
+ 10/04/2006 17:44  BLOOD             CML-F:       160            low: 100
+ 10/04/2006 16:28  BLOOD             CML-F:       150            100 to 200
+ 08/24/2006 18:05  BLOOD             CML-F:       186
+ ==========================================================================
+  
+ The ranges now print as described in the solution to problem # 3.
+  
+  
+ DATA DICTIONARY CHANGES:
+ ========================
+ Test sites requested changes be made to the field descriptions to help the
+ ADPACs better understand how values entered in the reference fields would
+ effect the printing of the laboratory test definition in CPRS GUI and
+ laboratory test with  results print outs. The changes were made to the
+ following fields: (NOTE: all of these fields are sub-fields of field # 
+ 100, SITE/SPECIMEN)
+  
+ Number        Field Name
+ ------        ----------
+ 1             REFERENCE LOW
+ 2             REFERENCE HIGH
+ 3             CRITICAL LOW
+ 4             CRITICAL HIGH
+ 9.2           THERAPEUTIC LOW
+ 9.3           THERAPEUTIC HIGH
+  
+ BEFORE PATCH INSTALLATION:
+ REFERENCE RANGES
+ STANDARD DATA DICTIONARY #60.01 -- SITE/SPECIMEN SUB-FILE
+                                                    JAN 24,2007@13:57:23  
+ PAGE 1
+ STORED IN ^LAB(60,D0,1,   SITE: TEST.DAYTON.MED.VA.GOV   UCI: DAYT17,ROU
+  
+ DATA          NAME                  GLOBAL        DATA
+ ELEMENT       TITLE                 LOCATION      TYPE
+ --------------------------------------------------------------------------
+ 60.01,1       REFERENCE LOW    0;2 FREE TEXT
+  
+               INPUT TRANSFORM: K:$L(X)>50!($E(X,1)?1A)!(X["^") X I $D(X) 
+                                S X=" S X="_X D ^DIM Q:'$D(X)  
+                                S X=$P(X,"=",2,99)
+  
+               LAST EDITED:     APR 28, 1987
+               HELP-PROMPT:     ANSWER MUST BE 0-50 CHARACTERS IN LENGTH 
+                                (USE "QUOTES" AROUND TEXT)
+               DESCRIPTION:     This is the user entered reference low 
+                                value for this test.
+               NOTES:           XXXX--CAN'T BE ALTERED EXCEPT BY PROGRAMMER
+  
+  
+ 60.01,2       REFERENCE HIGH   0;3 FREE TEXT
+  
+               INPUT TRANSFORM: K:$L(X)>50!($E(X,1)?1A)!(X["^") X I $D(X) 
+                                S X=" S X="_X D ^DIM Q:'$D(X)  
+                                S X=$P(X,"=",2,99)
+               LAST EDITED:     APR 28, 1987
+               HELP-PROMPT:     ANSWER MUST BE 0-50 CHARACTERS IN LENGTH 
+                                (USE "QUOTES" AROUND TEXT)
+               DESCRIPTION:     This is the user entered reference high 
+                                value for this test.
+  
+               NOTES:           XXXX- CAN'T BE ALTERED EXCEPT BY PROGRAMMER
+  
+  
+ 60.01,3       CRITICAL LOW     0;4 FREE TEXT
+  
+               INPUT TRANSFORM: K:$L(X)>50!($E(X,1)?1A)!(X["^") X I $D(X) 
+                                S X=" S X="_X D ^DIM Q:'$D(X)  
+                                S X=$P(X,"=",2,99)
+               LAST EDITED:     APR 28, 1987
+               HELP-PROMPT:     ANSWER MUST BE 0-50 CHARACTERS IN LENGTH 
+                                (USE "QUOTES" AROUND TEXT)
+               DESCRIPTION:     This is the user entered critical low 
+                                value for this test.  Used to flag results.
+  
+               NOTES:           XXXX--CAN'T BE ALTERED EXCEPT BY PROGRAMMER
+  
+  
+ 60.01,4       CRITICAL HIGH    0;5 FREE TEXT
+  
+               INPUT TRANSFORM: K:$L(X)>50!($E(X,1)?1A)!(X["^") X I $D(X) 
+                                S X=" S X="_X D ^DIM Q:'$D(X)  
+                                S X=$P(X,"=",2,99)
+               LAST EDITED:     APR 28, 1987
+               HELP-PROMPT:     ANSWER MUST BE 0-50 CHARACTERS IN LENGTH 
+                                (USE "QUOTES" AROUND TEXT)
+               DESCRIPTION:     This is the user entered critical high 
+                                value of this test.  Used to flag results.
+  
+               NOTES:           XXXX--CAN'T BE ALTERED EXCEPT BY PROGRAMMER
+  
+  
+ 60.01,9.2     THERAPEUTIC LOW  0;11 FREE TEXT
+  
+               INPUT TRANSFORM: K:$L(X)>30!($L(X)<1)!(X["^") X I $D(X) 
+                                S X="S X ="_X D ^DIM I $D(X) 
+                                S X=$E(X,5,256)
+               LAST EDITED:     APR 28, 1987
+               HELP-PROMPT:     ENTER LOW END OF THERAPEUTIC RANGE (USE
+                                "QUOTES" AROUND TEXT)
+               DESCRIPTION:     This is the low end value of the
+                                therapeutic range.  Used to flag results.
+  
+               NOTES:           XXXX--CAN'T BE ALTERED EXCEPT BY PROGRAMMER
+  
+  
+ 60.01,9.3     THERAPEUTIC HIGH 0;12 FREE TEXT
+  
+               INPUT TRANSFORM: K:$L(X)>30!($L(X)<1)!(X["^") X I $D(X) 
+                                S X="S X ="_X D ^DIM I $D(X) 
+                                S X=$E(X,5,256)
+               LAST EDITED:     APR 28, 1987
+               HELP-PROMPT:     ENTER HIGH END OF THERAPEUTIC RANGE (USE
+                                "QUOTES" AROUND TEXT)
+               DESCRIPTION:     This is the high end value of the 
+                                therapeutic range.  Used to flag results.
+  
+               NOTES:           XXXX--CAN'T BE ALTERED EXCEPT BY PROGRAMMER
+  
+  
+ AFTER PATCH INSTALLATION:
+ STANDARD DATA DICTIONARY #60.01 -- SITE/SPECIMEN SUB-FILE   
+                                                     MAR 2,2007@12:12:30  
+ PAGE 1
+ STORED IN ^LAB(60,D0,1,   SITE: TEST.DAYTON.MED.VA.GOV   UCI: 
+ DAYT17,ROU       
+  
+ DATA          NAME                  GLOBAL        DATA
+ ELEMENT       TITLE                 LOCATION      TYPE
+ --------------------------------------------------------------------------
+ -----
+  
+ 60.01,1       REFERENCE LOW    0;2 FREE TEXT
+  
+               INPUT TRANSFORM: K:$L(X)>50!($E(X,1)?1A)!(X["^") X I $D(X) 
+                                S X=" S X="_X D ^DIM Q:'$D(X)  
+                                S X=$P(X,"=",2,99)
+               LAST EDITED:     JAN 24, 2007 
+               HELP-PROMPT:     ANSWER MUST BE 0-50 CHARACTERS IN LENGTH 
+                                (USE "QUOTES" AROUND TEXT)
+               DESCRIPTION:     This is the user entered reference low 
+                                value for this test.  If both the low and
+                                high are defined it will print in this
+                                manner: 
+                                        low : 10 
+                                        high : 50 
+                                If only the low is defined and it is
+                                numeric it will print in this manner:
+                                        low: 10 
+                                If only the low is defined and it is
+                                alphanumeric it will print in this
+                                manner: 
+                                        NORMAL 
+                                If only the high is defined and it is
+                                numeric it will print in this manner:
+                                        high: 50 
+                                If only the high is defined and it is
+                                alphanumeric it will print in this
+                                manner: 
+                                        >1000 
+               NOTES:           XXXX--CAN'T BE ALTERED EXCEPT BY PROGRAMMER
+  
+  
+ 60.01,2       REFERENCE HIGH   0;3 FREE TEXT
+  
+               INPUT TRANSFORM: K:$L(X)>50!($E(X,1)?1A)!(X["^") X I $D(X) 
+                                S X=" S X="_X D ^DIM Q:'$D(X)  
+                                S X=$P(X,"=",2,99)
+               LAST EDITED:     JAN 24, 2007 
+               HELP-PROMPT:     ANSWER MUST BE 0-50 CHARACTERS IN LENGTH 
+                                (USE "QUOTES" AROUND TEXT)
+               DESCRIPTION:     This is the user entered reference high 
+                                value for this test.  If both the low and
+                                high are defined it will print in this
+                                manner: 
+                                        low : 10 
+                                        high : 50 
+                                If only the low is defined and it is
+                                numeric it will print in this manner:
+                                        low: 10 
+                                If only the low is defined and it is
+                                alphanumeric it will print in this
+                                manner: 
+                                        NORMAL 
+                                If only the high is defined and it is
+                                numeric it will print in this manner:
+                                        high: 50 
+                                If only the high is defined and it is
+                                alphanumeric it will print in this manner:
+                                        >1000 
+  
+               NOTES:           XXXX--CAN'T BE ALTERED EXCEPT BY PROGRAMMER
+  
+  
+ 60.01,3       CRITICAL LOW     0;4 FREE TEXT
+  
+               INPUT TRANSFORM: K:$L(X)>50!($E(X,1)?1A)!(X["^") X I $D(X) 
+                                S X=" S X="_X D ^DIM Q:'$D(X)  
+                                S X=$P(X,"=",2,99)
+               LAST EDITED:     JAN 24, 2007 
+               HELP-PROMPT:     ANSWER MUST BE 0-50 CHARACTERS IN LENGTH 
+                                (USE "QUOTES" AROUND TEXT)
+               DESCRIPTION:     This is the user entered critical low value
+                                for this test.  Used to flag results.  If
+                                both the low and high are defined it will
+                                print in this manner:
+                                        low : 10 
+                                        high : 50 
+                                If only the low is defined and it is
+                                numeric it will print in this manner:
+                                        low: 10 
+                                If only the low is defined and it is
+                                alphanumeric it will print in this
+                                manner: 
+                                        NORMAL 
+                                If only the high is defined and it is
+                                numeric it will print in this manner:
+                                        high: 50 
+                                If only the high is defined and it is
+                                alphanumeric it will print in this manner:
+                                        >1000 
+  
+               NOTES:           XXXX--CAN'T BE ALTERED EXCEPT BY PROGRAMMER
+  
+  
+ 60.01,4       CRITICAL HIGH    0;5 FREE TEXT
+  
+               INPUT TRANSFORM: K:$L(X)>50!($E(X,1)?1A)!(X["^") X I $D(X) 
+                                S X=" S X="_X D ^DIM Q:'$D(X)
+                                S X=$P(X,"=",2,99)
+               LAST EDITED:     JAN 24, 2007 
+               HELP-PROMPT:     ANSWER MUST BE 0-50 CHARACTERS IN LENGTH 
+                                (USE "QUOTES" AROUND TEXT)
+               DESCRIPTION:     This is the user entered critical high 
+                                value of this test.  Used to flag results.
+                                If both the low and high are defined it
+                                will print in this manner:
+                                        low : 10 
+                                        high : 50 If only the low is 
+                                defined and it is numeric it will print in
+                                this manner:
+                                        low: 10 
+                                If only the low is defined and it is
+                                alphanumeric it will print in this
+                                manner: 
+                                        NORMAL 
+                                If only the high is defined and it is
+                                numeric it will print in this manner:
+                                        high: 50 
+                                If only the high is defined and it is
+                                alphanumeric it will print in this manner:
+                                        >1000 
+  
+               NOTES:           XXXX--CAN'T BE ALTERED EXCEPT BY PROGRAMMER
+  
+ STANDARD DATA DICTIONARY #60.01 -- SITE/SPECIMEN SUB-FILE   
+                                                     MAR 2,2007@12:12:54  
+ PAGE 1
+ STORED IN ^LAB(60,D0,1,   SITE: TEST.DAYTON.MED.VA.GOV   UCI: DAYT17,ROU
+  
+ DATA          NAME                  GLOBAL        DATA
+ ELEMENT       TITLE                 LOCATION      TYPE
+ --------------------------------------------------------------------------
+ -----
+  
+ 60.01,9.2     THERAPEUTIC LOW  0;11 FREE TEXT
+  
+               INPUT TRANSFORM: K:$L(X)>30!($L(X)<1)!(X["^") X I $D(X) 
+                                S X="S X ="_X D ^DIM I $D(X) 
+                                S X=$E(X,5,256)
+               LAST EDITED:     JAN 24, 2007 
+               HELP-PROMPT:     ENTER LOW END OF THERAPEUTIC RANGE (USE 
+                                "QUOTES" AROUND TEXT) 
+               DESCRIPTION:     This is the low end value of the 
+                                therapeutic range.  Used to flag results.  
+                                If both the low and high are defined it
+                                will print in this manner:
+                                        low : 10 
+                                        high : 50 
+                                If only the low is defined and it is
+                                numeric it will print in this manner:
+                                        low: 10 
+                                If only the low is defined and it is
+                                alphanumeric it will print in this manner:
+                                        NORMAL 
+                                If only the high is defined and it is
+                                numeric it will print in this manner:
+                                        high: 50 
+                                If only the high is defined and it is
+                                alphanumeric it will print in this manner:
+                                        >1000 
+  
+               NOTES:           XXXX--CAN'T BE ALTERED EXCEPT BY PROGRAMMER
+  
+  
+ 60.01,9.3     THERAPEUTIC HIGH 0;12 FREE TEXT
+  
+               INPUT TRANSFORM: K:$L(X)>30!($L(X)<1)!(X["^") X I $D(X) 
+                                S X="S X ="_X D ^DIM I $D(X) 
+                                S X=$E(X,5,256)
+               LAST EDITED:     JAN 24, 2007 
+               HELP-PROMPT:     ENTER HIGH END OF THERAPEUTIC RANGE (USE 
+                                "QUOTES" AROUND TEXT) 
+               DESCRIPTION:     This is the high end value of the 
+                                therapeutic range.  Used to flag results.  
+                                If both the low and high are defined it
+                                will print in this manner:
+                                        low : 10 
+                                        high : 50 
+                                If only the low is defined and it is
+                                numeric it will print in this manner: 
+                                        low: 10 
+                                If only the low is defined and it is
+                                alphanumeric it will print in this
+                                manner: 
+                                        NORMAL 
+                                If only the high is defined and it is
+                                numeric it will print in this manner:
+                                        high: 50 
+                                If only the high is defined and it is
+                                alphanumeric it will print in this manner:
+                                        >1000 
+  
+               NOTES:           XXXX--CAN'T BE ALTERED EXCEPT BY PROGRAMMER
+  
+ When the user is inputting a new test or updating an existing one to get 
+ this revised description all the user needs to do is to enter a double
+ question mark (??) at the prompt for these fields and press the enter key.
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ This patch can be loaded with users in the system, but it should be 
+ installed during non-peak hours.  Installation time will be less than
+ two minutes.
+  
+ 1.  Choose the PackMan message containing this patch and invoke the
+     INTALL/CHECK MESSAGE Packman option.
+  
+ 2.  Start up the Kernel Installation and Distribution System Menu 
+     [XPD MAIN]:
+  
+            Edits and Distribution ...
+            Utilities ...
+            Installation ...
+  
+       Select Kernel Installation & Distribution System Option:
+       Installation
+  
+            1      Load a Distribution
+            2      Verify Checksums in Transport Global
+            3      Print Transport Global
+            4      Compare Transport Global to Current System
+            5      Backup a Transport Global
+            6      Install Package(s)
+                   Restart Install of Package(s)
+                   Unload a Distribution
+  
+   3.  From this menu, it is highly recommended that you use the
+       following options (When prompted for the INSTALL NAME, enter
+       LR*5.2*356):
+  
+       a.  Verify Checksums in Transport Global - This option will
+           verify the checksums of routines included in this patch.
+       b.  Print Transport Global - This option will print out a list
+           of all the components exported in this patch.
+       c.  Compare Transport Global to Current System - This option
+           will allow you to view all changes that will be made when
+           this patch is installed.  It compares all components of this
+           patch (routines, DD's, templates, etc.).
+       d.  Backup a Transport Global - This option will back up the
+           current versions of the routines in this patch before it is
+           installed.
+  
+   4.  Use the Install Package(s) option and select the package LR*5.2*356.
+       You will see the following message:
+  
+       Incoming Files:
+  
+       60        LABORATORY TEST  (Partial Definition)
+       Note:  You already have the 'LABORATORY TEST' File.
+  
+  
+       a.  When prompted "Want KIDS to INHIBIT LOGONs during the
+           install? YES//", answer NO.
+       b.  When prompted "Want to DISABLE Scheduled Options and Menu
+           Options and Protocols? YES//", answer NO.
+  
+  
+ ROUTINE SUMMARY:
+ ================
+ The following routines are included in this patch.  The second line of
+ each of these routines now look like:
+  
+      <tab>;;5.2;LAB SERVICE;**[patch list]**;Sep 27, 1994
+  
+  
+                           CHECK^XTSUMBLD
+  
+     Routine Name     Before Patch   After Patch    Patch List
+     ------------     ------------   ------------   -----------
+     LR7OGMC          5463477        5437008        187,230,312,286,356
+     LR7OR4           7643039        15417921       256,356
+     LR7OSUM5         12009958       15180985       121,187,228,241,250,
+                                                    251,256,356
+     LR7OSUM6         5450631        5480369        121,201,187,286,356
+     LRRP1            6556852        6802647        153,221,283,286,356
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: LR7OGMC
+    Before:  B9576583  After: B10197738  **187,230,312,286,356**
+Routine Name: LR7OR4
+    Before: B15588318  After: B40408681  **256,356**
+Routine Name: LR7OSUM5
+    Before: B25373064  After: B34508107  **121,187,228,241,250,251,256,356**
+Routine Name: LR7OSUM6
+    Before: B12942824  After: B13903521  **121,201,187,286,356**
+Routine Name: LRRP1
+    Before: B21441496  After: B22566819  **153,221,283,286,356**
+
+=============================================================================
+User Information:
+Entered By  : UNDERHILL,GARDNER D           Date Entered  : MAR 09, 2006
+Completed By: WERNER,GARY                   Date Completed: MAR 02, 2007
+Released By : GAWRONSKI,ROXANNE             Date Released : MAR 15, 2007
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

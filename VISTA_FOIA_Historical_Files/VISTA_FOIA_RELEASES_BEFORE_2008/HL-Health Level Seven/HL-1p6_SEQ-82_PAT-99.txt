@@ -1,0 +1,163 @@
+$TXT Created by ANDREASSEN,LARRY J at NXT.KERNEL.FO-OAKLAND.MED.VA.GOV  (KIDS) on MONDAY, 09/02/02 at 17:22
+=============================================================================
+Run Date: NOV 19, 2002                     Designation: HL*1.6*99
+Package : HL - HEALTH LEVEL SEVEN     Priority: Mandatory
+Version : 1.6        SEQ #82                    Status: Released
+=============================================================================
+
+
+Subject: DIE Problems from DG Array
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+ Test sites:    Maryland HCS, San Francisco VAMC, North Chicago VAMC
+  
+ NOIS:          MOU-0802-31685
+  
+ Note:          No required builds exist.
+  
+ The HL Communication Server Parameters file (#869.3) holds information 
+ about running incoming and outgoing filers.  Recently, invalid data has 
+ been created in the Incoming Filer Task Number multiple field (#869.32) 
+ at multiple sites.  This data sometimes causes maximum length string 
+ errors.
+  
+ You can easily verify that your site is experiencing this problem by 
+ listing the global data in ^HLCS(869.3,1,2) like this:
+  
+ Global ^HLCS(869.3,1,2
+         HLCS(869.3,1,2
+ ^HLCS(869.3,1,2,0) = ^869.32^335939^1
+ ^HLCS(869.3,1,2,335939,0) = 335939^0^59049,71503
+ ^HLCS(869.3,1,2,"B",335939,335939) =
+  
+ The above data is correct, and is how your data should look.  If you have 
+ invalid data, the data in ^HLCS(869.3,1,2) will contain additional 
+ invalid (not found in the data dictionary for this file) data.  Invalid 
+ data looks something like the following:
+  
+ ^HLCS(869.3,1,2,0) = ^869.32^335939^1
+ ^HLCS(869.3,1,2,335939,0) = 335939^0^59049,71503
+ ^HLCS(869.3,1,2,335939,1) = NNNYNNNNN                  <-- invalid node
+ ^HLCS(869.3,1,2,335939,2) =                            <-- invalid node
+ ^HLCS(869.3,1,2,335939,3) = 5555 55555555              <-- invalid node
+ ^HLCS(869.3,1,2,"B",335939,335939) =
+  
+ This error is caused by the existence of local DG variable array 
+ elements that exist prior to calling the VistA HL7 package.  (No invalid 
+ actions by the application are implied; the DG variable array creation by 
+ applications is a valid action.)  Subsequently, the VistA HL7 package 
+ calls the DIE Fileman routine to file data.  When this occurs, Fileman 
+ uses the pre-existing DG variable array, creating the invalid data shown 
+ in the example above.
+  
+ Note:  A VA Filemanager patch will be issued in the near future to 
+        fix this problem.  In the meantime, this patch is being released
+        defensively to stop the creation of invalid data.
+  
+ This patch news the DG namespace in the subroutine where the problem 
+ occurs.  This patch also removes all invalid global data in the HL 
+ Communication Server Parameters file (#869.3).
+  
+ Note:      The invalid global data described above causes no problems
+            to the VistA HL7 package other than the unnecessary 
+            existence of the extraneous data.
+  
+ The first and second lines of the routines included in this patch are
+ shown below.
+  
+ HLCSUTL1        ;ALB/JRP - COMMUNICATION SERVER UTILITIES;15-MAY-95
+         ;;1.6;HEALTH LEVEL SEVEN;**99**;Oct 13, 1995
+  
+ The VA Kernel checksum for the routine included in this patch
+ (calculated using CHECK^XTSUMBLD) is listed below.
+  
+                 Checksum        Checksum
+   Routine Name  Before Patch    After Patch     Patch List
+   ============  ============    ===========     =====================
+   HLCSUTL1      2138096         2952859         **99**
+  
+ Sites should use CHECK^XTSUMBLD to verify checksums after patch
+ installation.
+  
+ Installation Instructions:
+ ==========================
+  
+    NOTICE:  There are no required KIDS builds prior to loading
+             and installing this patch.
+  
+    1.  Users are allowed to be on the system during the installation.
+  
+    2.  AXP/DSM SITES: Review your mapped routine set.  If the
+        routine listed in the ROUTINE SUMMARY section is mapped, it
+        should be removed from the mapped set at this time.
+  
+    3.  Stop all background processes (logical links and incoming
+        and outgoing filers) using the 'Filer and Link Management
+        Option's 'Stop All Messaging Background Processes [HL STOP ALL]'
+        menu option.
+  
+    4.  Stop the link manager using the 'TCP Link Manager Start/Stop
+        [HL START/STOP LINK MANAGER]' menu option.
+  
+    5.  AXP/DSM SITES ONLY: Disable all HL7 UCX Services for this
+        installation.
+  
+    6.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This
+        option will load the KIDS package onto your system.
+  
+    7.  This patch is now loaded into a transport global on your
+        system. The next step is to use KIDS to install the Transport
+        global. This is done using the 'Installation' menu's 'Install
+        Package(s) [XPD INSTALL BUILD]' menu option. When using this
+        menu option to install the patch build, you will be asked
+        several questions.  The questions, and the answers you should
+        supply, are shown below.
+  
+        INSTALL NAME: <HL*1.6*99>
+        Want KIDS to INHIBIT LOGONS during the install?  <NO>
+        Want to DISABLE Scheduled Options, Menu Options,
+          and Protocols?  <NO>
+  
+    8.  Start all background processes (logical links and incoming
+        and outgoing filers) using the Filer and Link Management
+        Option's 'Restart/Start All Links and Filers [HL TASK RESTART]'
+        menu option.
+  
+        (Note that links that do not have "autostart" enabled will need
+        to be restarted manually.)
+  
+    9. AXP/DSM SITES ONLY: If you previously disabled an HL7 UCX Service
+       for this installation, you may enable it now.
+  
+   10.  AXP/DSM SITES ONLY: After the patch has been installed, rebuild
+        your map set, if necessary.
+  
+   11.  Start the link manager using the 'TCP Link Manager Start/Stop
+        [HL START/STOP LINK MANAGER]' menu option.
+
+Routine Information:
+====================
+
+Routine Name:
+  - HLCSUTL1
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : ANDREASSEN,LARRY               Date Entered : SEP 02, 2002
+Completed By: SINGH,GURBIR                  Date Completed: NOV 15, 2002
+Released By : GAYFIELD,LISA                 Date Released : NOV 19, 2002
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

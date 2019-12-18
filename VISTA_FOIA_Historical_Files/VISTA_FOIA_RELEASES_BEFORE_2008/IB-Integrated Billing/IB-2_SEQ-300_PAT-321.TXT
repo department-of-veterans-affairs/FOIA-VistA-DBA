@@ -1,0 +1,327 @@
+$TXT Created by GINSBERG,ELIOT at MNTVLL.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 12/13/05 at 07:53
+Run Date: MAR 31, 2006                     Designation: IB*2*321
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #300                      Status: Released
+                  Compliance Date: MAY 01, 2006
+=============================================================================
+
+Associated patches: (v)IB*2*269    <<= must be installed BEFORE `IB*2*321'
+                    (v)IB*2*275    <<= must be installed BEFORE `IB*2*321'
+
+Subject: INTEGRATED BILLING (IB) RX COPAY EXEMPTION STATUS
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ Issue #1: Update Income Test Protocol
+ =====================================
+ The background process to calculate the Medication Copayment Exemption
+ Status of a patient is not correctly handling Income Verification Match
+ (IVM) Converted Income Tests. The exemption calculator is working
+ correctly for all Inbound Solicited (ORF) and Un-Solicited (ORU) Income
+ Test Data (Z10) HL7 Transmissions.
+  
+ The Medication Copayment Exemption Status calculator is also called from
+ the IB EXEMPTION EVENTS Protocol and is triggered from many menu options.
+ When it is invoked from an option, it is occasionally evaluating the
+ exemption for an IVM Converted Income Test incorrectly.
+  
+ This patch (IB*2.0*321) is modifying the IB EXEMPTION EVENTS Protocol to 
+ correctly handle all IVM Converted Income Tests when it is executed from 
+ a menu option as well as an HL7 Transmission.
+  
+ Issue #2: Create New Recalculation Process
+ ==========================================
+ The Print/Verify Patient Exemption Status [IB RX PRINT VERIFY EXEMP] 
+ option is used to search through the BILLING EXEMPTIONS (#354.1) file and 
+ compare the currently stored active exemption for each patient against 
+ what it calculates to be the correct exemption status for the patient 
+ based on current data in the MAS files. This functionality was used to 
+ create a new process to automatically correct/update discrepant records 
+ with an incorrect exemption status. 
+  
+ This new process has been added to the beginning of the nightly 
+ background job (Queue Means Test Compilation of Charges [IB MT NIGHT 
+ COMP]) and will validate the records containing an effective date within
+ the past thirty days.
+  
+ A recap of all updated records will be sent via a MailMan message to the 
+ mail group defined in the COPAY EXEMPTION MAIL GROUP (#.13) field of the
+ IB SITE PARAMETERS (#350.9) file.
+  
+ Example of MailMan message:
+  
+   Subj: IB RX COPAY EXEMPT UPDATE  [#38474] 11/22/05@13:22  8 lines
+   From: IB PACKAGE  In 'IN' basket.   Page 1  *New*
+   
+   ------------------------------------------------------------------------
+        Medication Copayment Exemption Problem Report NOV 22, 2005 13:22
+  
+   Patient          PT. ID       Error         Current/Calc Exemption
+   ------------------------------------------------------------------------
+   TESTA,PATIENT  000-01-2004  Incorr Exmpt   INCOME>PENSION/NO INCOME DATA
+   TESTB,PATIENT  000-23-9099  Incorr Exmpt   NO INCOME DATA/INCOME>PENSION
+  
+   There were 2 discrepancies found in 83 exemptions checked.
+  
+   Enter message action (in IN basket): Ignore//
+  
+  
+ Issue #3: Post Install Cleanup
+ ==============================
+ The new Medication Copay Exemption Calculation Process being added by this
+ patch (IB*2.0*321) will be run as a background job from a post-install.  
+ The process will search through the BILLING EXEMPTIONS (#354.1) file and 
+ compare the currently stored active exemption for each patient against 
+ what it calculates to be the correct exemption status for the patient on 
+ records with an effective date from January 1, 2005 to the present.
+  
+ A recap of all updated records will be sent via a mailman message (defined
+ in Issue #2 above) to the mail group defined in the COPAY EXEMPTION MAIL
+ GROUP (#.13) field in the single entry in the IB SITE PARAMETERS (#350.9)
+ file.
+  
+  
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+ There is no NSR associated with this patch.
+  
+  
+ This patch addresses the following Remedy Ticket(s):
+ ---------------------------------------------------------
+ HD0000000064811 - TUC-0205-60087  RX EXEMPTION CALCULATION IS INCORRECT
+  
+ HD0000000098007 - INCORRECT RX COPAY EXEMPTION
+  
+ HD0000000102245 - Rx Copay Exemption calculated wrong.
+  
+  
+ Overview of Remedy Tickets:
+ ----------------------------
+   Ticket #: HD0000000064811
+  
+    Problem: When a converted IVM CO-PAY EXEMPTION TEST is filed in VistA
+             for the current income year, 2 exemptions result. One
+             correctly files the NON-EXEMPT status but the next 
+             recalculates the exemption to EXEMPT. This is NOT correct 
+             and the sites will lose copay dollars as a result.
+  
+ Resolution: Update the Income Test Protocol to exclude all 
+             IVM Converted Test Transmissions from being evaluated.
+  
+  
+   Ticket #: HD0000000098007
+  
+    Problem: After receiving a "CONVERTED" CO-PAY EXEMPTION TEST from
+             Income Verification at the HEC, the Rx Copay Exemption status 
+             is EXEMPT but should be NON-EXEMPT.
+  
+ Resolution: Update the Income Test Protocol to exclude all IVM Converted
+             Test Transmissions from being evaluated.
+  
+  
+   Ticket #: HD0000000102245
+  
+    Problem: If the HEC also sends a verified CO-PAY EXEMPTION TEST, the
+             new exemption that they send is filed followed immediately by
+             a new calculation of the exemption which is going to be 
+             EXEMPT.
+  
+ Resolution: Update the Income Test Protocol to exclude all 
+             IVM Converted Test Transmissions from being evaluated.
+  
+  
+ Test Sites:
+ -----------
+ BRONX (Large)
+ OKLAHOMA CITY (Large)
+ TUCSON (Large)
+  
+  
+        ================INSTALLATION INSTRUCTIONS =================
+ This patch may be installed with users on the system, and if it is
+ installed during the normal workday, it is recommended that the 
+ following selections in the OPTION (#19) file be disabled to prevent
+ possible conflicts while running the KIDS Install. Other VISTA users will
+ not be affected.
+  
+   Print/Verify Patient Exemption Status   [IB RX PRINT VERIFY EXEMP]
+   Queue Means Test Compilation of Charges [IB MT NIGHT COMP]
+  
+  
+ Install Time - less than 5 minutes
+  
+  
+   1.   LOAD TRANSPORT GLOBAL 
+        ---------------------
+        Choose the PackMan message containing this patch and invoke the 
+        INSTALL/CHECK MESSAGE PackMan option.  
+   
+   2.   COMPONENTS SENT WITH PATCH
+        --------------------------
+        The following is a list of the routines included in this patch.  
+        The second line of each of these routines now looks like: 
+   
+            ;;2.0;INTEGRATED BILLING;** [patch list]**; 21-MAR-94
+   
+                            CHECK^XTSUMBLD results
+  
+        Routine        Before Patch     After Patch    Patch List 
+        -------        ------------     -----------    ----------
+        IBAMTC         7580630          7641901        34,52,70,93,100
+                                                       118,115,132,150,153
+                                                       137,176,215,275,321
+        IBAMTED        3758888          5009481        15,255,269,321
+        IBARXEPS       N/A             10247819             321
+  
+   
+           Total number of routines - 3
+  
+           Total number of routines modified: 2
+           Total number of new routines:      1
+           Total number of deleted routines:  0
+  
+  
+   3.   START UP KIDS 
+        -------------
+        Start up the Kernel Installation and Distribution System Menu 
+        [XPD MAIN]: 
+    
+             Edits and Distribution ...  
+             Utilities ...  
+             Installation ...  
+    
+   Select Kernel Installation & Distribution System Option: INStallation 
+                                                            ---
+             Load a Distribution 
+             Print Transport Global 
+             Compare Transport Global to Current System 
+             Verify Checksums in Transport Global 
+             Install Package(s) 
+             Restart Install of Package(s) 
+             Unload a Distribution 
+             Backup a Transport Global 
+    
+   Select Installation Option: 
+    
+   4.   Select Installation Option: 
+        ---------------------------
+        NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+               NAME, enter IB*2.0*321):
+       
+        a.  Backup a Transport Global - This option will create a backup
+            message of any routines exported with this patch. It will not
+            backup any other changes such as DD's or templates.
+        b.  Compare Transport Global to Current System - This option will
+            allow you to view all changes that will be made when this patch
+            is installed.  It compares all components of this patch
+            (routines, DD's, templates, etc.).
+        c.  Verify Checksums in Transport Global - This option will allow
+            you to ensure the integrity of the routines that are in the
+            transport global.
+      
+   5.   Select Installation Option: Install Package(s) 
+                                    ----------------
+        **This is the step to start the installation of this KIDS patch: 
+    
+       a.  Choose the Install Package(s) option to start the patch install.
+       b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+           YES//' answer NO.
+       c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+           Options, and Protocols? YES//' answer YES.
+       d.  When prompted 'Enter options you wish to mark as 'Out Of
+           Order':'  Enter the following options:
+   
+       Print/Verify Patient Exemption Status   [IB RX PRINT VERIFY EXEMP]
+       Queue Means Test Compilation of Charges [IB MT NIGHT COMP]
+  
+       e.  When prompted 'Enter protocols you wish to mark as 'Out Of 
+           Order':' press <Enter>.
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: IBAMTC
+    Before: B23660778  After: B24161099  **34,52,70,93,100,118,115,132,
+                                          150,153,137,176,215,275,321**
+ Description of Changes:
+  Original Code:
+  --------------
+   
+           D NIGHTLY^IBTRKR ; claims tracking nightly update
+           ;
+           D ^IBCD ; automated biller
+   
+   
+   
+  Modified Code:
+  --------------
+   
+           D UPDT^IBARXEPS($$FMADD^XLFDT(DT,-30),DT,1)
+           ;
+           D NIGHTLY^IBTRKR ; claims tracking nightly update
+           ;
+           D ^IBCD ; automated biller
+
+Routine Name: IBAMTED
+    Before:  B8126243  After: B10970561  **15,255,269,321**
+ Description of Changes:
+  Original Code:
+  --------------
+   
+           ;Original Non-Z06 Copay processing
+           D:'$D(EASZ06) ^IBAMTED1
+           ;
+           ; -- end medication copayment exemption processing
+   
+   
+   
+  Modified Code:
+  --------------
+   
+           ;Original Non-Z06 Copay processing
+          I '$D(EASZ06) D
+   ;      . ;this routine is called from the DG namespace and IB namespace
+          . ;when coming in from the DG namespace, variable DGMTD and 
+  DGMTDT is
+          . ;used to define the means test test.  When coming in
+          . ;from the IB namespace, variable IBDT  OR IVMMTDT is used
+          . I '$D(IBDT) N IBDT
+          . S 
+  IBDT=$S($D(IBDT):IBDT,$D(IVMMTDT):IVMMTDT,$D(DGMTDT):DGMTDT,$D(DGMTD):DGMT
+  D,1:0)
+          . I $P($G(^DGMT(408.31,+$$LST^DGMTCOU1(DFN,IBDT,2),0)),"^",23)=2 Q
+          . I $G(^DGMT(408.31,+$$LST^DGMTCOU1(DFN,IBDT,2),"C",1,0))["Z06 MT 
+  via Edb" Q
+          . D ^IBAMTED1
+          . Q
+           ; -- end medication copayment exemption processing
+
+Routine Name: IBARXEPS
+    Before:            After: B42904497  **321**
+ Description of Changes:
+  This routine is a new routine introduced with this patch and is a 
+  modified version of program IBARXEPV.
+   
+  Routine IBARXEPV outputs the 'Medication Copayment Exemption Problems' to 
+  a printer (it actually requires output to 132 columns), routine IBARXEPS 
+  outputs the same information to a MailMan message.
+
+
+=============================================================================
+User Information:
+Entered By  : ADES,ROBERT                   Date Entered  : JUL 20, 2005
+Completed By: RUDINGER,NANCY L.             Date Completed: MAR 30, 2006
+Released By : GANUS,MAUNETTE                Date Released : MAR 31, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

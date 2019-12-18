@@ -1,0 +1,284 @@
+$TXT Created by HOLLOWAY,THOMAS J at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 02/11/04 at 15:12
+=============================================================================
+Run Date: JUN 02, 2004                     Designation: IB*2*263
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #240                      Status: Released
+                  Compliance Date: JUL 03, 2004
+=============================================================================
+
+Associated patches: (v)IB*2*135    <<= must be installed BEFORE `IB*2*263'
+                    (v)IB*2*184    <<= must be installed BEFORE `IB*2*263'
+
+Subject: CLAIMS STATUS AWAITING RESOLUTION AND INSURANCE BUFFER ERRORS
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch corrects an error which is generated when trying to use the 
+ View an EOB [IBCE EOB VIEW] protocol selection on the Claims Status 
+ Awaiting Resolution screen.  This error occurs when the bill that is 
+ selected for viewing does not have an associated EOB.  This patch also 
+ corrects the display of insurance company choices when entering data 
+ into the insurance buffer.
+  
+ ASSOCIATED NOIS:
+ ================
+ 1. SBY-0104-30665   <NULLSUBSCR>GETEOB+11^IBCECSA6:1
+ 2. MIN-0104-41017   IIV Buffer File (Specific COs can't be Added)
+  
+ ASSOCIATED E3R(s):
+ ==================
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Heartland-East HSC
+ Minneapolis, MN
+ Salisbury, NC
+ Walla Walla, WA
+  
+ NOIS OVERVIEW:
+ ==============
+  
+ 1. SBY-0104-30665   <NULLSUBSCR>GETEOB+11^IBCECSA6:1
+  
+    Problem:
+    --------
+    When using the Claims Status Awaiting Resolution [IBCE CLAIMS STATUS
+    AWAITING] option and when selecting the View an EOB [IBCE EOB VIEW]
+    protocol choice, the program would get an error if the selected bill did
+    not actually have an EOB on file.  The source for this error was in
+    routine IBCECSA5 which was calling IBCECSA6 even when there was no EOB
+    available.  
+  
+    Resolution:
+    -----------
+    The code was modified to recognize the situation of no EOB and
+    in that case, does not continue trying to display one.
+  
+ 2. MIN-0104-41017   IIV Buffer File (Specific COs can't be Added)
+  
+    Problem:
+    --------
+    When adding data to the Insurance Buffer, some insurance company
+    names were not being displayed as choices.  This occurred when 
+    there were several entries with the same name and the first entry
+    was inactive.  The look up function was seeing the inactive entry
+    and stopping.  That name would not be displayed.
+  
+    Resolution:
+    -----------
+    The program has been modified to check all entries under a 
+    given name and allow the name if any entry is found to be
+    active.  For example, if the Insurance Company file contained:
+      35  AETNA   GALVESTON  INACTIVE
+      42  AETNA   BROWNSVILLE  INACTIVE
+      59  AETNA   HOUSTON   ACTIVE
+    the previous look up program would not have returned AETNA as a 
+    valid choice.  The corrected version will show it.
+  
+  
+ TECHNICAL:
+ ==========
+  
+ 1. SBY-0104-30665   <NULLSUBSCR>GETEOB+11^IBCECSA6:1
+  
+    The line INIT+10^IBCECSA5 has been changed from:
+    I $G(VALMCNT)=1 S IBCNT=$P($G(^TMP("IBCECSD",$J,1)),U,2),IBONE=1
+ ... D BLD^IBCECSA6
+  
+    to:
+    I $G(VALMCNT)=1 S IBCNT=$P($G(^TMP("IBCECSD",$J,1)),U,2),IBONE=1
+ ... I IBCNT D BLD^IBCECSA6
+  
+    In some instances, IBCNT could be NULL.  The change in the code
+    does not allow BLD^IBCECSA6 to be called if that is the case.
+  
+ 2. MIN-0104-41017   IIV Buffer File (Specific COs can't be Added)
+  
+    The subroutine DICINS^IBCNBU1 has been modified to do an additional
+    level of looping as it processes the B and C cross references.
+    Previously, it only checked the first $O record at the name level and
+    selected it if the record was active or quit if the record was
+    inactive.  It now $Orders through all duplicates of a name checking
+    the status.  If any one of the duplicate names is active, the name is
+    selected for display to the user.
+  
+  
+ ROUTINE SUMMARY 
+ ===============
+ The following is a list of the routines included in this patch.  
+ The second line of each of these routines now looks like: 
+  
+   <tab>;;2.0;INTEGRATED BILLING;**[PATCH LIST]**;21-MAR-94
+  
+                        CHECK^XTSUMBLD results
+ Routine name      Before Patch        After Patch       Patch List
+ ============      ============        ===========       ===========
+ IBCECSA5              14446600           14392627       137,135,263
+ IBCNBU1               10486397           10566243        82,184,263
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+  
+  This patch can be loaded with users in the system.  Installation time
+  will be less than 2 minutes.
+  
+  1.  Choose the PackMan message containing this patch and invoke the 
+      INSTALL/CHECK MESSAGE PackMan option. 
+  
+  2.  (DSM for Open VMS sites only) Disable routine mapping on all systems
+      for the routines listed in the Routine Summary.
+  
+      NOTE:  If the routines included in this patch are not currently
+      in your mapped routine set, please skip this step.
+  
+  3.  Start up the Kernel Installation and Distribution System Menu
+      [XPD MAIN]: 
+  
+           Edits and Distribution ...  
+           Utilities ...  
+           Installation ...  
+  
+      Select Kernel Installation & Distribution System Option: Installation
+                                                               ---
+           1      Load a Distribution
+           2      Verify Checksums in Transport Global
+           3      Print Transport Global
+           4      Compare Transport Global to Current System
+           5      Backup a Transport Global
+           6      Install Package(s)
+                  Restart Install of Package(s)
+                  Unload a Distribution
+  
+  4.  From this menu, you may elect to use the following options
+      (When prompted for the INSTALL NAME, enter IB*2.0*263):
+  
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will
+          not backup any other changes such as DD's or templates.
+      b.  Compare Transport Global to Current System - This option
+          will allow you to view all changes that will be made when
+          this patch is installed.  It compares all components of this
+          patch (routines, DD's, templates, etc.).
+      c.  Verify Checksums in Transport Global - This option will
+          allow you to ensure the integrity of the routines that are
+          in the transport global.
+  
+  5.  Use the Install Package(s) option and select the package IB*2.0*263.
+  
+      a.  When prompted 'Want KIDS to INHIBIT LOGONs during the
+          install- YES//', answer NO.
+      b.  When prompted 'Want to DISABLE Scheduled Options, Menu
+          Options, and Protocols- YES//' answer YES.
+      c.  When prompted 'Enter options you wish to mark as 'Out of
+          Order':' Enter the following:  
+  
+          Claims Status Awaiting Resolution [IBCE CLAIMS STATUS AWAITING]
+          Process Insurance Buffer          [IBCN INSURANCE BUFFER PROCESS]
+  
+      d.  When prompted 'Enter protocols you wish to mark as 'Out of
+          Order': Enter the following: (press return) 
+  
+  6.  (DSM for Open VMS sites only) Optional - Include the routines
+      distributed with this patch in the mapped routine set.
+  
+      NOTE: This step is only necessary if you performed step 2 or if
+      you wish to include the routines in your mapped set.
+  
+  
+ INSTALLATION EXAMPLE:
+ ---------------------
+ Select Installation Option: 6  Install Package(s)
+ Select INSTALL NAME:    IB*2.0*263     Loaded from Distribution  2/9/04@18:44:02
+      => IB*2*263 
+  
+ This Distribution was loaded on Feb 09, 2004@18:44:02 with header of 
+    IB*2*263
+    It consisted of the following Install(s):
+      IB*2.0*263
+ Checking Install for Package IB*2.0*263
+  
+ Install Questions for IB*2.0*263
+  
+  
+ Want KIDS to INHIBIT LOGONs during the install? YES// NO
+ Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// 
+  
+ Enter options you wish to mark as 'Out Of Order': IBCE CLAIMS STATUS AWAITING   
+     Claims Status Awaiting Resolution
+  
+ Enter options you wish to mark as 'Out Of Order': IBCN INSURANCE BUFFER PROCESS 
+       Process Insurance Buffer
+  
+ Enter options you wish to mark as 'Out Of Order': 
+  
+ Enter protocols you wish to mark as 'Out Of Order': 
+  
+ Delay Install (Minutes):  (0-60): 0// 
+  
+ Enter the Device you want to print the Install messages.
+ You can queue the install by enter a 'Q' at the device prompt.
+ Enter a '^' to abort the install.
+  
+ DEVICE: HOME//   IP network
+  
+                                    IB*2.0*263            
+ -----------------------------------------------------------------------
+  
+  Install Started for IB*2.0*263 : 
+                Feb 09, 2004@18:46:37
+  
+ Build Distribution Date: Feb 09, 2004
+  
+  
+  Installing Routines:
+                Feb 09, 2004@18:46:37
+  
+  Updating Routine file...
+  
+  Updating KIDS files...
+  
+  IB*2.0*263 Installed. 
+                Feb 09, 2004@18:46:37
+  
+  Install Message sent #7748
+  
+ -----------------------------------------------------------------------
+           +------------------------------------------------------------+
+   100%    |             25             50             75               |
+ Complete  +------------------------------------------------------------+
+  
+  
+ Install Completed
+
+Routine Information:
+====================
+
+Routine Name:
+  - IBCECSA5
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBCNBU1
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : HOLLOWAY,THOMAS J             Date Entered  : JAN 23, 2004
+Completed By: DAWSON,TIM                    Date Completed: MAY 27, 2004
+Released By : JACKSON,SHERYL                Date Released : JUN 02, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

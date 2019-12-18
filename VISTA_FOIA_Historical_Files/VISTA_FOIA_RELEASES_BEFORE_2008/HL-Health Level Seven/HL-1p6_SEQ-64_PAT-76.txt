@@ -1,0 +1,261 @@
+$TXT Created by CHAN,ALAN at NXT.KERNEL.ISC-SF.VA.GOV  (KIDS) on TUESDAY, 08/07/01 at 09:25
+=============================================================================
+Run Date: AUG 08, 2001                     Designation: HL*1.6*76
+Package : HL - HEALTH LEVEL SEVEN            Priority: EMERGENCY
+Version : 1.6        SEQ #64                    Status: Released
+=============================================================================
+
+Associated patches: (v)HL*1.6*65   <<= must be installed BEFORE `HL*1.6*76'
+                    (v)HL*1.6*67   <<= must be installed BEFORE `HL*1.6*76'
+
+Subject: CACHE' out of order acknowledgements
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+ The test sites for Patch HL*1.6*76 are:
+ =======================================
+  
+   1. White River Junction VAMC.
+   2. Butler VAMC.
+   3. Tuscaloosa VAMC.
+   4. Wilmington VAMC.
+   5. San Francisco VAMC.
+   6. Loma Linda VAMC
+  
+  
+ This Patch Addresses the Following NOIS Calls:
+ ==============================================
+  
+   1. ISH-0700-41306   Enhanced Message Header issue: 'AA' received before 'CA'
+   2. BRX-0701-12759   VANJHL7 in error state
+   3. BRX-0701-12760   Undefined error CHKMSG+6^HLCSTCP2
+   4. POR-0701-52464   problem with VANJH LINK
+   5. BHS-0701-12356   VABED Link
+   6. ERI-0701-22675   Possible run-away HL7 job on Sun 7/29/01
+  
+  
+ This patch is composed of the following five parts:
+ ===================================================
+  
+   1. Part 1 addresses out of order HL7 acknowledgements on Cache' 
+      systems.  
+   2. Part 2 addresses non-persistent TCP/IP client links, which are not 
+      maintaining a connection during the retention period. 
+   3. Part 3 addresses the near SACC routine size limit (10K) of the HL7 
+      routine HLCSTCP2.
+   4. Part 4 addresses direct connect handling network errors properly.
+      Read errors encountered through the direct connect were affecting
+      both the Institution File Redesign (IFR) clean-up and the activation 
+      of Integrated Billing (IB).
+   5. Part 5 addresses direct connect handling of M LOCKS.
+  
+  
+ Part 1 - The out of order HL7 acknowledgements on Cache' systems are related
+ to the inconsistent use of OPEN parameters between client
+ and server (listener) processes.  These acknowledgements are communicating
+ over a TCP/IP socket on Cache' systems.
+  
+ The VISTA HL7 package makes use of the following Kernel APIs
+ to open a TCP/IP socket:
+  
+    1. CALL^%ZISTCP -- Used by the client.  This API uses STREAM mode.
+    2. LISTEN^%ZISTCP -- Used by the single-threaded listener.  This API uses
+       packet mode.
+    3. LISTEN^%ZISTCPS -- Used by the multi-threaded listener.  This API uses
+       packet mode.
+  
+ When initiated from Cache' to DSM systems, HL7 messages should look like this:
+  
+    Order     Cache'                                  DSM
+    =====     ======                                  ===
+      1       client sends message----------------> listener
+      2       client <--------------------listener sends Commit ACK
+      3       listener <------------------client sends Application Response
+      4       listener sends Commit ACK------------> client
+  
+ However, with the inconsistent parameters used by the Kernel
+ APIs, listed above, the following HL7 message scenario occurs:
+  
+    Order     Cache'                                  DSM
+    =====     ======                                  ===
+      1       client sends message----------------> listener
+      4       client <--------------------listener sends Commit ACK
+      2       listener <------------------client sends Application Response
+      3       listener sends Commit ACK------------> client
+  
+ Notice that the Commit ACK (Order #4) for the initial message (Order #1)
+ arrives after the application response message (Order #2). This is happening
+ because the client process is using stream mode (Kernel API CALL^%ZISTCP).
+ Steam mode is causing the initial message to wait for the full timeout
+ to expire on the READ before the client process actually sees
+ what was just read.  Therefore, if the READ TIMEOUT is set to 30 seconds,
+ the client will sit on the READ command for the entire 30 seconds
+ while the listener process receives the application response
+ as soon as it is available.
+  
+  
+ Part 2 - The second part of this patch will help reduce the OPEN failure rate
+ that may be related to rapid OPENS and CLOSES by maintaining the connection
+ during the retention period.
+  
+ Part 3 - This patch creates the new HL7 routine HLCSTCP3 to accommodate
+ the spillover in excess of 10K from HLCSTCP2.
+  
+ Part 4 - The Institution File Redesign (IFR) Patch XU*8*206 may encounter
+ problems with the clean-up process if network problems are present.
+ During the clean-up, IFR will download the Master Institution File from FORUM.
+ This is done via an HL7 feature called "direct connect".  The VISTA HL7
+ developers have discovered a problem when read errors are encountered
+ across the wide area network when using the direct connect.
+ Once this read error is encountered, it causes an error in the direct connect
+ and the connection is dropped and the IFR clean-up encounters an error.
+ When this happens, the direct connect does not clear the cross reference
+ it created.  Subsequently, when the clean-up is restarted,
+ an I/O problem will be encountered.  Patch HL*1.6*76 addresses
+ these issues by passing back to the calling application information regarding
+ any error it encounters.  Furthermore, it cleans up the cross reference
+ it created and closes the device before returning to the calling application.
+ In addition, the post-init routine HLPAT76 will find all incomplete messages
+ that were affected by READ errors prior to this patch.  This post-init will
+ set the status of these messages so that they do not affect other messages in
+ the queue.
+  
+ Part 5 - After the Integrated Billing (IB) patch IB*2*150 was activated,
+ many sites encountered several entries in their Lock Table.  This was a result
+ of the direct connect locking ^HLMA global nodes and never releasing the locks.
+ This IB patch utilizes an Integrated Billing Background Filer to send
+ several HL7 messages.  To achieve this, this filer calls the direct connect
+ API to send these messages.  However, each HL7 message sent adds two entries
+ into the Lock Table causing some sites to fill up their Lock Table.
+ This HL7 patch fixes this problem by having the direct connect API
+ properly release the locks when it no longer needs them.
+  
+  
+ Routine Information:
+ ====================
+  
+  The following routines are included in this patch.  The second line of each
+  of these routines now looks like:
+   ;;1.6;HEALTH LEVEL SEVEN;<patchlist>;JUL 17,1995
+  
+                   Checksum
+  Routine         Old       New      2nd Line
+  HLCSTCP2     11552851   11428718    **19,43,49,57,63,64,66,67,76**
+  HLCSTCP3          new    1935770    **76**
+  HLMA2         7999576    8028267    **19,43,57,58,64,65,76**
+  HLPAT76           new    1888010    **76**
+  
+  List of preceding patches: 65, 67
+  Sites should use CHECK^XTSUMBLD to verify checksums.
+  
+  This patch introduces the following new routines: HLCSTCP3 and HLPAT76.
+  Routine HLPAT76 is a post-init and has no user-callable entry points.
+  Post-init will identify all incomplete messages associated with TCP links
+  These incomplete messages are a result of Network errors encountered by
+  the DIRECT CONNECT API These messages will be removed from the outbound
+  TCP queue
+  
+ Installation Instructions: 
+ ==========================
+  
+   1.  Users are allowed to be on the system during this installation.  
+  
+   2.  DSM SITES: Review your mapped set. If any of the routines listed in 
+       the Routine Summary section are mapped, they should be removed from 
+       the mapped set at this time.  
+  
+   3.  Use the VISTA HL7 Filer and Link Management options, listed below, to 
+       shutdown (1) all Logical Links, (2) the incoming and outgoing filers,
+       and (3) the Link Manager. Use the options:
+  
+         Filer and Link Management Options -> 
+             SA     Stop All Messaging Background Processes 
+             LM     TCP/IP Link Manager Start/Stop 
+  
+       DSM SITES ONLY: Disable all HL7 UCX Services for this installation.
+  
+   4.  Use the option INSTALL/CHECK MESSAGE located on the PackMan menu to load 
+       the KIDS package onto your system.
+  
+   5.  Patch HL*1.6*76 has now been loaded into a Transport global on your 
+       system. The next step is to use KIDS to install the Transport global.
+       To do this, follow the KIDS menu path to the Installation menu:
+  
+          KIDS  Kernel Installation & Distribution System
+             Installation
+  
+       On the Installation menu, use the following options: 
+  
+          2 Verify Checksums in Transport Global 
+          3 Print Transport Global 
+          4 Compare Transport Global to Current System 
+          5 Backup a Transport Global 
+          6 Install Package(s) 
+              INSTALL NAME: HL*1.6*76 
+                            =========
+  
+          Answer 'NO' to 'Want KIDS to INHIBIT LOGONS during the install?'.  
+  
+          Answer 'NO' to 'Want to DISABLE Scheduled Options, Menu Options, 
+          and Protocols?'.  
+  
+   6.  Follow the HL7 menu path to the option Restart/Start All Links and
+       Filers to startup all Logical Links and incoming and outgoing
+       filers:
+  
+          Filer and Link Management Options -> 
+             RA  Restart/Start All Links and Filers 
+         
+          NOTE: Links that do not have "Autostart" enabled will need to 
+                be restarted manually) 
+  
+       DSM SITES ONLY: If you previously disabled an HL7 UCX Service 
+       for this installation, you may enable it now enable it.  
+  
+   7.  DSM SITES: Rebuild your mapped set if necessary.  
+  
+   8.  Start Link Manager using the option: TCP/IP Link Manager Start/Stop. 
+
+Routine Information:
+====================
+
+Routine Name:
+  - HLCSTCP2
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSTCP3
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLPAT76
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLMA2
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : CHAN,ALAN                      Date Entered : FEB 06, 2001
+Completed By: SINGH,GURBIR                  Date Completed: AUG 07, 2001
+Released By : GAYFIELD,LISA                 Date Released : AUG 08, 2001
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

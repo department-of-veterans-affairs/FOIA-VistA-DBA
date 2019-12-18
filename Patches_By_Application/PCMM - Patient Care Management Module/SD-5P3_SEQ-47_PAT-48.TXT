@@ -1,0 +1,292 @@
+$TXT Created by WHELAN,ROBERT at MNTVBB.ISC-ALBANY.VA.GOV  (KIDS) on TUESDAY, 09/17/96 at 10:16
+=============================================================================
+Run Date: SEP 20, 1996                     Designation: SD*5.3*48
+Package : SD - SCHEDULING                      Priority: Mandatory
+Version : 5.3        SEQ #47                    Status: Released
+=============================================================================
+
+Associated patches: (v)SD*5.3*45   <<= must be installed BEFORE `SD*5.3*48'
+
+Subject: PCMM OUTPUT FIXES
+
+Category: 
+  - Routine
+  - Informational
+
+Description: 
+============
+
+ This patch has an environment check routine that requires that SD*5.3*41 
+ and SD*5.3*45 be installed prior to the installation of this patch.  
+ (routine: SD5348EN)
+  
+  1)  Information:  The PCMM.hlp file exported with SD*5.3*41, is not 
+ usable for client workstations using Windows v3.11 or Windows NT.  When 
+ choosing 'Contents' from the 'Help' menu in PCMM, these (Windows v3.11 & 
+ Windows NT) users get two messages indicating that there is trouble with 
+ the help file:
+  'This file is not a Windows Help file.'
+  'A newer version of Help is needed to read this file.'
+ No content help is available for these users.
+  
+ A revised file (PCMM.hlp) is now available from the customer service 
+ TCP/IP directories, which resolves this problem.
+  
+ This was reported in NOIS CMS-0796-30745.
+  
+  2)  The Team's Members  [SC PCMM LIST TEAM'S MEMBERS] option omits 
+ certain teams in its printout if the internal entry order does not 
+ correspond to the teams' alphabetical order.
+  
+ This was reported in NOIS TUC-0796-60756.  This patch corrects this 
+ problem. (routine: SCRPTM)
+  
+  3)  The Team's Patients [SC PCMM LIST TEAM'S PATIENTS] option has 
+ patients erroneously listed as '[Not Assigned]'.  Also, if the patient 
+ is assigned to a team position, but the team position is not currently 
+ filled, the patient is listed as '[Not Assigned]' instead of printing 
+ the position name in brackets.
+  
+ This was reported in NOIS SDC-0796-61652.  This patch corrects these 
+ problems.  (routine: SCRPTP3)
+  
+  4)  Certain reports may error out with an allocation error.  This patch 
+ corrects the errors in the following reports:
+   Detailed Patient Enrollments [SC PCMM DETAIL LIST PTS] option
+        (routine: SCRPEC3)
+   Patient w/Team Assignments [SC PCMM PT LIST W/TEAM ASSIGN] option
+        (routine: SCRPTA)
+   Practitioner's Patients [SC PCMM PRACT PATIENTS] option
+        (routine: SCRPPAT2)
+   Team's Patients [SC PCMM LIST TEAM'S PATIENTS] option
+        (routine: SCRPTP)
+  
+ These problems were reported in NOIS calls BED-0796-11557 and TUA-0796-
+ 30912.
+  
+ In addition, the printing of 'IOST= ' at the beginning of the Detailed 
+ Patient Enrollments report was removed as part of changes to SCRPEC3.  
+ This error was discovered while de-bugging NOIS BED-0796-11557.
+  
+  5)  The Team's Members [SC PCMM LIST TEAM'S MEMBERS] option only prints 
+ practitioners that are only active TODAY.  Practitioners for the entire 
+ date range are not printed.
+  
+ This was reported in NOIS TUC-0796-60828.  This patch corrects this 
+ problem.  (routine: SCAPMCU1)
+  
+  6)  When the Patient Assignment option in PCMM is used more
+ than once in a session to assign patients to team positions, the NEW
+ PATIENT-POSITION ASSIGNMENT MailMan message will have multiple 'Current 
+ Primary Care Management Data:' sections.  Only the last of these is 
+ correct.
+  
+ This was discovered while de-bugging NOIS TUC-0796-60828.  This patch 
+ corrects this problem. (routine: SCMCTPM)
+  
+  7)  A number of sites have created 'WRITE' identifier nodes that use 
+ the WRITE command rather than using EN^DDIOL.  This can cause the system 
+ to hang in PCMM's Client (GUI) software during a lookup on a file that 
+ tries to 'talk' in the background.  If a site created such a node that 
+ causes the WRITE command to be executed in the PATIENT File (#2), the 
+ client software for PCMM will hang when this code is executed during a 
+ patient lookup (patient team assignment).
+  
+ This patch includes a post-init that searches several files for 
+ potential problem nodes.  Sites that have created these nodes will have 
+ the potentially problematic nodes displayed.  It will be up to sites to 
+ confirm that these nodes do not 'talk' in the background and/or fix 
+ those nodes that do.
+  
+ The DDs for the following files will be searched:
+   PATIENT (#2)
+   HOSPITAL LOCATION (#44)
+   TEAM (#404.51)
+   NEW PERSON (#200)
+  
+ Several of these files have nationally supported WRITE-type ID nodes, as 
+ long as these nodes use EN^DDIOL instead of WRITE, no problems should 
+ occur.
+  
+ ** Because modifying the DD global is potentially hazardous, sites 
+ should use extreme caution in modifying the DD.   Documentation on 
+ Identifiers and the Loader (DDIOL) can be found on pp 19-20 and 44-47 of 
+ the VA FileMan Programmer Manual.**
+  
+ ** If the NEW PERSON file is discovered to have any WRITE-type ID nodes 
+ that use the WRITE command (especially the W8 subscript), the site 
+ should contact IRMFO Customer support - this is indicative of 
+ installations conflicting in their shared parts.
+  
+ This was reported in NOIS ALB-0796-51236.  (routine: SD5348PT)
+  
+  
+  Example of a problem node & the fix for it:
+  ===========================================
+  
+ Problem (as suggested in SD*5.3*30):
+   ^DD(2,0,"ID","WR")="N X S X=Y,X=$$OUTPTPR^SDUTL3(X) W:X ""  
+ "",$P(X,U,2) S X=$$OUTPTTM^SDUTL3(Y) W:X "" "",$P(X,U,2)"
+  
+ Fixed:
+   ^DD(2,0,"ID","WR") = N X S X=Y,X=$$OUTPTPR^SDUTL3(X) D:X EN^DDIOL("  
+ "_$P(X,U,2),"","?0") S X=$$OUTPTTM^SDUTL3(Y) D:X EN^DDIOL("  
+ "_$P(X,U,2),"","?0")
+  
+ Alpha sites with a null device properly setup may not experience this 
+ problem.  Note: The use of DDIOL will cause some extra load on the 
+ system during patient lookup.
+  
+  ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;5.3;Scheduling;**[patch list]**;AUG 13, 1993
+  
+                         CHECK^XTSUMBLD results
+  Routine name     Before Patch          After Patch         Patch List
+  ============     ============          ===========         ==========
+  SCAPMCU1              6572700              6781359          41,45,48
+  SCMCTPM               8601122              8669226          41,45,48
+  SCRPEC3               3963697              4004006           41,48
+  SCRPPAT2              8206365              8248755           41,48
+  SCRPTA                6427472              6506133           41,48
+  SCRPTM                6315992              6309053           41,48
+  SCRPTP                5813134              5883901           41,48
+  SCRPTP3               6540825              6390684           41,48
+  SD5348EN                  N/A              1898256             48
+  SD5348PT                  N/A              2849072             48
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ This patch can be loaded with users on the system.  Installation
+ will take less than 5 minutes.
+  
+ 1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+  
+ 2.  Review your mapped set.  If any of the routines listed in the
+     ROUTINE SUMMARY section are mapped, they should be removed
+     from the mapped set at this time.
+  
+ 3.  From the Kernel Installation and Distribution System Menu, select 
+     the Installation menu.  
+  
+ 4.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter SD*5.3*48):
+     a.  Backup a Transport Global - this option will create a backup
+         message of any routines exported with the patch.  It will NOT
+         backup any other changes such as DDs or templates.
+     b.  Compare Transport Global to Current System  - this option will
+         allow you to view all changes that will be made when the patch
+         is installed.  It compares all components of the patch 
+         (routines, DDs, templates, etc.).
+     c.  Verify Checksums in Transport Global - this option will
+         allow you to ensure the integrity of the routines that are in
+         the transport global.
+  
+ 5.  Use the Install Package(s) option and select the package SD*5.3*48.
+  
+ 6.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+     Protocols? YES//', respond YES.  When prompted to select the options
+     you would like to place out of order, enter the following:
+        SC PCMM REPORTS MENU          PCMM Reports
+        SC PCMM GUI WORKSTATION          PCMM GUI Workstation
+        SC PCMM LIST TEAM'S MEMBERS        Team's Members
+        SC PCMM LIST TEAM'S PATIENTS          Team's Patients
+        SC PCMM DETAIL LIST PTS        Detailed Patient Enrollments
+        SC PCMM PT LIST W/TEAM ASSIGN        Patient w/Team Assignments
+        SC PCMM PRACT PATIENTS        Practitioner's Patients
+  
+ 7.  MSM sites:  Please ensure you answer YES when asked if you want 
+     to move the routines to other systems and indicate the appropriate 
+     CPUs.
+  
+ 8.  If routines were unmapped as part of step 2, they should be returned
+     to the mapped set once the installation has run to completion.
+  
+ 9.  Review the output of the post-init of this patch.  Sites are 
+     responsible for making any needed changes (e.g., changing WRITE-type 
+     ID nodes to use ^DDIOL).
+  
+ 10. To review the data dictionaries for potentially problematic WRITE-type
+     ID nodes, you can re-run the post-init routine (D EN^SD5348PT).  Once
+     you are satisfied that no problems remain with the data dictionaries,
+     you may delete the SD5348PT post-init routine and the SD5348EN
+     environment check routine.
+
+Routine Information:
+====================
+
+Routine Name:
+  - SCAPMCU1
+
+
+Routine Checksum:
+
+Routine Name:
+  - SCMCTPM
+
+
+Routine Checksum:
+
+Routine Name:
+  - SCRPEC3
+
+
+Routine Checksum:
+
+Routine Name:
+  - SCRPPAT2
+
+
+Routine Checksum:
+
+Routine Name:
+  - SCRPTM
+
+
+Routine Checksum:
+
+Routine Name:
+  - SCRPTP
+
+
+Routine Checksum:
+
+Routine Name:
+  - SD5348EN
+
+
+Routine Checksum:
+
+Routine Name:
+  - SD5348PT
+
+
+Routine Checksum:
+
+Routine Name:
+  - SCRPTP3
+
+
+Routine Checksum:
+
+Routine Name:
+  - SCRPTA
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : WHELAN,ROBERT E               Date Entered : AUG 01, 1996
+Completed By: INSLEY,MARCIA                 Date Completed: SEP 18, 1996
+Released By : SINGH,GURBIR                  Date Released : SEP 20, 1996
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,188 @@
+$TXT Created by HUA,PATRICK at MNTVLL.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 05/22/08 at 13:03
+=============================================================================
+Run Date: JUL 14, 2008                     Designation: IVM*2*130
+Package : IVM - INCOME VERIFICATION MATCH     Priority: Mandatory
+Version : 2       SEQ #108                      Status: Released
+                  Compliance Date: AUG 14, 2008
+=============================================================================
+
+Associated patches: (v)IVM*2*105   <<= must be installed BEFORE `IVM*2*130'
+
+Subject: FIX UNDEFINED ERROR ON IVM BACKGROUND JOB
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch, IVM*2.0*130, addresses an undefined error in the IVM 
+ Background Job [IVM BACKGROUND JOB].  The undefined error, 
+ LOADSD+28^IVMZ072, occurs when the process attempts to access a record in 
+ the PATIENT RELATION file (#408.12) that: (1) a zero node does not exist 
+ for the record, OR (2) a zero node exists but is missing data in the 
+ PERSON (#.03) field.
+  
+ NOTE:  This patch only addresses the error in the IVM Background Job [IVM 
+ BACKGROUND JOB].  The potential for a different error, 
+ <SYNTAX>INIT+14^DGDEP, to occur exists in the Load/Edit Patient Data [DG 
+ LOAD PATIENT DATA] and the Register a Patient [DG REGISTER PATIENT] 
+ options.  If there is corrupted data in the PATIENT RELATION file 
+ (#408.12), this error will occur upon entry into the Dependents Module 
+ screen.  The fix will need to be made AFTER the release of the ENROLLMENT 
+ VISTA CHANGES TO SUPPORT ESR (Release 2) project.  The current projected 
+ release date for the EVC R2 project is September 2008.
+  
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+ There is no NSR associated with this patch.
+  
+ This patch addresses the following Remedy Ticket(s):
+ ----------------------------------------------------
+ HD0000000230042 - UNDEFINED ERROR ON BKGRD JOB
+  
+ Overview of Remedy Ticket(s):
+ -----------------------------
+ HD0000000230042 - UNDEFINED ERROR ON BKGRD JOB
+  
+ Problem:
+ --------
+ The PATIENT RELATION (#408.12) file may become corrupted from time to
+ time.  When the IVM Background Job [IVM BACKGROUND JOB] attempts
+ to access one of these corrupted records, an UNDEFINED ERROR is generated
+ by the system.
+  
+ Resolution:
+ -----------
+ Routine IVMZ072 will be updated to check for the existence of a zero node 
+ or a zero node that is missing a critical piece in the PATIENT RELATION
+ (#408.12) file before setting a variable equal to that record.  This will
+ further bulletproof the code from generating an error.
+  
+ Test Sites:
+ -----------
+ Tennessee Valley HCS
+ Bronx, NY
+ Manchester, NH
+  
+  
+        ================INSTALLATION INSTRUCTIONS =================
+  
+ This patch should NOT be installed while the IVM Background Job [IVM 
+ BACKGROUND JOB] is running.
+  
+ If installed during the normal workday, it is recommended that the 
+ following selection in the OPTION (#19) file be disabled to prevent 
+ possible conflicts while running the KIDS Install. Other VISTA users will 
+ not be affected.
+  
+    IVM Background Job              [IVM BACKGROUND JOB]
+  
+ Install Time - less than 5 minutes
+  
+ 1.  LOAD TRANSPORT GLOBAL 
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the 
+     INSTALL/CHECK MESSAGE PackMan option.  
+              
+ 2.  START UP KIDS 
+     -------------
+     Start up the Kernel Installation and Distribution System Menu 
+     [XPD MAIN]: 
+    
+          Edits and Distribution ...  
+          Utilities ...  
+          Installation ...  
+    
+ Select Kernel Installation & Distribution System Option: INStallation 
+                                                          ---
+          Load a Distribution 
+          Print Transport Global 
+          Compare Transport Global to Current System 
+          Verify Checksums in Transport Global 
+          Install Package(s) 
+          Restart Install of Package(s) 
+          Unload a Distribution 
+          Backup a Transport Global 
+    
+ Select Installation Option: 
+    
+ 3.  Select Installation Option: 
+     ---------------------------
+     NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+            NAME, enter IVM*2.0*130):
+       
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when this patch
+         is installed.  It compares all components of this patch
+         (routines, DD's, templates, etc.).
+     c.  Verify Checksums in Transport Global - This option will allow
+         you to ensure the integrity of the routines that are in the
+         transport global.
+      
+ 4.  Select Installation Option: Install Package(s) 
+                                 ------------------
+     **This is the step to start the installation of this KIDS patch: 
+    
+     a.  Choose the Install Package(s) option to start the patch
+         install.
+     b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+         YES//' answer NO.
+     c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+         Options, and Protocols? YES//' answer YES.
+     d.  When prompted 'Enter options you wish to mark as 'Out Of
+         Order':'  Enter the following option:
+   
+           IVM BACKGROUND JOB       [IVM BACKGROUND JOB]
+     
+     e.  When prompted 'Enter protocols you wish to mark as 'Out Of
+         Order':' press <Enter>.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;2.0;INCOME VERIFICATION MATCH;**[Patch List]**;JUL 8,1996;Build 2
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: IVMZ072
+    Before:  B3473516   After:  B3619048  **105,130**
+ Description of Changes:
+  Original Code:
+   
+           I '$D(^DGPR(408.12,"B",DFN)) Q
+           S NIEN="" F  S NIEN=$O(^DGPR(408.12,"B",DFN,NIEN)) Q:NIEN=""  D
+           . S IEN=$P(^DGPR(408.12,NIEN,0),U,3)
+           . ; an entry in DPT is the patient.  we only need relations
+           . Q:$P(IEN,";",2)["DPT"
+   
+   
+   
+  Modified Code:
+   
+           I '$D(^DGPR(408.12,"B",DFN)) Q
+           S NIEN="" F  S NIEN=$O(^DGPR(408.12,"B",DFN,NIEN)) Q:NIEN=""  D
+           . Q:'$D(^DGPR(408.12,NIEN,0))
+           . S IEN=$P(^DGPR(408.12,NIEN,0),U,3)
+           . ; an entry in DPT is the patient.  we only need relations
+           . Q:$P(IEN,";",2)["DPT"!'IEN
+
+ 
+Routine list of preceding patches: 105
+
+=============================================================================
+User Information:
+Entered By  : HUA,PATRICK                   Date Entered  : APR 23, 2008
+Completed By: RUDINGER,NANCY L.             Date Completed: JUL 14, 2008
+Released By : GROOMS,ANTHONY E              Date Released : JUL 14, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

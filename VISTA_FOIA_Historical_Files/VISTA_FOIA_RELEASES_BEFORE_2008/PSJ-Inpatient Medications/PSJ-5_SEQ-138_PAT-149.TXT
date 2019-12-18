@@ -1,0 +1,273 @@
+$TXT Created by CASTLE,JOHN at DAYT17.FO-BAYPINES.MED.VA.GOV  (KIDS) on Monday, 08/29/05 at 15:44
+=============================================================================
+Run Date: DEC 12, 2005                     Designation: PSJ*5*149
+Package : PSJ - INPATIENT MEDICATIONS         Priority: Mandatory
+Version : 5       SEQ #138                      Status: Released
+                  Compliance Date: JAN 12, 2006
+=============================================================================
+
+Associated patches: (v)PSJ*5*110   <<= must be installed BEFORE `PSJ*5*149'
+                    (v)PSJ*5*111   <<= must be installed BEFORE `PSJ*5*149'
+                    (v)PSJ*5*151   <<= must be installed BEFORE `PSJ*5*149'
+
+Subject: FIX TO AP-2 REPORT AND BACKDOOR RENEWAL ISSUE
+
+Category: 
+  - Routine
+
+Description:
+============
+
+  
+      This patch addresses two separate issues.  In the first issue,
+      if the ward group, ward location, or administration team are
+      not properly defined, patients or medications can be left off
+      of the Action Profile-2 Report  [PSJU AP-2].  
+      Some sites use this report as a backup system, and
+      some use it for weekend coverage.  The report allows the provider
+      to discontinue, renew, or take no action on orders for a patient.
+      If certain patients or medications are not properly displaying on
+      the report, the provider will not know what action to take, and
+      medication doses can be missed.
+  
+      The second issue addressed by this patch will make CPRS and backdoor
+      pharmacy function consistently with respect to discontinuing an
+      original order while it has a pending renewal.  CPRS will not allow
+      the original order to be discontinued, backdoor currently will.
+      Backdoor pharmacy will be changed to make it consistent with CPRS.
+  
+ ASSOCIATED NOIS/REMEDY TICKETS
+ ==============================
+  
+ HD0000000094566          AP-2 Profile Report
+ HD0000000096266          Duplicate
+ HD0000000096650          Duplicate
+ HD0000000090756          Backdoor Discontinue of Original Order
+  
+  
+ ASSOCIATED E3R(S)
+ =================
+ N/A
+  
+  
+ TEST SITES
+ ==========
+ Reno, NV
+ Hudson Valley HCS, NY
+ Coatesville, PA
+ 
+  
+ PROBLEM OVERVIEW AND RESOLUTION
+ ===============================
+ 1.  Patients/Medications missing from AP-2 Profile Report
+     HD94566  HD96266  HD96650
+  
+     If the ward location, ward group, or admin team are not setup properly,
+     certain patients and/or medications are not being properly built into
+     the temporary global that subsequent print routines use to create the
+     PSJU AP-2 Action profile report.  The resolution to this problem is to
+     ensure that all patients and medications are properly built into the
+     temporary global so they can be included in the report printout.
+  
+  
+ 2.  Discontinue Original Order while it has a Pending Renewal
+     HD90756
+  
+     CPRS and backdoor pharmacy are inconsistent with how they function
+     with respect to discontinuing orders with pending renewals.  The
+     resolution to this issue is to make backdoor function like CPRS, and
+     not allow an original order to be discontinued if it has a pending
+     renewal.
+  
+ TECHNICAL RESOLUTION
+ ====================
+  
+ 1.  Patients/Medications missing from AP-2 Profile Report
+     HD94566  HD96266  HD96650
+  
+     In GOD^PSGCAP0, there is a $S that sets the ward name before
+     it sets the ^TMP global.  If the ward name is not set up
+     properly, there is a failsafe in the $S that sets the ward name
+     to the value of "zz".  It is these ^TMP global entries that are
+     being missed by the reporting routines, and thus are leaving
+     patients and medications off the AP-2 list.  The fix is to add another
+     condition to the $S for setting the ward name.
+  
+     Additionally, in H1^PSGCAPP, if the ward name is "zz", the value
+     of the WD variable gets set to "*NF*" to denote on the report
+     that the ward group was not found.  However, the value of WD is not
+     reset to its original value of "zz" after printing "*NF*", and when
+     the code subsequently does a $O through the ^TMP global, it never
+     finds any entries with a WD value of "*NF*".  The resolution is to
+     add a new variable, WD1, to preserve the original value of WD if its
+     value is "zz".  The value of WD is then reset if applicable to its
+     original value before the code does its $O through ^TMP.
+  
+     Finally, in DONE^PSGCAPP, the variable WD1 is added to the list of
+     variables that get killed when the routine is exited.
+  
+  
+ 2.  Discontinue Original Order while it has a Pending Renewal
+     HD90756
+  
+      To prevent the user from discontinuing an original unit dose order
+      while it has a pending renewal, an additional check will be added
+      to DC^PSJOE.  There is a check on the status of the order.
+      An additional condition of I X="R" will be added followed by 
+      a warning message, and the user will not be allowed to DC 
+      the order.
+  
+      To prevent the user from discontinuing an original IV order while
+      it has a pending renewal, PSGACT^PSJLIORD will be modified.
+      Currently, if the order has a status of "R", the user actions allowed
+      are Discontinue, Activity Log, and Flag.  The fix is to comment out
+      the portion of the line of code that allows the Discontinue.
+  
+ ROUTINE SUMMARY
+ ===============
+  
+   The following is a list of the routines included in this patch.
+   The second line of each of the routines now looks like this:
+  
+      ;;5.0; INPATIENT MEDICATIONS ;**[PATCH LIST]**;16 DEC 97
+  
+  
+ Integrity Checking tools:  CHECK1^XTSUMBLD results
+  
+ Routine Name  Before Patch  After Patch                         Patch List
+ ============  ============  ===========    ===============================
+ PSGCAP0           21624437     21979348                      8,58,111,149
+  
+ PSGCAPP            13538831      13989426                    8,20,60,111,149
+  
+ PSJOE             82135949     83953005    7,26,29,33,42,50,56,72,58,85,95
+                                                 80,110,111,133,140,151,149
+  
+ PSJLIORD           9589966      9649309              1,16,29,58,85,110,149
+   
+   
+                        CHECK^XTSUMBLD results
+    
+ Routine Name  Before Patch  After Patch                         Patch List
+ ============  ============  ===========    ===============================
+ PSGCAP0           13898104     14226206                       8,58,111,149
+    
+ PSGCAPP            9164503      9218932                    8,20,60,111,149
+    
+ PSJOE             24492868     25467725    7,26,29,33,42,50,56,72,58,85,95
+                                                 80,110,111,133,140,151,149
+     
+ PSJLIORD           3671258      3703091              1,16,29,58,85,110,149
+  
+  
+   Installation will take less than 1 minute.
+   
+   Suggested time to install: non-peak requirement hours.  IF A USER IS ON
+   THE SYSTEM AND USING THESE PROGRAMS AN EDITED ERROR WILL OCCUR.  The
+   patch should be installed when NO Inpatient Pharmacy users are on the
+   system.
+   
+   1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+    
+   2. From the Kernel Installation & Distribution System menu, select
+      the Installation menu.
+    
+   3. From this menu, you may select to use the following options
+      (when prompted for INSTALL NAME, enter PSJ*5.0*149):
+          a.  Verify Checksums in Transport Global - This option will allow
+              you to ensure the integrity of the routines that are in the
+              transport global.
+          b.  Print Transport Global - This option will allow you to view
+              the components of the KIDS build.
+          c.  Compare Transport Global to Current System - This option will
+              allow you to view all changes that will be made when this patch
+              is installed.  It compares all components of this patch
+              (routines, DD's, templates, etc.).
+          d.  Backup a Transport Global - This option will create a backup
+              message of any routines exported with this patch. It will not
+              backup any other changes such as DD's or templates.
+     
+   4. Use the Install Package(s) option and select the package PSJ*5.0*149.
+     
+   5. When prompted "Want KIDS to INHIBIT LOGONs during the install? YES//"
+      respond NO.
+     
+   6. When prompted "Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols? YES//" respond NO. 
+    
+   7. When prompted "DEVICE: HOME//", respond with desired output device. If
+      queueing is selected, when prompted "Requested Start Time: NOW//",
+      respond with a return or enter.
+  
+ Example Installation:
+ =====================
+  
+ Select Installation Option: 6  Install Package(s)
+ Select INSTALL NAME:    PSJ*5.0*149     Loaded from Distribution  8/10/05@13:11:
+ 31
+      => PSJ*5*149 TEST v2
+    
+ This Distribution was loaded on Aug 10, 2005@13:11:31 with header of 
+    PSJ*5*149 TEST v2
+    It consisted of the following Install(s):
+     PSJ*5.0*149
+ Checking Install for Package PSJ*5.0*149
+    
+ Install Questions for PSJ*5.0*149
+      
+ Want KIDS to INHIBIT LOGONs during the install? YES// NO
+ Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// NO
+    
+ Enter the Device you want to print the Install messages.
+ You can queue the install by enter a 'Q' at the device prompt.
+ Enter a '^' to abort the install.
+    
+ DEVICE: HOME//   TCP
+     
+                                   PSJ*5.0*149                                   
+  --------------------------------------------------------------------------
+  Install Started for PSJ*5.0*149 : 
+                Aug 10, 2005@13:21:59
+     
+ Build Distribution Date: Jul 20, 2005
+     
+  Installing Routines:
+                Aug 10, 2005@13:21:59
+     
+  Updating Routine file...
+     
+  Updating KIDS files...
+      
+  PSJ*5.0*149 Installed. 
+                Aug 10, 2005@13:21:59
+     
+ NO Install Message sent 
+  --------------------------------------------------------------------------
+   
+            +------------------------------------------------------------+
+    100%    |             25             50             75               |
+  Complete  +------------------------------------------------------------+
+   
+   
+  Install Completed
+ 
+
+Routine Information:
+====================
+Routine Name: PSGCAP0
+Routine Name: PSGCAPP
+Routine Name: PSJLIORD
+Routine Name: PSJOE
+
+=============================================================================
+User Information:
+Entered By  : CASTLE,JOHN                   Date Entered  : MAY 31, 2005
+Completed By: GOLDSMITH,JAMES H             Date Completed: DEC 06, 2005
+Released By : LYTTLE,KIM M                  Date Released : DEC 12, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

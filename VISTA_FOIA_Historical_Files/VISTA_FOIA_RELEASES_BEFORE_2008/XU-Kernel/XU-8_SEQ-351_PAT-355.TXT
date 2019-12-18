@@ -1,0 +1,346 @@
+$TXT Created by FORT,WALLY at NXT.KERNEL.FO-OAKLAND.MED.VA.GOV  (KIDS) on Monday, 09/11/06 at 14:32
+=============================================================================
+Run Date: OCT 17, 2006                     Designation: XU*8*355
+Package : XU - KERNEL                         Priority: Mandatory
+Version : 8       SEQ #351                      Status: Released
+                  Compliance Date: NOV 17, 2006
+=============================================================================
+
+Associated patches: (v)XU*8*275    <<= must be installed BEFORE `XU*8*355'
+
+Subject: Cache Taskman with DCL environment.
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Other
+
+Description:
+============
+
+  
+ Patch Tracking #: 39520620
+ Test Sites: Northern California HCS, MONTANA HCS, SIOUX FALLS VAMC
+ Blood Bank Clearance: 9/30/2004
+ 
+ NOIS: ASH-0904-31617, MON-0904-50859, BAC-0304-40625, DAN-0904-40907
+       CMM-0904-N0112,
+ Error in ERR2+22^%ZTMS.  This error is caused by having ZTPFLG newed before
+ calling the application.
+ Fix: don't new the variable.
+ 
+ NOIS: MIN-0904-40028
+ Problem: The routine ZTMB would not start/restart Taskman on a Cache system.
+ Fix: Use the correct syntax on the JOB command.
+ 
+ Under Cache a HFS read (R X:0) will not set the $ZEOF variable.
+ One application was using R X:DTIME, The sub-manager will now
+ set DTIME=1 in place of the old DTIME=0.
+ 
+ Field #9 in file TASKMAN SITE PARAMETERS (#14.7) has had it name changed from
+ VAX DSM ENVIROMENT FOR DCL to VAX ENVIROMENT FOR DCL.
+ 
+ This patch provides a NEW function for TaskMan load balancing. It is
+ '$$CACHE2(@com-file,logical-name)' in ^%ZTM6. If the com-file value is set,
+ that com-file will be run each time taskman wants to get the balance value.
+ The logical-name will default to "VISTA$METRIC" or use the value entered.
+ The normal way would be to have $$CACHE2() in the field and use the two
+ scripts.
+ 
+ The script "GET_METRIC.COM" will set the logical "VISTA$METRIC".
+ This can be run by taskman or from the TM$<node> batch queue with the
+ script "METRIC_SCHEDULE.COM".
+ 
+ METRIC_SCHEDULE.COM takes a parameter of the number of seconds to
+ reschedule it self, defaults to 15, runs under the "SYSTEM" user.
+ 
+ These script files are in the same directory as the TaskMan in DCL files.
+ 
+ >>>>>>NOTE: Use of TaskMan in DCL is optional. <<<<<
+ 
+ This patch allows sites to optionally run TaskMan in the OpenVMS DCL
+ environment.  This allows tasks to be run on other nodes on the cluster. So
+ that both DSM and Cache can run at the same time the Cache files have
+ different names.
+     DSM               Cache
+   ZTMWDCL.COM  -->  ZTM2WDCL.COM
+   ZTMSWDCL.COM -->  ZTMS2WDCL.COM
+ 
+ Under Cache the BOX:VOLUME has the configuration name and not the node
+ name.  For Cache we put the VMS NODE name in the VAX ENVIROMENT FOR DCL
+ field.
+ 
+ In the device file you would use ":<configname>" in the volume set field.
+ 
+ The following steps show you how to set up Cache/VMS to run TaskMan in a
+ DCL context.
+ 
+ NOTE: This is just an example an will have to be modified for your site.
+ You will need to adjust the UIC [100,20] to match your system and indicate
+ the location of the TaskMan directory.
+ 
+ 1. Create TASKMAN user: (DSM sites will already have a TaskMan user)
+ 
+    ADD TASKMAN/OWNER="SYSTEM MANAGER" -
+    /ACCOUNT=CACHE -
+    /PRIV=(NETMBX,TMPMBX) -
+    /DEFPRIV=(NETMBX,TMPMBX) -
+    /DEVICE=USER$/DIR=[TASKMAN]/LGICMD=LOGIN.COM -
+    /FLAGS=(DisCtlY,DisWelcome,DisReport,DisForce_Pwd_Change,DisPwdDic,DisPwdHis) -
+    /PASS=TASK$MAN/UIC=[100,20]
+ 
+ 2. Create the TASKMAN directory:
+ 
+    Create/dir/owner=[TASKMAN] USER$:[TASKMAN]
+ 
+ 3. Create the system logical name for the directory with the COM files.
+    (Be sure to also add to the STARTUP$LOGICALS.COM file)
+ 
+    Define/SYSTEM DHCP$TASKMAN USER$:[TASKMAN]
+ 
+ 4. Create the queues, as explained in the Kernel Systems Manual.
+    (Be sure to also add to the STARTUP$DEFINE_QUEUES.COM file)
+ 
+    TaskMan will submit jobs to the queue TM$<node>.  Because we  use "run
+    loginout" to detach the execution, we don't need a large JOB limit here.
+ 
+    INIT/QUEUE/BATCH/OWNER=[TASKMAN] -
+    /prot=(S:M,O:D,G:R,W:S)/JOB=5/AUTOSTART_ON=isfva2:: TM$isfva2
+ 
+ 5. The DCL command files needed by this patch can be loaded from the
+    Cache-taskman sub-directory in the Anonymous FTP, which is located
+    at: ftp.fo-oakland.med.va.gov
+    Load these files into the [TASKMAN] directory.
+ 
+    Get the files in ASCII mode.
+ 
+    Sample dialogue follows (user entries are underlined "="):
+ 
+    ISC6A2$SET DEF USER$:[TASKMAN]
+           =======================
+    ISC6A2$ftp ftp.fo-oakland.med.va.gov
+           =============================
+    220 ISC6A2.ISC-SF.MED.VA.GOV FTP Server (Version 5.3) Ready.
+    Connected to FTP.FO-OAKLAND.MED.VA.GOV.
+    Name (FTP.FO-OAKLAND.MED.VA.GOV:fort): anonymous
+                                           =========
+    331 Guest login OK, send ident as password.
+    Password: xxxxxxxxxx
+              ==========
+    230 Guest login OK, access restrictions apply.
+    FTP> cd cache-taskman
+            =============
+    FTP> ls
+         ==
+    150 Opening data connection for USR$:[ANONYMOUS.CACHE-TASKMAN]*.*;*
+ 
+    GET_METRIC.COM
+    LOGIN.COM
+    METRIC_SCHEDULE.COM
+    ZTM2WDCL.COM
+    ZTMS2WDCL.COM
+ 
+    FTP> ascii
+         =====
+    200 TYPE set to ASCII.
+    FTP> get login.com
+         =============
+    FTP> get ztms2wdcl.com
+         ================
+    FTP> get ztm2wdcl.com
+         ===============
+    FTP> get get_metric.com
+         ==================
+    FTP> get metric_schedule.com
+         =======================
+    FTP> bye
+         ===
+    221 Goodbye.
+ 
+   Once the Patch has been loaded, Cache Sites may want to follow the
+   instruction for setting up TaskMan to run in the DCL context. 
+   Once every thing is setup.
+ 
+   Select Edit Taskman Parameters Option: SITe Parameters Edit
+ 
+   Select TASKMAN SITE PARAMETERS BOX-VOLUME PAIR: ISC
+                                                   ===
+          1   ISC:ISCISC6A1  << namespace:configname
+          2   ISC:ISCISC6A2
+   CHOOSE 1-2: 1  ISC:ISCISC6A1
+               =
+     ...
+   VAX ENVIROMENT FOR DCL: ISC6A1  << node name
+                           ======
+     ...
+   Balance Interval: 30//
+                     ==
+   LOAD BALANCE ROUTINE: $$CACHE2("@DHCP$TASKMAN:GET_METRIC.COM")
+                         ========================================
+                  <<Have TM call the script^^^^^^^^^>>
+   LOAD BALANCE ROUTINE: $$CACHE2()
+                         ==========
+                  <<Submit the METRIC_SCHEDULE.COM file>>
+ 
+   Repeat for each node in the TASKMAN SITE PARAMETERS file.
+ 
+ Routine Summary
+ Checksums shown are OLD Checksums
+ The following routines are included in this patch.  The second line of each
+ of these routines now looks like:
+  ;;8.0;KERNEL;**[Patch List]**;Jul 10, 1995
+ 
+                  Checksums
+ Routine         Old         New        Patch List
+ ZTM           8719671     8731437    **24,36,64,67,118,127,136,275,355**
+ ZTM0          6499897     6588063    **42,36,67,88,118,127,136,175,275,355**
+ ZTM1          5574267     5638999    **118,127,275,355**
+ ZTM5          4605118     5133424    **24,36,118,127,136,162,275,355**
+ ZTM6          2656180     2921588    **23,118,127,136,355**
+ ZTMB          8891040    10813286    **275,355**
+ ZTMDCL         527042      987827    **24,355**
+ ZTMGRSET     12620037    11418290    **34,36,69,94,121,127,136,191,275,355**
+ ZTMKU         8883544     9004137    **118,127,275,355**
+ ZTMON         4675862     4758205    **118,127,136,355**
+ ZTMS3         9277556     9316358    **1,18,36,49,64,67,94,118,127,136,
+                                        175,275,355**
+ 
+ List of preceding patches: 275
+ Sites should use CHECK^XTSUMBLD to verify checksums.
+ 
+ =========================================================================
+ Installation:
+ 
+ >>>Users may remain on the system.
+ >>>TaskMan DOES need to be stopped.
+ >>>If switching to use Taskman in DCL context
+ >>>  Do the VMS setup before hand and then do the Install after hours.
+ >>>  DCL context will extend the install time to about 20 minutes.
+ 
+   1.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This
+       option will load the KIDS package onto your system.
+ 
+   2.  The patch has now been loaded into a Transport global on your
+       system. You now need to use KIDS to install the Transport global.
+       On the KIDS menu, under the 'Installation' menu, use the following
+       options:
+ 
+          Verify Checksums in Transport Global
+          Print Transport Global
+          Compare Transport Global to Current System
+          Backup a Transport Global
+ 
+   3.   Users can remain on the system.
+       This patch can not be queued.
+       STOP TaskMan. (DO STOP^ZTMKU)
+ 
+   4.  Installation will take less than 10 minutes.
+       In Programmer mode:
+       Use "D ^XPDKRN" then
+          Install Package(s)  'XU*8.0*355'
+                               ==========
+       Incoming Files:
+ 
+ 
+       14.7      TASKMAN SITE PARAMETERS  (Partial Definition)
+       Note:  You already have the 'TASKMAN SITE PARAMETERS' File.
+ 
+       Want KIDS to INHIBIT LOGONs during the install? YES// NO
+ 
+       Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// NO
+ 
+   5.  After installing this patch,
+       DO RELOAD^ZTMGRSET
+       
+       ZTMGRSET Version 8.0 Patch level **34,36,69,94,121,127,136,191,275,355**
+       HELLO! I exist to assist you in correctly initializing the current account.
+   
+       This is namespace or uci NXT,NXT.
+       Should I continue? N//Y
+       I think you are using OpenM-NT
+       Which MUMPS system should I install?
+ 
+       1 = VAX DSM(V6), VAX DSM(V7)
+       2 = MSM-PC/PLUS, MSM for NT or UNIX
+       3 = Cache (VMS, NT, Linux), OpenM-NT
+       4 = Datatree, DTM-PC, DT-MAX
+       5 =
+       6 =
+       7 = GT.M (VMS)
+       8 = GT.M (Unix)
+       System: 3//
+ 
+       Patch number to load: 355
+                             ===
+ 
+   6.  [Optional if site wants to run Taskman in DCL context,
+       otherwise you are done]
+       Cache Sites may want to follow the instruction for setting
+       up TaskMan to run in the DCL context. Once every thing is setup.
+ 
+       Select Edit Taskman Parameters Option: SITe Parameters Edit
+ 
+       Select TASKMAN SITE PARAMETERS BOX-VOLUME PAIR: ISC
+            1   ISC:ISCISC6A1  << namespace:configname
+            2   ISC:ISCISC6A2
+       CHOOSE 1-2: 1  ISC:ISCISC6A1
+       ...
+       VAX ENVIROMENT FOR DCL: ISC6A1
+       ...
+       Balance Interval: 30//
+       LOAD BALANCE ROUTINE: $$CACHE2("@DHCP$TASKMAN:GET_METRIC.COM")
+                <<Have TM call the script^^^^
+ 
+       Repeat for each node in the TASKMAN SITE PARAMETERS file.
+ 
+   7.  Restart Taskman:  D ^ZTMB
+       To start TaskMan will now require the CMKRNL vms privlage
+       when in DCL mode.
+ 
+ =========================================================================
+ 
+ 
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: ZTM
+    Before: B34894883  After: B34923748  **24,36,64,67,118,127,136,275,355**
+Routine Name: ZTM0
+    Before: B15924444  After: B16458023  **42,36,67,88,118,127,136,175,
+                                          275,355**
+Routine Name: ZTM1
+    Before: B20977172  After: B21133324  **118,127,275,355**
+Routine Name: ZTM5
+    Before: B14928719  After: B16898185  **24,36,118,127,136,162,275,355**
+Routine Name: ZTM6
+    Before:  B7780198  After:  B9543070  **23,118,127,136,355**
+Routine Name: ZTMB
+    Before: B18416099  After: B25235985  **275,355**
+Routine Name: ZTMDCL
+    Before:   B616863  After:  B1335612  **24,355**
+Routine Name: ZTMGRSET
+    Before: B48565811  After: B46344405  **34,36,69,94,121,127,136,191,
+                                          275,355**
+Routine Name: ZTMKU
+    Before: B19402170  After: B20082059  **118,127,275,355**
+Routine Name: ZTMON
+    Before:  B9314594  After:  B9427081  **118,127,136,355**
+Routine Name: ZTMS3
+    Before: B23747001  After: B24216355  **1,18,36,49,64,67,94,118,127,
+                                          136,175,275,355**
+
+=============================================================================
+User Information:
+Entered By  : FORT,WALLY                    Date Entered  : AUG 03, 2004
+Completed By: SINGH,GURBIR                  Date Completed: OCT 05, 2006
+Released By : TILLIS,LEWIS                  Date Released : OCT 17, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

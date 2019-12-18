@@ -1,0 +1,253 @@
+$TXT Created by WANG,CHI at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 09/09/08 at 16:02
+=============================================================================
+Run Date: DEC 16, 2008                     Designation: IB*2*402
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #373                      Status: Released
+                  Compliance Date: JAN 16, 2009
+=============================================================================
+
+Associated patches: (v)IB*2*137    <<= must be installed BEFORE `IB*2*402'
+                    (v)IB*2*249    <<= must be installed BEFORE `IB*2*402'
+                    (v)IB*2*312    <<= must be installed BEFORE `IB*2*402'
+
+Subject: FIX UNDEFINED ERROR, ADD CHARGES, MRA REJECTS
+
+Category: 
+  - Other
+  - Routine
+
+Description:
+============
+
+ There are three fixes in this patch: The first issue concerns an undefined
+ error in the Enter/Edit Billing Information [IB EDIT BILLING INFO] option
+ when site entered a number greater than the default procedure unit which
+ is 1. The second issue is that user cannot add charges for FEE LTC OPT
+ RESPITE charge in the Cancel/Edit/Add Patient Charges [IB CANCEL/EDIT/ADD
+ CHARGES] option. The last issue is when a provider was inactivated in the
+ NEW PERSON (#200) file and his person class was no longer valid, IB sent
+ an ATT/REND PROV SPECIALTY value of 99 for the provider causing the claim
+ rejection.
+  
+ ASSOCIATED REMEDY:
+ ==================
+ 0. HD0000000257476 Cannot install IB*2*344 in test account
+    HD0000000240659 Missing charge - <UNDEFINED>PRTARR+13^IBCF23 
+  
+ Note: This patch should be installed by both: sites that have previously 
+ installed IB*2*344, and sites that did not (it was Entered in Error).  
+  
+ The following tickets are now closed, but they are the tickets for the 
+ fixes in this patch (detailed below), originally made with patch IB*2*344.
+  
+ 1. HD0000000100104 <UNDEFINED>PRTARR+13^IBCF23
+    HD0000000136565 <UNDEFINED>PRTARR+13^IBCF23 same as HD100104
+ 2. HD0000000097048 Cannot add charges for FEE LTC OPT RESPITE charge 
+ 3. HD0000000064594 FAV-0105-70020  MRA Rejects with 99 Area Of
+    HD0000000128747 Terminated Dr needs current Person Class Code
+    HD0000000131619 Terminated Person Class
+    HD0000000142974 Billing claim cannot be entered with provider inactive
+             in new person file
+    HD0000000160187 Terminated Provider's insurance bills, Person
+             Class/Spec code is not active.
+  
+ ASSOCIATED NSR(s):
+ ==================
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ BAY PINES, FL                                                      
+ COATESVILLE, PA                                                     
+ HINES, IL                                                          
+  
+ REMEDY OVERVIEW:
+ ================
+ 1. HD0000000100104 <UNDEFINED>PRTARR+13^IBCF23
+  
+    Problem:
+    --------
+    Site is getting an undefined error at line PRTARR+13 in routine IBCF23
+    when they enter the Unit of Service for the procedure which is greater
+    than the default number 1 on screen <#7> in the Enter/Edit Billing 
+    Information [IB ENTER BILLING INFO] option.
+  
+    Resolution:
+    -----------
+    Modified routine IBCF23 to capture the charge unit associated with
+    the procedure properly, thus avoiding the problem.
+  
+ 2. HD0000000097048  Cannot add charges for FEE LTC OPT RESPITE charge
+  
+    Problem:
+    --------
+    The option Cancel/Edit/Add Patient Charges [IB CANCEL/EDIT/ADD CHARGES]
+    did not allow an add of the DG LTC FEE OPT RESPITE NEW patient charge
+    although the same charge for the date of the service has been
+    cancelled.
+  
+    Resolution:
+    -----------
+    Modified routines IBECEA3 and IBECEAU to allow the add of a new patient
+    charge for the DG LTC FEE OPT or DG LTC OPT type when the same type of
+    charge for the same date has been cancelled in the option.
+  
+ 3. HD0000000064594  FAV-0105-70020  MRA Rejects with 99 Area Of
+    
+    Problem:
+    --------
+    When site deactivated the provider in the option [XUSERDEACT] and then
+    entered him for a claim on screen <#8> in the option Enter/Edit
+    Billing Information [IB EDIT BILLING INFO], the Prov Specialty On File
+    field defaults to UNSPECIFIED that results in an invalid specialty code
+    of 99 to be transmitted in EDI.
+  
+    Resolution:
+    -----------
+    Modified the trigger data definition in the Performed By field of
+    the Provider sub-file under the BILL/CLAIMS (#399) file. It will set
+    the specialty code in the file if the beginning service date on the
+    claim has been covered by the time of the care when the provider
+    was active in the past. The specialty will reflect the Prov Specialty
+    On File field in the [IB SCREEN82] input template later.
+  
+                                       UP    SEND  DATA                USER
+                                       DATE  SEC.  COMES  SITE   RSLV  OVER
+    FILE #      NAME                   DD    CODE  W/FILE DATA   PTS   RIDE
+    -----------------------------------------------------------------------
+    399         BILL/CLAIMS            YES   NO    NO                  NO
+    Partial DD: subDD: 399.0222   fld: .02
+  
+  
+    INPUT TEMPLATE
+       IB SCREEN82    FILE #399                       SEND TO SITE
+  
+    The post-init routine IB20P402 will add a valid specialty code to the
+    Entered/Not Reviewed bills when the specialty for the provider was not
+    correctly set in the BILL/CLAIMS (#399) file. If any are found they 
+    will be listed as part of the install, otherwise not.
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ It is recommended that this patch be installed outside of normal business
+ hours to avoid any complications resulting from users on the system.
+ The installation time will rely on the size of the global in the database.
+  
+ 1.   LOAD TRANSPORT GLOBAL 
+      ---------------------
+      Choose the PackMan message containing this patch and invoke the
+      INSTALL/CHECK MESSAGE PackMan option.  
+  
+ 2.   START UP KIDS
+      -------------
+      Start up the Kernel Installation and Distribution System Menu
+      [XPD MAIN]: 
+  
+             Edits and Distribution ...  
+             Utilities ...  
+             Installation ...
+  
+      Select Kernel Installation & Distribution System Option: INStallation
+                                                               ---
+             Load a Distribution 
+             Print Transport Global 
+             Compare Transport Global to Current System 
+             Verify Checksums in Transport Global 
+             Install Package(s)
+             Restart Install of Package(s)
+             Unload a Distribution 
+             Backup a Transport Global 
+  
+ 3.   Select Installation Option:
+      ---------------------------
+      NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+             NAME, enter IB*2.0*402):
+  
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will not
+          backup any other changes such as DD's or templates.
+      b.  Compare Transport Global to Current System - This option will
+          allow you to view all changes that will be made when this patch
+          is installed.  It compares all components of this patch
+          (routines, DD's, templates, etc.).
+      c.  Verify Checksums in Transport Global - This option will allow
+          you to ensure the integrity of the routines that are in the
+          transport global.
+  
+ 4.   Select Installation Option: Install Package(s)
+  
+      **This is the step to start the installation of this KIDS patch:
+      a. Choose the Install Package(s) option to start the patch install.
+      b. When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+         YES//' answer NO
+      c. When prompted 'Want to DISABLE Scheduled Options, Menu Options,
+         and Protocols? YES//' answer NO
+  
+ 5.   CLEAN UP POST-INIT ROUTINE
+      --------------------------
+      Optional - Once this patch has been successfully installed you may 
+      delete the post-init routine: IB20P402.
+  
+  
+ ROUTINE SUMMARY: 
+ ================
+ The post-init routine (IB20P402) is new for all sites.
+  
+ Because the previous patch IB*2*344 was Entered in Error after many 
+ sites installed it, sites will fall into one of two situations regarding 
+ the checksums for the other routines: 
+  
+  
+ 1) If your site has NEVER installed IB*2*344, the before and after
+ checksums will look like this:
+  
+ The checksums below are new checksums, and can be checked with
+ CHECK1^XTSUMBLD.
+  
+ Routine Name: IBCF23
+     Before: B38927370   After: B39555399  **52,80,106,122,51,152,137,402**
+ Routine Name: IBECEA3
+     Before: B67660841   After: B67649889  **7,57,52,132,150,153,166,156,
+                                            167,176,198,188,183,202,240,
+                                            312,402**
+ Routine Name: IBECEAU
+     Before: B13792426   After: B14113115  **91,249,402**
+  
+  
+  
+ 2) If you already have IB*2*344 installed, then the before and after
+ checksums will be the same number as indicated below:
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;2.0;INTEGRATED BILLING;**[Patch List]**;21-MAR-94;Build 17
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: IB20P402
+    Before:       n/a   After:  B3494413  **402**
+Routine Name: IBCF23
+    Before: B39555399   After: B39555399  **52,80,106,122,51,152,137,402**
+Routine Name: IBECEA3
+    Before: B67649889   After: B67649889  **7,57,52,132,150,153,166,156,
+                                           167,176,198,188,183,202,240,
+                                           312,402**
+Routine Name: IBECEAU
+    Before: B14113115   After: B14113115  **91,249,402**
+ 
+Routine list of preceding patches: 137, 249, 312
+
+=============================================================================
+User Information:
+Entered By  : WANG,CHI                      Date Entered  : JUL 03, 2008
+Completed By: DAWSON,TIM                    Date Completed: DEC 15, 2008
+Released By : HARRIS,ANGELA                 Date Released : DEC 16, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

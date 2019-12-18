@@ -1,0 +1,472 @@
+
+=============================================================================
+Run Date: MAR 18, 2004                     Designation: DG*5.3*508
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #502                    Status: Released
+                  Compliance Date: APR 18, 2004
+=============================================================================
+
+Associated patches: (v)DG*5.3*415  <<= must be installed BEFORE `DG*5.3*508'
+                    (v)DG*5.3*484  <<= must be installed BEFORE `DG*5.3*508'
+                    (v)DG*5.3*489  <<= must be installed BEFORE `DG*5.3*508'
+                    (v)DG*5.3*527  <<= must be installed BEFORE `DG*5.3*508'
+                    (v)DG*5.3*555  <<= must be installed BEFORE `DG*5.3*508'
+
+Subject: Messaging for HIPAA Confidential Address and IEMM changes.
+
+Category: 
+  - Routine
+
+Description:
+============
+
+   NOTE:  Patches DG*5.3*508 and SD*5.3*293 are being released in a single
+          distribution.  Because of this, patch descriptions for DG*5.3*508
+          and SD*5.3*293 are identical and contain routine summaries for
+          both sets of routines.
+  
+   NOTE:  It is recommended that this patch NOT be installed less than seven
+          days before Amb Care's monthly close-out.
+  
+  In May 2003, the Department of Veterans Health Administration (VHA) issued
+  VHA Directive 2003-025, "Confidential Communications," which establishes a
+  new policy concerning a patient's rights to receive confidential
+  communications pertaining to health information by an alternative means or
+  at an alternative location other than the permanent address of record.
+  
+  The objective of the Health Insurance Portability and Accountability Act
+  (HIPAA) Confidential Communication Project is to develop and deploy 
+  enhancements to the Veterans Health Information System and Technology
+  Architecture (VistA) software to comply with HIPAA rules for Confidential
+  Communication 45 CFR 164.552.  A previous patch (DG*5.3*489) provided the
+  means for a patient to provide an alternative mailing address to be used
+  for confidential communication at a designated Veterans Administration
+  (VA) facility, communication of Protected Health Information (PHI) by
+  alternative means or alternative location.  This patch provides additional
+  functionality to include the confidential address in the PID segment of an
+  HL7 message, to validate the confidential address fields in the Incomplete
+  Encounter Management Module (IEMM) and to correct problems found in the
+  screen handling in the Load/Edit Patient Data, Register a Patient options.
+  
+  1.  HL7 messaging functionality:
+      ---------------------------
+  
+  Scheduling and Registration software will be modified to include the 
+  confidential address information in the transmissions to Austin Automation
+  Center (AAC) for storage in the National Patient Care Database (NPCD).
+  The PID segment building routines will be modified to build the segment
+  with this additional information when requested by the calling
+  application.
+  
+  DG*5.3*508 distributes a post-init routine DG53508 that changes the name
+  of the "NPTF-484" application in the HL7 APPLICATION PARAMETER (#771) file
+  to "NPTF-508".
+  
+  SD*5.3*293 distributes a post-init routine SD53293 that changes the name
+  of the "AMBCARE-DH239" application in the HL7 APPLICATION PARAMETER file
+  (#771) to "AMBCARE-DH293".  This change prevents the processing of
+  acknowledgements for encounters that were transmitted using AMBCARE-DH239
+  and the encounters will be resent because AmbCare automatically
+  retransmits encounters that have not been acknowledged.  Since
+  acknowledgements are typically received within a day, this should only
+  affect one day's worth of encounters.
+  
+  SD*5.3*293 distributes a post-init routine SD53293 that changes the name
+  of the "PCMM-213" application in the HL7 APPLICATION PARAMETER file
+  (#771) to "PCMM-293".  This change prevents the processing of
+  acknowledgements for PCMM patient records that were transmitted using
+  PCMM-213 and the records will be resent because PCMM automatically
+  retransmits records that have not been acknowledged.  Since
+  acknowledgements are typically received within a day, this should only
+  affect one day's worth of PCMM records.
+  
+  To ensure proper purging, the status of all unacknowledged AmbCare
+  and PCMM-213 messages which have been successfully completed [in the HL7
+  MESSAGE TEXT file (#772)] will be changed to SUCCESSFULLY COMPLETED.  
+  This process is automatically queued to run at the current date/time so
+  that patch installation can complete in a timely manner.  Two messages are
+  sent to the installer upon completion of the task, regarding the updating
+  of the HL7 Messaging Text file (#772) (one for AmbCare, the other for
+  PCMM, though no identifying information).  An example of the mail message
+  follows:  
+     Subj: Updating of HL7 Message Text file  [date & time] 3 lines
+     From: PATCH SD*5.3*293  In 'IN' basket.   Page 1  *New*
+     ---------------------------------------------------------------
+     Updating of HL7 Message Text file (#772) began on [date & time]
+     Updating of HL7 Message Text file completed on  [date & time]
+     [x] entries were updated.
+  
+  Modifications to $$EN^VAFHLPID and $$EN^VAFCPID:
+  
+  Currently, the Patient Address field in the PID segment contains the 
+  permanent address.  The modifications in this patch will add the 
+  confidential address to the PID segment when requested by the calling
+  application.  The first repetition will include the permanent address.
+  The confidential address information will be included in the second
+  through sixth repetitions of this sequence.  If the confidential address
+  category is not an active category for the patient, the category will be
+  included in the repetition but all other fields will contain the null
+  indicator.
+  
+  The calling application must provide a list of sequences to be included in
+  the PID segment to the VAFHLPID or VAFCPID API.  For example,
+  VAFSTR="1,2,3,4,5,6,7,8,9,10,11".  The confidential address is optional
+  and may be requested by appending an additional parameter(s) to the
+  sequence number.
+  
+  The valid parameters are as follows:
+  
+   ""     - For backward compatibility if nothing is appended, no changes to
+            what is currently returned (permanent address only) 
+   "11P"  - Permanent address only
+   "11C"  - Confidential address only
+   "11PC" - Permanent and Confidential addresses
+  
+  The Patient Address (sequence #11) of the PID segment will contain the 
+  following data:
+  
+      Component       Data element
+      ---------       ------------
+          1           Street address Line 1
+          2           Street address Line 2
+          3           City
+          4           State
+          5           Zip Code
+          6           Not used
+          7           Address type (Component will be populated if P and/or
+                      C contained in the VAFSTR passed to the PID segment
+                      builder call)
+                         P     - Permanent
+                         VACAA - Appointment/Scheduling
+                         VACAE - Eligibility/Enrollment
+                         VACAC - Copayments/Veteran Billing
+                         VACAM - Medical Records
+                         VACAO - All Others
+          8           Street address Line 3
+          9           County
+          10          Not used
+          11          Not used
+          12          Confidential Start/End Dates (Component will be
+                      populated if the address type is one of the
+                      Confidential Address categories - VACAA, VACAE, VACAC,
+                      VACAM, VACAO)
+  
+  Modifications to the existing building logic will be made to assure the
+  245 character limit is not exceeded when building the segment.  A new
+  routine, VAFHLPI2, has been added and VAFHLU modified for this purpose.
+  
+  
+  Modifications to SCDXMSG1, VAFCMSG4, VAFCADT2, and VAFCA04:
+  
+  "PC" will be appended to the VAFSTR variable to include both the permanent
+  and confidential address information in the HL7 messages transmitted to
+  the Austin Automation Center (AAC).
+  
+  2. Changes to the Incomplete Encounter Management Module (IEMM):
+     -----------------------------------------------------------
+  
+  New entries will be added to the Transmitted Outpatient Encounter Error
+  Code (#409.76) file to validate the Confidential Address fields.  The new
+  codes are as follows:
+  
+  New TRANSMITTED OUTPATIENT ENCOUNTER ERROR CODES 
+  Code    Error Code Description                          Code
+  ----------------------------------------------------------------------
+  240     Conf. Address - Line 1 contains all numbers     NPCD
+  241     Conf. Address - Line 2 contains all numbers     NPCD
+  242     Conf. Address City is missing or invalid        NPCD
+  243     Conf. Address State code is missing or invalid  NPCD
+  244     Conf. Address Zip code is missing or invalid    NPCD
+  245     Conf. Address County code is invalid            NPCD
+  246     Conf. Address Inactive State/County code        NPCD
+  247     Conf. Address Category is missing or invalid    NPCD
+  248     Conf. Address Start Date is missing or the 
+            Start/End Dates are invalid                   NPCD 
+  2400    Conf. Address line 1 is missing or invalid      VISTA
+  2410    Conf. Address line 2 is invalid                 VISTA
+  2420    Conf. Address City is missing or invalid        VISTA
+  2430    Conf. Address State code is missing or invalid  VISTA
+  2440    Conf. Address Zip code is missing or invalid    VISTA
+  2450    Conf. Address County Code is invalid            VISTA
+  2470    Conf. Address Category is missing or invalid    VISTA
+  2480    Conf. Address Start Date is missing or the
+            Start/End Dates are invalid                   VISTA
+  
+  Modifications to SCMSVPID,SCMSVUT2, and SCMSVUT5:
+  
+  The process used to validate the PID segment in the HL7 message builds the
+  segment, parses it and validates the data.  This patch modifies the
+  process to break the address into smaller components before validating the
+  data.  The following Confidential Address fields will be validated using
+  the existing criteria currently used to validate the permanent address
+  fields:
+  
+  Field Name                                 Field Number
+  ========================================================
+  CONFIDENTIAL STREET [LINE 1]                  .1411
+  CONFIDENTIAL STREET [LINE 2]                  .1412
+  CONFIDENTIAL ADDRESS CITY                     .1414
+  CONFIDENTIAL ADDRESS STATE                    .1415
+  CONFIDENTIAL ADDRESS ZIP CODE                 .1416
+  CONFIDENTIAL ADDRESS COUNTY                   .14111
+  
+  New validation and correction logic has been added for the following
+  fields:
+  
+  Field Name                                 Field Number
+  ========================================================
+  CONFIDENTIAL START DATE                       .1417
+  CONFIDENTIAL END DATE                         .1418
+  
+  CONFIDENTIAL ADDRESS CATEGORY (multiple)      2.141
+  CONFIDENTIAL ADDRESS CATEGORY                  .01
+  CONFIDENTIAL CATEGORY ACTIVE                    1
+  
+  Modifications to SCMCHLS:
+  
+  Modified to make correct call into SETMAR^SCMSVUT0 for validation
+  purposes, and to provide for correct transmission of RACE codes and
+  Ethnicity in PCMM patient messages sent to AAC.  These changes address
+  problems reported in NOISes including the following:
+     NOL-0603-71185 PCMM 240M ERRORS (PATIENT RACE CODE INVAL
+     CTX-0203-70395 RACE ERRORS ON PCMM TRANSMISSION
+  
+  3. Modifications to routine DGRPP1:
+     -------------------------------
+  
+  Users may jump from one screen to another in several Registration options
+  including Load/Edit Patient Data, [DG LOAD PATIENT DATA], Register a 
+  Patient, [DG REGISTER PATIENT], and Eligibility Verification, [DG 
+  ELIGIBILITY VERIFICATION] options.  However, an error occurs if the user
+  enters a non-existent screen number with a decimal point (.i.e. 1.4).
+  This problem was found during the development of this patch and the
+  modifications in DGRPP1 correct the problem.
+  
+  Test Site(s):
+  ==========
+  Lexington
+  Iron Mountain
+  Big Spring
+  
+  ROUTINE SUMMARY - REGISTRATION:
+  ==============================
+  
+  The following is a list of the routine(s) included in this patch.  
+  The second line of each of these routine(s) will look like:
+  
+      <tab>;;5.3;Registration;**[patch list]**;Aug 13, 1993
+  
+                             CHECK^XTSUMBLD results
+  Routine name     Before Patch     After Patch          Patch List
+  ============     ============     ===========          ==========
+  DG53508                   N/A          795155              508
+  DGRPE                24690575        24713474       32,114,139,169,175
+                                                     247,190,343,397,342
+                                                     454,415,489,506,244
+                                                     547,522,528,555,508
+  DGRPP1                3516530         3649793            489,508
+  DGRPU1                2738282         2769172       139,169,415,527,508
+  VAFCA04               5710533         5744261       91,209,149,261,298
+                                                         415,484,508
+  VAFCADT2              5238148         5270712       91,179,209,415,494
+                                                           484,508
+  VAFCMSG4              4123672         4159728       91,209,149,415,484
+                                                             508
+  VAFCPID               3564275         3741323       91,149,190,415,508
+  VAFHLPI2                  N/A         3133979              508
+  VAFHLPID              3153380         3205152         68,94,415,508
+  VAFHLU                 872343         1060630            415,508
+  
+  ROUTINE SUMMARY - SCHEDULING:
+  ============================
+  The following is a list of the routine(s) included in this patch.  
+  The second line of each of these routine(s) will look like:
+  
+      <tab>;;5.3;Scheduling;**[patch list]**;AUG 13, 1993
+  
+                             CHECK^XTSUMBLD results
+  Routine name     Before Patch     After Patch          Patch List
+  ============     ============     ===========          ==========
+  SCDXMSG1              9645949         9617034    44,55,70,77,85,66,143,
+                                                    142,162,172,180,239,
+                                                         245,254,293
+  SCMCHLS               1640979         1626749        177,210,212,293
+  SCMSVPID              3522345         4732219       44,66,162,254,293
+  SCMSVUT0              6602857         5073216       44,55,66,132,245
+                                                           254,293
+  SCMSVUT2              3255774         3872060        66,180,254,293
+  SCMSVUT5              1130452         1766333            254,293
+  SD53293                   N/A         5462883              293
+  
+  SOFTWARE RETRIEVAL:
+  ================== 
+  
+  This patch is not being distributed through the National Patch Module.
+  The distribution file DG_53_P508.KID (which contains DG*5.3*508 and
+  SD*5.3*293) may be obtained using FTP from the ANONYMOUS.SOFTWARE
+  directory at DOWNLOAD.VISTA.MED.VA.GOV or from specific servers at:
+  
+             Albany:  ftp.fo-albany.med.va.gov
+              Hines:  ftp.fo-hines.med.va.gov
+     Salt Lake City:  ftp.fo-slc.med.va.gov
+  
+     Host file name: DG_53_P508.KID
+  
+             Builds: DG*5.3*508
+                     SD*5.3*293
+  
+  INSTALLATION INSTRUCTIONS:
+  ==========================
+  
+   NOTE:  It is recommended that this patch NOT be installed less than seven
+          days before Amb Care's monthly close-out.
+  
+  This patch can be installed with users on the system, however it should be
+  installed during off hours to minimize disruption to users.  Installation
+  will take less than 5 minutes.
+  
+  This patch affects Registration, PTF, the check-out process and must be
+  installed when the SCDX AMBCAR NIGHTLY XMIT background job is not running.
+  
+  1.  Use the LOAD A DISTRIBUTION option on the KIDS INSTALLATION Menu, and
+      enter DG_53_P508.KID
+  
+  2.  Review your mapped set.  If any of the routines listed in the ROUTINE
+      SUMMARY section are mapped, they should be removed from the mapped set
+      at this time.
+  
+  3.  From the Kernel Installation and Distribution System Menu, select the
+      Installation menu.
+  
+  4.  From this menu, you may elect to use the following options (when
+      prompted for INSTALL NAME, enter DG*5.3*508):
+  
+      a.  Backup a Transport Global - this option will create a backup
+          message of any routines exported with the patch.  It will NOT
+          backup any other changes such as DDs or templates.
+      b.  Compare Transport Global to Current System  - this option will
+          allow you to view all changes that will be made when the patch is
+          installed.  It compares all components of the patch (routines,
+          DDs, templates, etc.).
+      c.  Verify Checksums in Transport Global - this option will allow you
+          you to ensure the integrity of the routines that are in the
+          transport global.
+      d.  Print Transport Global - this option will allow you to view the
+          components of the KIDS build.
+  
+  5.  Use the Install Package(s) option and select the package DG*5.3*508
+  
+  6.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+      YES//',respond NO.
+  
+  7.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols? YES//', respond YES.  When prompted to select the     
+      options you would like to place out of order, enter the following:
+  
+      DG DISPOSITION APPLICATION      Disposition an Application
+      DG ELIGIBILITY VERIFICATION     Eligibility Verification
+      DG LOAD PATIENT DATA            Load/Edit Patient Data
+      DG REGISTER PATIENT             Register a Patient
+      DG NPTF XMIT ADMISSION          Retransmit Admission Data
+      DG NPTF XMIT DEMOGRAPHICS       Retransmit Patient Demographics 
+      DG NPTF XMIT PIVOT              Retransmit Entry in ADT/HL7 PIVOT File 
+      PXCE ENCOUNTER DATA ENTRY       PCE Encounter Data Entry
+      PXCE ENCOUNTER ENTRY & DELETE   PCE Encounter Data Entry & Delete
+      PXCE ENCOUNTER ENTRY NO DELETE  PCE Encounter Entry Without Delete
+      PXCE ENCOUNTER ENTRY SUPER      PCE Encounter Data Entry - Supervisor
+      SCDX AMBCAR NIGHTLY XMIT        Ambulatory Care Nightly Transmission
+                                          to NPCDB
+      SCENI IEMM ERROR CORRECTION     Correct Incomplete Encounters
+      SCMC PCMM HL7 TRANSMIT          PCMM HL7 Transmission
+      SDAM APPT CHECK IN/OUT          Appointment Check-in/Check-out
+      SDAM APPT MGT                   Appointment Management
+      VAFC BATCH UPDATE               UPDATE BATCH JOB FOR HL7 v2.3
+  
+  8.  If routines were unmapped as part of step 2, they should be returned
+      to the mapped set once the installation has run to completion.
+  
+  9.  Routines DG53508 (post installation routine for DG*5.3*508) and
+      SD53293 (pre and post installation routine for SD*5.3*293) should be
+      deleted after successful installation of this patch.
+
+Routine Information:
+====================
+
+Routine Name:
+  - DGRPP1
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGRPU1
+
+
+Routine Checksum:
+
+Routine Name:
+  - VAFCPID
+
+
+Routine Checksum:
+
+Routine Name:
+  - VAFHLPID
+
+
+Routine Checksum:
+
+Routine Name:
+  - VAFHLPI2
+
+
+Routine Checksum:
+
+Routine Name:
+  - VAFHLU
+
+
+Routine Checksum:
+
+Routine Name:
+  - VAFCA04
+
+
+Routine Checksum:
+
+Routine Name:
+  - VAFCMSG4
+
+
+Routine Checksum:
+
+Routine Name:
+  - VAFCADT2
+
+
+Routine Checksum:
+
+Routine Name:
+  - DG53508
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGRPE
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : FISHER,BRAD                   Date Entered  : APR 01, 2003
+Completed By: MARKS,MARY                    Date Completed: MAR 17, 2004
+Released By : FITCH,DONNA                   Date Released : MAR 18, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

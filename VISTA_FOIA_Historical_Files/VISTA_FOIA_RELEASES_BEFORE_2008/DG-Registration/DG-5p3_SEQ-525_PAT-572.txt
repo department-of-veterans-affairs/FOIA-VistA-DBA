@@ -1,0 +1,383 @@
+$TXT Created by SMULLEN,geoffrey at DEN1.FO-BAYPINES.MED.VA.GOV  (KIDS) on Friday, 07/16/04 at 07:48
+=============================================================================
+Run Date: AUG 13, 2004                     Designation: DG*5.3*572
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #525                    Status: Released
+                  Compliance Date: AUG 30, 2004
+=============================================================================
+
+Associated patches: (v)DG*5.3*533  <<= must be installed BEFORE `DG*5.3*572'
+
+Subject: REGISTER ONCE MESSAGING ENHANCEMENT
+
+Category: 
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+  NOTE:  This patch prevents data sharing between sites running different
+         versions of Register Once Messaging (ROM).  I.E., Sites that have
+         not installed this patch will not be able to receive data from
+         sites that have installed this patch.  Conversely, sites that have
+         installed this patch will not be able to receive data from sites
+         that have not installed this patch.
+  
+         To limit the window in which sites may not be able to share data,
+         SITES SHOULD INSTALL THIS PATCH WITHIN 15 DAYS OF THE RELEASE DATE.
+  
+  
+   I.  Functional Description
+       ======================
+  
+      *  Registration sends a mail bulletin to the Information Security
+         Officer (ISO) when a sensitive patient is accessed.  This message
+         will be mailed to the ISO at the Last Site Treated (LST) when the
+         query retrieves data from a sensitive patient record. 
+     
+      *  The Agent Orange Exposure Location at the LST will be returned to
+         the Requesting Site (RS).
+   
+      *  The Marital Status at the LST will be returned to the RS.
+   
+      *  The Period of Service at the LST will be returned to the RS.
+   
+      *  The user that last edited the Date of Death information at the LST
+         will be included in the Date of Death mail message sent at the RS
+         when a deceased patient is received from the LST.
+  
+      *  The Enrollment Database development team discovered that an
+         incomplete subset of address information is returned to the RS when
+         a bad address is indicated at the LST.  This patch modifies ROM so
+         no address information is returned from the LST when a bad address
+         exists at the LST.    
+   
+      *  The exception message sent to the MPI (when a patient returned
+         from the MPI is not found at the LST) has been changed.  After
+         installation of the patch, the exception message will include
+         station numbers from the LST and the RS.  
+  
+      *  DG*5.3*572 will not allow information to be returned to a RS
+         from a LST if one site has DG*5.3*572 installed and the other
+         site does not.  
+   
+      *  If the Registration Intake person at the RS does not have a valid
+         Name, Access and Verify code, SSN (not pseudo), station name, and
+         station number at the time the query initiated, VistA will prevent
+         retrieval of patient information from the LST when the patient is
+         flagged as sensitive, and will provide notification to the legacy
+         user interface.
+  
+  
+   II.  Technical Description
+        =====================
+  
+      *  File documentation has been added to the DG REGISTER ONCE FIELD
+         DEFINITION file [#391.23] Data Dictionary.
+   
+      *  New records are added to the DG REGISTER ONCE FIELD DEFINITION
+         file [#391.23] to identify the following fields for return from
+         the PATIENT file [#2] at the LST:
+   
+            AGENT ORANGE EXPOSURE LOCATION [#.3213]
+            MARITAL STATUS [#.05]
+            PERIOD OF SERVICE [#.323]
+            PRIMARY ELIGIBILITY CODE [#.361] 
+            LAST EDITED BY [#.355]
+  
+      NOTE:  The Primary Eligibility Code is returned from the LST so that
+             Period of Service may be returned.  The Primary Eligibility
+             Code returned from the LST is overwritten by the Primary
+             Eligibility Code returned by the Health Eligibility Center
+             (HEC) upon completion of the HEC query. 
+  
+      *  The following PATIENT file [#2] fields are no longer transmitted
+         from the LST when the BAD ADDRESS INDICATOR field [#.121] in the
+         PATIENT file [#2] indicates a bad address:
+   
+             ADDRESS CHANGE DT/TM [#.118]
+             ADDRESS CHANGE SOURCE [#.119]
+             BAD ADDRESS INDICATOR [#.121]
+             ADDRESS CHANGE SITE [#.12] 
+   
+         The PA^DGRODEBR API has been modified to implement this design
+         change.
+  
+      *  This patch updates the Data Dictionary file and field descriptions
+         for the DG REGISTER ONCE FIELD DEFINITION file [#391.23].
+  
+      *  The FIELD DESCRIPTION [#3] field in DG REGISTER ONCE FIELD 
+         DEFINITION file [#391.23] has been removed.
+   
+      *  The exception message sent to the MPI (when a patient returned from
+         the MPI is not found in the database at the LST) has been changed.
+         The Exception message is now only generated when the ICN at the LST
+         does not match that returned from the MPI database. 
+   
+      *  An entry in the DG SECURITY LOG file [#38.1] at the LST is made
+         when a sensitive patient is accessed remotely as follows:
+   
+          + ROM uses the GET^XUESS01 API to return the following
+            information from the NEW PERSON file [#200] at the RS.
+               User DUZ
+               User Name
+               User SSN
+               User Phone
+   
+          + ROM sends the indicated data to the LST in the User ID
+            sequence on the QRF segment in the HL7 QRY message.
+   
+          + At the LST, ROM uses PUT^XUSSE01 to create a new entry or update
+            an existing entry for the user in the NEW PERSON file [#200].
+            The remote users' entry in the LST NEW PERSON file will indicate
+            the remote site name, institution number, and date/time of the
+            access on the LST NEW PERSON entry for the remote user.
+   
+          + ROM creates an entry in the LST DG SECURITY LOG file [#38.1]
+            and indicates the remote user in the DATE/TIME RECORD
+            ACCESSED [#50] multiple.
+   
+          + The standard sensitive patient mail message is sent to the ISO
+            at the LST.  The message will now include the RS user's name.
+   
+      *  This patch changes the format of data returned from the LST to
+         the RS.  ROM software released with DG*5.3*533 returns internally
+         formatted data from the LST.  Internally formatted data has the
+         potential to create data integrity problems at the RS.  Data
+         integrity problems can occur if the internal values returned are
+         not consistent with the respective internal values at the RS.
+         This patch changes the format to external so data integrity
+         problems are avoided.
+   
+      *  The ORDER INDEX field [#5] has been added to the DG REGISTER
+         ONCE FIELD DEFINITION file [#391.23].  This field defines
+         the order which data returned from the LST is filed in the
+         database at the RS.
+   
+      Technical components are noted as follows with respective changes:
+  
+      Protocols
+      =========
+      N/A
+   
+      HL7 APPLICATION PARAMETER(s)
+      ============================
+      N/A
+   
+      Routine Summary
+      ================
+       The following is a list of the routine(s) included in this patch.
+       The second line of each of these routine(s) will look like:
+   
+       <tab>;;5.3;Registration;**[patch list]**;Aug 13, 1993
+   
+                              CHECK^XTSUMBLD results
+      Routine name      Before Patch          After Patch         Patch List
+      ============      ============          ===========         ==========
+      DGROAPI                1300849              1309160           533,572
+      DGRODEBR               6415203              7148454           533,572
+      DGROHLQ                2906845              2972596           533,572
+      DGROHLQ1               2214818              3003410           533,572
+      DGROHLQ3               2343668              2435452           533,572
+      DGROHLR                5382218              3401783           533,572
+      DGROHLR1                   N/A              5650285             572
+      DGROHLS                3286472              4216410           533,572
+      DGROHLU                4413425              6459291           533,572
+      DGROHLU1               3520845              2928090           533,572
+      DGROMAIL               6279855              6769909           533,572
+      DGROUT                 4206308              4248482           533,572
+      DGROUT2                 827862               873666           533,572 
+   
+      Mail Groups:
+      ============
+      N/A
+   
+      Mailman Messages:
+      =================
+      N/A
+   
+      Bulletins:
+      ==========
+      N/A
+   
+      DOCUMENTATION RETRIEVAL
+      =======================  
+      The following documentation will be available:
+   
+        File Name                 Description
+        ---------                 -----------
+        DG_5_3_P572_UM.PDF        Revised PIMS V. 5.3
+                                  Registration User Manual
+   
+      Sites may retrieve the documentation directly using FTP from the
+      ANONYMOUS.SOFTWARE directory at the following OI Field Offices:
+   
+                      Albany:  ftp.fo-albany.med.va.gov
+                       Hines:  ftp.fo-hines.med.va.gov
+              Salt Lake City:  ftp.fo-slc.med.va.gov
+      First available server:  download.vista.med.va.gov
+   
+      NOTE: Use Binary mode when transferring the .PDF file.  The .PDF files
+      can be read on a PC using the Adobe Acrobat Reader program.
+   
+      The VistA Documentation Library [VDL] web site contains all end-user
+      manuals.  The address is http://www.va.gov/vdl/
+   
+  
+   III.  Installation Instructions:
+         ===================
+     
+         This patch is distributed via PackMan.  This patch may be loaded
+         with users on the system.  Because it affects Registration, you may
+         want to install it during non-peak hours.  The installation
+         will take about 5 minutes.
+   
+         1.  From the Kernel Installation and Distribution System:
+             select the Installation menu.
+   
+         2.  From this menu, you may elect to use the following options
+             (when prompted for the INSTALL NAME, enter DG*5.3*572):   
+  
+             (a)  Backup a Transport Global - this option will create a
+                  backup message of any routines exported with the patch.
+                  It will NOT backup any other changes such as DDs or
+                  templates.
+   
+             (b)  Compare Transport Global to Current System - this
+                  option will allow you to view all changes that will be
+                  made when the patch is installed.  It compares all
+                  components of the patch (routines, DDs, templates, etc.).
+   
+             (c)  Verify Checksums in Transport Global - this option will
+                  allow you to ensure the integrity of the routines that
+                  are in the transport global.
+  
+             (d)  Print Transport Global - this option will allow you to
+                  view the components of the KIDS build.
+     
+         3.  Use the Install Package(s) option and select the package
+             DG*5.3*572.
+   
+         4.  When prompted 
+             "Want KIDS to INHIBIT LOGONS during the install? YES//"
+             respond NO
+     
+         5.  When prompted
+             "Want to DISABLE Scheduled Options, Menu Options,
+                and Protocols? YES//"
+              respond YES.
+   
+         6.  When prompted to select the options you would like to place
+             out of order, enter:
+    
+             DG REGISTER PATIENT
+    
+             (This will place DG REGISTER PATIENT option out of order
+             during the installation.)
+   
+         7.  When prompted to select the protocols that you would like
+             to place 'out of order', press Enter since no protocols
+             need to be selected.
+   
+  
+  TEST SITES
+  =============
+  Bronx, NY
+  El Paso, TX
+  Grand Junction, CO
+  Tucson, AZ
+   
+
+Routine Information:
+====================
+
+Routine Name:
+  - DGROAPI
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGRODEBR
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGROHLQ
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGROHLQ1
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGROHLQ3
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGROHLR
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGROHLR1
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGROHLS
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGROHLU
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGROHLU1
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGROMAIL
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGROUT
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGROUT2
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : HESTER,DONNELL                Date Entered  : DEC 04, 2003
+Completed By: ARNETTE,ANDY                  Date Completed: AUG 11, 2004
+Released By : BURTS,WANDA                   Date Released : AUG 13, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

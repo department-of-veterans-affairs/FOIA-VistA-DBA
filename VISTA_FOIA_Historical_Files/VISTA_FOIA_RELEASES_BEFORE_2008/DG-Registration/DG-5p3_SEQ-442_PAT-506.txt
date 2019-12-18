@@ -1,0 +1,319 @@
+
+=============================================================================
+Run Date: MAY 13, 2003                     Designation: DG*5.3*506
+Package : DG - REGISTRATION                    Priority: EMERGENCY
+Version : 5.3       SEQ #442                     Status: Released
+                  Compliance Date: MAY 16, 2003
+=============================================================================
+
+Associated patches: (v)DG*5.3*114  <<= must be installed BEFORE `DG*5.3*506'
+                    (v)DG*5.3*161  <<= must be installed BEFORE `DG*5.3*506'
+                    (v)DG*5.3*489  <<= must be installed BEFORE `DG*5.3*506'
+                    (v)DG*5.3*498  <<= must be installed BEFORE `DG*5.3*506'
+
+Subject: BAD ADDRESS INDICATOR
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description: 
+============
+
+ 
+   *********************************************************************
+   *                                                                   *
+   *  NOTE: This patch has been assigned a compliance date of 5/16/03  *
+   *                                                                   *
+   *********************************************************************
+ 
+  PROJECT OVERVIEW:
+  =================
+  Post implementation functional issues with automatic address updating
+  introduced with GMT phase I have occurred and made it desirable to implement a
+  bad address indicator.  This functionality is designed to help prevent the
+  spread and corruption of VISTA databases with addresses that are known to be
+  invalid or incorrect.  It addresses several NOIS messages and an inquiry
+  raised by the Patient Safety committee.
+  
+  The project addresses the following issues and requirements:
+  
+  1. Known bad addresses must be identified and flagged so that they are
+     prevented from updating the HEC or other VISTA databases.  This process
+     is to be performed manually by updating the Bad Address Indicator on
+     known bad addresses.
+  
+  2. Veterans with the Bad Address Indicator set, must not be mailed
+     Means Test Renewal letters.  Patients fitting this criteria will be
+     identified in a bulletin transmitted to the EAS MT LETTERS mailgroup.
+  
+  3. The veteran's permanent address associated with the Bad Address
+     Indicator will NOT be shared with the HEC.
+  
+  4. There have been several NOIS issues reported related to the auto
+     population of city, state, and county name based on entry of a zip code.
+     City information will now be provided on a regular basis to ensure
+     population of a city name with postal codes know to be valid.
+     This functionality is being provided by Kernel patch XU*8*292, which will
+     be released at a future date.
+  
+  FUNCTIONAL DESCRIPTION:
+  =======================
+  The functional changes that will be introduced with this patch include:
+  
+  1. Create the Bad Address Indicator field in the Patient (#2) file.
+  
+  2. Modify routines used when updating a patient's address to allow
+     users to update the Bad Address Indicator as necessary.
+  
+  3. Add the Bad Address Indicator field to Registration screen 1.
+  
+  4. Create a supported API (DBIA #4080) to allow other packages to obtain the
+     Bad Address Indicator as needed. (see SUPPORTED API section below)
+  
+  5. Modify the Address Change Dt/Tm field in the Patient (#2) file to remove
+     the Bad Address Indicator whenever the patient's address is updated.
+ 
+  6. Add the Bad Address indicator field on the display associated with the DG
+     PATIENT INQUIRY menu option.
+  
+  TEST SITES:
+  ===========
+  Bay Pines
+  Salisbury
+ 
+  ASSOCIATED PATCHES:
+  ===================
+  The Bad Address Indicator project includes 3 VistA patches and a Kernel
+  patch (which will be released at a future date). The patches are as follows:
+  
+       DG*5.3*506   (included in the DG_53_P506.KID host file)
+       IVM*2.0*76   (included in the DG_53_P506.KID host file)
+       EAS*1.0*29   (included in the DG_53_P506.KID host file)
+  
+  SUPPORTED API:
+  ==============
+  1. $$BADADR^DGUTL3(DFN) - This API will allow outside applications to obtain
+                            the Bad Address Indicator (when present) on a known
+                            patient. Please see Integration Agreement #4080 for
+                            further technical details.
+  
+  
+  INPUT TEMPLATE CHANGES:
+  =======================
+  1. DGRPT 10-10T REGISTRATION - This template has been modified to allow
+                                 users to modify the Bad Address Indicator
+                                 when using this template
+  
+  DATA DICTIONARY CHANGES:
+  ========================
+  1. PATIENT file (#2) - The Bad Address Indicator field has been added as a
+                         new field, and a MUMPS-style cross-reference has been
+                         added to the Address Change Dt/Tm field.
+  
+        BAD ADDRESS INDICATOR field (#.121)
+        ----------------------------------
+        Field #  : .121      Node;Piece: .11;16       Data Type: Set of Codes   
+        
+        Field Definition:    1: UNDELIVERABLE
+                             2: HOMELESS
+                             3: OTHER
+  
+        Field Description: The Bad Address Indicator field applies to the
+                           address at which the patient resides.  This
+                           field should be set as follows (if applicable): 
+                                  
+                           "UNDELIVERABLE" - Bad Address based on
+                                             returned mail.  
+                                "HOMELESS" - Patient is known to be
+                                             homeless.  
+                                   "OTHER" - Other Bad Address Reason 
+                                  
+                           Setting this field will prevent a Bad Address
+                           from being shared with HEC and other VAMC
+                           facilities. It will also be used to block Means
+                           Test Renewal Letters from being sent.  
+                                  
+                           Once the Bad Address Indicator is set, incoming
+                           "newer" addresses, and/or manual address
+                           updates by VAMC site staff will automatically
+                           remove the Bad Address Indicator, and allow the
+                           "updated" address to be transmitted to HEC and
+                           other VAMC facilities.  
+  
+       ADDRESS CHANGE DT/TM field (#.118)
+       ----------------------------------
+       The following new MUMPS-style, ACTION-type cross-reference was added
+       with this patch.  No additional Data Dictionary Changes are being made.
+  
+            FIELD INDEX:      ADELBAI       MUMPS        ACTION
+  
+            Short Descr:  Delete Bad Address Indicator when address changes
+            Description:  This action cross-reference will delete the Bad
+                          Address Indicator for the patient's primary
+                          address whenever the address changes (either
+                          manually or by an incoming Z05 transmission).  
+              Set Logic:  D:$$BADADR^DGUTL3(DA) DELBAI^DGUTL3(DA)
+               Set Cond:  I X1'=X2
+             Kill Logic:  Q
+                   X(1):  ADDRESS CHANGE DT/TM  (2,.118)  (forwards)
+         
+  
+  ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;5.3;Registration;**[patch list]**;Aug 13, 1993
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  DGRP1                 14393871             14523092         109,161,506
+  DGRPD                 21460559             21626120     109,124,121,57,161
+                                                          149,286,358,436,445
+                                                              489,498,506
+  DGRPE                 24814462             24923895     32,114,139,169,175
+                                                          247,190,343,397,342
+                                                            454,415,489,506
+  DGUTL3                 2252253              2351224           114,506
+  
+ 
+  SOFTWARE & DOCUMENTATION RETRIEVAL
+  ==================================
+  The software for this patch is being distributed in a host file.  The 
+  host file will contain three KIDS builds.
+   
+     Host file name: DG_53_P506.KID
+   
+             Builds: DG*5.3*506
+                     IVM*2.0*76
+                     EAS*1.0*29
+  
+  Sites may retrieve the software and documentation directly using FTP from the
+  ANONYMOUS.SOFTWARE directory at the following OI Field Offices:
+  
+             Albany:  ftp.fo-albany.med.va.gov
+              Hines:  ftp.fo-hines.med.va.gov
+     Salt Lake City:  ftp.fo-slc.med.va.gov
+ 
+  The following documentation will be available:
+   
+     File Name                 Description
+     ---------                 -----------
+     DG_5_3_P506_UM.PDF        Revisions to the Registration module of the 
+                               ADT User Manual
+  
+  * Note: Use ASCII mode when transferring the .KID file.
+          Use Binary mode when transferring the .PDF file.  The .PDF 
+          files can be read on a PC using the Adobe Acrobat Reader program.
+          Within 3 days of release to the field, the updated ADT User 
+          Manual will be available in VDL. 
+  
+  INSTALLATION INSTRUCTIONS:
+  ==========================
+  
+         * * * * * *  A  T  T  E  N  T  I  O  N  * * * * * * 
+   
+  It is recommended this patch be installed outside of normal business 
+  hours to avoid any complications resulting from users on the system.
+  Installation will take less than 2 minutes.
+  
+  This patch should NOT be installed while the IVM BACKGROUND JOB [IVM 
+  BACKGROUND JOB] is running.
+  
+  In order to prevent missing HL7 traffic while this patch is being 
+  installed, TaskMan should be placed in a wait state.
+  
+   Installation Steps:
+   ==================
+   
+   1. Download the KIDS file DG_53_P506.KID from the ANONYMOUS.SOFTWARE
+      directory of either Albany, Hines, or the Salt Lake CIOFO to the
+      appropriate directory on your system.
+   
+   2. Use the 'LOAD A DISTRIBUTION' option on the KIDS INSTALLATION 
+      menu, and enter:  DG_53_506.KID
+   
+   3. Review your mapped set.  If any of the routines listed in the 
+      ROUTINE SUMMARY section of patches DG*5.3*506, IVM*2*76, or EAS*1*29
+      are mapped, they should be removed from the mapped set at this time.
+   
+   4. From the 'Kernel Installation & Distribution System' menu, select 
+      the Installation menu.
+  
+   5. From this menu, you may elect to use the following options (when
+      prompted for INSTALL NAME, enter DG*5.3*506).
+   
+      a. Backup a Transport Global - This option will create a backup
+         message of any routines exported with the patch.  It will NOT 
+         backup any other changes such as DDs or templates.
+   
+      b. Compare Transport Global to Current System - This option will 
+         allow you to view all changes that will be made when the patch 
+         is installed.  It compares all components of the patch 
+         (routines, DDs, templates, etc.).
+   
+      c. Verify Checksums in Transport Global - This option will allow 
+         you to ensure the integrity of the routines that are in the 
+         transport global.
+   
+      d. Print Transport Global - This option will allow you to view the
+         components of the KIDS build.
+         
+   6. Use the Install Package(s) option and select DG*5.3*506.
+   
+   7. When prompted 'Want KIDS to INHIBIT Logon's during the install? 
+      YES//', it is recommended you answer NO.
+   
+   8. When prompted 'Want to DISABLE Scheduled Options, Menu Options, 
+      and Protocols? YES//', respond YES.  When prompted to select the 
+      options you would like to place out of order, enter the following:
+        
+          IVM BACKGROUND JOB               
+   
+   9. If routines were unmapped as part of Step 3, they should be 
+      returned to the mapped set once the installation has run to 
+      completion.
+  
+  10. Return TaskMan to it's normal state.
+
+Routine Information:
+====================
+
+Routine Name:
+  - DGRPE
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGRP1
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGUTL3
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGRPD
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : MORGAN,BRIAN                   Date Entered : MAR 07, 2003
+Completed By: DESMOND,LINDA                 Date Completed: MAY 13, 2003
+Released By : KOVACH,STUART                 Date Released : MAY 13, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

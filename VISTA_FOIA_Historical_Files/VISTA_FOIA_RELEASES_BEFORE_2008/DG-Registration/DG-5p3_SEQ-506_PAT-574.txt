@@ -1,0 +1,282 @@
+$TXT Created by THEROUX,JOHN at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 02/02/04 at 15:19
+=============================================================================
+Run Date: APR 14, 2004                     Designation: DG*5.3*574
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #506                    Status: Released
+                  Compliance Date: MAY 15, 2004
+=============================================================================
+
+Associated patches: (v)DG*5.3*61   <<= must be installed BEFORE `DG*5.3*574'
+                    (v)DG*5.3*136  <<= must be installed BEFORE `DG*5.3*574'
+                    (v)DG*5.3*425  <<= must be installed BEFORE `DG*5.3*574'
+                    (v)DG*5.3*532  <<= must be installed BEFORE `DG*5.3*574'
+                    (v)DG*5.3*533  <<= must be installed BEFORE `DG*5.3*574'
+
+Subject: FIXES FOR ASSORTED NOIS CALLS
+
+Category: 
+  - Routine
+
+Description:
+============
+
+   This patch provides a proper exit from the Preregister a Patient option,
+ displays error message if protocol cannot be found, changes the kill 
+ logic for the SSN, prevents selecting inactive divisions on registration,
+ and prevents patient lookup of already merged records.
+  
+ ASSOCIATED NOISes:
+ ================== 
+ 1) LEB-0601-20582   Exit from option questionable method
+ 2) DUB-0499-32620   Missing xref causes loss of events
+ 3) PUG-0999-50739   NULL SUBSCRIPT ERRORS FROM SSN XREF
+ 4) MIA-0301-32666   Inactive Medical center division
+ 5) FTL-0399-52712   STUB RECORDS
+    Duplicate:
+    PUG-1203-50253   Merged Patient Records
+  
+ ASSOCIATED E3R(s):
+ ==================
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Puget Sound,WA
+ Lebanon,PA
+ Miami,FL
+ El Paso,TX
+  
+ NOIS OVERVIEW:
+ ============== 
+  
+ 1) NOIS LEB-0601-20582   Exit from option questionable method
+  
+ Problem:
+ ========
+ When using the Preregister a Patient option, users may be presented
+ with the "Enter RETURN to continue, or '^' to exit:" prompt.  When
+ the "^" up arrow is used, the program continues processing instead
+ of exiting the option.  
+  
+ Solution:
+ =========
+ If the prompt is shown before the user has begun the Load/Edit 
+ portion, and the user chooses to enter the "^" up arrow, the 
+ program will exit the option.
+ Routines DGPREP1 and DG10 were modified.
+  
+ 2) DUB-0499-32620     Missing xref causes loss of events
+  
+ Problem:
+ ========
+ When the name of the "DGPM MOVEMENT EVENTS" protocol in file #101
+ was inadvertently changed, the protocol could not be found by the
+ Event driver and none of the events normally done were set off.
+  
+ Solution:
+ =========
+ Because the Event driver is crucial to Admit/Discharge/Transfer processes,
+ the following error message will be displayed on the screen if the  
+ protocol is not found by the Event driver under its usual name:
+  
+     "Serious error ! DGPM MOVEMENT EVENTS protocol not found
+      in Protocol file #101.  No events fired !"
+  
+ Routine DGPMEVT was modified.
+  
+ 3)  PUG-0999-50739     NULL SUBSCRIPT ERRORS FROM SSN XREF
+  
+ Problem:
+ ========
+ Null subscript errors caused by bad Patient file records when
+ the "BS" cross-reference on the SSN field (.09) of the Patient
+ file (2) fires. Specifically, the Set and Kill logic assume the
+ SSN is valid, specifically that it has at least six characters.
+ A bad SSN that is too short results in the "BS" trying to stuff ""
+ into a subscript.
+  
+ The problem is somewhat more acute because any attempt to fix the bad SSN
+ causes the Kill logic to fire, interrupting the repair attempt with that
+ null subscript error.
+  
+ Solution:
+ =========
+ To allow correction of short SSN values, if we take the position that the
+ Kill logic needn't guarantee it remove what, if anything, got added to the
+ "BS" index when these spurious index SSN values were added (since we don't
+ know how they got there), then all the Kill logic need do is avoid
+ crashing. So the data dictionary crossreference is changed to:
+  
+        Kill Logic: K:$E(X,6,9)'="" ^DPT("BS",$E(X,6,9),DA)
+  
+ Post init routine DG53P574 changes the data dictionary for the SSN.
+  
+ 4) MIA-0301-32666   Inactive Medical center division
+  
+ Problem:
+ ========
+ When registering a patient thru the [DG REGISTER PATIENT] option,
+ if the patient is going to be treated that day, the following 
+ prompt will appear:
+  
+   FACILITY APPLYING TO:
+  
+ If the user selects a division which is inactive, the system accepts it.
+  
+ Solution:
+ =========
+ Editing of the entry will be done and the user will now see the
+ following message:
+  
+   "The facility chosen either has no pointer to an Institution
+    file record or the Institution file record is inactive.
+    Please choose another division.
+  
+ New routine DGREGFAC does the editing and DGREG was modified
+ to display the above message if necessary.
+  
+ 5) FTL-0399-52712     STUB RECORDS
+  
+ Problem:
+ ========
+ When two patient records are merged, the FROM stub record remains 
+ with an internal entry number (IEN) and a name.  This record can
+ still be accessed by IEN or, if re-indexing is done, by name.
+  
+ Solution:
+ =========
+ DPTLK1 routine was modified to screen out the FROM stub record
+ so it will not be accessible on patient lookups.
+  
+  ROUTINE SUMMARY:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;5.3;Registration;**[patch list]**;Aug 13, 1993
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  DG10                   6773589              6849025    32,109,139,149,182
+                                                         326,513,425,574
+  DG53E574                   N/A               771341             574
+  DG53P574                   N/A               292446             574
+  DGPMEVT                1318191              1488568           61,574
+  DGPREP1                5982121              6039368         109,136,574
+  DGREG                 19607063             20435360     1,32,108,147,149
+                                                         182,245,250,513,425
+                                                                533,574
+  DGREGFAC                   N/A               260345             574
+  DPTLK1                12955366             12964138     32,50,197,249,317
+                                                            391,244,532,574
+  
+ INSTALLATIONS INSTRUCTIONS:
+ ==========================
+  
+ This patch may be run with users on the system, but it is recommended
+ that it be queued to run after normal business hours to minimize the 
+ impact on users of the Registration package.
+  
+ Installation will take less than 5 minutes.
+  
+ 1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu to unload
+     the KIDS distribution included with this message.
+  
+ 2.  Review your mapped set.  If any of the routines listed in the 
+     ROUTINE section are mapped, they should be removed from the mapped
+     set at this time.
+  
+ 3.  From the Kernel Installation and Distribution System Menu, select
+     the Installation menu.
+  
+ 4.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter DG*5.3*574):
+     a.  Compare Transport Global to Current System  - this option will
+         allow you to view all changes that will be made when the patch
+         is installed.  It compares all components of the patch (routines,
+         DDs, templates, etc.).
+     b.  Verify Checksums in Transport Global - this option will
+         allow you to ensure the integrity of the routines that are in
+     c.  Print Transport Global - this option will allow you to view the
+         components of the KIDS build.
+  
+ 5.  Use the Install Package(s) option and select the package DG*5.3*574.
+  
+ 6.  When prompted ' Want KIDS to INHIBIT LOGONs during the install?
+     YES//', respond NO.
+  
+  7.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols? YES//', respond YES.  When prompted to select the options
+      you would like to place out of order, enter:
+  
+      Register a Patient [DG REGISTER PATIENT]
+      Load/Edit Patient Data [DG LOAD PATIENT DATA]
+      Preregister a Patient [DGPRE PRE-REGISTER OPTION]
+  
+ 8.  If routines were unmapped as part of step 2, they should be returned
+     to the mapped set once the installation has run to completion.
+
+Routine Information:
+====================
+
+Routine Name:
+  - DG10
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGPREP1
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGPMEVT
+
+
+Routine Checksum:
+
+Routine Name:
+  - DG53P574
+
+
+Routine Checksum:
+
+Routine Name:
+  - DG53E574
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGREG
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGREGFAC
+
+
+Routine Checksum:
+
+Routine Name:
+  - DPTLK1
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : THEROUX,JOHN                  Date Entered  : DEC 05, 2003
+Completed By: BOWEN,MARY JANE               Date Completed: APR 13, 2004
+Released By : CORAM,JAMIE                   Date Released : APR 14, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

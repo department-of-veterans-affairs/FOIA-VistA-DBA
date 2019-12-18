@@ -1,0 +1,426 @@
+$TXT Created by WHITE,ELAINE at MNTVAA.FO-BIRM.MED.VA.GOV  (KIDS) on Wednesday, 02/09/05 at 23:13
+=============================================================================
+Run Date: APR 11, 2005                     Designation: PSO*7*161
+Package : PSO - OUTPATIENT PHARMACY           Priority: Mandatory
+Version : 7       SEQ #176                      Status: Released
+                  Compliance Date: MAY 12, 2005
+=============================================================================
+
+Associated patches: (v)PSO*7*162   <<= must be installed BEFORE `PSO*7*161'
+                    (v)PSS*1*87    <<= must be installed BEFORE `PSO*7*161'
+                    (v)PSN*4*84    <<= must be installed BEFORE `PSO*7*161'
+                    (v)PSO*7*189   <<= must be installed BEFORE `PSO*7*161'
+
+Subject: LASER LABELS PHASE II
+
+Category: 
+  - Routine
+  - Input Template
+  - Data Dictionary
+  - Enhancement (Mandatory)
+  - Other
+
+Description:
+============
+
+ This patch is part of the Outpatient Pharmacy V. 7.0 Laser Labels
+ Phase II project for printing prescription labels.
+  
+ ***** NOTE TO SITES USING AUTOMATED FILLING EQUIPMENT *****
+ This patch changes the format and content of the laser labels print 
+ stream. If you are using automated dispensing equipment that relies on 
+ the data stream sent to the laser labels port, you have 2 options:
+   1. Implement the Outpatient Automation Interface (OPAI) (available with
+      released patch PSO*7*156) or 
+   2. Contact your vendor to make adjustments based on the new data stream.
+  
+ Although implementing OPAI is not mandated at this time, it is expected 
+ to be in the future, so option 1 is the preferred solution. By 
+ implementing OPAI, future changes to the label format will not affect the 
+ dispensing equipment interface.
+ *************************************************************************
+  
+ To fully implement all portions of the new functionality, the 
+ following are needed:
+   1. Patch PSS*1*87 from Pharmacy Data Management V. 1.0 (PDM),to provide 
+ an API for retrieving warning labels from the new data source.
+   2. Patches PSN*4*86 and PSN*4*88 from the National Drug File V. 4.0
+ (NDF) to create and populate a new gender field in the WARNING
+ LABEL-ENGLISH file (#50.625) and the WARNING LABEL-SPANISH file (#50.626).
+   3. Patch PSX*2*54 from the Consolidated Mail Outpatient Pharmacy V. 2.0
+ (CMOP) to modify the way warnings are sent to CMOP.
+  
+  
+  This patch includes:
+   1. Referencing a new commercial data source for printing prescription 
+ warning labels.        
+   2. Printing warning labels and Patient Information Sheets (PMI) by the
+ patient's PMI language preference setting.
+   3. A new MAILING COMMENTS field (#.081) is added to the OUTPATIENT SITE
+ file (#59) to be used for a site to enter anything they would like to 
+ show on the Mail Address label. (i.e. whether mailing is "Forwarding 
+ service requested" or  "Address service requested"). The PSO SITE INPUT 
+ TEMPLATE for the OUTPATIENT SITE file (#59) is changed to allow the 
+ input of data into the new mailing comments.
+   4. A new Manual Print of Multi-Rx Forms [PSO LM MULTI-RX PRINT] option
+ is added under the Rx (Prescriptions) [PSO RX] option as well as under 
+ the OTH hidden action while in the patient's profile to reprint the 
+ Multi-Rx Refill Request form on laser label stock without having to
+ reprint the entire prescription's labels. The functionality is also
+ changed to stop printing the Multi-Rx refill form on reprints.
+   5. Various changes to the content/format of the labels - detailed below
+ under each label section.
+   6. Correction to only print one ScripTalk label when SIG is continued.
+ (NOIS CLE-0304-40723. (The other part of this NOIS is addressed in patch
+ PSO*7*182, so this NOIS is not included in the associated patch list 
+ below)).
+   7. A new Signature Log Reprint [PSO SIGLOG REPRINT] option is added
+ under the Rx (Prescriptions) [PSO RX] option. (Added for HIPAA/NCPDP).
+   8. A change was made to not keep exact duplicates of the control code 
+ settings (e.g. when running the set-up routine as a test site and again 
+ when the patch is installed in production). NOIS PUG-1103-52110
+   9. The other NOIS's listed below were for items already included in the
+ Laser Labels Phase II specifications.
+  
+ Bottle label section changes:
+ ============================
+   1. Currently long SIG's that do not fit on one bottle label print only 4
+ lines of SIG on the first bottle label and up to 4 lines on each 
+ continuation label. This patch increases the number of lines of the SIG 
+ that print on each bottle label to reduce the total number of labels
+ needed. This also will allow the overlapping of the multiple labels on the
+ bottle to eliminate the need for cutting the labels to make them fit.
+   2. The text "Mfr_________" will print for all prescriptions on the same 
+ line as the "Discard after" information.
+   3. The text "May refill nX by MMM DD,YYYY" or "NO REFILLS LEFT" or "NO 
+ REFILL" was added between the "Discard after..." line and the Qty: line.
+   4. On the trailing documents, a signature log will print in the bottle 
+ label section for the patient to sign for the medications received. 
+ (Added for HIPAA/NCPDP).
+   
+ Warning label section changes:
+ =============================
+   1. A new API will be called to determine which warnings to print.
+   2. Warnings will print in English or Spanish depending on the patient's 
+ PMI preference.
+   3. If there are fewer than five warning labels, the warning labels will 
+ be bottom-justified.
+   4. If the DEA, SPECIAL HDLG field (#3) in the DRUG file (#50) begins
+ with numbers 1,2,3,4 or 5. The NO TRANSFER warning label from the RX
+ CONSULT file (#54) entry number 20 will print in the appropriate 
+ language.
+   5. The new data source contains some lengthy warnings, especially the 
+ Spanish translation. For the smallest font, this patch allows a 4th line
+ of text to print, if needed.
+   6. The top warning label was sometimes printing on or over the 
+ perforated line. For some fonts, this patch reduces the white space 
+ between the lines of the first warning to make it fit.
+  
+ Mail address section changes:
+ ============================
+   1. The current date will print in the upper right corner.
+   2. If there are any mailing comments defined, they will print after the 
+ MAIL field (#.03) of the PHARMACY PATIENT file (#55).
+   3. Patient name will print first name first instead of 
+ lastname,firstname.
+   4. When the routing is "Window", the word "Window" will be bolded.
+  
+ Pharmacy fill card section changes:
+ ==================================
+   1. Seconds will be removed from the label date/time.
+   2. A new API will return the text for the DRUG WARNING list. The DRUG 
+ WARNING entries will be separated by commas. If an entry in the list does 
+ not have an "N" (for "New"), it is from the RX CONSULT file (#54).
+ Otherwise it is from the WARNING LABEL-ENGLISH (#50.625) or the 
+ WARNING LABEL-SPANISH (#50.626) file.
+   3. A new line containing the patient location and status is being added
+ beneath the DRUG WARNING list, so the list is being moved up slightly on
+ the label.
+   4. Patient name and last portion of the social security number are 
+ bolded.
+   5. If the bottle cap is "non-safety", it will be bolded.
+   6. Currently long SIG's that do not fit on one pharmacy fill card label
+ print only 4 lines of SIG on the first label and up to 4 lines on each
+ continuation label. This patch increases the number of lines of the SIG 
+ that print on each pharmacy fill card label to reduce the total number of
+ labels needed.
+   7. The words "3rd Party Rx" and the NDC number are added when that 
+ information is available. (Added for HIPAA/NCPDP).
+  
+ Patient fill section changes:
+ ============================
+   1. The barcode will print every time even if there are no refills.
+   2. The site telephone number will print when the "PHONE IN OR MAIL THIS 
+ REFILL REQUEST" prints.
+   3. The text "n refills left until MMM DD,YYYY is changed to "May refill 
+ nX by MMM DD,YYYY".
+  
+ Prescription Document PMI section changes:
+ =========================================
+   1. The PMI will print in the patient's language preference.
+   2. The white spaces between sections of the PMI document will be 
+ reduced to result in a few more lines fitting on the page.
+   3. If there are more than 5 warning labels, the additional warnings 
+ will print at the top of the PMI section.
+  
+ Trailing document changes:
+ =========================
+   1. The patient's phone number followed by an underline will print on 
+ the address change form.
+   2. In the Allergies/ADR section, the name and last six digits of the 
+ social security number will be made larger and will be bolded.
+   3. In the Allergies/ADR section, if the HOSPITAL LOCATION file (#44), 
+ TYPE field (#2) type equals "W" for any prescription printed for this 
+ patient in the current print job, then the word "INPATIENT" will print 
+ on the line following the patient name.
+   4. In the Allergies/ADR section, if some sections do not have data, the 
+ header will not print. If no information exists, "No Assessment Made" 
+ will print after the Verified Allergies heading.
+   5. In the refill narrative or copay narrative sections, if there are 
+ more than seven lines from the original text, only the first seven lines 
+ will print. (They could appear as more than seven lines if there is some 
+ wrapping of the text).
+   6. If the Multi-Rx refill section is blank, the SITE NUMBER field 
+ (#.06) from the OUTPATIENT SITE file (#59) will print bottom right
+ justified.
+  
+ A utility routine is included in this patch to change some of the control
+ codes in the TERMINAL TYPE file (#3.2). 
+ Once the patch is installed, running the routine PSOLLU4 in programmer
+ mode will make slight adjustments to PATIENT FILL INITIALIZATION, 
+ PHARMACY FILL DOCUMENT WARNING, MAILING LABEL INITIALIZATION, and RETURN 
+ MAIL INITIALIZATION settings.
+ Note: you must have your FileMan access set to '@' to run the routine.
+  
+ Note: For sites implementing laser labels for the first time, before 
+ running PSOLLU4, run PSOLLU2 and PSOLLU3 in that order to adjust other 
+ control codes. The instructions for running PSOLLU2 and PSOLLU3 are the 
+ same as for PSOLLU4.
+  
+  
+  Associated NOISs:
+  =================
+  CHS-0205-40155
+  COA-1203-20158
+  SAJ-0304-72646
+  HUN-0104-22258 
+  HAM-0703-20199
+  PUG-1103-52110
+  WPB-0703-30633
+  WPB-0703-30788
+  
+  Test Sites:
+  ===========
+  HEARTLAND-WEST HCS
+  HUNTINGTON, WV                  
+  LOUISVILLE, KY             
+  OKLAHOMA CITY, OK          
+  TENNESSEE VALLEY HCS             
+   
+  Routine Summary:
+  ================ 
+  The second line now reads as follows:
+  
+      <TAB>;;7.0;OUTPATIENT PHARMACY;**[patch list]**;DEC 1997
+  
+  CHECK^XTSUMBLD results:
+  
+  Routine   Before Patch    After Patch     Patch List
+  ---------------------------------------------------------------------- 
+  PSOLLL1   20921187        20776652        120,141,135,162,161
+  PSOLLL2    8030804         7417442        120,138,141,161
+  PSOLLL3    3751667         4340909        120,161
+  PSOLLL4    4262766         5294477        120,135,161
+  PSOLLL5   16387617        17458429        120,161
+  PSOLLL6    5366294         6770007        120,141,135,162,161
+  PSOLLL7    8149943        13021476        120,161
+  PSOLLL9    4770819         4808598        120,161
+  PSOLLLH     N/A            8740391        161
+  PSOLLLI   25341094        26575461        120,157,189,161
+  PSOLLLW     N/A            7541717        161
+  PSOLLU1    6629054         6638330        120,141,161
+  PSOLLU4     N/A            5214911        161
+  
+  Documentation Retrieval:
+  ========================
+  Sites will retrieve VISTA documentation from the following FTP
+  addresses.  The preferred method is to FTP the files from
+  download.vista.med.va.gov. This transmits the files from the first
+  available FTP server. Sites may also elect to retrieve documentation
+  directly from a specific server as follows:
+  
+  OI FIELD OFFICE  FTP ADDRESS               DIRECTORY
+  
+  Albany           ftp.fo-albany.med.va.gov  anonymous.software
+  Hines            ftp.fo-hines.med.va.gov   anonymous.software
+  Salt Lake City   ftp.fo-slc.med.va.gov     anonymous.software
+  
+   FILE NAME                            DESCRIPTION
+  PSO_7_TM_R0305.pdf            Outpatient Pharmacy V. 7.0 Technical
+                                  Manual / Security Guide
+  
+  PSO_7_UM_R0305.pdf            Outpatient Pharmacy V. 7.0 User Manual
+  
+  PSO_7_P161_TM_CP.pdf          Outpatient Pharmacy V. 7.0 Technical Manual
+                                  Change Pages
+  
+  PSO_7_P161_UM_CP.pdf          Outpatient Pharmacy V. 7.0 User Manual
+                                  Change Pages
+  
+  PSO_7_P161_RN.pdf             Laser Printed Prescription Labels Phase II
+                                  Release Notes
+  
+  
+  Once released, documentation can also be retrieved from VISTA
+  Documentation Library (VDL) on the Internet at the following address,
+  http://www.va.gov/vdl
+  
+  Installation Instructions:
+  ==========================
+  Before installing this patch, use List Tasks [XUTM INQ] option on the
+  Taskman Management [XUTM MGR] menu to list currently running
+  tasks. Do not install this patch while Outpatient Pharmacy users are
+  using the software. Installation will take no longer than 5 minutes.
+  
+  
+  
+  Suggested time to install: non-peak requirement hours.
+  
+  1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+  
+  2. Review your mapped set. If the routines are mapped, they should
+     be removed from the mapped set at this time.
+  
+  3. From the Kernel Installation & Distribution System menu, select
+     the Installation menu.
+  
+  4. From this menu, you may select to use the following options
+     (when prompted for INSTALL NAME, enter PSO*7.0*161):
+    a. Backup a Transport Global - this option will create a backup
+       message of any routines exported with the patch. It will NOT
+       backup any other changes such as DDs or templates.
+    b. Compare Transport Global to Current System - this option will
+       allow you to view all changes that will be made when the patch
+       is installed. It compares all components of the patch (routines,
+       DDs, templates, etc.).
+    c. Verify Checksums in Transport Global - this option will ensure
+       the integrity of the routines that are in the transport global.
+  
+  5. Use the Install Package(s) option and select the package PSO*7.0*161.
+  
+  6. When prompted "Want KIDS to INHIBIT LOGONs during the install? YES//"
+     respond NO.
+  
+  7. When prompted "Want to DISABLE Scheduled Options, Menu Options, and
+     Protocols? YES//" respond NO.
+   
+  8. If any routines were unmapped as part of step 2, they should be
+     returned to the mapped set once the installation has run to
+     completion.
+  
+  9. A utility routine is included in this patch to change some of the 
+     control codes in the TERMINAL TYPE file (#3.2) for the laser labels
+     printers. Once the patch is installed, running the routine PSOLLU4 in
+     programmer mode will make slight adjustments to PATIENT FILL
+     INITIALIZATION, PHARMACY FILL DOCUMENT WARNING, MAILING LABEL
+     INITIALIZATION, and RETURN MAIL INITIALIZATION settings.
+     Note: your FileMan access must be set to '@' to run the routine.
+    
+     Note: For sites implementing laser labels for the first time, before 
+     running PSOLLU4, run PSOLLU2 and PSOLLU3 in that order to adjust other
+     control codes. The instructions for running PSOLLU2 and PSOLLU3 are
+     the same as for PSOLLU4.
+
+Routine Information:
+====================
+
+Routine Name:
+  - PSOLLL1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOLLL2
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOLLL3
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOLLL4
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOLLL5
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOLLL6
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOLLL7
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOLLLI
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOLLLW
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOLLU1
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOLLU4
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOLLL9
+
+
+Routine Checksum:
+
+Routine Name:
+  - PSOLLLH
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : WHITE,ELAINE                  Date Entered  : NOV 24, 2003
+Completed By: DAVIS,DOUG                    Date Completed: APR 08, 2005
+Released By : PARRIS,CHRIS                  Date Released : APR 11, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

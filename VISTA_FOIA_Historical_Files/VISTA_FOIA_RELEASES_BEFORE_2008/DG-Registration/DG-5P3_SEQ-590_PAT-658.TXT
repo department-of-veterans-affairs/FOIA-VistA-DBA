@@ -1,0 +1,396 @@
+
+=============================================================================
+Run Date: NOV 09, 2005                     Designation: DG*5.3*658
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #590                    Status: Released
+                  Compliance Date: DEC 10, 2005
+=============================================================================
+
+Associated patches: (v)DG*5.3*560  <<= must be installed BEFORE `DG*5.3*658'
+                    (v)DG*5.3*624  <<= must be installed BEFORE `DG*5.3*658'
+
+Subject: DG Address Update Project
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ This project (patches IVM*2.0*108 and DG*5.3*658) is enhancing Address HL7
+ Transmission uploads (ORU~Z05) and manual updates to the veteran's 
+ permanent address, and fixes two problems revolving around an INSTITUTION 
+ #4 File look-up API. The enhancements are in the Demographics Upload [IVM
+ UPLOAD DEM] option for address updates received from the Health 
+ Eligibility Center (HEC). They focus on changes made in Registration [DG 
+ REGISTER PATIENT], Pre-Registration [DGPRE PRE-REGISTER OPTION], and 
+ Load/Edit Patient Data [DG LOAD PATIENT DATA]. Two new options, Patient 
+ Address Update [DG ADDRESS UPDATE] and IVM Address Change Log Report [IVM 
+ ADDRESS CHANGE LOG REPORT] are being added. A new file, IVM ADDRESS
+ CHANGE LOG #301.7 File, is being added with this project to store and
+ report the history of a veteran's permanent address changes. A post-init 
+ routine will populate the ADDRESS CHANGE DT/TM #.118 field of the PATIENT
+ #2 File if it is null. Once the cleanup has run to completion, an address
+ cleanup summary MailMan message with a recap of the number of records
+ processed and number of instances of the anomaly (null #.118 field) found 
+ and corrected will be generated and sent to the installer.
+  
+  
+ This patch (DG*5.3*658) covers the following enhancements and 
+ modifications:
+   
+ Issue I - Fix GETSITE^DGMTU4 API to Point to Child Facility, and Fix 
+   Calling Trigger
+ ======================================================================
+ The Site Lookup API, GETSITE^DGMTU4, has not been functioning properly 
+ since the sites were given the ability to locally update the parent/child 
+ relationships in the INSTITUTION #4 File with Kernel patch XU*8*335.
+ This is only an issue at the sites where an HCS entry was added as their 
+ Parent facility. In conformance to the change to the INSTITUTION #4 File,
+ this patch corrects the API to point to the Child Facility instead of the
+ Parent (HCS) Facility. Note:  Integrated sites with parent-child
+ Institution relationships are expected to have some existing values in the
+ ADDRESS CHANGE #.12 field of the PATIENT #2 File that cannot reliably be
+ fixed. These are expected, over time, to be corrected by normal address
+ update activity.   
+  
+ The trigger for the ADDRESS CHANGE SOURCE #.119 field in the PATIENT #2 
+ File will also be updated. Currently, the site number is being populated 
+ in the ADDRESS CHANGE SITE #.12 field in the PATIENT #2 File when this 
+ trigger is executed. The trigger will be updated to correctly file the 
+ pointer to the INSTITUTION #4 File instead.
+  
+ Before:
+        CREATE CONDITION)= 'ADDRESS CHANGE SOURCE'="VAMC"
+        CREATE VALUE)= S X=$$GETSITE^DGMTU4($G(DUZ))
+        DELETE CONDITION)= 'ADDRESS CHANGE SOURCE'="VAMC"
+        DELETE VALUE)= S X=$$GETSITE^DGMTU4($G(DUZ))
+  
+ After:
+        CREATE CONDITION)= 'ADDRESS CHANGE SOURCE'="VAMC"
+        CREATE VALUE)= S X=$$GETSITE^DGMTU4($G(DUZ)) I X S
+                       X=$O(^DIC(4,"D",X,""))
+        DELETE CONDITION)= 'ADDRESS CHANGE SOURCE'="VAMC"
+        DELETE VALUE)= S X=$$GETSITE^DGMTU4($G(DUZ)) I X S
+                       X=$O(^DIC(4,"D",X,""))
+  
+ Issue II - Update the ADDRESS CHANGE DT/TM #.118 Field in PATIENT #2 File
+ ======================================================================
+ There will be a new Patient Address Update [DG ADDRESS UPDATE] option
+ to display the patient's current Permanent Address, and prompt the user to
+ either enter YES to update/validate the current address on file, or enter
+ NO to continue. Any time the user enters YES, even if there are no
+ changes to the address, the ADDRESS CHANGE DT/TM #.118 field in PATIENT #2
+ File will be set with the current date and timestamp.
+  
+ Issue III - Store Prior Address Info
+ ======================================================================
+ From the Registration, Pre-Registration, and Load/Edit Patient Data 
+ options, the user will be prompted to validate/update the patient's 
+ address. Answering 'YES' to this prompt will access only the Permanent 
+ Address information. When any permanent address data is changed (other
+ than the ADDRESS CHANGE DT/TM #.118 field in PATIENT #2 File), a record
+ will be added to the IVM ADDRESS CHANGE LOG #301.7 File to capture the
+ historical address changes.
+  
+ Issue IV - Make DG ADDRESS UPDATE Option Available to Other Packages
+ ======================================================================
+ This patch adds the Patient Address Update [DG ADDRESS UPDATE] option to
+ the OPTION #19 File. At the discretion of the sites this new option may be
+ placed on menus that belong to packages other than Registration. The
+ option will direct the user to choose to update/validate the veteran's
+ Permanent Address, Temporary Address, or both.  When any part of the
+ Permanent Address data is changed (other than the ADDRESS CHANGE DT/TM
+ field #.118 in PATIENT #2 File), a record will be added to the IVM ADDRESS
+ CHANGE LOG #301.7 File capturing the prior permanent address information.
+ Note that no log of the prior temporary address information will be
+ captured.
+  
+ Issue V - Populate the ADDRESS CHANGE DT/TM field (#.118) with a date
+ ======================================================================
+ When the ADDRESS CHANGE DT/TM #.118 field in PATIENT #2 File is NULL,
+ update the date/timestamp using the ISSUE DATE #1 field in PRESCRIPTION
+ #52 File. If the date and timestamp in the ADDRESS CHANGE DT/TM #.118
+ field of PATIENT #2 File is older than the date in the ISSUE DATE #1 field
+ of PRESCRIPTION #52 File, update it with the latter, i.e. the more current
+ date. If the ADDRESS CHANGE DT/TM #.118 field is NULL, and there is no
+ prescription data available, the default date of December 31, 2003 will be
+ used. This date was selected because it reflects the timeframe when the
+ Interim Address patches, which utilize the ADDRESS CHANGE DT/TM #.118
+ field, were initially released to support the Geographic Means Test (GMT)
+ initiative.
+    
+  
+ SOFTWARE RETRIEVAL
+ ==================
+  
+ The software for this patch is not being distributed through the National
+ Patch Module. This patch is being distributed as a host file. The host
+ file will contain the following two KIDS builds:
+    
+             Host file name:    IVM_2_P108.KID
+    
+                     Builds: IVM*2.0*108
+                             DG*5.3*658
+    
+ Sites may retrieve the software directly using FTP from the
+ ANONYMOUS.SOFTWARE directory at the following OI Field Offices:
+    
+                     Albany   : ftp.fo-albany.med.va.gov
+                     Hines    : ftp.fo-hines.med.va.gov
+               Salt Lake City : ftp.fo-slc.med.va.gov
+       First Available Server : download.vista.med.va.gov
+    
+ The following file will be available:
+    
+     File Name            Description
+     ---------            -----------
+     IVM_2_P108.KID       Host File containing KIDS software distribution
+    
+ Note:  Use ASCII mode when transferring the .KID file.
+  
+  
+ DOCUMENTATION RETRIEVAL
+ =======================
+   
+  Sites may retrieve the user documentation directly using FTP from the
+  ANONYMOUS.SOFTWARE directory at the following OI Field Offices:
+    
+                  Albany   : ftp.fo-albany.med.va.gov
+                  Hines    : ftp.fo-hines.med.va.gov
+            Salt Lake City : ftp.fo-slc.med.va.gov
+    First Available Server : download.vista.med.va.gov (preferred method)
+   
+                                                                          
+  The following files will be available:
+    
+       File Name                     Description
+       ---------                     -----------      
+  DG_5_3_P658_REG_UM.PDF -        Updates to the PIMS V. 5.3 Registration 
+                                                              User Manual
+  DG_5_3_P658_ADTBE_UM.PDF -      Updates to the PIMS V. 5.3 Menus, Intro, 
+                                            Orientation, etc. User Manual
+  IVM_2_P108_TM.PDF -             Updates to the IVM V. 2.0 Technical 
+                                                              Manual
+  IVM_2_P108_UM.PDF -             Updates to the IVM V. 2.0 User Manual 
+  
+  Note:  Use Binary mode when transferring the .PDF files.
+   
+  The VistA Documentation Library [VDL] web site contains all end-user 
+  manuals. The address is http://www.va.gov/vdl/.
+  
+  
+   
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+ There is no NSR associated with this patch.
+   
+  
+ This patch addresses the following NOIS/Remedy ticket(s):
+ ---------------------------------------------------------
+ HD0000000063792 - WPB-0304-30179  dinum again?
+   
+    
+ Overview of NOIS/Remedy Message(s):
+ ---------------------------
+ HD0000000063792 - In the patient file the field is assuming the internal 
+ number from file 4 is the site that made the change as it corresponds to 
+ the station number.
+   
+   
+ Test Sites:
+ -----------
+ Durham (Large)
+ Puget Sound (Integrated)
+ West Palm Beach (Large)
+   
+  
+        ================INSTALLATION INSTRUCTIONS =================
+   
+ The components sent with this patch, DG*5.3*658, have been included in
+ the HOST File IVM_2_P108.KID. Please follow the instructions listed in
+ the INSTALLATION INSTRUCTIONS section of the patch description for 
+ patch IVM*2.0*108.
+  
+        ********************** PRE-INSTALLATION NOTE **********************
+  
+        Note that the cross-reference triggers for ADDRESS CHANGE SOURCE
+        (field #.119 of PATIENT #2 File) will be deleted during the pre-
+        install process.  This is done to prevent duplicate cross-
+        reference triggers from being created.  The cross-reference
+        triggers will be added back during patch installation.
+  
+        *******************************************************************
+  
+   
+   1.   COMPONENTS SENT WITH PATCH 
+        --------------------------
+       The following menu option has been added with this patch:
+  
+         [DG ADDRESS UPDATE]
+   
+  
+       The following field is included in this patch: 
+  
+         #.119     ADDRESS CHANGE SOURCE (in PATIENT #2 File)
+    
+         Total number of fields - 1
+  
+  
+       The following is a list of the routines included in this patch.
+       The second line of each of these routines now looks like:
+  
+            ;;5.3;Registration;**[Patch List]**;Aug 13, 1993
+  
+                            CHECK^XTSUMBLD results
+       Routine name  Before Patch   After Patch       Patch List
+       ============  ============   ===========   ===================
+       DG10          6824825        6331969       32,109,139,149,182,326,
+                                                  513,425,574,642,658
+       DG53658       N/A            11541194      658
+       DGADDUTL      N/A            7353966       658
+       DGMTU4        11457063       12316780      182,267,285,347,454,
+                                                  456,476,610,658
+       DGREG         19788588       19842136      1,32,108,147,149,182,
+                                                  245,250,513,425,533,574,
+                                                  563,624,658
+       DGREGAED      4792354        5009652       522,560,658
+  
+   
+         Total number of new routines - 6
+   
+   2.   Routine DG53658 may be deleted after successful installation
+        of this patch.
+  
+   3.   POST INSTALLATION - There is a post-installation process included 
+        with the patch to address 'Issue V' above. Records within the
+        PATIENT #2 File that have NULL for the ADDRESS CHANGE DT/TM
+        #.118 field are considered anomalies. These will be corrected
+        by the post-install process.  Please refer to 'Issue V' above for
+        an explanation of how the field will be populated.
+
+Routine Information:
+====================
+Routine Name: DG10
+ Description of Changes:
+  Original Code:
+  --------------
+   
+  A1       W !,"Do you want to ",$S(DGNEW:"enter",1:"edit")," Patient Data" 
+  S %=1 D YN^DICN G H:'%,CK:%'=1 S DGRPV=0 D EN1^DGRP,MT(DFN),CP G 
+  Q:$G(DGPRFLG)=1 G Q:$G(SDIEMM) G Q:'$D(DA),EMBOS
+   
+   
+   
+  Modified Code:
+  --------------
+   
+  A1       D  G H:'%,CK:%'=1 S DGRPV=0 D EN1^DGRP,MT(DFN),CP G 
+  Q:$G(DGPRFLG)=1 G Q:$G(SDIEMM) G Q:'$D(DA),EMBOS
+           .W !,"Do you want to ",$S(DGNEW:"enter",1:"edit")," Patient Data"
+           .S %=1 D YN^DICN
+           .I +$G(DGNEW) Q
+           .I $$ADD^DGADDUTL($G(DFN)) ;
+
+Routine Name: DG53658
+Routine Name: DGADDUTL
+Routine Name: DGMTU4
+ Description of Changes:
+  Original Code:
+  --------------
+   
+           N FACILITY,STATION
+           S FACILITY=""
+           S:($G(DUZ)'=.5) FACILITY=$G(DUZ(2))
+           I 'FACILITY S FACILITY=+$$SITE^VASITE()
+           S:FACILITY STATION=$P($G(^DIC(4,FACILITY,99)),"^")
+           Q $G(STATION)
+   
+   
+   
+  Modified Code:
+  --------------
+   
+           N FACILITY,STATION,CURSTN,CHILD,CIEN
+           S FACILITY=""
+           S:($G(DUZ)'=.5) FACILITY=$G(DUZ(2))
+           I 'FACILITY S FACILITY=+$$SITE^VASITE()
+           S:FACILITY STATION=$$STA^XUAF4(FACILITY)
+           S CURSTN=$P($$SITE^VASITE,"^",3)
+           I $D(STATION) D
+           .I STATION']"" D
+           ..D CHILDREN^XUAF4("CHILD","`"_FACILITY,"PARENT FACILITY")
+           ..S CIEN=0 F  S CIEN=$O(CHILD("C",CIEN)) Q:'CIEN  I CIEN=CURSTN S
+  STATION=$$STA^XUAF4(CIEN) Q
+           ..I STATION']"" D
+           ...D CHILDREN^XUAF4("CHILD","`"_FACILITY,"VISN")
+           ...S CIEN=0 F  S CIEN=$O(CHILD("C",CIEN)) Q:'CIEN  I CIEN=CURSTN 
+  S STATION=$$STA^XUAF4(CIEN) Q
+           Q $G(STATION)
+
+Routine Name: DGREG
+ Description of Changes:
+  Original Code:
+  --------------
+   
+  A1       W !,"Do you want to ",$S(DGNEW:"enter",1:"edit")," Patient Data"
+  S %=1 D YN^DICN G H:'%,CK:%'=1 S DGRPV=0 D EN1^DGRP G Q:'$D(DA)
+           G CH
+   
+   
+   
+  Modified Code:
+  --------------
+   
+  A1       W !,"Do you want to ",$S(DGNEW:"enter",1:"edit")," Patient Data" 
+  S %=1 D YN^DICN D  G H:'%,CK:%'=1 S DGRPV=0 D EN1^DGRP G Q:'$D(DA)
+           .I +$G(DGNEW) Q
+           .I $$ADD^DGADDUTL($G(DFN)) ;
+           G CH
+
+Routine Name: DGREGAED
+ Description of Changes:
+  Original Code:
+  --------------
+   
+           S FLG(1)=$G(FLG(1)),FLG(2)=$G(FLG(2))
+           D INPUT(.DGINPUT,DFN)
+           I $G(DGINPUT)=-1 Q
+           I $G(FLG(2))=1 D COMPARE(.DGINPUT,DFN)
+           I '$$CONFIRM() W !,"Change aborted." D EOP Q
+           D SAVE(.DGINPUT,DFN)
+           Q
+   
+   
+   
+  Modified Code:
+  --------------
+   
+           S FLG(1)=$G(FLG(1)),FLG(2)=$G(FLG(2))
+           D INPUT(.DGINPUT,DFN)
+           I $G(DGINPUT)=-1 Q
+           I $G(FLG(2))=1 D COMPARE(.DGINPUT,DFN)
+           I '$$CONFIRM() W !,"Change aborted." D EOP Q
+           N DGPRIOR
+           D GETPRIOR^DGADDUTL(DFN,.DGPRIOR)
+           D SAVE(.DGINPUT,DFN)
+           I +$G(DGNEW) Q
+           Q:'$$FILEYN^DGADDUTL(.DGPRIOR,.DGINPUT)
+           D GETUPDTS^DGADDUTL(DFN,.DGINPUT)
+           D UPDADDLG^DGADDUTL(DFN,.DGPRIOR,.DGINPUT)
+           Q
+
+
+=============================================================================
+User Information:
+Entered By  : MULLER,RICHARD                Date Entered  : MAR 15, 2005
+Completed By: RUDINGER,NANCY L.             Date Completed: NOV 07, 2005
+Released By : HEUER,CINDY                   Date Released : NOV 09, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

@@ -1,0 +1,300 @@
+$TXT Created by HOLLOWAY,THOMAS J at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 03/09/06 at 17:21
+=============================================================================
+Run Date: APR 13, 2006                     Designation: IB*2*336
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #302                      Status: Released
+                  Compliance Date: MAY 14, 2006
+=============================================================================
+
+Associated patches: (v)IB*2*309    <<= must be installed BEFORE `IB*2*336'
+
+Subject: PHARMACY CLAIMS TRACKING FIX
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ With the release of the Clinical Indicator Data Capture (CIDC) software,
+ IB*2.0*260, it was discovered that some entries in the Claims Tracking
+ (#356) file were not marked with a Reason Not Billable (RNB) for
+ prescription claims.  This could cause Service Connected (SC)
+ prescriptions to be billed erroneously to the 3rd party insurance 
+ carrier. With the installation of this patch, new Claims Tracking entries
+ will be appropriately marked, if applicable, with a RNB.  In addition, an
+ e-mail report will be automatically generated for the MCCF staff to review
+ and make a billable determination.
+  
+ ASSOCIATED REMEDY:
+ ==================
+ 1. HD124070   Bills Being Created for SC RX Fills
+  
+ ASSOCIATED E3R(s):
+ ==================
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ DUBLIN, GA
+ PHOENIX, AZ
+ PROVIDENCE, RI
+ UPSTATE NEW YORK HCS
+  
+ REMEDY OVERVIEW:
+ ================
+ 1. HD124070   Bills Being Created for SC RX Fills
+  
+    Problem:
+    --------
+    With the release of CIDC software, Claims Tracking had more complete
+    information contained in new fields in the PRESCRIPTION (#52) file.  
+    However, those new fields are only populated for new prescriptions and
+    not for existing refills.  IB Claims Tracking was changed to look at
+    only the new fields and did not keep the previous code to properly
+    review older prescriptions that did not have the new fields.
+  
+    Resolution:
+    -----------
+    A check was added to Claims Tracking that determines if a prescription
+    has the new fields or not.  If not, then IB Claims Tracking reverts to
+    the previous evaluation rules for the prescription.
+  
+    TECHNICAL:
+    ==========
+    1. HD124070   Bills Being Created for SC RX Fills:
+  
+       Code was added to check for existence of the "ICD" node in the 
+       PRESCRIPTION (#52) file.  If the node exists then the CT software
+       will continue to use the new enhanced CIDC evaluation of the
+       prescription.  However, if an "ICD" node does not exist then CT will
+       use the pre-CIDC code to evaluate the prescription and mark the CT
+       entry appropriately.
+  
+       A post install is included in this patch.  The post install will 
+       evaluate all CT entries that have been added since the initial
+       install of CIDC at the site.  If the CT entry is prescription 
+       related, does not have a Reason Not Billable, and does not have an
+       "ICD" node in the ^PSRX global then a re-evaluation is made based on
+       the pre-CIDC RNB determination.  If a RNB is found then the CT entry
+       is included in the post install report.  The post install report is
+       automatically loaded into a MailMan message and addressed to the
+       patch installer, holders of the IB SUPERVISOR key, and holders of
+       the IB CLAIMS SUPERVISOR key.  Sites should review the MailMan
+       report to determine if any CT entries need a RNB added or any bills
+       need to be cancelled.
+  
+       As an additional note, if sites were to review the "IBQ" node 
+       containing the SERVICE CONNECTED response in the PRESCRIPTION (#52)
+       file, they might find inaccurate information for patients that are
+       greater than 49% service connected.  That field is used only for
+       copayment processing in the Outpatient Pharmacy package and is not
+       valid for any 3rd party billing determinations.
+  
+  ROUTINES:
+  ========
+  The following is a list of the routines included in this patch.
+  The second line of each of these routines now looks like:
+  
+     <tab>;;2.0;INTEGRATED BILLING;**[patch list]**;21-MAR-94
+  
+                          CHECK^XTSUMBLD results (old style)
+  
+  Routine name      Before Patch       After Patch       Patch List
+  ============      ============       ===========       ===========
+    IB20P336             N/A             10714031        336
+    IBTRKR3            10364435          15306575        13,43,121,160,247
+                                                         275,260,309,336
+  
+                          CHECK1^XTSUMBLD results (new style)
+  
+  Routine name      Before Patch       After Patch       Patch List
+  ============      ============       ===========       ===========
+    IB20P336             N/A             28791862        336
+    IBTRKR3            23758062          39212949        13,43,121,160,247
+                                                         275,260,309,336
+  
+  Total Number of Routines - 2
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+  
+  If installed during the normal workday, it is recommended that the 
+  following selection in the OPTION (#19) file, and all of its descendants
+  be disabled to prevent possible conflicts while running the KIDS install.
+  Other VistA users will not affected.
+  
+                  IBT SUP MANUALLY QUE RX FILLS
+  
+  It is recommended this patch not be installed when the IB MT NIGHT COMP 
+  task job is running.
+  
+  Install time - less than 10 minutes.
+  
+  
+    1.  LOAD TRANSPORT GLOBAL
+        ---------------------
+        Choose the PackMan message containing this patch and invoke the
+        INSTALL/CHECK MESSAGE PackMan option.
+  
+    2.  START UP KIDS
+        -------------
+        Start up the Kernel Installation and Distribution System Menu
+        [XPD MAIN]:
+  
+              Edits and Distribution ...
+              Utilities ...
+              Installation ...
+      Select Kernel Installation & Distribution System Option: INStallation
+                                                               ---
+        1      Load a Distribution
+        2      Verify Checksums in Transport Global
+        3      Print Transport Global
+        4      Compare Transport Global to Current System
+        5      Backup a Transport Global
+        6      Install Package(s)
+               Restart Install of Package(s)
+               Unload a Distribution
+  
+    3.  Select Installation Option:
+        --------------------------
+        NOTE:  The following are OPTIONAL - (When prompted for the
+               INSTALL NAME, enter IB*2.0*336):
+  
+        a.  Backup a Transport Global - This option will create a backup
+            message of any routines exported with this patch. It will
+            not backup any other changes such as DD's or templates.
+        b.  Compare Transport Global to Current System - This option
+            will allow you to view all changes that will be made when
+            this patch is installed.  It compares all components of this
+            patch (routines, DD's, templates, etc.).
+        c.  Verify Checksums in Transport Global - This option will allow
+            you to ensure the integrity of the routines that are in the
+            transport global.
+  
+    4.  Select Installation Option: Install Package(s)
+                                    ------------------
+        ** This is the step to start the installation of this KIDS patch:
+  
+        a.  Choose the Install Package(s) option to start the patch 
+            install.
+  
+        b.  When prompted 'Want KIDS to INHIBIT LOGONs during the
+            install? YES//', answer NO.
+  
+        c.  When prompted 'Want to DISABLE Scheduled Options, Menu
+            Options, and Protocols? YES//' answer YES.
+  
+        d.  When prompted "Enter options you wish to mark as 'Out Of
+            Order':", enter the following option:
+  
+    Manually Add Rx Refills to Claims Tracking  [IBT SUP MANUALLY QUE RX 
+      FILLS]
+  
+        e.  When prompted "Enter protocols you wish to mark as 'Out Of
+            Order':", press <return>.
+  
+    5.  The post-install routine, IB20P336, may be deleted after the
+        installation is complete.  
+  
+    6.  As mentioned above, with the installation of this patch a MailMan 
+        message will be automatically sent to the holders of the IB 
+        SUPERVISOR key and the IB CLAIMS SUPERVISOR key. It is recommended
+        that someone RESPOND to the mail message generated, indicating who 
+        will be working on it.
+  
+ INSTALLATION EXAMPLE:
+ ====================
+  
+ Select Installation Option: install Package(s)
+ Select INSTALL NAME: IB*2.0*336  Loaded from Distribution  
+ 1/11/06@10:59:20
+      => IB*2*336
+  
+ This Distribution was loaded on Jan 11, 2006@10:59:20 with header of 
+    IB*2*336
+    It consisted of the following Install(s):
+      IB*2.0*336
+ Checking Install for Package IB*2.0*336
+  
+ Install Questions for IB*2.0*336
+  
+  
+  
+ Want KIDS to INHIBIT LOGONs during the install? YES// NO
+ Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// 
+  
+ Enter options you wish to mark as 'Out Of Order': IBT SUP MANUALLY QUE
+       Manually Add Rx Refills to Claims Tracking
+  
+ Enter options you wish to mark as 'Out Of Order': 
+  
+ Enter protocols you wish to mark as 'Out Of Order': 
+  
+ Delay Install (Minutes):  (0-60): 0// 
+  
+ Enter the Device you want to print the Install messages.
+ You can queue the install by enter a 'Q' at the device prompt.
+ Enter a '^' to abort the install.
+  
+ DEVICE: HOME//   UCX/TELNET
+  
+  
+  Install Started for IB*2.0*336 : 
+                Jan 11, 2006@14:08:07
+  
+ Build Distribution Date: Dec 16, 2005
+  
+  Installing Routines:
+                Jan 11, 2006@14:08:07
+  
+                                    
+ IB*2.0*336                                   
+ ------------------------------------------------------------------------
+  Running Post-Install Routine: ^IB20P336
+  
+ Starting Post Install to evaluate CT entries...
+  
+ Sending report message...
+  
+ Message number 2007246 sent...
+  
+ Post Install Complete...
+  
+  Updating Routine file...
+  
+  Updating KIDS files...
+  
+  IB*2.0*336 Installed. 
+                Jan 11, 2006@14:08:09
+  
+  Install Message sent #2007247
+ ------------------------------------------------------------------------
+           +------------------------------------------------------------+
+   100%    |             25             50             75               |
+ Complete  +------------------------------------------------------------+
+  
+ Install Completed
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: IB20P336
+    Before:       n/a  After: B28791862  **336**
+Routine Name: IBTRKR3
+    Before: B23758062  After: B39212949  **13,43,121,160,247,275,260,309,336**
+
+=============================================================================
+User Information:
+Entered By  : ZEIGLER,EDWARD L              Date Entered  : DEC 15, 2005
+Completed By: DAWSON,TIM                    Date Completed: APR 12, 2006
+Released By : BOTTINI,STEVE                 Date Released : APR 13, 2006
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

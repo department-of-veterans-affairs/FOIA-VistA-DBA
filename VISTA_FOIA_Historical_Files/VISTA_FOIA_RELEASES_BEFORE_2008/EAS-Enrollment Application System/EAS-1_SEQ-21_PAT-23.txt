@@ -1,0 +1,232 @@
+$TXT Created by GUSTIN,ERIC at MNTVLL.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 03/10/03 at 15:16
+=============================================================================
+Run Date: MAR 11, 2003                     Designation: EAS*1*23
+Package : EAS - ENROLLMENT APPLICATION Priority: Mandatory
+Version : 1        SEQ #21                      Status: Released
+                  Compliance Date: MAR 27, 2003
+=============================================================================
+
+Associated patches: (v)IB*2*204    <<= must be installed BEFORE `EAS*1*23'
+
+Subject: IVM PROJECT EDB-VISTA DATA EXCHANGE
+
+Category: 
+  - Routine
+
+Description: 
+============
+
+ *********************************************************************
+  ** NOTE: This patch has been assigned a compliance date of 3-27-03 **
+  *********************************************************************
+  
+ OVERVIEW:
+ ===========
+  
+ The Health Eligibility Center (HEC) has reinstated the Income Verification
+ Matching program, which matches a veteran's self-reported income (that is
+ below the Means Test Threshold) with information obtained from the
+ Internal Revenue Service (IRS) and Social Security Administration
+ (SSA).   It is anticipated that HEC staff will begin closing cases the
+ end of March 2003.   In order to transmit this information to site(s)
+ of record for purposes of billing and collection, the Business Office is
+ requiring that all sites install no later than March 27, 2003
+  
+ It should be noted that initially, only means tests conducted for income 
+ year 2001 are subject to the income verification matching process.
+  
+  
+ The software for this patch, EAS*1*23 and associated patch, IVM*2*69, are 
+ not being distributed through the National Patch Module.  These patches 
+ are being distributed as a single KIDS software distribution (host 
+ file).  This patch contains the informational portion of EAS*1*23 and 
+ provides field personnel with instructions on how to acquire, install and 
+ implement the patch software.  Please refer to IVM*2*69 for installation 
+ instructions.
+  
+  
+ This patch addresses the following E3R(s):
+ ------------------------------------------
+ There are no E3Rs associated with this patch
+  
+  
+ This patch addresses the following NOIS message(s):
+  
+ ---------------------------------------------------
+ There are no NOIS's associated with this patch
+  
+  
+ FUNCTIONAL DESCRIPTION
+ ======================
+ The two patches (EAS*1*23 and IVM*2*69) will allow the data exchange of 
+ IVM Verified Means Test Transmission (ORU~Z06) and IVM Billing/Collection 
+ Data Transmission (ORU~Z09) HL7 messages between the VAMC sites and the 
+ EDB (new Enrollment database).  
+  
+ Once HEC has received information from IRS and SSA, a review of the 
+ information is done.  After that review, if it is determined that the 
+ veteran is liable for co-payments, the case will be closed, converted to 
+ either Means Test Co-pay Required or GMT Co-pay Required as appropriate.  
+ This will trigger an ORU~Z06 to the veteran site(s)of record.  The 
+ receipt of the ORU~Z06 adds an entry in the ANNUAL MEANS TEST file 
+ (#408.31), this test becomes primary for the income year.  Receipt of the 
+ ORU~Z06 also alert billing that charges may be applied to any treatment 
+ received.  Once charges and/or payments are applied, an ORU~Z09 will be 
+ sent to the EDB from the medical center.
+  
+ If it is later determined that a veteran should not have been converted 
+ to a co-payment required status, HEC Staff will initiate a process to 
+ send another ORU~Z06 to the veteran site(s) of record and reverts the 
+ veteran to his/her previous means test status.
+  
+  
+ TECHNICAL DESCRIPTION
+ =====================
+ A new receiver driver process, EASPREC2, a clone of IVMPREC2 will be 
+ invoked from the EDB protocol when an ORU-Z06 from the EDB is received.  
+ The new Z06 receiver, EASPREC7 - clone of IVMPREC7, will then be executed 
+ that will create or delete the Z06 IVM Means Test.  Creation or deletion 
+ is based upon value received in the ORU-Z06 in segment ZIV sequence 8 
+ (IVM CASE STATUS).
+  
+   IVM Case Status:
+     Value of 1 = Create/Update Z06 MT, Close Case and Mark REASON CODE as
+                  'Converted'
+     Value of 0 = Cancel Z06 MT and Mark REASON CODE as 'Not Convert'
+  
+     If Z06 MT and IVM Case Status is 1 and Z06 MT does not exist Then 
+       Create new Z06 MT (new Z06 MT becomes primary and existing MT 
+       becomes non-primary)
+       Assign REASON CODE of 'Converted' in #301.5
+     If Z06 MT already exists Then 
+       If IVM Case Status is 0 Then 
+         Delete Z06 MT for income year and return old MT to primary
+         Change REASON CODE from 'Converted' to 'Not Converted' in #301.5
+       If IVM Case Status is 1 Then
+         Update MT Z06 and Close/Convert Case
+     Else  (Z06 MT, IVM Case Status=0 and Z06 MT does not exist)
+       Send back 'AE' to EDB indicating MT Z06 not available for 
+       cancellation
+  
+ Based upon the receipt and subsequent uploading of the Z06, billing is 
+ notified to begin back billing for that income year.  EASPTRN5 - clone of 
+ IVMPTRN5, will produce a ORU-Z09, IVM billing transmission, that will be 
+ sent to the EDB.
+  
+  
+ SOFTWARE AND DOCUMENTATION RETRIEVAL
+ ====================================
+ The software for this patch is being distributed in host file 
+ IVM_2_P69.KID.  The host file will contain the two KIDS builds.  The 
+ first build will be the Income Verification Match patch, IVM*2*69, the 
+ second build will be the Enrollment Application System patch, EAS*1*23.
+  
+ Please refer to the 'Software and Documentation Retrieval' section of the 
+ IVM*2*69 patch description for instructions on how to acquire the patch 
+ software and documentation.
+  
+  
+ ROUTINE SUMMARY
+ ===============
+ The following is a list of the routine(s) included in this patch. The 
+ second line of each of these routine(s) will look like:
+  
+ <tab>;;1.0;ENROLLMENT APPLICATION SYSTEM;**[patch list]**;Mar 15, 2001
+  
+  
+  
+                             CHECK^XTSUMBLD results
+    Routine        Before Patch     After Patch     Patch List
+    -------        ------------     -----------     ----------
+    EASPREC2          N/A            2554259         23
+    EASPREC7          N/A           12910423         23
+    EASPTRN5          N/A            6463576         23
+    EASUFNC3          N/A            4763108         23
+    EASUM1            N/A            5525155         23
+  
+    Total Number of Routines - 5 
+      
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+ Please refer to the 'Installation Instructions' section of the IVM*2*69 
+ patch description for instructions on how to install the patch software
+
+Routine Information:
+====================
+
+Routine Name:
+  - EASUM1
+
+ This is a copy of IVMUM1 - MEANS TEST UPLOAD DRIVER.  This program will 
+ create the Means Test record in #408.31 for the new Z06 MT and invoke the 
+ Billing Event Driver.
+
+Routine Checksum:
+
+Routine Name:
+  - EASPREC2
+
+ This is a copy of IVMPREC2 - ROUTE INCOMING HL7 (ORU) MESSAGES BY EVENT TYPE.
+ EASPREC2 deals only with the Z06 message for IVM Case Closure.
+
+Routine Checksum:
+
+Routine Name:
+  - EASPREC7
+
+ This is a copy of IVMPREC7 - ROUTINE TO PROCESS INCOMING (Z06 EVENT TYPE) 
+ HL7 MESSAGE.  EASPREC7 performs the following functions:
+    Dependent upon type of Z06 sent perform the following;
+      IVM Case Status:
+        Value of 1 = Create/Update Z06 MT, Close Case and Mark REASON CODE
+                        as 'Converted'
+        Value of 0 = Cancel Z06 MT and Mark REASON CODE as 'Not Converted'
+  
+       If Z06 MT and IVM Case Status is 1 and Z06 MT does not exist Then
+          Create new Z06 MT (new Z06 MT becomes primary and existing MT
+          becomes non-primary)
+          Assign REASON CODE of 'Converted' in #301.5
+       If Z06 MT already exists Then 
+         If IVM Case Status is 0 Then 
+           Delete Z06 MT for income year and return old MT to primary
+           Change REASON CODE from 'Converted' to 'Not Converted' in #301.5
+         If IVM Case Status is 1 Then
+           Update MT Z06 and Close/Convert Case
+       Else  (Z06 MT, IVM Case Status=0 and Z06 MT does not exist)
+         Send back 'AE' to Edb indicating MT Z06 not available for 
+         cancellation
+
+Routine Checksum:
+
+Routine Name:
+  - EASPTRN5
+
+ This is a copy of IVMPTRN5 - NIGHTLY BILLING TRANSMISSION PROCESSING.  
+ EASPTRN5 is invoked by IVMPTRN5 if the 'DISABLE TEXT' field in #101 has 
+ no value for the EAS EDB ORU-Z09 SERVER protocol.  Program EASUFNC3 - FT1 
+ HL7 message generation - is called by this program.
+
+Routine Checksum:
+
+Routine Name:
+  - EASUFNC3
+
+ This is a copy of IVMUFNC3 - BILLING TRANSMISSION UTILITIES.  The FT1 
+ segment has been enhanced to send the amount collected #301.61/.09 and 
+ amount billed #301.61/.08 in separate fields seq. 11 and 12, respectively.
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : GUSTIN,ERIC                    Date Entered : DEC 17, 2002
+Completed By: DRESS,KEN                     Date Completed: MAR 10, 2003
+Released By : KOVACH,STUART                 Date Released : MAR 11, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

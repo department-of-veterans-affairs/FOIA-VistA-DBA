@@ -1,0 +1,331 @@
+
+=============================================================================
+Run Date: JAN 30, 2003                     Designation: IB*2*202
+Package : IB - INTEGRATED BILLING             Priority: EMERGENCY
+Version : 2       SEQ #180                       Status: Released
+                  Compliance Date: FEB 01, 2003
+=============================================================================
+
+Associated patches: (v)IB*2*183    <<= must be installed BEFORE `IB*2*202'
+                    (v)DG*5.3*456  <<= must be installed BEFORE `IB*2*202'
+
+Subject: IB GMT Part 3 (clean-up) patch
+
+Category: 
+  - Routine
+  - Other
+  - Informational
+
+Description: 
+============
+
+ The software for this patch, IB*2.0*202, and associated patches, 
+ DG*5.3*481 and IVM*2.0*67, are not being distributed through the National
+ Patch Module. These patches are being distributed as a single KIDS
+ software distribution (host file), associated with the patch DG*5.3*481.
+ This patch contains the informational portion of IB*2.0*202 and provides
+ field personnel with instructions on how to acquire, install, and
+ implement the patch software.
+  
+  
+ Special Note:
+ -------------
+  
+ The GMT conversion did not process a small group of veterans whose 
+ enrollment records are either PENDING; NO ELIGIBILITY CODE IN VIVA or
+ PENDING; ELIGIBILITY STATUS IS UNVERIFIED Enrollment Status.  This patch
+ will release any bills that are being held for these patients even though
+ a GMT Threshold has not been applied to the Means Test.  The HEC will
+ provide a list of affected patient to each site so that any billing 
+ implications can be addressed manually.
+  
+  
+ Overview
+ --------
+ This patch is the final part of the Geographic Means Test software. It 
+ must be installed now that the GMT Conversion process is completed.
+  
+ With the installation of the patch the following actions will be 
+ performed:
+ - All GMT Conversion related functionality will be removed from the IB 
+ package;
+ - All temporary GMT Conversion related data will be removed from database;
+ - All 'Held (rate)' and 'Incomplete' Inpatient Means test charges will be 
+ recalculated for the patients, who did not pass the conversion process;
+ - All 'Held (rate)' charges will be released off hold and passed to the 
+ Accounts Receivable package;
+ - A report with released/recalculated charges will be created and sent 
+ using MailMan to members of the "MEANS TEST BILLING MAIL GROUP" (usually
+ this is the "IB MEANS TEST" Mail Group).
+  
+ After the patch is installed, Inpatient Means Test charges will no longer 
+ be placed ON HOLD because of unknown rate.
+  
+  
+ Functional Description
+ ----------------------
+ The patch IB*2.0*202 provides the following functionality:
+  
+ 1) The patch modifies the following IB software to remove all GMT 
+ Conversion related code:  
+   MEANS TEST UTILITIES (IBAUTL4);
+   MOVEMENT EVENT DRIVER INTERFACE (IBAMTD1);
+   GMT-RELATED UTILITIES (IBAGMT);
+   CANCEL/EDIT/ADD PATIENT CHARGES (IBECEA21, IBECEA3);
+   ESTIMATE MEANS TEST CHARGES (IBOMTE);
+   RELEASE CHARGES AWAITING NEW COPAY RATE (IBEMTO) - Disabled;
+   INTEGRATED BILLING - A/R INTERFACE UTILITIES (IBRUTL).  
+   
+ 2) The post-install procedure for the patch will process all patients 
+ who have had Inpatient Means Test charges since the GMT Effective date 
+ (October 1, 2002). If any of the patients have not passed the GMT 
+ Conversion process, and still have IB Charges placed ON HOLD because of
+ unknown rate, the procedure will release the held charges. In addition,
+ all previous Incomplete and Held (rate) charges will be adjusted for
+ patients who have the 'GMT COPAY REQUIRED' status.
+  
+ 3) The post-install procedure for the patch will create a bulletin
+ with the list of processed patients, including their copayment
+ status and number of released/adjusted charges. The bulletin will be 
+ printed to the current device (monitor) during the install time, and also
+ will be sent by MailMan to the current user and to members of the "MEANS
+ TEST BILLING MAIL GROUP" (usually this is the "IB MEANS TEST" Mail Group).
+  
+ 4) If an error happens when passing the charge to the AR package, the 
+ post-install procedure will send a MailMan message concerning the error 
+ to members of the "MEANS TEST BILLING MAIL GROUP" with the error details, 
+ recommending reviewing that charge manually. There will be a separate 
+ MailMan message for each charge that causes an error (e.g. the AR 
+ package returns bad result code).
+  
+ 5) The patch removes the temporary GMT Conversion related global nodes 
+ from the database:
+   ^IB("AGMT")
+   ^IB("AGMTP")
+   ^XTMP("IB GMT CONVERSION")
+  
+ 6) The patch provides a minor alteration to the wording of the Means Test
+ Billing Bulletin, to avoid user confusion. The previous wording was 
+ "This patient is now billable as a Means Test copay patient". That was
+ confusing in case of patients with "GMT COPAY REQUIRED" status. The
+ new wording is "This patient is now billable for medical care copayments".
+  
+  
+ Technical Description
+ ---------------------
+ There are nine modified routines in this patch and one new routine.
+  
+ The patch IB*2.0*202 provides the following functionality:
+  
+ IB20P202 - New routine.
+ The routine contains the post-install cleanup procedure - one of the 
+ most important parts of the patch IB*2.0*202.
+  
+ The post-install procedure POST^IB20P202 will process all patients who 
+ have had Inpatient Means Test charges since the GMT Effective date
+ (October 1, 2002). If any of the patients has not passed the GMT
+ Conversion process, and therefore, still have IB Charges placed ON HOLD
+ because of unknown rate, the procedure will release the held charges. In
+ addition, all previous Incomplete and Held (rate) charges will be adjusted
+ for patients who have the 'GMT COPAY REQUIRED' status. 
+  
+ The post-install procedure for the patch will create the report with the 
+ released/adjusted charges and their corresponding patients. The report
+ will be sent by MailMan to members of the "MEANS TEST BILLING MAIL GROUP"
+ (usually this is the "IB MEANS TEST" Mail Group).
+  
+ At the end, the post-init procedure will remove the following temporary
+ GMT Conversion related global nodes from the database:
+   ^IB("AGMT")
+   ^IB("AGMTP")
+   ^XTMP("IB GMT CONVERSION")
+  
+  
+ The patch modifies the following routines due to the completion of GMT 
+ Conversion process:
+  
+ IBAGMT:
+  
+ The API call $$ISGMTYPT^IBAGMT(DFN) is modified to return:
+   '1' - GMT rate should be applied, or 
+   '0' - GMT rate should not be applied.
+   '-1' - (Unknown GMT Threshold status) has been removed, and will 
+ no longer be supported by this function.
+  
+  
+ The API call $$HOLD^IBAGMT() will be disabled. Now that the GMT 
+ Conversion has finished, no Inpatient Means Test charges will need 
+ to go ON HOLD (RATE). The function will perform no action and will always 
+ return '0' (false).
+  
+ The API call $$RELHOLD^IBAGMT(DFN) will be disabled. Although, it will
+ still exist in the IB package, it will perform no action. If called, it 
+ will return an error code indicating that it has been disabled.
+  
+ IBAUTL4,IBAMTD1:
+  
+ These routines were modified to remove the code responsible for creating 
+ the temporary global nodes (cross-references): ^IB("AGMT") and
+ ^IB("AGMTP"). Also the patch removes the code that releases Inpatient
+ Means Test Charges before the GMT Effective Date.
+  
+ IBECEA21, IBECEA3, IBOMTE:
+  
+ The warning messages related to patients with "UNKNOWN GMT STATUS" 
+ (Potentially "GMT COPAY REQUIRED") will be removed from these routines, 
+ as they no longer needed.
+  
+ IBEMTO:
+  
+ The 'Release Charges Awaiting New Copay Rate' menu option will be turned 
+ off by the patch, since the functionality will no longer be needed. The 
+ menu option will not be disabled (it will not be modified in any way), 
+ but the associated routine IBEMTO will only print the message "This 
+ option is no longer available.", and quit.
+ Therefore, the routine provides exactly the same logic, as the patch 
+ IB*2.0*179 (GMT IB Part 1). This routine is associated with the 'Release 
+ Charges Awaiting New Copay Rate' menu option.  It will be modified to 
+ print the message, "This option is no longer available", then quit.
+  
+  
+ IBRUTL:
+  
+ The procedure $$HOLD^IBRUTL() will no longer call $$HOLD^IBAGMT since no 
+ charges will need to be held for any GMT related reasons.
+  
+ IBAMTBU2:
+  
+ The Means Test Billing Bulletin will be modified to provide correct 
+ wording, as follows: "This patient is now billable for medical care 
+ copayments."
+  
+  
+ ROUTINE SUMMARY
+ ===============
+  
+  
+   The following is a list of the routines included in this patch.
+  
+   The second line of each of these routines now looks like:
+   ;;2.0;INTEGRATED BILLING;**[patch list]**;21-MAR-94
+  
+                  CHECK^XTSUMBLD results
+  
+   Routine     Before Patch  After Patch  Patch List
+   -------     ------------  -----------  ----------
+   IB20P202        n/a        17887571    202
+   IBAGMT       17752001       1315299    179,183,202
+   IBAMTD1       5790609       4646037    45,153,179,183,202
+   IBAUTL4      12287364      11117986    45,153,171,176,179,183,202
+   IBECEA21     14456905      13950936    7,57,167,183,202
+   IBECEA3      20688658      20365315    7,57,52,132,150,153,166,156,
+                                          167,176,198,188,183,202
+   IBEMTO       12737722       7207765    179,183,202
+   IBOMTE        6395698       6061346    153,183,202
+   IBRUTL        4266426       3925983    70,82,132,142,176,179,202
+   IBAMTBU2     12107158      12099657    153,202                  
+  
+        Total number of routines - 10
+  
+  
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+  
+ Please refer to the 'Installation Instructions' section of the 
+ DG*5.3*481 patch description for instructions on how to install this 
+ patch software.
+  
+  
+  *****************************************************************
+  *   The IB MT NIGHT COMP job should not be running during the   *
+  *   installation of this patch.                                 *
+  *****************************************************************
+  
+  
+ Menu options to be disabled during Installation:
+ -----------------------------------------------
+ Cancel/Edit/Add Patient Charge   [IB CANCEL/EDIT/ADD CHARGES]
+ Estimate Means Test Charges [IB MT ESTIMATOR]
+ Release Charges Awaiting New Copay Rate [IB MT REL HELD (RATE) CHARGES]
+  
+ Protocols to be disabled:
+ -------------------------
+ Means Test Billing   [IB MEANS TEST BILLING]
+ IB Edit a means test event  [IB MEANS TEST EVENT]
+
+Routine Information:
+====================
+
+Routine Name:
+  - IB20P202
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBAGMT
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBAMTD1
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBAUTL4
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBECEA21
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBECEA3
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBEMTO
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBRUTL
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBOMTE
+
+
+Routine Checksum:
+
+Routine Name:
+  - IBAMTBU2
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : TUSEYEV,ANDREY                 Date Entered : OCT 15, 2002
+Completed By: MOHSENE,DIANA                 Date Completed: JAN 30, 2003
+Released By : GANUS,MAUNETTE                Date Released : JAN 30, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

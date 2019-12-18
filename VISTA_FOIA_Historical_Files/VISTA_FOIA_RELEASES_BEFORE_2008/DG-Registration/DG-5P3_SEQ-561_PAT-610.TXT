@@ -1,0 +1,613 @@
+$TXT Created by GINSBERG,ELIOT at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 03/09/05 at 13:06
+=============================================================================
+Run Date: MAR 21, 2005                     Designation: DG*5.3*610
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #561                    Status: Released
+                  Compliance Date: APR 21, 2005
+=============================================================================
+
+Associated patches: (v)DG*5.3*300  <<= must be installed BEFORE `DG*5.3*610'
+                    (v)DG*5.3*451  <<= must be installed BEFORE `DG*5.3*610'
+                    (v)DG*5.3*476  <<= must be installed BEFORE `DG*5.3*610'
+                    (v)DG*5.3*542  <<= must be installed BEFORE `DG*5.3*610'
+
+Subject: FIX MEANS TEST PRINTING ISSUE
+
+Category: 
+  - Routine
+
+Description:
+============
+
+  
+ Issue #1: Error Printing 10-10F to a Slave Device
+ =================================================
+  
+ The Add a New Means Test [DG MEANS TEST ADD] and Edit an Existing Means
+ Means Test [DG MEANS TEST EDIT] options allow the user to queue the
+ 10-10F, and select a SLAVE Printer.  No forms are printed and there is
+ no screened message.  The user has to check TaskMan to see the task was
+ unsuccessful.
+  
+ Here is an example of the unsuccessful task listed in the TaskMan User 
+ [XUTM USER] option:
+  
+ --------------------------------------------------------------------------
+ 3: (Task #27593) START^DGMTP, Print 10-10F. Device HP6SLAVE-132. MNT,VBB.
+    From Today at 12:05,  By you.  Rejected.  INVALID OUTPUT DEVICE
+ --------------------------------------------------------------------------
+  
+ The DEVICE prompt in the DG MEANS TEST ADD and DG MEANS TEST EDIT options 
+ has been modified to include a statement that a SLAVE device should not 
+ be selected as follows:
+  
+         PRINT 10-10F? YES//
+  
+         THIS OUTPUT REQUIRES 132 COLUMN OUTPUT TO THE PRINTER.
+         DO NOT SELECT A SLAVE DEVICE FOR QUEUED OUTPUT.
+         QUEUE TO PRINT ON
+         DEVICE:
+  
+ The DEVICE prompt will no longer accept a SLAVE device as an available 
+ printer.  The double question mark entry (??) for help, has been modified 
+ to block all SLAVE devices from being listed as available printer 
+ selections.
+  
+  
+ Issue #2: MT Upload changing Required Means Test to NOT PRIMARY
+ ================================================================
+  
+ During registration, if the site does not have a current Income Test on 
+ file for the veteran, the following automatic processes related to Income 
+ Testing are performed.
+  
+     1) An IVM FINANCIAL QUERY is sent to the HEC, and the most current
+        Income Test on file is returned via an ORF~Z10 HL7 Message. 
+  
+     2) A Means Test (stub) with a STATUS of REQUIRED is added to the 
+        ANNUAL MEANS TEST File #408.31 for the current Income Year.
+  
+ When the Income Test is uploaded from the ORF~Z10 HL7 Message, the 
+ current Income Year Means Test stub is changed to NOT PRIMARY.  This is 
+ an issue when the uploaded test is for a prior income year, and the Means 
+ Test stub for the current income year is still valid.
+  
+ The process to change the Means Test (stub) with a STATUS of REQUIRED 
+ will be modified to check the STATUS of the uploaded test.  The uploaded 
+ test must have a Means Test STATUS of MT COPAY REQUIRED to be changed to 
+ NOT PRIMARY.  All other Means Test stubs with a STATUS of REQUIRED will 
+ NOT be changed.
+  
+  
+ Issue #3: NULL Subscript Error when Deleting Catastrophic Disability
+ ====================================================================
+  
+ The Add/Edit/Delete Catastrophic Disability [DGENCD EDIT CATASTROP DISAB] 
+ menu option is causing a NULL sub-script error when performing multiple 
+ deletions.    
+  
+ When using the Delete Catastrophic Disability (DE) function, and there 
+ are no valid disabilities on file, a NULL Subscript error is received.
+  
+ The Delete Catastrophic Disability (DE) function has been modified to 
+ check for the existence of a Catastrophic Disability record entry before 
+ allowing the option to invoke the delete function.
+  
+ The following prompt has been added when the record contains no 
+ Catastrophic Disability entries:
+  
+         >>>No Catastrophic Disabilities exist for this veteran.<<<
+         Press return to continue...
+  
+  
+ Issue #4: Undefined Variable Error in MT Consistency Checks
+ ===========================================================
+  
+ When entering an Income Test for a veteran, an entry in the INDIVIDUAL 
+ ANNUAL INCOME File #408.21 occasionally fails to get created.  
+  
+ The inconsistency checks require the Income Test to be completed. The 
+ missing record causes the inconsistency checks to fail, and the following 
+ undefined variable error is received:
+  
+     $ZE= INCON+45^DGMTUTL1:1, %DSM-E-UNDEF, undefined variable DGINC("V")
+  
+ The inconsistency checks have been modified to verify that the Income 
+ Test is complete with the appropriate records in the associated files for 
+ the veteran, spouse (if any), and all other dependents (if any).
+  
+  
+ This patch addresses the following E3R(s):
+ ------------------------------------------
+  
+ There are no E3Rs associated with this patch.
+  
+  
+ This patch addresses the following NOIS (Remedy) message(s):
+ ---------------------------------------------------
+  
+ DAY-0304-40187    INVALID OUTPUT DEVICE IN 10-10F (HD0000000063793)
+ MAD-0103-40194    Inactivating current MT (HD0000000063392)
+ IVM-0804-31962    Catastrophic Disability Error (HD0000000064155)
+ SBY-0504-31596    INCON+45^DGMTUTL1:1, (HD0000000063945)
+ REN-0105-60667    <UNDEFINED>INCON+45^DGMTUTL1 (HD0000000064656)
+ SLC-0205-50428    PATCH DG*5.3*451 OPTION PROBLEM/KEY (HD0000000064857)
+  
+  
+ Overview of NOIS Message(s):
+ ---------------------------
+  
+       NOIS: DAY-0304-40187 - INVALID OUTPUT DEVICE IN 10-10F
+  
+    Problem: If the user identifies a slave device as a 10-10F printer, an 
+             INVALID OUTPUT DEVICE message is in Taskman and no forms are 
+             printed.
+  
+ Resolution: The option should screen eliminate the possibility of 
+             selecting a slave device.
+  
+  
+       NOIS: MAD-0103-40194 - Inactivating current MT
+  
+    Problem: When uploading last years income test, the current income
+             years MEANS TEST REQUIRED (stub) is set to NON-PRIMARY
+  
+ Resolution: Modify the process to only change a MEANS TEST REQUIRED (stub)
+             test to NOT PRIMARY when the uploaded Means Test Status is MT 
+             COPAY REQUIRED.
+  
+  
+       NOIS: IVM-0804-31962 - Catastrophic Disability Error and
+             SLC-0205-50428 PATCH DG*5.3*451 OPTION PROBLEM/KEY
+  
+    Problem: When using the Delete Catastrophic Disability (DE) function,
+             and there are no valid disabilities on file, a NULL Subscript
+             error is received.
+  
+ Resolution: Check for the existence of a Catastrophic Disability before
+             allowing the option to invoke the delete function.
+  
+  
+       NOIS: SBY-0504-31596 - INCON+45^DGMTUTL1:1,
+  
+    Problem: When completing an Income Test, and the Individual Annual 
+             Income (file #408.21) record is either corrupt or missing, an
+             undefined variable error is received.
+  
+ Resolution: Check for the existence of veteran income information before 
+             performing the veteran income test inconsistency checks. 
+  
+       NOIS: REN-0105-60667 - <UNDEFINED>INCON+45^DGMTUTL1
+  
+    Problem: When completing an Income Test, and the Individual Annual
+             Income (file #408.21) record is either corrupt or missing, an
+             undefined variable error is received.
+  
+ Resolution: Check for the existence of veteran income information before
+             performing the veteran income test inconsistency checks.
+  
+ Test Sites:
+ -----------
+ Salisbury (Large)
+ Madison (Medium)
+ West LA (Integrated)
+  
+  
+        ================INSTALLATION INSTRUCTIONS =================
+  
+ If installed during the normal workday, it is recommended that the
+ following menu options (File #19) and all of their descendants be
+ disabled to prevent possible conflicts while running the KIDS Install.
+ Other VISTA users will not be affected.
+  
+ Means Test User Menu                    [DG MEANS TEST USER MENU]
+ Add a New Means Test                    [DG MEANS TEST ADD]
+ Complete a Required Means Test          [DG MEANS TEST COMPLETE]
+ Edit an Existing Means Test             [DG MEANS TEST EDIT]
+ Copay Exemption Test User Menu          [DG CO-PAY TEST USER MENU]
+ Add a Copay Exemption Test              [DG CO-PAY TEST ADD]
+ Edit an Existing Copay Exemption Test   [DG CO-PAY TEST EDIT]
+ Add/Edit/Delete Catastrophic Disability [DGENCD EDIT CATASTROP DISAB]
+  
+ You may wish to stop the HL7 filers prior to the install to prevent
+ possible 'No Source Errors' from occurring. No transmissions will be lost
+ if the filers are not stopped first, they will be picked up once the
+ filers are restarted.
+  
+ The patch should be installed during non-peak hours.
+  
+ Install Time - 10 minutes.
+  
+  
+   1.   LOAD TRANSPORT GLOBAL
+        ---------------------
+        Choose the PackMan message containing this patch and invoke the
+        INSTALL/CHECK MESSAGE PackMan option.
+  
+   2.   DISABLE ROUTINE MAPPING   (DSM for Open VMS sites only)
+        -----------------------
+        Disable routine mapping on all systems for the routines listed in
+        step 3 below.
+  
+        NOTE:  If the routines included in this patch are not currently in
+               your mapped routine set, please skip this step.
+  
+   3.   COMPONENTS SENT WITH PATCH
+        ------------------------
+        The following is a list of the routines included in this patch.
+        The second line of each of these routines now looks like:
+  
+            ;;5.3;Registration;**[patch list]**;Aug 13,1993
+  
+                            CHECK^XTSUMBLD results
+  
+        Routine        Before Patch     After Patch   Patch List
+        -------        ------------     -----------   ----------
+        DGENCD1        7326706          7745132       121,232,387,451,610
+        DGMTP          5345369          4926571       45,300,610
+        DGMTSCC        14758585         14307046      33,45,130,438,332
+                                                      433,462,456,610
+        DGMTU4         10854377         11457063      182,267,285,347,454
+                                                      456,476,610
+        DGMTUTL1       3169000          3227873       463,542,610
+  
+  
+         Total number of routines - 5
+  
+   4.   START UP KIDS
+        -------------
+        Start up the Kernel Installation and Distribution System Menu
+        [XPD MAIN]:
+  
+             Edits and Distribution ...
+             Utilities ...
+             Installation ...
+  
+   Select Kernel Installation & Distribution System Option: INStallation
+                                                            ---
+             Load a Distribution
+             Print Transport Global
+             Compare Transport Global to Current System
+             Verify Checksums in Transport Global
+             Install Package(s)
+             Restart Install of Package(s)
+             Unload a Distribution
+             Backup a Transport Global
+  
+      Select Installation Option:
+  
+   5.   Select Installation Option:
+        --------------------------
+        NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+               NAME, enter DG*5.3*610):
+  
+        a.  Backup a Transport Global - This option will create a backup
+            message of any routines exported with this patch. It will not
+            backup any other changes such as DD's or templates.
+        b.  Compare Transport Global to Current System - This option will
+            allow you to view all changes that will be made when this patch
+            is installed.  It compares all components of this patch
+            (routines, DD's, templates, etc.).
+        c.  Verify Checksums in Transport Global - This option will allow
+            you to ensure the integrity of the routines that are in the
+            transport global.
+  
+   6.   Select Installation Option: Install Package(s)
+                                    ----------------
+        **This is the step to start the installation of this KIDS patch:
+  
+        a.  Choose the Install Package(s) option to start the patch
+            install.
+        b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+            YES//' answer NO (unless otherwise indicated)
+        c.  When prompted 'Want to DISABLE Scheduled Options, Menu
+            Options, and Protocols? YES//' answer YES (unless otherwise
+            indicated)
+        d.  When prompted 'Enter options you wish to mark as 'Out Of
+            Order':'  Enter the following options:
+  
+      Means Test User Menu                    [DG MEANS TEST USER MENU]
+      Add a New Means Test                    [DG MEANS TEST ADD]
+      Complete a Required Means Test          [DG MEANS TEST COMPLETE]
+      Edit an Existing Means Test             [DG MEANS TEST EDIT]
+      Copay Exemption Test User Menu          [DG CO-PAY TEST USER MENU]
+      Add a Copay Exemption Test              [DG CO-PAY TEST ADD]
+      Edit an Existing Copay Exemption Test   [DG CO-PAY TEST EDIT]
+      Add/Edit/Delete Catastrophic Disability [DGENCD EDIT CATASTROP DISAB]
+  
+        e.  When prompted 'Enter protocols you wish to mark as 'Out Of
+            Order':' press <return>.
+  
+   7.    REBUILD MAPPED ROUTINE(S)  (DSM for Open VMS sites only)
+        -------------------------
+        Optional - Include the routines distributed with this patch
+        in the mapped routine set.
+  
+        NOTE: This step is only necessary if you performed step 2 or
+              if you wish to include the routines in your mapped set.
+  
+   8.   When the installation is complete, be sure to re-start the
+        filers if you chose to stop them.
+
+Routine Information:
+====================
+
+Routine Name:
+  - DGMTUTL1
+
+ Before:
+   25)            S CNT=1,HLFS=U,SPOUSE=0
+   26)            D ALL^DGMTU21(DFN,"VSC",DGMTDT)
+   27)            ;
+  
+ After:
+   25)            S CNT=1,HLFS=U,SPOUSE=0,ZIC=""
+   26)            ;
+  
+ Before:
+   28)            ; Build ZMT array for CC's
+  
+ After:
+   27)            ; Build Individual Annual Income and Income Relation 
+ Arrays
+   28)            D ALL^DGMTU21(DFN,"VSC",DGMTDT)
+   29)            ;
+   30)            ; Build ZMT array for CC's
+  
+ Before:
+   56)            S ZIC=$$ZIC^DGMTUTL2(DGINC("V"))
+   57)            D ZIC^IVMCMF1(ZIC)
+   58)            ;
+  
+ After:
+   58)            I $D(DGINC("V")) D
+   59)            .S ZIC=$$ZIC^DGMTUTL2(DGINC("V"))
+   60)            .D ZIC^IVMCMF1(ZIC)
+   61)            ;
+  
+ Before:
+   60)            S ZIR=$$ZIR^DGMTUTL2(DGINR("V"),DGMTDT)
+   61)            D ZIR^IVMCMF1(ZIR,"",1)
+   62)            ;
+  
+ After:
+   63)            I $D(DGINR("V")) D
+   64)            .S ZIR=$$ZIR^DGMTUTL2(DGINR("V"),DGMTDT)
+   65)            .D ZIR^IVMCMF1(ZIR,"",1)
+   66)            ;
+  
+ Before:
+   64)            I "^1^2^4^"[("^"_IVMTYPE_"^") D
+   65)            .S ZMT=$$ZMT^DGMTUTL2(DGMTI)
+  
+ After:
+   68)            I "^1^2^4^"[("^"_IVMTYPE_"^"),(ZIC'="") D
+   69)            .S ZMT=$$ZMT^DGMTUTL2(DGMTI)
+  
+  
+ Number of differences found 5
+
+Routine Checksum:
+
+Routine Name:
+  - DGENCD1
+
+ Before:
+   54)            I $$RUSURE(DFN) D
+   55)            .I $$DELETE^DGENCDA1(DFN)
+   56)            D INIT^DGENLCD
+  
+ After:
+   54)            I $$GET^DGENCDA(DFN,.DGCD),'$D(DGCD("DIAG")) D
+   55)            .W !!,">>>No Catastrophic Disabilities exist for this 
+ veteran.<
+ <<"
+   56)            .S DIR(0)="EA",DIR("A")="Press return to continue..." D 
+ ^DIR
+   57)            E  D
+   58)            .I $$RUSURE(DFN) D
+   59)            ..I $$DELETE^DGENCDA1(DFN)
+   60)            D INIT^DGENLCD
+
+Routine Checksum:
+
+Routine Name:
+  - DGMTU4
+
+ Before:
+   98)            ;get Last Primary Means Test irrespective of income year 
+ and
+   99)            ;if STATUS is REQUIRED & test is PRIMARY then set to NON 
+ primar
+ y
+   100)           S LSTNODE=$$LST^DGMTU(DFN)
+  
+ After:
+   98)            ; Get Last Primary Means Test irrespective of income year
+   99)            S LSTNODE=$$LST^DGMTU(DFN)
+  
+ Before:
+   101)           I $P(LSTNODE,U,4)="R",+$G(^DGMT(408.31,+LSTNODE,"PRIM")) 
+ D
+   102)           . N DATA S DATA(2)=0 I 
+ $$UPD^DGENDBS(408.31,+LSTNODE,.DATA)
+  
+ After:
+   100)           ;if STATUS is REQUIRED & test is PRIMARY, then set it to 
+ NOT PR
+ IMARY
+   101)           ;if the uploaded test is MT COPAY REQUIRED
+   102)           ; MT COPAY (CAT C) doesn't expire, which is why you have 
+ to
+   103)           ; flip the test to Not Primary eg 02/01/2005
+   104)           I 
+ $P(LSTNODE,U,4)="R",+$G(^DGMT(408.31,+LSTNODE,"PRIM")),$P(^DG
+ MT(408.31,MTIEN,0),U,3)=6 D
+   105)           . N DATA S DATA(2)=0 I 
+ $$UPD^DGENDBS(408.31,+LSTNODE,.DATA)
+  
+ Before:
+   103)           ;
+  
+ After:
+   106)           ;if means test is required and test is primary and not a 
+ CAT C,
+  
+   107)           ;and it hasn't expired, flip the test to Not Primary eg 
+ 02/23/2
+ 005
+   108)           I 
+ $P(LSTNODE,U,4)="R",+$G(^DGMT(408.31,+LSTNODE,"PRIM")),$P(^DG
+ MT(408.31,MTIEN,0),U,3)'=6,'$$OLD(MTDATE) D
+   109)           . N DATA S DATA(2)=0 I 
+ $$UPD^DGENDBS(408.31,+LSTNODE,.DATA)
+   110)           ;
+  
+ Before:
+   199)           ;
+  
+ After:
+   206)           ;if the test is exactly 365 days,
+   207)           ;it is considered expired eg 03/09/2005
+   208)           I ($$FMDIFF^XLFDT(DT,TESTDATE)'<365) Q 1
+   209)           Q 0
+   210)           ;
+  
+ Before:
+   200)           Q ($$FMDIFF^XLFDT(DT,TESTDATE)>365)
+   201)           ;
+  
+ After:
+   211) TRANSFER(DFN,FROM,TO);
+   212)           ;transfers the Income Relations from the test=FROM to 
+ test=TO
+   213)           ;
+  
+ Before:
+   202) TRANSFER(DFN,FROM,TO);
+   203)           ;transfers the Income Relations from the test=FROM to 
+ test=TO
+   204)           ;
+   205)           N DGINI,DGINR,DATA,ERROR
+  
+ After:
+   214)           N DGINI,DGINR,DATA,ERROR
+
+Routine Checksum:
+
+Routine Name:
+  - DGMTSCC
+
+ Before:
+   93)            I '$D(DGIO(10)) W !!,*7,"THIS OUTPUT REQUIRES 132 COLUMN 
+ OUTPUT
+  TO THE PRINTER.",! S %ZIS="QM",%ZIS("B")="",IOP="Q" D ^%ZIS G Q:POP I 
+ IO=IO(0),
+ $E(IOST,1,2)="C-" W !,*7,"CANNOT QUEUE TO HOME DEVICE!",! G QUE
+   94)            K:$D(IO("Q")) IO("Q")
+   95)            S ZTRTN="START^DGMTP",ZTDTH=$H,ZTDESC="Print 10-10F"
+   96)            F I="DFN","DGMTI","DGMTDT","DGMTYPT" S ZTSAVE(I)=""
+   97)            S ZTIO=$S($D(DGIO(10)):DGIO(10),1:ION) D ^%ZTLOAD
+   98)            W !,$S($D(ZTSK):"REQUEST QUEUED!",1:"REQUEST CANCELLED!")
+   99)            K ZTDTH,ZTIO,ZTRTN,ZTSAVE,ZTSK
+   100)           Q
+   101)
+  
+ After:
+   93)            ;If you don't have a valid device,
+   94)            ;from the call to %ZIS (returns POP=1)
+   95)            ;(e.g. entering ^ at device prompt)
+   96)            ;then quit out before going
+   97)            ;to TASKMAN eg 01/27/2005
+   98)            I '$D(DGIO(10)) D QUE2 I POP D  Q
+   99)            .I $D(IO("Q")) K IO("Q")
+   100)           .K ZTDTH,ZTIO,ZTRTN,ZTSAVE,ZTSK
+   101)           .W !,"PRINT REQUEST CANCELLED!"
+   102)           .Q
+   103)           K:$D(IO("Q")) IO("Q")
+   104)           S ZTRTN="START^DGMTP",ZTDTH=$H,ZTDESC="Print 10-10F"
+   105)           F I="DFN","DGMTI","DGMTDT","DGMTYPT" S ZTSAVE(I)=""
+   106)           S ZTIO=$S($D(DGIO(10)):DGIO(10),1:ION) D ^%ZTLOAD
+   107)           W !,$S($D(ZTSK):"REQUEST QUEUED!",1:"REQUEST CANCELLED!")
+   108)           K ZTDTH,ZTIO,ZTRTN,ZTSAVE,ZTSK
+   109)           Q
+  
+ New Module:
+  
+  QUE2      ;
+   111)           W !!,*7,"THIS OUTPUT REQUIRES 132 COLUMN OUTPUT TO THE 
+ PRINTER.
+ "
+   112)           W !,"DO NOT SELECT A SLAVE DEVICE FOR QUEUED OUTPUT.",!
+   113)           S %ZIS="QM",%ZIS("S")="I 
+ $P($G(^(1)),U)'[""SLAVE""&($P($G(^(0))
+ ,U)'[""SLAVE"")",%ZIS("B")="",IOP="Q"
+   114)           D ^%ZIS G Q:POP
+   115)           I IO=IO(0),$E(IOST,1,2)="C-" W !,*7,"CANNOT QUEUE TO 
+ HOME DEVIC
+ E!",! G QUE2
+   116)           Q
+   117)
+  
+  
+ Number of differences found 1
+
+Routine Checksum:
+
+Routine Name:
+  - DGMTP
+
+ Before:
+   14)            S DGPGM="START^DGMTP",DGVAR="DFN^DGMTI^DGMTDT^DGMTYPT" W 
+ !!?5,*
+ 7,"This output requires 132 column output to a PRINTER.",!?5,"Output to 
+ SCREEN w
+ ill be unreadable." D ZIS^DGUTQ G Q:POP
+   15)            ;
+  
+ After:
+   14)            S DGPGM="START^DGMTP",DGVAR="DFN^DGMTI^DGMTDT^DGMTYPT"
+   15)            ;
+  
+ Before:
+   16)  START     ;Entry point to print a means test
+  
+ After:
+   16)            ;added code to not allow a slave printer to be selected
+   17)            ;eg 03/07/2005
+   18)            W !!,*7,"THIS OUTPUT REQUIRES 132 COLUMN OUTPUT TO THE 
+ PRINTER.
+ "
+   19)            W !,"DO NOT SELECT A SLAVE DEVICE FOR QUEUED OUTPUT.",!
+   20)            S %ZIS="QM",%ZIS("S")="I 
+ $P($G(^(1)),U)'[""SLAVE""&($P($G(^(0))
+ ,U)'[""SLAVE"")",%ZIS("B")="",IOP="Q"
+   21)            D ZIS^DGUTQ
+   22)            I POP D  G Q
+   23)            . I $D(IO("Q")) K IO("Q")
+   24)            . U 0 W !,"Print request cancelled!"
+   25)            . Q
+   26)            I IO=IO(0),$E(IOST,1,2)="C-" W !,*7,"CANNOT QUEUE TO 
+ HOME DEVIC
+ E!",! G DEV
+   27)            Q
+   28)            ;
+   29)  START     ;Entry point to print a means test
+  
+  
+ Number of differences found 2
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : MULLER,RICHARD                Date Entered  : JUN 16, 2004
+Completed By: RUDINGER,NANCY L.             Date Completed: MAR 18, 2005
+Released By : GROOMS,ANTHONY E              Date Released : MAR 21, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

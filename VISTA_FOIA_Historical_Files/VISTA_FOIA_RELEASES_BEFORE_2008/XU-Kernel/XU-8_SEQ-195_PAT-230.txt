@@ -1,0 +1,265 @@
+$TXT Created by OGI,MICHAEL at NXT.KERNEL.FO-OAKLAND.MED.VA.GOV  (KIDS) on WEDNESDAY, 03/27/02 at 10:57
+=============================================================================
+Run Date: JUL 08, 2002                     Designation: XU*8*230
+Package : XU - KERNEL                          Priority: Mandatory
+Version : 8       SEQ #195                       Status: Released
+=============================================================================
+
+Associated patches: (v)XU*8*134    <<= must be installed BEFORE `XU*8*230'
+                    (v)XU*8*214    <<= must be installed BEFORE `XU*8*230'
+
+Subject: NEW FIELDS IN NEW PERSON FILE FOR CPRS READ-ONLY
+
+Category: 
+  - Data Dictionary
+  - Input Template
+  - Print Template
+  - Routine
+
+Description: 
+============
+
+ This patch was created to allow CPRS to restrict access of users in the
+ NEW PERSON (#200) file to specific CPRS GUI tabs. It involves adding a new
+ multiple in the NEW PERSON file that points to a new file OR CPRS TABS
+ (#101.13). For each entry in the multiple, an effective date and an 
+ expiration can be assigned.
+  
+ The Kernel User Management options have been modified to allow adding 
+ data into the new fields, and to display the information.
+  
+ In addition, the PATIENT SELECTION LIST pointer (field #101.02 in file 
+ #200) was modified to screen the selection, so that the user cannot select
+ personal-type lists.
+  
+ Changes to NEW PERSON file (#200)
+ ---------------------------------
+ 1. This patch adds the following multiple to the NEW PERSON file:
+                                   
+ 200,101.13    CPRS TAB               ORD;0 POINTER Multiple #200.010113
+  
+ 200.010113,.01  CPRS TAB          0;1 POINTER TO OR CPRS TABS FILE
+                                   (#101.1 3) (Multiply asked)
+  
+                 DESCRIPTION:      This is a pointer to the OR CPRS TABS
+                                   (#101.13) file. Enter the name of the 
+                                   CPRS tab for which you want to set
+                                   effective and expiration dates for
+                                   access for this user.
+  
+                 CROSS-REFERENCE:  200.010113^B 
+                           1)= S ^VA(200,DA(1),"ORD","B",$E(X,1,30),DA)=""
+                           2)= K ^VA(200,DA(1),"ORD","B",$E(X,1,30),DA)
+  
+ 200.010113,.02  EFFECTIVE DATE    0;2 DATE (Required)
+  
+                 INPUT TRANSFORM:  S %DT="EX" D ^%DT S X=Y K:Y<1 X
+                 DESCRIPTION:      This is the effective date of access to
+                                   the CPRS tab.
+  
+ 200.010113,.03  EXPIRATION DATE   0;3 DATE
+  
+                 INPUT TRANSFORM:  S %DT="EX" D ^%DT S X=Y K:Y<1 X
+                 DESCRIPTION:      This is the expiration date of access to
+                                   the CPRS tab.
+  
+                                   
+ The following is the global map structure of the new multiple:
+  
+   ^VA(200,D0,ORD,0)=^200.010113POI^^  (#101.13) CPRS TAB
+   ^VA(200,D0,ORD,D1,0)= (#.01) CPRS TAB [1P] ^ (#.02) EFFECTIVE DATE [2D]
+                         ^ (#.03) EXPIRATION DATE [3D] ^
+  
+  
+ 2. This patch adds a screen to the pointer field PATIENT SELECTION LIST
+ (#101.02) to prohibit the selection of personal-type lists:
+  
+ 200,101.02    PATIENT SELECTION LIST 101;2 POINTER TO OR TEST FILE 
+               (#100.21)
+               INPUT TRANSFORM:  S DIC("S")="I $P($G(^(0)),U,2)'=""P""" D 
+                                 ^DIC K DIC S DIC=DIE,X=+Y K:Y<0 X
+               DESCRIPTION:      If a value is entered into this field, the
+                                 user is allowed to select only those
+                                 patients associated with this OE/RR LIST.
+               SCREEN:           S DIC("S")="I $P($G(^(0)),U,2)'=""P"""
+               EXPLANATION:      You cannot select a personal-type list.
+  
+  
+         Option: Add a New User to the System [XUSERNEW]
+           Form: XUEXISTING USER
+ Input Template: XUNEW USER
+ -------------------------------------------------------
+ 3. The form and input template used by the Add a New User to the System
+ option have been modified to allow the user to edit the data in the new
+ CPRS TAB multiple. On the form, a new page 4 was created, and the fields
+ in the multiple added to that page. In addition, the other CPRS-related
+ fields, RESTRICT PATIENT SELECTION (#101.01) and OE/RR LIST (defined as
+ PATIENT SELECTION LIST in the NEW PERSON file) (#101.02), were moved from
+ page 3 to the new page 4.
+  
+  
+         Option: Edit an Existing User [XUSEREDIT]
+           Form: XUEXISTING USER
+ Input Template: XUEXISTING USER
+ -------------------------------------------------
+ 4. The same changes made to the form and input template used by the Add a
+ New User to the System [XUSERNEW] option were made to the form XUEXISTING
+ USER and input template XUEXISTING USER used by the Edit an Existing User
+ [XUSEREDIT] option. See "Option: Add a New User to the System [XUSERNEW]"
+ above for a description of those changes.
+  
+  
+         Option: Reactivate a User [XUSERREACT]
+           Form: XUREACT USER
+ Input Template: XUREACT USER
+ ----------------------------------------------
+ 5. The same changes made to the form and input template used by the Add a
+ New User to the System [XUSERNEW] option were made to the form XUREACT
+ USER and input template XUREACT USER used by the Reactivate a User
+ [XUSERREACT] option. See "Option: Add a New User to the System [XUSERNEW]"
+ above for a description of those changes.
+  
+ 6. In addition, the two CPRS fields RESTRICT PATIENT SELECTION (#101.01) 
+ and PATIENT SELECTION LIST (#101.02), which were created in patch 
+ XU*8*214, were added to the input template XUREACT USER.
+  
+  
+         Option: User Inquiry [XUSERINQ]
+ Print Template: XUSERINQ
+ ---------------------------------------
+ 6. The print template XUSERINQ used by the User Inquiry option was
+ modified to display the information in the new CPRS TAB multiple.
+                                 
+  
+  Option: Grant Access by Profile [XUSERBLK]
+ Routine: XUSERBLK
+ -------------------------------------------
+ 7. The routine XUSERBLK used by the Grant Access by Profile option was 
+ modified to include the data in the new CPRS TAB multiple in the copying 
+ process.
+  
+  
+ Blood Bank Team Coordination:
+ ============================
+ Clearance - June 13, 2002
+    
+  
+ Thanks to Test Sites:
+ ====================
+ Salt Lake City OIFO
+ Albany VAMC
+ Amarillo VAMC
+ Bay Pines CIOFO
+ Birmingham OIFO
+ Boston VAMC
+ Buffalo VAWNYHS
+ Central Iowa VAMC
+ Chicago HCS
+ Columbia VAMC
+ Dallas OIFO
+ Dayton VAMC
+ Dublin VAMC
+ Durham VAMC
+ Fargo VAMC
+ Hines OIFO
+ Hines VAMC
+ Huntington VAMC
+ Indianapolis VAMC
+ ISL OIFO
+ Jackson VAMC
+ James H. Quillen VAMC
+ Lake City VAMC
+ Loma Linda VAMC
+ Louis Stokes DVA Medical Center Cleveland
+ Manchester VAMC
+ Miami VAMC
+ Northampton VAMC
+ Palo Alto VAMC
+ Richmond VAMC
+ Roseburg VAMC
+ Salisbury VAMC
+ San Diego VAMC
+ San Francisco VAMC
+ Seattle VAMC
+ Tampa VAMC
+ Togus VAMC
+ Vancouver VAMC
+ VANJHCS
+ Washington VAMC
+ West Palm Beach VAMC
+ White River Junction VAMC
+   
+   
+ Routine Summary:
+ ===============
+ The following routine is included in this patch. The second line of the
+ routine now looks like:
+  
+   <tab>;;8.0;KERNEL;**[patch list]**;Jul 10, 1995
+  
+ CHECK^XTSUMBLD results:
+  
+   Routine Name   Before Patch    After Patch     Patch List
+   ============   ============    ===========     ==========
+     XUSERBLK       10276297       10326355       20,214,230
+  
+  
+ Installation Instructions:
+ =========================
+ This patch can be installed with VISTA users online. However, it is
+ recommended that it be installed or queued for install during non-peak
+ times. The installation of this patch (step 3, below), should take less 
+ than one minute.
+  
+ TaskMan does not need to be STOPPED or placed in a WAIT state.
+  
+   1.  AXP/DSM sites: Review your mapped routine set. If the routine listed
+ in the ROUTINE SUMMARY section is mapped, it should be removed from the
+ mapped set at this time.
+  
+   2.  Use the "INSTALL/CHECK MESSAGE" option on the PackMan menu. This
+ option loads the patch into a Transport Global on your system.
+  
+   3.  On the KIDS menu, select the "Installation" menu, and use the
+ following options to install the Transport Global:
+  
+        Verify Checksums in Transport Global
+        Print Transport Global
+        Compare Transport Global to Current System
+        Backup a Transport Global
+        Install Package(s)
+  
+        Select INSTALL NAME: XU*8.0*230
+                             ==========
+        Want KIDS to INHIBIT LOGONs during the install? NO
+                                                        ==
+        Want to DISABLE Scheduled Options, Menu Options, and Protocols? NO
+                                                                        ==
+  
+   4.  AXP/DSM sites: Answer NO to the question "Want to MOVE routines to
+ other CPUs?"
+  
+   5.  AXP/DSM sites: After the patch has been installed, if the routine
+ was removed from the mapped set in Step 1 above, rebuild your map set.
+
+Routine Information:
+====================
+
+Routine Name:
+  - XUSERBLK
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : OGI,MICHAEL                    Date Entered : MAR 12, 2002
+Completed By: SINGH,GURBIR                  Date Completed: JUN 19, 2002
+Released By : TAYLOR,FRENCH                 Date Released : JUL 08, 2002
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,336 @@
+$TXT Created by DOWNING,TODD at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 05/04/04 at 12:03
+=============================================================================
+Run Date: AUG 30, 2004                     Designation: RMIM*1*3
+Package : RMIM - FUNCTIONAL INDEPENDENCE      Priority: Mandatory
+Version : 1         SEQ #3                      Status: Released
+                  Compliance Date: SEP 30, 2004
+=============================================================================
+
+
+Subject: FIX EDIT SITE PARMS,GUI ACCESS,NON-FSOD NOTE TITLE,ADD ZERO ADMIT CLS,DOB ERROR 
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ This patch addresses problems with new user access to the FIM GUI, errors 
+ caused by imprecise dates in the Birth Date field, user's inability to use the 
+ FIM Site Parameter Edit option (RMIM EDIT SITE PARAMETER) with File Access
+ Security implemented, a request to add '0-Unspecified' to the Admission Class
+ list, and the wrong Progress Note title displaying for non-FSOD assessments.
+ 
+ Note
+ ====
+ This patch contains a KIDS build and an updated GUI executable.
+ 
+ ASSOCIATED NOIS:
+ ================
+ BRX-1103-10573  New User Cannot Access FIM
+ MOU-1103-30210  FIM errors from imprecise DOB info
+ HEH-1003-40947  RMIM Edit Site Parameter does not set dlaygo=783.9 in the 
+                 entry action field
+ AAC-0903-71603  Request for change to FIM
+ CLL-0903-40605  Wording in FIM template issue
+  
+ ASSOCIATED E3R:
+ ===============
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Portland, OR - Cache/VMS
+ Mountain Home, TN - DSM
+ Milwaukee, WI - DSM
+ Bronx, NY - DSM
+ 
+ NOIS OVERVIEW:
+ ==============
+ 1. BRX-1103-10573  New User Cannot Access FIM
+ 
+ Problem
+ --------
+ As Reported
+ +++++++++++ 
+ New users attempting to access FIM for the first time must do the following:
+ 
+ . assign the user a time-out value
+ . ask the user to successfully log onto FIM at least once
+ . remove the time-out value from file 200 (user goes back to using the 
+ VistA default)
+ 
+ As Analyzed
+ +++++++++++
+ When a user logs on to FIM, a Remote Procedure Call (PRM^RMIMRP) passes 
+ back parameters to the GUI, including the TIMED READ field (#200.1) from the 
+ NEW PERSON file (#200). The way the code is currently written, an undefined 
+ error occurs if the node on which this data is stored does not exist for the 
+ user (^VA(200,DUZ,200)).
+ 
+ Resolution
+ ----------
+ The RPC has been modified to set the user's time-out value to the system 
+ default value (DTIME) if the TIMED READ value does not exist for the user.
+ 
+ 2. MOU-1103-30210  FIM errors from imprecise DOB information 
+ 
+ Problem
+ --------
+ As Reported
+ +++++++++++ 
+ When loading patient data in the FIM GUI for a patient with an imprecise 
+ Date of Birth, '-1^Invalid Date/Time' is displayed on the form and stored 
+ in the PT DOB field (#.05) of the FUNCTIONAL INDEPENDENCE MEASUREMENT RECORD 
+ file (#783).  Other fields in the file, such as FACILITY CODE (#.06) are 
+ also populated with incorrect values when this occurs, preventing transmission 
+ to Austin.
+ 
+ As Analyzed
+ +++++++++++
+ The date utility used in the RPC to validate and format the date is not able to 
+ handle dates with '00' for the day and/or month.  The RPC returns '-1
+ ^Invalid Date/Time'.  However, this should have caused an error message 
+ box to be displayed in the GUI, but the wrong error message string was 
+ being checked for and the error message was instead being stored in the PT 
+ DOB field.  The extra '^' introduced in the global by the error message 
+ text caused the remaining fields in the global node to be out of position.  
+ In addition, the FSOD does not accept imprecise birth dates.
+ 
+ Resolution
+ ----------
+ The following steps were taken to correct the problem:
+ 
+    1. The patient lookup RPC was modified to pass back the Fileman 
+      date/time for DOB rather than the external value to be compatible with 
+      the validation/formatting RPC for imprecise dates.
+ 
+    2. The input transform of the PT DOB field was modified to allow entry of 
+       imprecise dates.
+ 
+    3. A new procedure was added to the GUI to reformat imprecise dates to make 
+       them compatible with the input transform of the PT DOB field.
+ 
+    4. The GUI was modified to correct a bug with the handling of the error 
+       message returned by the RPC for invalid date/time.
+ 
+    5. A message box was added to the GUI that triggers when choosing to 
+       send data to the FSOD with an imprecise birth date.  The user will not be 
+       able to complete the assessment until the patient's birth date is fixed
+       in VistA.
+ 
+ 3. HEH-1003-40947  RMIM Edit Site Parameter does not set dlaygo=783.9 
+                    in the entry action field
+ 
+ Problem
+ --------
+ As Reported
+ +++++++++++ 
+ With the File Access Security Kernel module installed, users cannot set 
+ site parameters using the RMIM Edit Site Parameters option.  Suggest 
+ setting DLAYGO=783.9 in the ENTRY ACTION field (#20) in the OPTION file 
+ (#19).
+ 
+ As Analyzed
+ +++++++++++
+ With File Access Security implemented, sites cannot add new entries to a 
+ file unless IRM grants LAYGO access to this file in the User Management menu. 
+ The LAYGO access check can be bypassed by setting DLAYGO=783.9 before 
+ calling ^DIC.  
+ 
+ Resolution
+ ----------
+ The ENTRY ACTION field (#20) of the RMIM EDIT SITE PARAMETER entry in the 
+ OPTION file (#19) has been set to "S DLAYGO=783.9".  The EXIT ACTION field 
+ (#15) has been set to "K DLAYGO" to kill this variable upon exiting the 
+ option.  These changes are done via a pos-init routine.
+  
+ 4. AAC-0903-71603  Request for change to FIM
+ 
+ Problem
+ --------
+ As Reported
+ +++++++++++ 
+ There currently is no selection available for "0-Unspecified" for Admission 
+ Class in the GUI.
+ 
+ As Analyzed
+ +++++++++++
+ The Admission Class drop-down box on the Dates and DX tab in the GUI 
+ currently contains items 1-5 for selection.  This value is stored in the 
+ ADMIT CLASS field (#2.01) in the FUNCTIONAL INDEPENDENCE MEASUREMENT RECORD 
+ file (#783), which corresponds to the ADMIT_CLASS_CODE in the FSOD.  The FSOD
+ is prepared to accept the new code (0). 
+ 
+ Resolution
+ ----------
+ The "0-Unspecified" item has been added to the drop-down box for Admission 
+ Class on the Dates and DX tab in the GUI.
+ 
+ 5. CLL-0903-40605  Wording in FIM template issue
+ 
+ Problem
+ --------
+ As Reported
+ +++++++++++ 
+ "Rehab Bed Unit Admission" appears at the top of the Progress Note entered in 
+ VistA for cases not sent to FSOD.  It should read "Therapy Start Date" instead.
+ 
+ As Analyzed
+ +++++++++++
+ The text of the label identifying the edit box on the Dates and DX tab that 
+ represents the ADMIT DATE field (#.1) of the FUNCTIONAL INDEPENDENCE 
+ MEASUREMENT RECORD file (#783), is currently set to "Rehab Bed Unit Admission" 
+ when the data will not be sent to FSOD.  The text of the label for the 
+ DISCHARGE DATE field (#.11) is set to "Discharge Date" for this case as 
+ well.
+  
+ Resolution
+ ----------
+ The GUI was modified to set the label text for the ADMIT DATE field to 
+ "Therapy Start Date" and the label for the DISCHARGE DATE field to "Therapy 
+ End Date" when the case is not being sent to the FSOD.  This will also fix the 
+ problem with the title in the Progress Note (i.e. it will display "Therapy 
+ Start Date" for non-FSOD cases).
+ 
+ DATA DICTIONARY CHANGES:
+ =======================
+ The input transform of the PT DOB field (#.05) of the Functional 
+ Independence Measurement Record file (#783) was modified as follows:
+ 
+ Before:
+ -------
+ INPUT TRANSFORM:  S %DT="EX" D ^%DT S X=Y K:Y<1 X
+ 
+ After:
+ ------
+ INPUT TRANSFORM:  S %DT="E" D ^%DT S X=Y K:Y<1 X
+ 
+ 
+ ROUTINE SUMMARY:
+ ================ 
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+ 
+     <tab>;;1.0;FUNCTIONAL INDEPENDENCE;**[patch list]**;Mar 12, 2003
+ 
+                            CHECK^XTSUMBLD results
+ Routine name      Before Patch          After Patch         Patch List
+ ============      ============          ===========         ==========
+ RMIM3PST                   N/A              3557850              3
+ RMIMRP                 7242673              7322556              3
+ 
+ 
+ DISTRIBUTION:
+ =============
+ The KIDS build is linked to this message. GUI version 1.0.4.1.
+ Sites may retrieve the .exe file using the following instructions:
+   
+    
+         File Names          Contents                  Retrieval Format
+         ----------          --------                  ----------------
+         RMIM_1_0_3_EXE.ZIP  File(s) indented below    BINARY
+  
+          - FIM.EXE          Functional Independence
+                             Measurement executable
+  
+ The file listed above may be obtained via FTP.  The preferred method is 
+ to FTP the file from download.vista.med.va.gov. This transmits the file
+ from the first available FTP server.  Sites may also elect to retrieve
+ software directly from a specific server as follows:
+  
+         CIO FIELD OFFICE    FTP ADDRESS               DIRECTORY
+         ----------------    ---------------------     --------------
+  
+         Albany              ftp.fo-albany.med.va.gov  [anonymous.software]
+         Hines               ftp.fo-hines.med.va.gov   [anonymous.software]
+         Salt Lake City      ftp.fo-slc.med.va.gov     [anonymous.software]
+  
+ 
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+  
+ VistA Server Side:
+ ------------------
+ Use the following instructions in installing this server-side RMIM*1.0*3 
+ patch.  Installation should take less than 1 minute.
+  
+         1.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+  
+         2.  Users ARE allowed to be on the system during the 
+             installation, but you should select a time when minimal number
+             of users are on.      
+         3.  From the Kernel Installation and Distribution System (KIDS) 
+             Menu, select the Installation menu.
+   
+         4.  From this menu, you may elect to use the following options
+             (when prompted for INSTALL NAME, enter RMIM*1.0*3):
+                 a.  Backup a Transport Global.
+                 b.  Compare Transport Global to Current System.
+                 c.  Verify Checksums in Transport Global
+  
+         5.  You DO NOT need to stop TaskMan or the background filers.
+  
+         6.  Use the Install Packages option (when prompted for the 
+             INSTALL NAME, enter RMIM*1.0*3).
+  
+         7.  When prompted "Want KIDS to Rebuild Menu Trees Upon 
+             Completion of Install? Yes//", respond "NO".
+             
+         8.  When prompted 'Want KIDS to INHIBIT LOGONs during the 
+             INSTALL? YES//', respond "NO".
+  
+         9.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+             Options, and Protocols? YES//', respond "NO".
+ 
+        10.  If prompted 'Delay Install (Minutes):  (0-60): 0//; 
+             respond "0".
+  
+ Client Side:
+ ------------
+  
+         1.  Make sure that there are no users running the Functional 
+             Independence Measurement executable (FIM.exe).
+  
+         2.  Retrieve and open the file RMIM_1_0_3_EXE.ZIP.
+ 
+         3.  Extract the FIM.exe file to the folder where the existing 
+             Functional Independence Measurement executable is installed. 
+             Overwrite the existing FIM.exe file.
+  
+         4.  Following successful extraction of the executable, the 
+             RMIM_1_0_3_EXE.ZIP file may be deleted.
+  
+ Note:  The server side of this patch updates VistA with the version number
+ of the FIM executable and must be installed for the new executable to run
+ properly.
+ 
+
+Routine Information:
+====================
+
+Routine Name:
+  - RMIMRP
+
+
+Routine Checksum:
+
+Routine Name:
+  - RMIM3PST
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : DOWNING,TODD                  Date Entered  : DEC 10, 2003
+Completed By: ANDERSON,MAXINE               Date Completed: AUG 19, 2004
+Released By : ALVIAR-TITUS,MARIA M          Date Released : AUG 30, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

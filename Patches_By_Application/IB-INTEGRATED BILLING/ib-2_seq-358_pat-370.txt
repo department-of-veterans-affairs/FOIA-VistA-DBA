@@ -1,0 +1,375 @@
+$TXT Created by HARPER,AMY R at DEVFEX.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 01/15/08 at 13:31
+=============================================================================
+Run Date: MAR 06, 2008                     Designation: IB*2*370
+Package : IB - INTEGRATED BILLING             Priority: Mandatory
+Version : 2       SEQ #358                      Status: Released
+                  Compliance Date: APR 06, 2008
+=============================================================================
+
+Associated patches: (v)IB*2*347    <<= must be installed BEFORE `IB*2*370'
+                    (v)IB*2*365    <<= must be installed BEFORE `IB*2*370'
+
+Subject: REASONABLE CHARGES 3.0
+
+Category: 
+  - Routine
+  - Other
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ This patch supports Reasonable Charges v3.0, which contains two 
+ significant updates to the Reasonable Charges (RC) definition.  
+ There are no charges released with this version of Reasonable Charges.
+                                       
+ Elimination/Revision of the Charge Discounts
+ -------------------------------------------------------
+ There are four charge discounts associated with Reasonable Charges.  Each 
+ of these discounts is applied to procedure charges when bill charges are 
+ calculated.  It has been determined that it is standard procedure for the 
+ Fiscal Intermediary to also apply these discounts.  Therefore these 
+ discounts have been removed from Reasonable Charges.  VistA Billing will 
+ no longer apply these discounts to bill charges:
+ -  Multiple Surgical Procedures Discount
+ -  Primary/Secondary Bundled Discount
+ -  Provider Discount
+ -  Modifier Decrease Adjustment
+                                       
+ The removal of the charge discounts is not date dependent, the discounts 
+ will end when the patch is installed, therefore the discounts will not be 
+ applied to any care billed after this patch is installed.
+                                       
+ Modifier Increase Adjustment:  The exception to the removal of the 
+ Reasonable Charges discounts are the two Modifier Adjustments that 
+ increase the charge, these will continue to be applied to bill charges: 
+ - modifier 22 at 120% adjustment  (Unusual Procedural Services)
+ - modifier 50 at 154% adjustment  (Bilateral Procedure)
+ Any procedure associated with one of these two modifiers will continue to 
+ have the corresponding charge adjustment applied to the procedure's charge 
+ on the bill.
+                                       
+ Zero Charge Provider Discount:  Also note that the Zero Charge Provider 
+ Discount for non-billable providers will continue to be available.  This 
+ discount is not specific to Reasonable charges.  The Zero Charge Provider 
+ Discount is a general check for non-billable provider.  So cancelling of 
+ charges, or zero charge, for providers who should not be billed will 
+ remain.
+                                       
+ Accommodation of Interim Nationally Based Charges
+ -------------------------------------------------------
+ CPT/HCPCS procedure codes may be updated on a quarterly schedule, new 
+ codes are released and some are inactivated.  To provide charges for these 
+ new codes as quickly as possible, a National Interim charge will be 
+ developed for the new procedures.  These national interim charges will not 
+ be locality specific, but will be the same for all sites.  The next full 
+ release of Reasonable Charges will provide site specific charges for these 
+ procedures.  
+                                       
+ To accommodate these national interim charges an enter option is 
+ being provided for each site to add these charges to their Charge Master.
+ The National Reasonable Charges Enter [IBCR ENTER RC NATIONAL CHARGES]
+ option is added to the Charge Master Menu [IBCR CHARGE MASTER MENU].
+ This option is limited to those users assigned the IB SUPERVISOR key.
+                                       
+ The national interim charges will be published in a document by Chief
+ Business Office.  These will then be entered manually into the Charge 
+ Master based on the following information provided in that document:
+                                       
+ Code:          Procedure CPT/HCPCS
+ Effective:     Date charge becomes active/effective
+ Modifier:      CPT Modifier Code, if applicable
+ Charge Type:   Institutional or Professional
+ Unit Charge:   Currency, standard charge per procedure unit
+ Base Charge:   Currency, Anesthesia and Observation Type charges only.
+                                       
+ Standard:      PR, is this a Standard Type Charge, charge per procedure
+ Anesthesia:    MN, Minutes, is this an Anesthesia Type Charge
+ Observation:   HR, Hours, is this an Observation Type Charge
+ Ambulance:     ML, Miles, is this an Ambulance Type Charge
+                                       
+ Inpatient:     Yes/No, is this procedure billable for Inpatient care
+ SNF:           Yes/No, is this procedure billable for SNF care
+ Outpatient:    Yes/No, is this procedure billable for Outpatient care
+ Freestanding:  Yes/No, is this procedure billable for Non-Provider sites
+                                       
+ Once this data is entered for a procedure, the charge will be added to 
+ each appropriate Charge Set in the Charge Master and then will be billed 
+ as all other charges.
+                                       
+ Other Changes:  Anesthesia Minutes
+ -------------------------------------------------------
+ Anesthesia is billed based on a 15 minute unit.  Before this patch the 
+ Reasonable Charges anesthesia unit was rounded up after 4 minutes: 1-19 
+ minutes is one unit and 20-34 is two units, etc.  However this has been 
+ modified to a more standard rounding algorithm.  Beginning with Reasonable 
+ Charge v3.0, the anesthesia units will be based on a 15 minute unit rounded 
+ up after any minutes: 1-15 minutes is one unit and 16-30 is two units, etc.
+                                       
+                                       
+ This patch addresses the following New Service Request (NSR):
+ -------------------------------------------------------------
+ 20050417  Methodology Update Inpatient and Outpatient Reasonable Charges
+                                       
+ This patch addresses the following NOIS/Remedy Ticket(s):
+ ---------------------------------------------------------
+ There is no NOIS/Remedy tickets associated with this patch.
+                                       
+                                       
+ Technical Description
+ =====================
+ There are 6 routines deleted with this patch (IBCRBCA*).  These routines 
+ implemented 3 of the Reasonable Charges discounts: Multiple Surgical 
+ Procedures Discount, Primary/Secondary Bundled Discount, Modifier 
+ Adjustment/Discount.  Since these discounts are being removed from the 
+ definition of Reasonable Charges, the routines and the calls to them are 
+ deleted.
+                                       
+ The Modifier Adjustment is a special case.  There are two modifier charge 
+ adjustments that increase the charge and will remain, however the process 
+ of applying this modifier adjustment has been changed.  The existing 
+ modifier adjustment was dependent on how the procedures were defined on 
+ the bill.  Therefore, the adjustment could not be completed until all the 
+ bill charges were compiled.  The modifier adjustments that will remain 
+ will be applied as a simple adjustment to each charge for procedures with 
+ that modifier.  So the compiled version of the modifier adjustment 
+ (IBCRBCA3) is replaced with application of the adjustment as each charge 
+ is calculated (IBCRBC2).
+                                       
+ The Provider Discounts for Reasonable Charges are also being removed. 
+ However, the Zero Charge Provider Discount will remain.  Therefore the 
+ logic to apply the discount must also remain.  To remove specific 
+ discounts, the Group is deleted from the BILLING PROVIDER DISCOUNT 
+ (#363.34) file.  The removal of the RC Provider Discounts will be 
+ implemented by the Post-init.  The Post-init (IBYPSK) will delete all 
+ Provider Discounts in the RC Provider Discount Special Group that were 
+ nationally defined, except the ZERO CHARGE group. 
+                                    
+ The Post-Init (IBYPSK) deletes all Provider Discount Groups in the RC 
+ PROVIDER DISCOUNTS Special Group, except the ZERO CHARGE group, in the 
+ BILLING PROVIDER DISCOUNT (#363.34) file.
+         Delete Reasonable Charges Provider Discounts:
+         >> Discount Deleted: CERT REG NURSE ANESTHETIST
+         >> Discount Deleted: CLINICAL NURSE SPECIALIST
+         >> Discount Deleted: CLINICAL PHARMACIST
+         >> Discount Deleted: CLINICAL PSYCHOLOGIST
+         >> Discount Deleted: CLINICAL SOCIAL WORKER
+         >> Discount Deleted: DIETITIAN
+         >> Discount Deleted: NURSE PRACTITIONER
+         >> Discount Deleted: PHYSICIAN ASSISTANT
+         8 Provider Discount Groups Deleted (#363.34)
+                                       
+                                       
+ COMPONENTS SENT WITH PATCH
+ --------------------------
+                                                                            
+ Routines:
+ ---------
+                                  
+  Number of Routines = 14
+  Total number of routines modified = 5
+  Total number of new routines = 3
+  Total number of deleted routines = 6
+                                  
+                                       
+ Post-Init:  POST^IBYPSK - deletes all Provider Discount Groups in the 
+ RC PROVIDER DISCOUNTS Special Group (#363.34), except the ZERO CHARGE 
+ group.  Stored in the BILLING PROVIDER DISCOUNT (#363.34) file.
+                                       
+                                       
+ The following is a list of options included in this patch:
+                                       
+ Option Name                             Type        New/Modified
+ -----------                             ----        ------------ 
+ National Reasonable Charges Enter       Routine     New 
+   - [IBCR ENTER RC NATIONAL CHARGES]
+   - New option with IB SUPERVISOR key
+   - Added to Charge Master Menu [IBCR CHARGE MASTER MENU]
+                                       
+ Charge Master Menu                      Menu        Modified
+   - [IBCR CHARGE MASTER MENU]
+   - used as link for new option only
+                                    
+                                       
+ Test Sites:
+ -----------
+ Central Texas HCS
+ Illiana HCS (Danville)
+ Martinsburg, WV
+ North Chicago, IL
+                                       
+                                       
+ Pre/Post Installation Overview
+ ------------------------------
+ The Post-init of this patch will remove all Reasonable Charges Provider 
+ Discounts except the Zero Charge Group.  The installation description 
+ should be checked for completion of this task.
+                                       
+                                       
+        ================INSTALLATION INSTRUCTIONS =================
+                                       
+ If installed during the normal workday, it is recommended that the 
+ following selection(s) in the OPTION (#19) file, and all of their 
+ descendants be disabled to prevent possible conflicts while running the 
+ KIDS Install. Other VISTA users will not be affected.
+                                       
+ Enter/Edit Billing Information [IB EDIT BILLING INFO]
+ Charge Master IRM Menu [IBCR CHARGE MASTER IRM MENU]
+                                       
+                                       
+ Install Time - less than 5 minutes 
+                                       
+                                       
+ Please note that Reasonable Charges v3.1 is being released before v3.0. 
+ RC v3.0 (IB*2*370) only involves coding changes and only v3.1 (IB*2*390) 
+ will involve a rate update.  There is no dependency between the two 
+ versions.  Therefore any order of installation of these two patches is 
+ acceptable.  
+  
+  
+ 1.  LOAD TRANSPORT GLOBAL 
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the 
+     INSTALL/CHECK MESSAGE PackMan option.  
+                                       
+ 2.  START UP KIDS 
+     -------------
+     Start up the Kernel Installation and Distribution System Menu 
+     [XPD MAIN]: 
+                                       
+          Edits and Distribution ...  
+          Utilities ...  
+          Installation ...  
+                                       
+     Select Kernel Installation & Distribution System Option: INStallation 
+                                                              ---
+          Load a Distribution 
+          Print Transport Global 
+          Compare Transport Global to Current System 
+          Verify Checksums in Transport Global 
+          Install Package(s) 
+          Restart Install of Package(s) 
+          Unload a Distribution 
+          Backup a Transport Global 
+                                       
+     Select Installation Option: 
+                                       
+ 3.  Select Installation Option: 
+     ---------------------------
+     NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+            NAME, enter IB*2.0*370):
+                                       
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when this patch
+         is installed.  It compares all components of this patch
+         (routines, DD's, templates, etc.).
+     c.  Verify Checksums in Transport Global - This option will allow
+         you to ensure the integrity of the routines that are in the
+         transport global.
+                                       
+ 4.  Select Installation Option: Install Package(s) 
+                                 ------------------
+     **This is the step to start the installation of this KIDS patch: 
+                                       
+     a.  Choose the Install Package(s) option to start the patch
+         install.
+                                         
+         When prompted 'Want KIDS to Rebuild Menu Trees Upon Completion of
+         Install? YES//'  Answer YES unless your system does this in a 
+         nightly TaskMan process. 
+                                       
+     b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+         YES//' answer NO
+     c.  When prompted 'Want to DISABLE Scheduled Options, Menu 
+         Options, and Protocols? YES//' answer YES
+     d.  When prompted 'Enter options you wish to mark as 'Out Of
+         Order':'  Enter the following options:
+                                       
+         IB EDIT BILLING INFO           Enter/Edit Billing Information
+         IBCR CHARGE MASTER IRM MENU    Charge Master IRM Menu
+                                     
+     e.  When prompted 'Enter protocols you wish to mark as 'Out Of
+         Order':' press <return>.
+                                       
+ 5.  Check Post-init deletion of Provider Discounts
+     The Post-init of this patch will remove all Reasonable Charges 
+     Provider Discounts except the Zero Charge Group.
+     Please check the Installation Description for the following:
+                                       
+         Reasonable Charges v3.0 Post-Install .....
+                                       
+         Delete Reasonable Charges Provider Discounts:
+         >> Discount Deleted: CERT REG NURSE ANESTHETIST
+         >> Discount Deleted: CLINICAL NURSE SPECIALIST
+         >> Discount Deleted: CLINICAL PHARMACIST
+         >> Discount Deleted: CLINICAL PSYCHOLOGIST
+         >> Discount Deleted: CLINICAL SOCIAL WORKER
+         >> Discount Deleted: DIETITIAN
+         >> Discount Deleted: NURSE PRACTITIONER
+         >> Discount Deleted: PHYSICIAN ASSISTANT
+         8 Provider Discount Groups Deleted (#363.34)
+                                       
+        Reasonable Charges v3.0 Post-Install Complete
+                                      
+     Note: If there are Provider Discounts that were not deleted, 
+     then there might be some local discounts.  Please contact support.
+                                    
+ 6.  Clean-up Post-Init Routine
+     --------------------------
+     Optional - Once this patch has been successfully installed you may 
+     delete the post init routine:  IBYPSK
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;2.0;INTEGRATED BILLING;**[Patch List]**;21-MAR-94;Build 5
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: IBCRBC
+    Before: B13287981   After: B11588633  **52,80,106,51,137,245,370**
+Routine Name: IBCRBC1
+    Before: B55203191   After: B55586137  **52,80,106,138,51,148,245,270,370**
+Routine Name: IBCRBC2
+    Before: B24945366   After: B26657513  **52,106,138,148,245,370**
+Routine Name: IBCRBCA1
+    Before: B59536766   After:    Delete  
+Routine Name: IBCRBCA2
+    Before: B12988933   After:    Delete  
+Routine Name: IBCRBCA3
+    Before: B15514071   After:    Delete  
+Routine Name: IBCRBCAP
+    Before: B51905634   After:    Delete  
+Routine Name: IBCRBCAQ
+    Before: B47316097   After:    Delete  
+Routine Name: IBCRBCAR
+    Before: B44755741   After:    Delete  
+Routine Name: IBCRBH1
+    Before: B59021504   After: B56713441  **106,245,370**
+Routine Name: IBCRCC
+    Before: B18670863   After: B26741603  **52,80,106,138,245,223,309,347,370**
+Routine Name: IBCRER
+    Before:       n/a   After: B20891309  **370**
+Routine Name: IBCRER1
+    Before:       n/a   After: B44995002  **370**
+Routine Name: IBYPSK
+    Before:       n/a   After:  B6669891  **370**
+ 
+Routine list of preceding patches: 137, 270, 347
+
+=============================================================================
+User Information:
+Entered By  : HARPER,AMY R                  Date Entered  : FEB 20, 2007
+Completed By: LYNCH,MARY F.                 Date Completed: MAR 05, 2008
+Released By : BOTTINI,STEVE                 Date Released : MAR 06, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

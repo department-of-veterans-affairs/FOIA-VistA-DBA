@@ -1,0 +1,2252 @@
+
+=============================================================================
+Run Date: FEB 20, 2004                     Designation: HL*1.6*109
+Package : HL - HEALTH LEVEL SEVEN     HL      Priority: Mandatory
+Version : 1.6        SEQ #92                    Status: Released
+                  Compliance Date: MAR 22, 2004
+=============================================================================
+
+Associated patches: (v)HL*1.6*57   <<= must be installed BEFORE `HL*1.6*109'
+                    (v)HL*1.6*62   <<= must be installed BEFORE `HL*1.6*109'
+                    (v)HL*1.6*65   <<= must be installed BEFORE `HL*1.6*109'
+                    (v)HL*1.6*71   <<= must be installed BEFORE `HL*1.6*109'
+                    (v)HL*1.6*84   <<= must be installed BEFORE `HL*1.6*109'
+                    (v)HL*1.6*87   <<= must be installed BEFORE `HL*1.6*109'
+                    (v)HL*1.6*91   <<= must be installed BEFORE `HL*1.6*109'
+                    (v)HL*1.6*103  <<= must be installed BEFORE `HL*1.6*109'
+
+Subject: Improve Performance and Monitoring of HL7 Package
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+ Test sites:  MPI, San Francisco, Salt Lake City, Roseburg
+              Upstate NY HCS (VISN 2), Montana, and Martinsburg
+  
+ NOIS Resolved:
+   AAC-1202-70638          HL7 Purge
+   AMA-1102-71184          COMMUNICATION PROBLEM ON REMOTE DATA
+   BHS-1103-12002          No handle returned from RPC - Rx Copay Transmission 
+                           Errors
+   HON-0403-60589          Copay CAP Transactions not transmitting!!
+   IRO-0302-41770          HL7 INCOMING TASKS TAKING CPU RESOURCES
+   ISA-0401-12369          NULL SUBSCRIPT ERROR IN CAPI+6
+   ISA-0800-11557          Application Acknowledments not returned.
+   ISW-0803-21874          DUPLICATE APLL ACK NOT MARKED AS DUPLICATE
+   ISW-1003-21512          Corruption of ^HLMA entries
+   IVM-0403-31317          Over 40k errors in the Error Trap.
+   LON-0602-62880          Variable leakage for HLERR?
+   MAC-0603-60365          Remote data from New Mexico not working
+   MAD-0703-40121          PROCACK+29~HLTP2:1, %DSM-E-UNDEF
+   MIW-0203-40369          HL7 Incoming File - CPU Intensive
+   MWV-1003-20311          remote data communication error
+   SFC-0403-60108          MFN~M05 Application Level Errors
+   SFC-1202-60802          HLCSIN is still inefficient
+   SFC-1203-61501          Failed IFC transaction
+   WBP-1202-20139          HL7 PURGE QUESTION/ASSISTANCE
+  
+ This patch provides features to the HL7 package that improve the 
+ performance of message processing, make message purging more flexible and 
+ efficient, and allow for the ability to monitor different aspects of the 
+ HL7 package.
+  
+ The description of the patch is divided as follows:
+  
+    I.  IMPROVED RATE OF MESSAGE PROCESSING
+   II.  IMPROVED MONITORING OF THE PURGING PROCESS
+  III.  FASTER PURGING OF MESSAGES
+   IV.  EVENT MONITORING SYSTEM
+    V.  ROUTINE SUMMARY
+   VI.  SOFTWARE AND DOCUMENTATION RETRIEVAL
+  VII.  INSTALLATION INSTRUCTIONS
+ VIII.  RECOVERY
+   IX.  EXAMPLE INSTALLATION
+  
+  
+ I. IMPROVED RATE OF MESSAGE PROCESSING
+ ========================================
+  
+ The enhancements and changes included in this section are listed below.  
+ Each enhancement and change is further explained in subsections.
+  
+ (1) Queue subdivision and Logical Link lookup.
+ (2) Direct global data sets.
+ (3) Lock removal.
+ (4) Event monitoring and logging.
+ (5) File zero node updates.
+  
+  
+ (1) QUEUE SUBDIVISION
+  
+ This patch improves the way enhanced-mode messages are placed in a 
+ queue.  Before, all messages were being placed in the one queue 
+ associated with the listener logical links.  This created a "bottleneck" 
+ problem at sites with high volume of messages.  Now, multiple queues can 
+ be used to  allow for faster processing.  The queues split are based 
+ on the following order:
+  1) logical link  associated with subscriber protocol
+  2) Domain name in facility field
+  3) Station number in the facility field.
+  
+ **** Please follow the instructions in the section 'Clearing the "AC" 
+      Cross-Reference' below to ensure that the transition to multiple 
+      inbound queues preserve the order of the messages.
+  
+ It also fixes the problem where a processing routine incorrectly 
+ determines the logical link to transmit the application acknowledgement 
+ message. In addition, it makes corrections in the way that the HL7 code 
+ looks up a logical link based on the station number.  Before, the station 
+ number was  obtained from the numeric part of the first piece of the 
+ sending application in the MSH header;  now, the logical link lookup will 
+ include the complete alphanumeric station number.
+  
+ NOTE: It is now possible to add additional Inbound Filers as necessary using
+       the same HL7 menu option 'Monitor, Start, Stop Filers [HL FILER MONITOR]'.
+       In the past, due to the limitation of the single inbound queue, only one
+       filer could be working on to that single queue.  With multiple queues,
+       multiple filers can be started to match any additional workload in the
+       inbound queues.
+  
+  
+ (2) DIRECT GLOBAL DATA SETS
+  
+ Prior to this patch, the most commonly used method of updating global 
+ data in the HL Message Text file (#772) and the HL Message Administration 
+ file (#773) was by using the VA FileMan FILE^DIE API.  After installation 
+ of this patch, global data in these files is performed by direct global 
+ sets.
+  
+ The change from FILE^DIE API usage to direct global sets was done to 
+ achieve greater efficiency.
+  
+ NOTE:  Changes to files other than the HL Message Text file and the 
+        HL Message Administration file are still performed by FILE^DIE.
+  
+  
+ (3) LOCK REMOVAL
+  
+ Many global locks performed by the VistA HL7 package prior to updating 
+ global data have been removed.  Care has been taken to maintain and 
+ enhance locking to ensure data integrity.
+  
+ (4) EVENT MONITORING & LOGGING
+  
+ The VistA HL7 package is being significantly enhanced by this patch, and 
+ by other patches that have been recently issued, or will be issued 
+ shortly.  The Event Logging and Event Monitoring System are examples of 
+ functionality that are being introduced for the purpose of enabling 
+ monitoring the package performance.
+  
+ This patch does not include documentation for Event monitoring and 
+ logging.  In the future, an informational patch will be issued with 
+ complete documentation of this new functionality.
+  
+ (5) FILE ZERO NODE UPDATES
+  
+ The primary purpose of this patch is to increase the efficiency of the 
+ VistA HL7 package.  One significant performance bottleneck at large 
+ message volume sites is the updating of the zero nodes for the HL Message 
+ Text file (#772) and the HL Message Administration file (#773).
+  
+ NOTE:  The last internal entry number stored, and the total number
+        messages in the file, are stored on the file's zero node.
+  
+ For this reason, the zero node of both the HL Message Text file and the 
+ HL Message Administration file will no longer be maintained by the VistA 
+ HL7 package.  
+  
+ Warning!  The zero node of the HL Message Text file (#772) and the 
+           HL Message Administration file may no longer be used to 
+           determine the last internal entry entered in the respective
+           file, and the total number of entries in the file.
+  
+  
+  
+ II. IMPROVED MONITORING OF THE PURGING PROCESS
+ ===============================================
+  
+ Purging of VistA HL7 messages is done using the 'Purge Messages [HL PURGE
+ TRANSMISSIONS]' menu option.  This option runs in the foreground or can 
+ Be queued to a background job.  This option has been rewritten, and 
+ Several new features have been added.  Details of these changes and new 
+ features are provided below.
+  
+  
+ (1) UNDEFINED ERROR WITH TWO SIMULTANEOUS JOBS
+  
+ At some locations with high volumes of VistA HL7 messages, background
+ purging of these messages was taking over one day to complete.  Because 
+ of this, a second purging job was starting before the first job 
+ completed.  This resulted in an undefined error when both jobs attempted 
+ to delete the same entry simultaneously.
+  
+ This patch installs a locking system that prevents the starting of a
+ purging job - either run in the foreground or queued - if another purging
+ job is still running.
+  
+  
+ (2) PURGING OF MESSAGES WITH ERROR STATUS
+  
+ Before this patch, messages with an error status could only be purged by
+ the interactive purge job when run in the foreground.  This patch makes
+ several significant changes in the purging of error status messages.
+  
+   Change #1 - Error status messages can now be purged by both foreground
+               and background purge jobs.
+  
+   Change #2 - A new parameter field named "Purge Error Status Messages"
+               has been created in the HL Communication Server Parameters
+               file (#869.3).  This parameter can be used by sites to
+               set the number of days error status messages are retained
+               before deletion.  The default number of days is 90.
+  
+               Note:  The 'Site Parameter Edit [HL EDIT COMM SERVER
+                      PARAMETERS]' menu option holds the "Purge
+                      Error Status Messages" parameter.  To edit
+                      this parameter, invoke this option and navigate
+                      to page 2.
+  
+   Change #3 - When purge jobs are interactively started, the user can
+               enter the desired cutoff dates for purging of error status
+               messages.  This is true even when the user interactively
+               starts the job, but queues the purge job to a background
+               process.  However, when the purge job is scheduled for
+               start according to a recurring frequency, (such as "daily,
+               at 19:00"), there is no interaction between the software
+               and the user.  In this case, the purging cutoff date used
+               is taken from the "Purge Error Status Messages" parameter
+               stored in the HL Communication Server Parameters file
+               (#869.3).
+  
+  
+ (3) CONDITIONS FOR EARLY ENDING OF PURGING
+  
+ Originally, the purging software looped through all entries in the VistA
+ HL7 files being purged.  For those sites with millions of entries, with
+ many of those file entries not purgable, this resulted in purge jobs
+ running for much longer than actually necessary.  After this patch is
+ installed, purge jobs will stop after 200,000 entries are evaluated
+ without any of the entries being purgable.  (When looping through VistA
+ HL7 files looking for purgable entries, as soon as an entry is found
+ that is purgable, the "counter" is reset to zero and the count upwards to
+ 200,000 restarts.)
+  
+  
+ (4) PURGE JOB MONITORING
+  
+ Purging loops through the HL7 Message Administration file (#773) first,
+ purging eligible entries.  After completing purging in this file, purging
+ moves to the HL7 Message Text file (#772) file.  Prior to this patch, it
+ could be determined whether the purge job was running.  But, it was not
+ possible to determine any other details of the running purge process
+ using VistA HL7 options.  After installation of this patch, the purge
+ process can be monitored using the new 'Purge jobs monitoring [HL PURGE
+ JOB REVIEW]' menu option.
+  
+ The 'Purge jobs monitoring' menu option includes three different views of
+ purge information:
+  
+ * FULL-SCREEN VIEW: A full-screen view of all available information for
+                     the last purge job run or running.
+ * SINGLE-LINE VIEW: A screen showing multiple purge job information
+                     including the last run or running purge job.
+ * GRAPHICAL VIEW:   A graphical representation of purging times and 
+                     totals for all available purge jobs.
+           
+  
+ When the 'Purge jobs monitoring' menu option is invoked, these three
+ "views" are presented for selection. The terminal dialog is shown below.
+  
+    ----------------------- Terminal Dialog Start -----------------------
+    As purging jobs run, they record critical information in the ^XTMP
+    global for later review.  (This information is updated every two
+    minutes.) You can view purge information now...
+  
+        Select one of the following:
+  
+           1         Display all available purging data (full screen)
+           2         Display purging summary (single line)
+           3         Display purging graph
+           4         Exit.
+  
+        Enter response:
+  
+   ----------------------- Terminal Dialog Stop ------------------------
+  
+  
+ FULL-SCREEN VIEW
+ ----------------
+ The full-screen view includes data from the last purge job.  If the last 
+ purge job is still running, the screen will refresh every 120 seconds 
+ with the most recent data values.  If the last purge job is completed, no 
+ screen refresh occurs (or is needed.)
+  
+ A sample of the output of the "full-screen view" is shown below.
+  
+    ----------------------- Terminal Dialog Start -----------------------
+    ========== Jan 21, 2003@10:49:28  [HLUOPT1 3030120.185926] ==========
+      Start time:              Jan 20, 2003@18:59:26
+      Last timestamp:          Jan 21, 2003@05:10:49
+      End time:                Jan 21, 2003@05:10:49
+      Status:                   FINISHED
+      Location:                     DONE
+      Task number:               4818710
+    ---------------------------------------------------------------------
+     #772 reviewed:             1075364
+      #772 revw'd w/o purging:    200002
+      Last 772 reviewed:       130718232
+      #772 purged:                545340
+    ---------------------------------------------------------------------
+      #773 reviewed:              889697
+      #773 revw'd w/o purging:    200001
+      Last 773 reviewed:       111262743
+      #773 purged:                571140
+    Press RETURN '^' to exit...
+   ----------------------- Terminal Dialog Stop ------------------------
+  
+  
+ The information shown above pertains to a completed job.  The purge job 
+ start and end times are shown.  While purge jobs run, every few seconds, 
+ the "timestamp" is reset with the time "now."  This timestamp is set a 
+ final time when the job completes.  The purge job's timestamp is also 
+ shown.
+  
+ The location in M code is indicated by the "Location" field above.  (This 
+ field is useful to VistA HL7 support and development personnel, but of 
+ limited value to site personnel.)
+  
+ The TaskMan task number is shown in the "Task number" field.
+  
+ The final two sections of the information shown above hold information 
+ about the purging loop in the HL Message Administration file (#773) loop, 
+ and the loops through the HL Message Text file (#772).  Most fields in 
+ these sections are self-explanatory.  The "revw'd w/o purging" fields 
+ relate to the fact that purging stops after 200,000 entries are evaluated 
+ without purging any entries, the purging of entries for that loop stops.
+  
+  
+ SINGLE-LINE VIEW
+ ----------------
+ A sample of the "single-line view" is shown below.  (Each line of output
+ below has been wrapped due to space limitations.  No wrapping occurs when
+ using the option.)
+  
+    ----------------------- Terminal Dialog Start -----------------------
+    Recent purge runs...
+  
+    Task-Number   Start-Time   Timestamp Finish-time     772@     773@
+                                                                  Time-NOW
+    ---------------------------------------------------------------------
+  
+       4483603  01/11@18:59 01/12@03:23 01/12@03:23   529322   562800
+                                                               01/21@10:49
+         4501790  01/12@18:59 01/13@07:59 01/13@07:59   604482   639504
+                                                               01/21@10:49
+  
+    Any old jobs that exist will be shown above. The current (or last)
+    purge job is shown below.  The information on each line will
+    automatically refresh every 120 seconds (or whenever you press 
+    RETURN.)
+  
+    Note!! Enter '^' when you are ready to exit.
+  
+    Current (or last) purge job...
+  
+    Task-Number   Start-Time   Timestamp Finish-time     772@     773@
+                                                                  Time-NOW
+    ---------------------------------------------------------------------
+        4818710  01/20@18:59 01/21@05:10               545340   571140
+                                                               01/21@05:11
+    ----------------------- Terminal Dialog Stop ------------------------
+  
+   The current purge job in the terminal dialog above is still running.
+ So, the information will be automatically refreshed, with the newest
+ information, every 120 seconds.  
+  
+ If the last job was no longer active, (i.e., there was a finish time), 
+ the behavior of this option changes.  In this case, all jobs are 
+ displayed together and there is no refreshing of the screen every 120 
+ seconds.
+  
+  
+ GRAPHICAL VIEW
+ --------------
+ The graphical view displays information for all purge jobs for which data 
+ exists.  For each purge job, the total run time is displayed, and also 
+ the number of entries deleted.  
+  
+ A sample of the graphical "view" is shown next.
+  
+ VistA HL7 Purge Graph
+ Purge-Date  | Purge-Time        | 772 Deletions     | 773 Deletions|
+ ========================================================================
+             | Max Hr = 13.7     | Max # = 1,128,736 | Max # = 1,148,762=|
+ =========================================================================
+ 03/12@19:00 |=================  |==============     |===============|
+ 03/13@18:59 |====               |===                |===|
+ 03/14@19:00 |=                  |=                  |=|
+ 03/16@18:59 |================== |================== |===================|
+ 03/17@19:00 |========           |=========          |=========|
+ 03/18@18:59 |=========          |==========         |==========|
+ 03/19@19:00 |==========         |========           |=========|
+ 03/20@19:00 |=                  |=                  |=|
+ 03/21@19:00 |=                  |=                  |=|
+ 03/22@19:00 |================== |===============    |================|
+ 03/23@19:00 |=================  |===============    |===============|
+ 03/24@19:06 |=========          |========           |========|
+ 03/25@19:00 |========           |========           |=========|
+ 03/26@19:00 |===============    |==========         |==========|
+  
+  
+ Changes to the HL Communication Server Parameters file (#869.3)
+ ---------------------------------------------------------------
+ This patch adds the following field to the HL Communication Server 
+ Parameters file:
+  
+ 869.3,44      PURGE ERROR STATUS MESSAGES 4;4 NUMBER
+  
+               INPUT TRANSFORM:  K:+X'=X!(X>999)!(X<1)!(X?.E1"."1N.N) X
+               LAST EDITED:      FEB 10, 2003
+               HELP-PROMPT:      Type a Number to represent the days to 
+                                 keep error status messages messages.  
+                                 The default number of days is 90.
+               DESCRIPTION:      The number of days error status messages  
+                                 are retained before they are purged.  
+                                 90 days is used as the actual value when  
+                                 the "Purge Messages" option is scheduled 
+                                 through TaskMan, and as the default when 
+                                 run interactively.
+  
+  
+  
+ III. FASTER PURGING OF MESSAGES
+ ===============================
+  
+ This patch provides a new method for purging records from files 772 and 
+ 773.  The goal is to greatly improve the efficiency with which purging is 
+ accomplished.
+   
+ The new Fast Purge does not replace the existing HL PURGE TRANSMISSIONS 
+ option.  However, the Fast Purge will accomplish the vast majority of 
+ purging, allowing the old purge option, which is more thorough, but 
+ also much less efficient, to be scheduled much less frequently at off-peak
+ hours.
+  
+ How the New Fast Purge Works:
+ ============================
+ This patch introduces the AI index on file 773.  All records to be 
+ purged via the Fast Purge are placed on the AI index.  Changes to the 
+ STATUS field trigger the records to be placed on the new index.  The 
+ requirements to be placed on the index for fast purging are:
+  
+ 1.     The status must be Successfully Completed
+ 2.     The record is the initial record in the transaction, i.e., not 
+        an acknowledgment. When the initial message's status changes to 
+        successfully completed then all of the messages that are part of 
+        the same transaction are placed on the new "AI" index so that 
+        they are purged at the same time.
+  
+ If these conditions are met, the record is placed on the AI index for 
+ purging, along with all child records in file 773 and corresponding 
+ records in file 772.  The date and time that the record is to be purged 
+ entered to the new field FAST PURGE DT/TM, found in both files 772 and 
+ 773.  The purge date/time is calculated by adding the current date/time to
+ the number of days entered to the PURGE COMPLETED MESSAGES site parameter
+ in the HL COMMUNICATION SERVER PARAMETERS file.
+  
+ NOTE: This means that, once this patch is installed, purging via the 
+       new Fast Purge will not begin until after that time period, set by 
+       the site, has elapsed.
+  
+ The Fast Purge is designed to allow multiple Fast Purge processes to 
+ execute concurrently if the purging workload warrants that.
+  
+  
+ Running the Fast Purge:
+ =======================
+ The Fast Purge is designed to operate under the Health Level Seven 
+ package's new Event Monitoring System.  The Fast Purge is invoked 
+ automatically on a recurring basis.  Once invoked, it begins purging 
+ records  from both files 772 and 773, as indicated by the new AI index of 
+ file 773.  Once all records are purged, the Fast Purge will wait several 
+ minutes waiting for new records to be marked for purging, if none appear,
+ the process terminates. 
+  
+ The Event Monitoring System will maintain between 0 and 2 Fast Purge 
+ processes running concurrently, depending on the workload to be purged.
+  
+ The new Event Logging software will maintain statistics on the numbers of 
+ records purged.  This data is maintained in file 776.4, HL7 Monitor 
+ Events.
+  
+ Purging Utilities:
+ =================
+ The Fast Purge is designed to operate under the Event Monitoring System, 
+ and should be totally automatic.  However, if unusual circumstances warrant 
+ manual starting or stopping of the Fast Purge process, two utilities have
+ been provided that can be executed at the MUMPS prompt by IRM personal with
+ programmer access.
+  
+   $$COUNT^HLUOPTF2
+   ==============
+   This utility provides a count of the number of Fast Purge processes 
+   that are currently running. 
+  
+     At the MUMPS prompt, enter:
+    >WRITE $$COUNT^HLUOPTF2    <- and hit RETURN
+  
+    $$START^XLUOPTF2
+    ==============
+    This utility will start a new Fast Purge process.  The utility allows 
+    your choice of whether to start the Fast Purge immediately in the 
+    foreground or to queue it.
+  
+    At the MUMPS prompt, enter:
+    >DO START^HLUOPTF2    <- and hit RETURN
+  
+  
+   STOP^HLUOPTF2
+   =============
+   This utility will stop a running Fast Purge process.  It may take 
+   Several minutes to stop. If there are several Fast Purge processes running,
+   STOP^HLUOPTF2 needs to be invoked several times to stop all of them.
+  
+    At the MUMPS prompt, enter:
+    >DO STOP^HLUOPTF2    <- and hit RETURN
+   
+  
+ IV.  EVENT MONITORING SYSTEM
+ ============================
+  
+ This section contains the following sub-sections.  
+  
+ (1) Overview
+ (2) Monitors and the Master Job
+ (3) APIs
+ (4) Monitor Creation
+ (5) Build Contents
+ (6) Server Option
+  
+ This patch contains overview-level documentation of the functionality of 
+ the Event Monitor software.  For additional help and information, download 
+ by using FTP, the HL_EVENT_MONITOR.pdf document from the appropriate 
+ Customer Service directory as listed in the section SOFTWARE AND 
+ DOCUMENTATION RETRIEVAL below at the end of this patch description.
+  
+  
+ (1) OVERVIEW
+  
+ The current VistA HL7 software contains very little monitoring 
+ functionality.   This patch installs a new "event monitoring" system 
+ designed to "watch over" the VistA HL7 package.
+  
+ There are six files associated with this patch; three are run-time and 
+ Three are setup related.  The run-time files are:
+  
+  - HL7 MONITOR JOB file (#776).
+  - HL7 MONITOR EVENT (#776.4).
+  - HL7 MONITOR MASTER JOB file (#776.2).
+  
+ The setup-related files are:
+  
+  - HL7 MONITOR file (#776.1).
+  - HL7 MONITOR EVENT TYPE (#776.3).
+  - HL7 MONITOR PARAMETERS file (#776.999).
+  
+ The HL7 MONITOR PARAMETERS file (#776.999) controls the event monitoring
+ system. The HL7 MONITOR file (#776.1) contains the monitor 
+ specifications.
+  
+  
+ (2) MONITORS & THE MASTER JOB
+  
+ The Event Monitor system is build around the master job and "monitors" 
+ started by the master job.
+  
+ Monitors
+ --------
+ "Monitor" is the term used to refer to M code written to "watch over", to 
+ monitor some process or to watch for the occurrence of an event.  
+  
+ The full definition of a monitor includes:
+  
+  - The M code that "monitors."
+  - An entry in the HL7 Monitor file (#776.1) that "points to" the M code.
+    (This is referred to as the "M code API.")
+  
+ Running a monitor involves the queuing of a background job that is 
+ associated with an entry in the HL7 Monitor file.  When the background 
+ job starts it invokes the M code API that is part of the HL7 Monitor file 
+ entry.
+  
+ The M code API performs the following actions:
+  
+  - Performs it's "work."  (Counts, checks, reviews, notifies.)
+  - Logs information in the event monitoring files.
+  - Optionally, sends email message to local and/or remote recipients.
+  
+ Example monitors might be:
+  
+  - Count of error entries in file 772 & 773.
+  - Status of links.
+  
+ Master Job
+ ----------
+ The master job is initially started (as a background process) when the 
+ event monitoring software is installed.  The master job is automatically 
+ rerun on a site-configurable schedule.
+  
+ The master job performs the following tasks:
+  
+  - Evaluates every active event monitor in the HL7 MONITOR file, and 
+ conditionally, queues a background job for each monitor.
+ Records its actions in the HL7 Monitor Master Job file.
+  
+ When the master job checks a monitor, and does not queue a background 
+ job, it also records the reason why the monitor was not started.  
+ (Usually, the reason is that it is too soon as defined by the monitor's 
+ REQUEUE MIN-MONITOR field.)
+  
+  
+ (3) APIs
+  
+ The Event Monitor system is build around the files listed above in the 
+ Overview section, and M code called by monitors as described above.  
+ Within the M code called by monitors, the developer of the M code must 
+ embed calls to the following APIs:
+  
+  - START^HLEVAPI()
+  - CHECKOUT^HLEVAPI
+  
+ Calls to these two APIs are required, and must occur at the beginning and 
+ end of the M code.
+  
+ In addition to these two required APIs, a call to the CHECKIN^HLEVAPI API 
+ should be performed every 30 to 60 seconds during the time the M code is 
+ executing.
+  
+ An example of M code holding calls to these, and other APIs is included 
+ below.
+  
+ API List
+ --------
+ The APIs available to developers of monitors are listed below.
+  
+  - APPSTAT^HLEVAPI(STATUS) 
+  - CHECKIN^HLEVAPI         
+  - CHECKOUT^HLEVAPI        
+  - MAILIT^HLEVAPI          
+  - MSGTEXT^HLEVAPI(GBL)    
+  - ONOFFM^HLEVAPI0(IEN)    
+  - RUNDIARY^HLEVAPI(GBL)   
+  - START^HLEVAPI(VAR)      
+  
+ The APIs available to application developer users are explained in detail
+ below.
+  
+ APPSTAT^HLEVAPI(STATUS)
+ -----------------------
+ Sets an application status in the HL7 MONITOR JOB file entry, placing this
+ status in the STATUS-APPLICATION field.
+  
+ The STATUS-APPLICATION is not used by the event monitoring system.  It
+ can be changed at will be the application developer.
+  
+ The following M code shows a typical call to this API.
+  
+     D APPSTAT^HLEVAPI("HALTING")
+  
+ Note:  Statuses passed into the APPSTAT^HLEVAPI API should not include
+        more than 10 characters.  (Characters above 10 positions will be
+        truncated.)
+  
+  
+ CHECKIN^HLEVAPI
+ ---------------
+ Called at the beginning of M code execution to create a new entry in the 
+ HL7 MONITOR JOB file.  An array of variables can be passed by reference 
+ into the API which "declares" the variable to be tracked by other APIs 
+ called afterwards.
+  
+ Called every 30-60 seconds during M code processing to store the value of 
+ any variables being tracked, to refresh the timestamp for the monitor.  
+ (The timestamp is used to monitor the currency of an event monitor job.)
+  
+ See:  START^HLEVAPI()
+       CHECKOUT^HLEVAPI
+       
+  
+ CHECKOUT^HLEVAPI
+ ----------------
+ Called when M code processing completes.  This API marks the HL7 MONITOR 
+ JOB file entry complete, and stores the final values of the declared 
+ variables.
+  
+ See:  START^HLEVAPI()
+       CHECKIN^HLEVAPI
+  
+  
+ MAILIT^HLEVAPI
+ --------------
+ Sends a notification message with monitor details.
+  
+ There are no parameters with this API.  When this MAILIT^HLEVAPI is
+ called, a notification message is sent to the mail group associated (in
+ the HL7 MONITOR file) with the monitor.
+  
+ When MAILIT^HLEVAPI is called, a notification message will be sent to any
+ recipients specified in the XMY(recipient) array prior to the call.
+  
+ If MAILIT^HLEVAPI is called, and either the XMY(recipient) array was
+ pre-defined, or a mail group found, the message will not be sent to the
+ user (as determined by DUZ) attached to the monitoring job.
+  
+ If MAILIT^HLEVAPI is called, and no recipients can be found, the
+ notification message will be sent to the user associated with the
+ monitoring job.
+  
+ The following M code shows a typical call to this API.
+  
+     D MAILIT^HLEVAPI
+  
+ The following M code presets XMY prior to the call, adding the predefined
+ XMY recipients to the mail group (if it exists) associated with the
+ monitor.
+  
+     S XMY(DUZ)="",XMY("USER@REMOTE-SITE.COM")=""
+     D MAILIT^HLEVAPI
+  
+ The notification message can include the data in the EVENT TEXT word
+ processing field in the HL7 MONITOR JOB file.  To include this text in 
+ the mail message, you must "state" your wishes prior to calling 
+ MAILIT^HLEVAPI.
+  
+     S HLEVTXT(1)="MESSAGE TEXT"
+     D MAILIT^HLEVAPI
+  
+ When this is done, the notification message is created using a generic
+ (used for all messages) "header."  This header includes the message
+ subject and the first few lines of the message holding status and
+ time-related information.
+  
+ After the header section of the message, the above M code adds the text
+ stored in the MESSAGE TEXT word processing field in the HL7 MONITOR JOB 
+ file.
+  
+ The data in the RUN DIARY word processing field in the HL7 MONITOR JOB 
+ file can also be included in the notification message.
+  
+ The following M code shows a typical call to the MAILIT^HLEVAPI API in
+ which RUN DIARY text is included.
+  
+     S HLEVTXT(1)="RUN DIARY"
+     D MAILIT^HLEVAPI
+  
+ The data in the VARIABLE VALUE multiple field in the HL7 MONITOR JOB file
+ can be included in the notification message.
+  
+ The following M code shows a typical call to the MAILIT^HLEVAPI API in
+ which VARIABLE VALUE data is included.
+  
+     S HLEVTXT(1)="VARIABLE VALUE"
+     D MAILIT^HLEVAPI
+  
+ Finally, data stored in a completely user-defined global can be stored in
+ the notification message.
+  
+ The following M code shows a typical call to the MAILIT^HLEVAPI API in
+ which user-defined data is included.
+  
+     S HLEVTXT(1)="^TMP($J,""TEXT"")"
+     D MAILIT^HLEVAPI
+  
+ Four types of data that can be added to the message header have been
+ mentioned: EVENT TEXT, RUN DIARY, VARIABLE VALUE, and user-defined.
+  
+ The following M code shows a cap to the MAILIT^HLEVAPI API in which more
+ than one type data is included.
+  
+     S HLEVTXT(1)="VARIABLE VALUE"
+     S HLEVTXT(2)="^TMP($J,""TEXT"")"
+     D MAILIT^HLEVAPI
+  
+ In the above example, the VARIABLE VALUE data and the user-defined data
+ will both be included in the message.  And, the subscripting for HLEVTXT
+ determines the order of inclusion.  (I.e., VARIABLE VALUE before
+ user-defined.)
+  
+ See:  MSGTEXT^HLEVAPI(GBL)
+       RUNDIARY^HLEVAPI(GBL)
+  
+  
+ MSGTEXT^HLEVAPI(GBL)
+ ---------------------
+ Stores user-created data in the Event Text word processing field in the 
+ HL7 MONITOR JOB file.
+  
+ The text in the EVENT TEXT field is displayed on screen when using event
+ monitor system displays of executed monitors.  This data can optionally
+ be included in the notification message.
+  
+ The following M code shows a typical call to this API.
+  
+     S ^TMP($J,"TEXT",1)="25 entries found"
+     D MSGTEXT^HLEVAPI("^TMP($J,""TEXT"")")
+  
+ This API's parameter is a closed global reference "pointing to" the data
+ to be moved into the EVENT TEXT field.  The global data must be the
+ closed global reference followed by one positive number with no decimals.
+  
+ Examples of valid global values, and the value to be passed into the API
+ are shown next.
+  
+ Global Value             Value To Be Passed into API
+ --------------------------------------------------------------------------
+ ^TMP($J,"TEXT",1)        ^TMP($J,"TEXT")
+ ^TMP("TEXT",$J,1)        ^TMP("TEXT",$J)
+  
+ See:  RUNDIARY^HLEVAPI(GBL)
+       MAILIT^HLEVAPI
+  
+  
+ ONOFFM^HLEVAPI0(IEN)
+ --------------------
+ Turns on (sets status to ACTIVE) or off (set status to INACTIVE) the 
+ status of a monitor.  (When the status of a monitor is INACTIVE, the 
+ master job will not queue new monitor jobs for that event.) Turns on 
+ (sets status to ACTIVE) or off (set status to INACTIVE) the status of a 
+ monitor.
+  
+  
+ RUNDIARY^HLEVAPI(GBL)
+ ---------------------
+ Stores user-created data in the Run Diary word processing field in the 
+ HL7 MONITOR JOB file.
+  
+ The text in the RUN DIARY field is displayed on screen when using event
+ monitor system displays of executed monitors.  This data can optionally
+ be included in the notification message.
+  
+ The following M code shows a typical call to this API.
+  
+     S ^TMP($J,"TEXT",1)="25 entries found"
+     D RUNDIARY^HLEVAPI("^TMP($J,""TEXT"")")
+  
+ Note:  The global format of the global reference passed into the
+        RUNDIARY^HLEVAPI API is the same as the MSGTEXT^HLEVAPI API.
+        Refer to that discussion of global format above for more
+        information.
+  
+ See:  MSGTEXT^HLEVAPI(GBL)
+       MAILIT^HLEVAPI
+  
+  
+ (4) MONITOR CREATION
+  
+ Creating an event monitor involves the following steps:
+  
+  - Write M code and embed API calls to the event monitoring system.
+  - Create an entry in the HL7 MONITOR file (#776.1).
+  
+ After the above steps are followed, and an entry made in the HL7 MONITOR
+ Monitor file, (if it's status is ACTIVE), the master job will
+ automatically run the monitor at the user-defined requeue frequency.
+  
+ The following is a simple example of M code using the most commonly used
+ API calls.  (The ">" character precedes API call-related code lines.)
+  
+    CTRL   ; Code for example "monitor event"
+       N CT,IEN
+ >     D START^HLEVAPI()
+       S IEN=0,CT=0
+       F  S IEN=$O(^HLMA(IEN)) Q:"IEN!($$S^%ZTLOAD)  D
+       .  S CT=CT+1
+ >     .  I "(CT#1000) D CHECKIN^HLEVAPI
+ >     D CHECKOUT^HLEVAPI
+       Q
+  
+ The following is a more involved example of M code using all available
+ APIs calls.
+  
+    CTRL   ; Code for example "monitor event"
+       N CT,HLEVTXT,IEN
+ >     S VAR("CT")="773-CT",VAR("IEN")="773-IEN"
+ >     D START^HLEVAPI(.VAR)
+       S IEN=0,CT=0
+       F  S IEN=$O(^HLMA(IEN)) Q:"IEN!($$S^%ZTLOAD)  D
+       .  S CT=CT+1
+ >     .  I "(CT#1000) D CHECKIN^HLEVAPI
+ >     D CHECKOUT^HLEVAPI
+       ;
+ >     S ^TMP($J,"RD",1)="#"_CT_" entries found by counting process."
+ >     D RUNDIARY^HLEVAPI1("^TMP($J,""RD"")")
+       ;
+ >     S ^TMP($J,"MT",25)="This message is run once daily on system."
+ >     D MSGTEXT^HLEVAPI1("^TMP($J,""MT"")")
+       ;
+ >     S ^TMP($J,"SV",1)="This report is now finished."
+ >     S ^TMP($J,"SV",2)="Contact John Doe at 817 123-4567 if you
+         have questions."
+       ;
+ >     S HLEVTXT(1)="RUN DIARY",HLEVTXT(2)="MESSAGE TEXT"
+ >     S HLEVTXT(3)=VARIABLE VALUE",HLEVTXT(4)="^TMP($J,""SV"")"
+ >     S XMY("REMOTE@ADDRESS.COM")="",XMY(DUZ)=""
+ >     D MAILOUT^HLEVAPI
+       ;
+ >     S X=$$ONOFFM^HLEVAPI0("I") ; Marks monitor INACTIVE
+       ;
+       Q
+  
+  
+ (5) BUILD CONTENTS
+  
+ The software structures contained in this patch that pertain to this 
+ subsection are listed below.
+  
+ Menu Options
+ ------------
+ The primary menu for the Event Monitor system is 'Event Monitoring [HLEV 
+ MENU MAIN]'.  The menu map for this parent option is listed below.
+  
+ Setup options for event monitoring   [HLEV MENU MAIN]
+ ==========================================================================
+ Setup & maintenance options   [HLEV MENU SETUP]
+ |   Monitor setup & maintenance   [HLEV MENU SETUP-MONITOR]|
+ |   |   Enter/edit event monitors   [HLEV EDIT MONITOR]
+ |   |   Monitor setup details   [HLEV PRINT MONITOR SETUP]
+ |   |   Turn on/off event monitor   [HLEV EDIT MONITOR ON-OFF]
+ |   System setup & maintenance   [HLEV MENU SETUP-MASTER]|
+ |   |   Edit parameters   [HLEV EDIT MASTER]
+ |   |   Settings of monitoring parameters   [HLEV PRINT MASTER SETUP]
+ |   |   Turn on/off monitoring   [HLEV EDIT MASTER ON-OFF]
+ |   |   Monitoring master job start   [HLEV MASTER JOB START]
+ |   |   Stop monitoring master job   [HLEV MASTER JOB STOP]
+ |   |   Grant remote request license   [HLEV GRANT REMOTE LICENSE]
+ |   Reports   [HLEV MENU REPORTS]|
+ |   |   Message recipients   [HLEV REPORT MONITOR RECIPIENTS]
+ |   |   Condensed monitor report   [HLEV REPORT CONDENSED MONITOR]
+ |   |   Remote requestable report   [HLEV REPORT REMOTE REQUESTABLE]
+ Run-time options   [HLEV MENU RUNTIME]
+ |   Settings of monitoring parameters   [HLEV PRINT MASTER SETUP]|
+ |   Monitor setup details   [HLEV PRINT MONITOR SETUP]|
+ |   One-time monitor run   [HLEV ONE-TIME MONITOR RUN]|
+ |   Map of monitoring activity   [HLEV MONITOR MAP REPORT]|
+ |   Results of a monitor run   [HLEV MONITOR DETAILS]|
+ |   Run monitor master job now   [HLEV MASTER JOB NOW]|
+  
+  
+ Print Templates
+ ----------------
+ The print templates pertaining to this section are listed below:
+  
+ - HLEV REMOTE REQUESTABLE       
+ - HLEV REPORT MONITOR-ONE LINE  
+  
+ Both of these templates are in the HL7 Monitor file.
+  
+  
+ Sort Templates
+ --------------
+ The sort templates pertaining to this section are listed below:
+  
+    HLEV MONITOR EXPORT LIST    
+    HLEV REPORT MONITOR   
+    HLEV REPORT MONITOR - FF    
+  
+ All of these templates are in the HL7 Monitor file.
+  
+  
+ Input Templates
+ ---------------
+ The input templates contained pertaining to this section are listed below:
+  
+    HLEV MASTER JOB ENTER/EDIT 
+    HLEV MONITOR ENTER/EDIT    
+  
+ The HLEV MASTER JOB ENTER/EDIT template is in the HL7 Monitor Parameters 
+ file, and the HLEV MONITOR ENTER/EDIT template is in the HL7 Monitor file.
+  
+  
+ Mail Groups
+ -----------
+ The mail groups pertaining to this section are listed below:
+  
+    HLEV EVENT MONITOR    
+    HLEV SERVER           
+  
+ During software installation, the coordinator for both groups must be 
+ entered.  Normally, the same coordinator should be entered for both these 
+ mail groups that receives and monitors other server messages at the site.
+  
+ (6) Server Option
+  
+ The Event Monitor system includes the following server option:
+  
+     NAME:                HLEV-INFORMATION-SERVER
+     MENU TEXT:           Event monitoring server
+     TYPE:                server
+     ROUTINE:             HLEVSRV
+     SERVER BULLETIN:     XQSERVER
+     SERVER ACTION:       RUN IMMEDIATELY
+     SERVER MAIL GROUP:   HLEV SERVER
+     SERVER AUDIT:        NO
+     SUPRESS BULLETIN:    YES, SUPRESS IT
+     SERVER REPLY:        REPLY ON ERROR ONLY
+     SAVE REQUEST:        Do not save request
+  
+ Mailman-based requests sent to this server option, containing specific
+ requests for HL7 file data, result in this data being sent to the VistA
+ HL7 development team's Exchange mail group HL7SystemMonitoring@med.va.gov.
+ The data sent off-site in response to a server request will only contain
+ HL7 data.
+  
+ Occasionally, VistA support personnel will have legitimate need for HL7
+ data, and may want to also make use of server requests to obtain the
+ data.  In order to meet this legitimate need, and to ensure that a site's
+ HL7 data is never sent off-site to any inappropriate recipient, a system
+ of "site licenses" has been created.  Using this system, a site may
+ create licenses for support personnel.
+  
+ Licenses are created using the 'Grant remote request license [HLEV GRANT
+ REMOTE LICENSE]' menu option.
+  
+ Additional details about server-based data requests are included in the
+ HL1_6p106sp.pdf document.
+   
+  
+  
+ V. ROUTINE SUMMARY
+ ===================
+  
+ The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+  
+      <tab>;;1.6;HEALTH LEVEL SEVEN;**[patch list]**;Oct 13, 1995
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch          After Patch         Patch List
+  ============      ============          ===========         ==========
+  HLCS                  5745388               6018627        2,9,14,19,43,57,109
+  HLCS2                11097974              11235843       14,40,43,49,57,58,82,84,109
+  HLCSAS1               2183617               2336145        43,57,91,109
+  HLCSDR2               4813200               4904028         2,9,62,109
+  HLCSIN                4825867               7978218        2,30,14,19,62,109
+  HLCSLM                6371649               6836127          49,57,109
+  HLCSLNCH             13824142              13986932        6,19,43,49,57,75,84,109
+  HLCSLSM                191876                260053          49,57,109
+  HLCSMON              10178025               9407051       34,40,48,49,65,66,73,109
+  HLCSMON1              3592657               3680978      15,40,49,65,109
+  HLCSREP                576102                842484             109
+  HLCSTCP               5383135               5743704       19,43,49,57,58,64,84,109
+  HLCSTCP2             12913767              11459523       19,43,49,57,63,64,66,67,76,77,87,109
+  HLCSTCP4                                    1923720             109
+  HLDIE             ---------                 6455306             109
+  HLDIE772          ---------                 2896577             109
+  HLDIE773          ---------                 2035798             109
+  HLDIEDB0          ---------                10162895             109
+  HLDIEDB1          ---------                17693268             109
+  HLDIEDB2          ---------                  113577             109
+  HLDIEDB3          ---------                 2008144             109
+  HLDIEDBG          ---------                 9613340             109
+  HLEMDD            ---------                 4056694             109
+  HLEME             ---------                 6795254             109
+  HLEME1            ---------                 3954209             109
+  HLEMEP            ---------                 3557790             109
+  HLEMP             ---------                 3714447             109
+  HLEMP1            ---------                 6703724             109
+  HLEMRCV           ---------                 2574806             109
+  HLEMSA            ---------                  732865             109
+  HLEMSE            ---------                 6251795             109
+  HLEMSE1           ---------                  107514             109
+  HLEMSH            ---------                  341827             109
+  HLEMSL            ---------                 8009602             109
+  HLEMSL1           ---------                 1716973             109
+  HLEMSND           ---------                 3281963             109
+  HLEMST            ---------                19043597             109
+  HLEMSU            ---------                  692833             109
+  HLEMT             ---------                 1406491             109
+  HLEMU             ---------                 4382427             109
+  HLEVAPI           ---------                 7798573             109
+  HLEVAPI0          ---------                 9413899             109
+  HLEVAPI1          ---------                12383165             109
+  HLEVAPI2          ---------                10109942             109
+  HLEVAPI3          ---------                10115901             109
+  HLEVMNU           ---------                 2029201             109
+  HLEVMST           ---------                10519211             109
+  HLEVMST0          ---------                 9472116             109
+  HLEVREP           ---------                10517403             109
+  HLEVREP0          ---------                 7276053             109
+  HLEVREP1          ---------                12276146             109
+  HLEVREP2          ---------                 9763003             109
+  HLEVREP3          ---------                10110393             109
+  HLEVSRV           ---------                 8781166             109
+  HLEVSRV0          ---------                10559949             109
+  HLEVSRV1          ---------                13380736             109
+  HLEVSRV2          ---------                11894397             109
+  HLEVSRV3          ---------                14557112             109
+  HLEVSRV4          ---------                 9224303             109
+  HLEVSTUP          ---------                21687907             109
+  HLEVUTI0          ---------                10075718             109
+  HLEVUTI1          ---------                11198995             109
+  HLEVUTI2          ---------                12234510             109
+  HLEVUTI3          ---------                 5740295             109
+  HLEVUTIL          ---------                 8868115             109
+  HLEVX             ---------                 1811274             109
+  HLEVX000          ---------                12541167             109
+  HLEVX001          ---------                 8871595             109
+  HLEVX002          ---------                 6656997             109
+  HLEVX003          ---------                 1676244             109
+  HLLOG             ---------                 1586959             109
+  HLMA              9200711                   9293771       19,43,58,63,66,82,91,108,109
+  HLMA0              596674                    865485           34,109
+  HLMA1             3849338                   3849338        19,43,91,109
+  HLMA2             8589903                   9077478      19,43,57,58,64,65,76,82,91,94,109
+  HLP109            --------                  7552653              109
+  HLP109EN          --------                  3166230              109
+  HLTF              7261750                  10575030       1,19,43,55,109
+  HLTF0             3415603                   7001978      12,19,64,91,109
+  HLTP2             1201442                   1456969           34,109
+  HLTP3            15038079                  15431583       19,43,57,58,59,66,69,109
+  HLTP31            1770560                   2840931        57,58,66,109
+  HLTP3A            --------                  1212393             109
+  HLTP4             7964901                   8022503      19,57,59,91,109
+  HLUOPT1          12526225                   9833500       10,13,21,36,19,47,62,109
+  HLUOPT3           --------                  1247260             109
+  HLUOPT4           --------                 17501316             109
+  HLUOPT5           --------                  6428418             109
+  HLUOPT6           --------                  6950001             109
+  HLUOPTF1          --------                  1138590             109
+  HLUOPTF2          --------                  6729139             109
+  HLUTIL            3187029                   3409944       36,19,57,64,66,109
+  HLUTIL3           1189330                   1430750          2,41,109
+  
+  
+  
+ VI. SOFTWARE AND DOCUMENTATION RETRIEVAL
+ =======================================
+   
+  The software for this patch is being distributed in the host file 
+  HL_16_109.KID.  Sites may retrieve the software and documentation directly 
+  using FTP from the [ANONYMOUS.SOFTWARE] directory at the following OI 
+  Field Offices:
+   
+     OI FIELD OFFICE   FTP ADDRESS
+     ------------------------------------------------------
+     Albany            ftp.fo-albany.med.va.gov
+     Hines             ftp.fo-hines.med.va.gov
+     Salt Lake City    ftp.fo-slc.med.va.gov
+ 
+  Note:  The host file must be transferred in ASCII format.
+  
+  Additional documentation is available for the new Event Monitoring 
+  functionality,in both Acrobat and Word formats.  
+   
+   HL71_6P109.DOC    <--Word format!
+   HL71_6P109.PDF    <--Acrobat format!
+   
+ 
+  These documents are available from the VistA Documentation 
+  Library (VDL) Web page at:
+ 
+  http://www.va.gov/vdl/Infrastructure.asp?appID=8
+ 
+  
+  Alternatively, the files may be obtained via FTP at the 3 locations 
+  listed above.
+ 
+  Note: Your FTP software must be set to obtain these documentation 
+  files in binary format, not as ASCII files.
+ 
+  
+  
+ VII. INSTALLATION INSTRUCTIONS
+ ============================
+  
+ Users are allowed to be on the system during the installation.
+  
+ NOTE: Make sure no purging jobs are active when installing this patch.
+  
+       (Purging might be started interactively at your site.  If so, you
+       will need to ask the responsible person when the last purge job
+       was started and whether the job is still running.  If purge jobs
+       are automatically queued, the best way to find information about
+       purge jobs is to evaluate the entry for the 'Purge Messages [HL
+       PURGE TRANSMISSIONS]' menu option entry in the Option Scheduling
+       file (#19.2).)
+  
+  
+    1.  Make a backup copy of all HL-namespaced routines on your system.
+        Store this backup in a secure place, and ensure other appropriate
+        individuals in your IRM Service know the backup storage location.
+  
+    2.  Retrieve and place the following host file on your system before 
+        installing this KIDS distribution: 
+        HL_16_109.KID
+  
+    3.  Load the KIDS distribution using the Installation Menu action 
+        "Load a Distribution" and the host file name HL_16_109.KID.
+  
+    4.  It is important that journaling be turned OFF for the ^HLCS 
+        global.
+  
+    5.  DSM/VMS Sites: Review your mapped routine set.  If any of the 
+        routines listed in the ROUTINE SUMMARY are mapped, they should
+        be removed from the mapped set at this time.
+  
+    6.  DSM/VMS Sites: The official AXP team's recommendation is that 
+        local disk buffering in the global database handler be DISABLED.
+        Disk buffering keeps a portion of the database in a local buffer.
+        On multi-node systems utilizing buffering there is a potential
+        that synchronization problems may occur between processes 
+        executing on different nodes accessing the same data structures 
+        at the same time.
+  
+        To verify that buffering is turned off on your system,login at
+        the VMS prompt as the DSM manager and examine the timer value
+        contained in the ^SYS environment configuration global at:
+    
+        ^[LIB]SYS(ID,"LOCAL BUFFER","TIMEOUT")
+               where:
+   
+         LIB is the location of the ^SYS RMS global returned by 
+         GETGRP^%SYSROU
+         ID is the configuration identifier name 
+  
+        The timer value should be set to '0' to disable buffering. 
+   
+        example:
+           >D GETGRP^%SYSROU
+        
+           >W ^[LIB]SYS("COR2","LOCAL BUFFER","TIMEOUT")
+           0   <---- the timer value is set to 0 - buffering is disabled
+        
+    7.  Shutdown all Logical Links, incoming and outgoing filers, and
+        the Link Manager using the Filer and Link Management options
+        listed below:
+  
+          Stop All Messaging Background Processes [HL STOP ALL]
+          TCP Link Manager Start/Stop [HL START/STOP LINK MANAGER]
+  
+    8.    **This step applies ONLY to VMS Sites that use HL7 TCP/IP 
+          services**.  Follow the instructions in the below section,
+          "Special Instructions for VMS sites that use TCP/IP Services", 
+          for disabling the HL7 TCP/IP Services.
+  
+    9.    Check the "AC", "I" cross-reference global to make sure no 
+          incoming messages are pending on the in-filer queues.
+  
+   example:  
+ >D ^%G
+  
+ Global ^HLMA("AC","I"   
+         HLMA("AC","I"
+ ^HLMA("AC","I",22,12345) = 
+ . . .
+ ^HLMA("AC","I",217,12410) = 
+ Global ^
+  
+        If there are entries in the "AC","I" cross-ref, as shown above, 
+        follow the instructions in the section below, 'Clearing the "AC" Cross-
+        Reference', to clear those remaining entries.
+  
+    10.  Use the KIDS' Installation [XPD INSTALLATION
+        MENU]' options to install the build using the build name
+        HL*1.6*109. You should use each of the following 
+        'Installation' menu options in the order shown below:
+  
+          Verify Checksums in Transport Global
+          Print Transport Global
+          Compare Transport Global to Current System
+          Backup a Transport Global
+          Install Package(s)
+  
+        When using the 'Install Package(s)' menu option to install
+        the patch build, you will be asked several questions.  The
+        questions asked, and the answers you should supply, are
+        shown below.
+  
+          INSTALL NAME: HL*1.6*109
+          Want KIDS to INHIBIT LOGONS during the install?  <NO>
+          Want to DISABLE Scheduled Options, Menu Options, and
+          Protocols?  <NO>
+  
+    11.  During the installation, you must supply the coordinator for
+        two mail groups:
+  
+          - HLEV EVENT MONITOR    
+          - HLEV SERVER           
+  
+          Normally, the same coordinator should be entered for both
+          these mail groups that monitors other server messages at 
+          the site.
+  
+    12.  Start up all Logical Links and incoming and outgoing filers using
+        the Filer and Link Management Option's 'Restart/Start All Links
+        and Filers [HL TASK RESTART]' menu option.
+  
+        (Note that links that do not have "autostart" enabled will need
+        to be restarted manually.)
+   
+    13.  DSM/VMS Sites:  After the patch has been installed,
+         rebuild your map set, if necessary.
+   
+    14.  Start Link Manager using the 'TCP Link Manager Start/Stop [HL
+        START/STOP LINK MANAGER]' menu option.
+   
+    15.  **This step applies ONLY to VMS Sites that use HL7 TCP/IP 
+         services**.  Re-enable your TCP/IP services.
+   
+    16. Make a backup copy of all HL-namespaced routines resident on your
+        system after patch installation.  Store this backup copy in the 
+        same location as the pre-installation backup copy made in step #2
+        above.
+  
+    17. Review the message purging parameters, and especially the new
+        error status purging parameter.  To access these parameters,
+        invoke the 'Site Parameter Edit [HL EDIT COMM SERVER
+        PARAMETERS]' option, and navigate to page 2.  The parameters
+        to review are:
+  
+                  Days to Keep Completed Messages
+                  Days Before Purging All Messages
+                  Days to Keep Awaiting ACK Messages
+                  Days to Keep Error Status Messages
+  
+    18. If your site purges HL7 messages automatically by scheduling the
+        the 'Purge Messages [HL PURGE TRANSMISSIONS]' menu option for
+        daily (or any other recurring frequency) start, you should
+        review option scheduling now.  To do so, invoke the
+        'Schedule/Unschedule Options [XUTM SCHEDULE]', and review the
+        reschedule frequency and the time for next option start.  Because
+        the new Fast Purge will purge most HL7 messages on a regular basis
+        throughout the day, the HL PURGE TRANSMISSIONS option should be 
+        scheduled to run less often.  Once per week on off-hours is
+        recommended for most sites.
+  
+        Note:  The Fast Purge doesn't begin purging messages for about one
+        week after installation of this patch because it relies on the 
+        a new cross-reference that must be populated.  Therefore, sites
+        should delay modifying the scheduling frequency of the HL PURGE 
+        TRANSMISSIONS option for one week.
+        
+  
+  
+  
+ Special Instructions for VMS sites that use TCP/IP Services:
+ ===========================================================
+  
+ 1. Use FileMan to find your site's Multi-listeners, as shown here:
+  
+ Select OPTION: PRINT FILE ENTRIES  
+  
+ OUTPUT FROM WHAT FILE: HL LOGICAL LINK// 
+ SORT BY: NODE// DEVICE TYPE  
+ START WITH DEVICE TYPE: FIRST// MS  Multi-threaded Server
+ GO TO DEVICE TYPE: LAST// MS  Multi-threaded Server
+   WITHIN DEVICE TYPE, SORT BY: 
+ FIRST PRINT FIELD: NUMBER
+ THEN PRINT FIELD: NODE  
+ THEN PRINT FIELD: DEVICE TYPE  
+ THEN PRINT FIELD: TCP/IP PORT  
+ THEN PRINT FIELD: SHUTDOWN LLP ?  
+ THEN PRINT FIELD: 
+ Heading (S/C): HL LOGICAL LINK LIST  Replace 
+ STORE PRINT LOGIC IN TEMPLATE: 
+ START AT PAGE: 1// 
+ DEVICE:   SYSTEM    Right Margin: 80// 
+  
+ ...EXCUSE ME, LET ME PUT YOU ON 'HOLD' FOR A SECOND...
+  
+  
+ HL LOGICAL LINK LIST                       DEC  8,2003  14:12    PAGE 1
+                                                   TCP/IP  SHUTDOWN
+ NUMBER        NODE        DEVICE TYPE               PORT  LLP ?
+ --------------------------------------------------------------------------
+  
+ 22            NXT M5055   Multi-threaded Server     5055  NO
+ 217           NXT M8888   Multi-threaded Server     8888  NO
+  
+  
+  
+ 2. Use FileMan to start shutdown any active connections from your TCPIP 
+    Services listed above (see step 3 below to completely shutdown the 
+    listeners):
+  
+ Select OPTION: ENTER OR EDIT FILE ENTRIES  
+  
+ INPUT TO WHAT FILE: HL LOGICAL LINK// 
+ EDIT WHICH FIELD: ALL// NODE    
+ THEN EDIT FIELD: SHUTDOWN LLP ?  
+ THEN EDIT FIELD: 
+  
+ Select HL LOGICAL LINK NODE: `22  NXT M5055
+ NODE: NXT M5055// 
+ SHUTDOWN LLP ?: NO// Y  YES
+  
+ Do the same for all your links listed above
+  
+ 3. Disable each of the listed listeners above by going to the VMS TCPIP 
+    Configuration Manager to completely disable the TCPIP services that 
+    correspond to your listeners listed above.
+  
+ for example:
+  
+ TCPIP> DISABLE SERVICE  HLS8888DSM
+ TCPIP> DISABLE SERVICE  HLS5055DSM
+  
+ 4.  After installation of the patch, use FileMan to enable the 
+     Multi-listeners listed above.
+  
+ for example:
+  
+ Select OPTION: ENTER OR EDIT FILE ENTRIES  
+  
+ INPUT TO WHAT FILE: HL LOGICAL LINK// 
+ EDIT WHICH FIELD: ALL// NODE  
+ THEN EDIT FIELD: SHUTDOWN LLP ?  
+ THEN EDIT FIELD: 
+  
+ Select HL LOGICAL LINK NODE: `22  NXT M5055
+ NODE: NXT M5055// 
+ SHUTDOWN LLP ?: YES// NO  NO
+  
+ 5. Then re-enable your TCP UCX services that were disabled in step 3.
+  
+  
+ Clearing the "AC" Cross-Reference
+ =================================
+ Perform this procedure at step 9 in the installation instructions only if
+ there are messages pending on the "AC" x-reference that need to be cleard.
+  
+ 1.Start two incoming filers using the "Monitor, Start, Stop Filers" option  
+  
+    on the HL7 Main menu as follows:
+  
+ Select HL7 Main Menu Option: ?
+  
+           Event monitoring menu ...
+           Systems Link Monitor
+           Filer and Link Management Options ...
+           Message Management Options ...
+           Interface Developer Options ...
+           Site Parameter Edit
+  
+ Enter ?? for more options, ??? for brief descriptions, ?OPTION for help 
+ text.
+  
+ Select HL7 Main Menu Option: FILER and Link Management Options
+  
+  
+    SM     Systems Link Monitor
+    FM     Monitor, Start, Stop Filers
+    LM     TCP Link Manager Start/Stop
+    SA     Stop All Messaging Background Processes
+    RA     Restart/Start All Links and Filers
+    DF     Default Filers Startup
+    SL     Start/Stop Links
+    PI     Ping (TCP Only)
+    ED     Link Edit
+    ER     Link Errors ...
+  
+ Select Filer and Link Management Options Option: MONitor, Start, Stop 
+ Filers
+  
+ Task Number of    Asked                            Time
+ Incoming Filer    To Stop   Last Known Date/Time   Difference
+ 403306            No        08-DEC-03 @ 14:49:04   0 Day  00 Hr  00 Min  
+ [End of list - total of 1]
+  
+  
+ Task Number of    Asked                            Time
+ Outgoing Filer    To Stop   Last Known Date/Time   Difference
+ ** No outgoing filers are running **
+  
+  
+ (+I)Start incoming filer (-I)Stop incoming filer (*I)Delete incoming filer
+ (+O)Start outgoing filer (-O)Stop outgoing filer (*O)Delete outgoing filer
+ (N) Next 4 lines in list (B) Back 4 lines in list (Q) Quit
+ Type selection:+ I
+  
+ 2.  Verify that there are no messages remaining on the "AC","I", x-ref.
+   
+ 3.  Stop the incoming filer by using the -I option. 
+  
+  
+  
+ VIII. RECOVERY
+ ============
+  
+ If the installation of this patch causes significant problems, return 
+ to the pre-installation environment as soon as possible by following 
+ these steps:
+  
+    1.  Users are allowed to be on the system during the recover 
+        procedure.
+  
+    2.  Shutdown all Logical Links, incoming and outgoing filers, and
+        the Link Manager using the Filer and Link Management options
+        listed below:
+  
+          Stop All Messaging Background Processes [HL STOP ALL]
+          TCP Link Manager Start/Stop [HL START/STOP LINK MANAGER]
+  
+        AXP/DSM SITES ONLY: Disable all HL7 TCP/IP Services before
+         restoration.
+  
+    3.  Restore all HL-namespaced routines created in the step #2 backup
+        procedure in the 'Installation Instructions' section above.
+  
+    4.  In programmer's mode, enter to following to restore the SET LOGIC 
+        for the 'AC' cross-reference of file 773 to what it was before 
+        installing this patch.
+  
+        >D SETAC^HLP109
+  
+    5.  Start up all Logical Links and incoming and outgoing filers using
+        the Filer and Link Management Option's 'Restart/Start All Links
+        and Filers [HL TASK RESTART]' menu option.
+  
+        (Note that links that do not have "autostart" enabled will need
+        to be restarted manually.)
+  
+        AXP/DSM SITES ONLY: If you previously disabled an HL7 TCP/IP 
+        Service for this installation, you may enable it now.
+  
+    6.  Start Link Manager using the 'TCP Link Manager Start/Stop [HL
+        START/STOP LINK MANAGER]' menu option.
+  
+    7.  Notify the VistA HL7 development team by sending a message to
+        HL7DevelopmentTeam@med.va.gov.  
+  
+ Note:  Patch HL*1.6*109 installs non-routine software "structures" such 
+        as templates and options.  In the case of restoration to 
+        pre-HL*1.6*109 functionality, these non-routine software 
+        "structures" may be left on your system.  They will have no 
+        affect on the operation of the VistA HL7 package.
+  
+  
+ IX. Example Installation
+ =============================
+   
+ Select INSTALL NAME:    HL*1.6*109     Loaded from Distribution  
+ 2/5/04@12:14:21
+      => HL*1.6*109 T02/05/2004  ;Created on Feb 05, 2004@09:09:53
+  
+ This Distribution was loaded on Feb 05, 2004@12:14:21 with header of 
+    HL*1.6*109 T02/05/2004  ;Created on Feb 05, 2004@09:09:53
+    It consisted of the following Install(s):
+      HL*1.6*109
+ Checking Install for Package HL*1.6*109
+ Will first run the Environment Check Routine, HLP109EN
+  
+  
+ Environment check OK...
+  
+  
+ Install Questions for HL*1.6*109
+  
+ Incoming Files:
+  
+  
+    772       HL7 MESSAGE TEXT  (Partial Definition)
+ Note:  You already have the 'HL7 MESSAGE TEXT' File.
+  
+  
+    773       HL7 MESSAGE ADMINISTRATION
+ Note:  You already have the 'HL7 MESSAGE ADMINISTRATION' File.
+  
+  
+    776       HL7 MONITOR JOB
+  
+  
+    776.1     HL7 MONITOR  (including data)
+  
+  
+    776.2     HL7 MONITOR MASTER JOB
+  
+  
+    776.3     HL7 MONITOR EVENT TYPE  (including data)
+  
+  
+    776.4     HL7 MONITOR EVENT
+  
+  
+    776.5     HL7 MONITOR EVENTS PROFILE
+  
+  
+    776.999   HL7 MONITOR PARAMETERS
+  
+  
+    869.3     HL COMMUNICATION SERVER PARAMETERS  (Partial Definition)
+ Note:  You already have the 'HL COMMUNICATION SERVER PARAMETERS' File.
+  
+ Incoming Mail Groups:
+  
+ Enter the Coordinator for Mail Group 'HLEV EVENT MONITOR':   MOORE,JIM  CJM 
+  
+          COMPUTER SYSTEMS ANALYST
+  
+ Enter the Coordinator for Mail Group 'HLEV SERVER':    MOORE,JIM     CJM    
+  
+          COMPUTER SYSTEMS ANALYST
+  
+ Want KIDS to Rebuild Menu Trees Upon Completion of Install? YES// NO
+  
+  
+ Want KIDS to INHIBIT LOGONs during the install? YES// NO
+ Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// NO
+  
+ Enter the Device you want to print the Install messages.
+ You can queue the install by enter a 'Q' at the device prompt.
+ Enter a '^' to abort the install.
+  
+ DEVICE: HOME//   UCX/TELNET
+  
+  
+  
+  
+  Install Started for HL*1.6*109 : 
+                Feb 05, 2004@12:15:18
+  
+ Build Distribution Date: Feb 05, 2004
+  
+  Installing Routines:
+                Feb 05, 2004@12:15:19
+  
+  Running Pre-Install Routine: PRE^HLP109
+  
+  Installing Data Dictionaries: 
+                Feb 05, 2004@12:15:33
+  
+  Installing Data: 
+                Feb 05, 2004@12:15:37
+  
+  Installing PACKAGE COMPONENTS: 
+  
+  Installing PRINT TEMPLATE
+  
+  Installing SORT TEMPLATE
+  
+  Installing INPUT TEMPLATE
+  
+  Installing FORM
+  
+  Installing MAIL GROUP
+  
+  Installing PROTOCOL
+   Located in the HL (HEALTH LEVEL SEVEN) namespace.
+   Located in the HL (HEALTH LEVEL SEVEN) namespace.
+   Located in the HL (HEALTH LEVEL SEVEN) namespace.
+   Located in the HL (HEALTH LEVEL SEVEN) namespace.
+   Located in the HL (HEALTH LEVEL SEVEN) namespace.
+   Located in the HL (HEALTH LEVEL SEVEN) namespace.
+   Located in the HL (HEALTH LEVEL SEVEN) namespace.
+   Located in the HL (HEALTH LEVEL SEVEN) namespace.
+   Located in the HL (HEALTH LEVEL SEVEN) namespace.
+   Located in the HL (HEALTH LEVEL SEVEN) namespace.
+   Located in the HL (HEALTH LEVEL SEVEN) namespace.
+   Located in the HL (HEALTH LEVEL SEVEN) namespace.
+   Located in the HL (HEALTH LEVEL SEVEN) namespace.
+   Located in the HL (HEALTH LEVEL SEVEN) namespace.
+  
+  Installing LIST TEMPLATE
+  
+  Installing OPTION
+                Feb 05, 2004@12:15:44
+  
+  Running Post-Install Routine: POST^HLP109
+  
+ Setup instructions message #172322 sent...
+  
+ New master job queued to task# 360379...
+ Entry #8006 created in HL7 Monitor Master Job file...
+  
+  Updating Routine file...
+  
+  Updating KIDS files...
+  
+  HL*1.6*109 Installed. 
+                Feb 05, 2004@12:15:47
+  
+  Install Message sent #172323
+  
+ Install Completed
+
+Routine Information:
+====================
+
+Routine Name:
+  - HLCS
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCS2
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSAS1
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSDR2
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSIN
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSLM
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSLNCH
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSLSM
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSMON
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSREP
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSTCP
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSTCP2
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSTCP4
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLDIE
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLDIE772
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLDIE773
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEMP
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEMP1
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEMRCV
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEMSA
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEMSE
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEMSE1
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEMSH
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEMSL
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEMSL1
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEMSND
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEMST
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEMSU
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEMU
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLLOG
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLMA
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLMA0
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLMA1
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLMA2
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLP109
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLTF
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLTF0
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLTP2
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLTP3
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLTP3A
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLTP4
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLUOPTF1
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLUTIL
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLUTIL3
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLDIEDB0
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLDIEDB1
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLDIEDB2
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLDIEDBG
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLDIEDB3
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLUOPT1
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLUOPT3
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLUOPT4
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLUOPT5
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLUOPT6
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLCSMON1
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEMDD
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEME
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEME1
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEMEP
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEMT
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEVAPI
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEVAPI0
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEVAPI1
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEVAPI2
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEVAPI3
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEVMNU
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEVMST
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEVMST0
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEVREP
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEVREP0
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEVREP1
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEVREP2
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEVREP3
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEVSRV
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEVSRV0
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEVSRV1
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEVSRV2
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEVSRV3
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEVSRV4
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEVSTUP
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEVUTI0
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEVUTI1
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEVUTI2
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEVUTI3
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEVUTIL
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEVX
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEVX000
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEVX001
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEVX002
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLEVX003
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLP109EN
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLUOPTF2
+
+
+Routine Checksum:
+
+Routine Name:
+  - HLTP31
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : GARCIA,JOSE                   Date Entered  : MAY 21, 2003
+Completed By: MURPHY,MINAO J.               Date Completed: FEB 20, 2004
+Released By : APOLONIO,AUGUSTO              Date Released : FEB 20, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

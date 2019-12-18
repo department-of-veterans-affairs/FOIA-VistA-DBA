@@ -1,0 +1,335 @@
+$TXT Created by HARTIN,JAMES at CHY7G.FO-BAYPINES.MED.VA.GOV  (KIDS) on Monday, 06/06/05 at 13:38
+=============================================================================
+Run Date: OCT 11, 2005                     Designation: LR*5.2*322
+Package : LR - LAB SERVICE                    Priority: Mandatory
+Version : 5.2       SEQ #257                    Status: Released
+                  Compliance Date: NOV 11, 2005
+=============================================================================
+
+Associated patches: (v)LR*5.2*59   <<= must be installed BEFORE `LR*5.2*322'
+                    (v)LR*5.2*248  <<= must be installed BEFORE `LR*5.2*322'
+                    (v)LR*5.2*259  <<= must be installed BEFORE `LR*5.2*322'
+
+Subject: BUG FIXES REPORTED IN NOIS
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ ==================================================================
+ EFFECT ON BLOOD BANK FUNCTIONAL REQUIREMENTS: 
+ Patch LR*5.2*322 does not contain any changes to the 
+ VISTA BLOOD BANK Software as defined by VHA 
+ DIRECTIVE 2004-053 titled VISTA BLOOD BANK 
+ SOFTWARE VERSION 5.2.
+   
+  
+ EFFECT ON BLOOD BANK FUNCTIONAL REQUIREMENTS: 
+ Patch LR*5.2*322 does not alter or modify any software design
+ safeguards or safety critical elements functions.
+  
+  
+ RISK ANALYSIS: Changes made by patch LR*5.2*322 have no
+ effect on Blood Bank software functionality, therefore RISK is none.
+   
+  
+ VALIDATION REQUIREMENTS BY OPTION: Because of the nature 
+ of the changes made, no specific validation requirements exist as a 
+ result of installation of this patch.
+  
+ ===================================================================
+  
+ Problem 1:
+ --------
+  
+ DAY-0204-42022/HD70571 - EN+13~LRUPS undefined variable
+  
+ The system generates an undefined-variable error when a user attempts to
+ review cytopathology reports on a patient that has had all of the accessions
+ removed from an order.
+  
+ Resolution 1:
+ ------------
+  
+ This problem is resolved by performing a check on the third "^" piece of 0
+ node of the ^LR(LRDFN,LRSS,0) global to determine that all accessions have
+ been deleted from the file. If the value of this check is 0, processing is
+ stopped thus preventing the undefined-variable error.
+  
+  
+ Problem 2:
+ ---------
+  
+ BHS-0804-11324/HD70944 - <UNDEFINED>B+2^LRAUDA ERROR
+  
+ In multidivisional sites or any site who has more than one Autopsy Area
+ defined in their Accession file (File 68), when a user selects any 
+ option from the "Data entry for autopsies Option" shown below then decides
+ not to continue when prompted with: Select ANATOMIC PATHOLOGY SECTION:
+ by pressing <Enter> or using the "^" exit character, an error is generated.
+  
+ Data entry, anat path ...>>Data entry for autopsies ...>>Data entry for
+ autopsies Option
+  
+    PD     Provisional anatomic diagnoses
+    AP     Autopsy protocol
+    AS     Autopsy protocol & SNOMED coding
+    AI     Autopsy protocol & ICD9CM coding
+    AF     Final autopsy diagnoses date
+    SR     Autopsy supplementary report
+    SS     Special studies, autopsy
+  
+ Select Data entry for autopsies Option:AS Autopsy protocol & SNOMED coding
+  
+ Enter Etiology, Function, Procedure & Disease ? NO// ^  
+  
+ The routine LRAUDA was not designed to handle this possibility in
+ multidivisional sites and errors out.
+  
+ The problem appears to be occurring in the following three subroutines. 
+ These are presented in the order in which they are executed not the 
+ order in which they appear in the program.
+ The undefined variable occurs in B+2. When the L subroutine is executed, 
+ LRQUIT is set to zero.
+ B ;Autopsy Report/SNOMED Coding
+  D L
+  Q:LRQUIT
+  S LR(2)=1
+  D BDR
+  D EDIT
+  Q
+ When the L subroutine is executed, LRQUIT is set to zero and ^LRAP is 
+ executed. ^LRAP has no effect on LRQUIT. If Y is defined, the L 
+ subroutine quits. If Y is not defined the naked do is executed, LRQUIT 
+ is set to one and the END subroutine is executed.  
+ L ;Define AU Section
+  S LRDICS="AU",LRQUIT=0,XPAD=""
+  D ^LRAP
+  I '$D(Y) D
+  .S LRQUIT=1
+  .D END
+  Q
+  
+ The END subroutine cleans up variables including LRQUIT.
+ END ;
+  K LRQUIT
+  D V^LRU
+  Q
+  
+ As this code is written and executed, any time Y is not defined, an 
+ undefined error will occur.
+  
+ Resolution 2:
+ -------------
+  
+ The following code changes were made to resolve this problem.
+  
+ Remove the D END from the L subroutine:
+  
+ L ;Define AU Section
+  S LRDICS="AU",LRQUIT=0,XPAD=""
+  D ^LRAP
+  I '$D(Y) D
+  .S LRQUIT=1
+  Q
+  
+ Substitute the post conditional quit with an IF statement that includes 
+ the D END.
+  
+ B ;Autopsy Report/SNOMED Coding
+  D L
+  I LRQUIT D END Q
+  S LR(2)=1
+  D BDR
+  D EDIT
+  Q
+  
+ These code changes were made in every entry point for this routine.
+  
+ Problem 3:
+ ---------
+   
+ LON-0904-61172/HD71010- MAJOR SECTION REPORT, BOTH SCROLLING AND PRINTING
+  
+ When users print the Major Section workload report to a printer, occasionally
+ the report will also appear on the screen as well as printing to the printer.
+ This is caused by the routine LRCAPMA,LRCAPML and LRARCML. Code in the
+ routine has an IF statement to check for the device specified for
+ printing:
+  
+ IF the Print Device is not equal to the current terminal device (SET $T=1)
+   THEN call the %ZTLOAD program to create the background print job
+ This IF statement is followed by an ELSE statement:
+   ELSE  Print to the screen.
+  
+ The problem occurs if the call to %ZTLOAD resets the $T flag variable to 0.
+ The ELSE command is executed because $T=0 and the report appears on the
+ screen.
+  
+ Resolution 3:
+ ------------
+  
+ The resolution is to remove the ELSE and put a QUIT after the 
+ IF condition. This makes it impossible for both conditions of the IF...
+ ELSE... to be executed.
+  
+   Original Code:
+   EN^LRCAPMA      ;
+         ; GET THE PARAMETERS
+         S (LRSUMM,LREND)=0,LRNDFN="UNDEFINED"
+         D ASKCOM^LRCAPMR2
+         D ^LRCAPMR
+         I 'LREND D
+         . I IO'=IO(0) D LOAD
+         . E  D DQ            
+         D CLEAN
+         Q
+  
+   New Code:
+   EN^LRCAPMA      ;
+         ; GET THE PARAMETERS
+         S (LRSUMM,LREND)=0,LRNDFN="UNDEFINED"
+         D ASKCOM^LRCAPMR2
+         D ^LRCAPMR
+         I 'LREND D
+         . I IO'=IO(0) D LOAD Q  <- Add QUIT here
+         . D DQ               <- Eliminate the E[lse] command
+         D CLEAN
+         Q
+  
+ ASSOCIATED NOIS/REMEDY TICKETS:
+ ==============================
+ Problem 1:
+    DAY-0204-42022/HD70571 - EN+13~LRUPS undefined variable
+  
+    Closed NOIS tickets :
+    REN-0202-62279 - Partial Cy entry
+    FNC-0403-30896 - Surgical Path errors out
+    ALB-0803-50816 - Print cytopathology report for a patient
+  
+ Problem 2:
+    BHS-0804-11324/HD70944 - <UNDEFINED>B+2^LRAUDA ERROR
+  
+ Problem 3:
+    LON-0904-61172/HD71010 - MAJOR SECTION REPORT, BOTH SCROLLING AND PRINTING
+    HWH-1004-40690/HD71039 - Print queue not functioning properly
+  
+ ASSOCIATED E3R(s):
+ ==================
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Asheville,NC
+ Boston HCS
+ Central Plains HCS
+ Durham,NC
+ Phoenix,AZ
+  
+  
+ ROUTINE SUMMARY: 
+ ===============
+  
+ The following is a list of the routines included in this patch.  
+ The second line of each of these routines now looks like: 
+  
+   <Tab>;;5.2;LAB SERVICE;**[PATCH LIST**;Sep 27, 1994 
+  
+                        CHECK^XTSUMBLD results
+ Routine name      Before Patch        After Patch       Patch List
+ ============      ============        ===========       ==============
+ LRARCML           1408312             1409504           59,322 
+ LRAUDA            1249636             1297939           72,248,259,322
+ LRCAPMA           1764037             1765229           322
+ LRCAPML           1745351             1746543           59,322  
+ LRUPS             4568582             4733165           72,248,259,322
+  
+  
+                       CHECK1^XTSUMBLD results
+  
+ Routine name      Before Patch        After Patch       Patch List
+ ============      ============        ===========       ==========
+ LRARCML           2734324             2735123           59,322
+ LRAUDA            5033846             5184827           72,248,259,322
+ LRCAPMA           3685763             3686642           322
+ LRCAPML           3485741             3486620           59,322
+ LRUPS             8185987             8370560           72,248,259,322
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ =========================
+  
+ This patch can be loaded with users in the system.  Installation time
+ will vary.
+ This patch can be installed anytime and will take less than 10
+ seconds to install.
+  
+ 1. Choose the PackMan message containing this patch and invoke the 
+ INSTALL/CHECK MESSAGE PackMan option.
+  
+  
+ 2.  Start up the Kernel Installation and Distribution System Menu
+      [XPD MAIN]: 
+  
+           Edits and Distribution ...  
+           Utilities ...  
+           Installation ...  
+  
+      Select Kernel Installation & Distribution System Option: Installation
+                                                               ---
+           1      Load a Distribution
+           2      Verify Checksums in Transport Global
+           3      Print Transport Global
+           4      Compare Transport Global to Current System
+           5      Backup a Transport Global
+           6      Install Package(s)
+                  Restart Install of Package(s)
+                  Unload a Distribution
+  
+ 3.  From this menu, you may elect to use the following options
+      (When prompted for the INSTALL NAME, enter LR*5.2*322):
+      
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will
+          not backup any other changes such as DD's or templates.
+      b.  Compare Transport Global to Current System - This option
+          will allow you to view all changes that will be made when
+          this patch is installed.  It compares all components of this
+          patch (routines, DD's, templates, etc.).
+      c.  Verify Checksums in Transport Global - This option will
+          allow you to ensure the integrity of the routines that are
+          in the transport global.
+  
+ 4.  Use the Install Package(s) option and select the package
+      LR*5.2*322.
+  
+      a.  When prompted 'Want KIDS to INHIBIT LOGONs during the
+          install? YES//', answer NO.
+      b.  When prompted 'Want to DISABLE Scheduled Options and Menu 
+          Options and Protocols? YES//', answer NO.
+
+Routine Information:
+====================
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD
+
+Routine Name: LRARCML
+Routine Name: LRAUDA
+Routine Name: LRCAPMA
+Routine Name: LRCAPML
+Routine Name: LRUPS
+
+=============================================================================
+User Information:
+Entered By  : JACOBSON,PHIL                 Date Entered  : JUL 22, 2004
+Completed By: ILUSTRISIMO,LUCY              Date Completed: OCT 11, 2005
+Released By : THORNTON,NANCY                Date Released : OCT 11, 2005
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

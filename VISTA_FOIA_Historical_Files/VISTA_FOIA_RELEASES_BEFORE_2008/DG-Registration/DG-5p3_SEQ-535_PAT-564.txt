@@ -1,0 +1,952 @@
+
+=============================================================================
+Run Date: NOV 03, 2004                     Designation: DG*5.3*564
+Package : DG - REGISTRATION                   Priority: Mandatory
+Version : 5.3       SEQ #535                    Status: Released
+                  Compliance Date: NOV 10, 2004
+=============================================================================
+
+Associated patches: (v)DG*5.3*451  <<= must be installed BEFORE `DG*5.3*564'
+
+Subject: HVE PHASE III
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Enhancement (Mandatory)
+  - Other
+
+Description:
+============
+
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *    NOTE:  Installation compliance date is 11/10/04.                   *
+ *                                                                       *
+ * In order to ensure that exemptions for unemployable veterans are      *
+ * updated by the Health Eligibility Center (HEC) processes, coding      *
+ * changes were necessary in 5 VistA software modules (DG, SD, IVM, IB   *
+ * and PRCA) as well as the software at the HEC.                         *
+ * The compliance date has been shortened due to the urgent nature of    *
+ * the enhancement, and the fact that the HEC cannot install their       *
+ * enhancements until ALL sites have completed installation of the VistA *
+ * patches.                                                              *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+  
+ PROJECT OVERVIEW
+ ================
+ HEC VistA Enhancements (HVE) provides software to support several critical
+ business processes associated with congressionally mandated initiatives.
+ Through the course of a three phase roll-out, a series of system
+ application updates have been and are being made to support enhanced
+ Enrollment functionality, both within VistA and the Health Eligibility
+ Center (HEC), and updates to a series of veterans' enrollments, including 
+ continuous enrollment, and eligibilities, including statuses of Combat 
+ Veteran, former Prisoner of War (POW), Unemployable Veteran and Filipino 
+ Veteran.
+  
+ The HVE Phase 3 project functionality enhancements include:
+  
+ - Unemployable Veteran Service Connection (SC) Priority Group Change
+ - POW Veteran Pharmacy Copayment Exemption and Dental Treatment
+ - Filipino Veteran Data Sharing with the HEC
+ - Combat Veteran (Phase III) Enrollment Priority Updates and Data Sharing
+   with the HEC
+ - Military Service Date (MSD) Sharing with the HEC and, 
+ - Continuous Enrollment Priority Updates 
+  
+ The HVE Phase 3 functionality will be introduced at all sites as part of 
+ a combined effort that encompasses updates to:
+  
+ - Registration (Patch DG*5.3*564); IVM (IVM*2.0*97); Scheduling 
+   (SD*2.0*395) (Distributed as Host File DG_53_P564.KID);
+ - Integrated Billing (Patch IB*2.0*275); and, 
+ - Accounts Receivable (Patch PRCA*4.5*218). 
+  
+ As there is no hard dependency between the patches, it is important to note
+ that some functionality respective to a given patch may not be fully functional 
+ until all patches are installed at the respective site. Each patch description
+ will reference any such dormant functionality as part of its more detailed 
+ functional explanation.
+  
+ NOIS issues addressed with this patch:
+ ======================================
+ IRO-0102-43157 - 7120 ERROR
+ MAN-0502-11724 - 7120 ERRORS
+ CHA-0102-32961 - Agent Orange error code 7120
+ DAN-0102-40916 - ENCOUNTERS ERRORING OUT
+ SAJ-0602-72601 - ERROR CODE 7120
+ MAD-0904-41595 - HVE PHASE II - INCORRECT A/O BU
+ MWV-1004-20052 - HVE PHASE II - INCORRECT A/O BU
+ DUB-0702-30202 - Period of Service incompatible
+ FAV-0102-71144 - PROBLEM WITH AGENT ORANGE QUEST
+ ELP-0102-73236 - Problems with Period of Service
+ HWH-0102-40978 - Questions about error code 7120
+ 
+  
+ FUNCTIONAL DESCRIPTION
+ ======================
+ The functional changes that will be implemented in this patch, DG*5.3*564,
+ include:
+  
+ 1. The enrollment priority algorithm has been modified to assign qualified
+    unemployable veterans to priority 1 and assign eligible combat veterans
+    to priority 6.
+ 2. Unemployable and Combat Veteran End Date have been added as fields to
+    the Patient Enrollment file.
+ 3. Unemployable and Combat Veteran End Date have been added to the display
+    of a veteran's enrollment as eligibility factors.
+ 4. The Pharmacy copayment test algorithm has been modified to exempt
+    veterans who are unemployable or have POW status.
+ 5. The Z07 builder has been modified to add the Filipino Vet Proof field.
+ 6. The algorithm to calculate the Combat Veteran End Date was modified to
+    update the date only if there is no date on file.
+ 7. The Z11 receiver was modified to add the Combat Veteran End Date.
+ 8. A new report was added to list veterans who have Combat Veteran End
+    Dates that are not supported by the Military Service Data on file.
+ 9. A new MUMPS cross-reference was added to all the Military Service data
+    fields in the Patient that will enable a Z07 message to be sent to HEC
+    if any of the data in the fields are changed.
+ 10. The Agent Orange Exposure Location field was made required if the AO
+     Exposure indicator is 'YES'.
+ 11. The consistency check that requires the veteran to have a Vietnam POS
+     in order to have AO Exposure will be removed.
+ 12. A post-install process will set the AO Exposure Location field to
+     VIETNAM for all veterans whose AO Exposure Indicated field is "YES 
+     and whose AO Location is null.
+ 13. The consistency check that requires the veteran to have Persian
+     Gulf or Somalia service in order to have EC Exposure will be removed.
+  
+   
+ DATA DICTIONARY CHANGES
+ =======================
+  
+ PATIENT FILE (#2)
+ -----------------  
+  
+ MODIFIED FIELDs:
+ .305        UNEMPLOYABLE           .3;5 SET
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR305^MUMPS 
+                               1)= D AUTOUPD^DGENA2(DA)
+                               2)= D AUTOUPD^DGENA2(DA)
+                               3)= DO NOT DELETE
+                               This cross-reference is used to update the
+                               patient's current Patient Enrollment record.
+  
+ .32101      VIETNAM SERVICE INDICATED?  .321;1 SET
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR32101^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the VIETNAM SERVICE
+                               INDICATED? field.  
+  
+ .32104      VIETNAM FROM DATE      .321;4 DATE
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR32104^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the VIETNAM FROM DATE
+                               field.  
+  
+ .32105      VIETNAM TO DATE        .321;5 DATE 
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR32105^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the VIETNAM TO DATE 
+ field.  
+  
+ .3212       RADIATION EXPOSURE METHOD  .321;12 SET
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR3212^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the RADIATION EXPOSURE
+                               METHOD field.  
+  
+ .3213       AGENT ORANGE EXPOSURE LOCATION  .321;13 SET
+             1. This field is now a REQUIRED field.
+             2. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR3213^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the AGENT ORANGE EXPOSURE
+                               LOCATION field.  
+  
+ .3214       FILIPINO VETERAN PROOF .321;14 SET
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR3214^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the FILIPINO VETERAN PROOF
+                               field.  
+  
+ .32201      PERSIAN GULF SERVICE?  .322;10 SET
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR32201^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the PERSIAN GULF SERVICE?
+                               field.  
+  
+ .322011     PERSIAN GULF FROM DATE .322;11 DATE
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR322011^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the PERSIAN GULF FROM DATE
+                               field.  
+  
+ .322012     PERSIAN GULF TO DATE   .322;12 DATE 
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR322012^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the PERSIAN GULF TO DATE
+                               field.  
+  
+ .322016     SOMALIA SERVICE INDICATED?  .322;16 SET 
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR322016^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the SOMALIA SERVICE
+                               INDICATED? field.  
+  
+ .322017     SOMALIA FROM DATE      .322;17 DATE 
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR322017^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the SOMALIA FROM DATE
+                               field.  
+  
+ .322018     SOMALIA TO DATE        .322;18 DATE  
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR322018^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the SOMALIA TO DATE field.
+    
+ .322019     YUGOSLAVIA SERVICE INDICATED?  .322;19 SET   
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR322019^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the YUGOSLAVIA SERVICE
+                               INDICATED? field.  
+  
+ .32202      YUGOSLAVIA FROM DATE   .322;20 DATE   
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR32202^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the YUGOSLAVIA FROM DATE
+                               field.  
+  
+ .322021     YUGOSLAVIA TO DATE     .322;21 DATE    
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR322021^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the YUGOSLAVIA TO DATE
+                               field.  
+  
+ .3221       LEBANON SERVICE INDICATED?  .322;1  SET   
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR3221^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the LEBANON SERVICE
+                               INDICATED? field.  
+  
+ .3222       LEBANON FROM DATE      .322;2 DATE     
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR3222^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the LEBANON FROM DATE
+                               field.  
+  
+ .3223       LEBANON TO DATE        .322;3 DATE      
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR3223^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the LEBANON TO DATE field.
+  
+ .3224       GRENADA SERVICE INDICATED?  .322;4  SET   
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR3224^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the GRENADA SERVICE
+                               INDICATED? field.  
+  
+ .3225       GRENADA FROM DATE      .322;5 DATE 
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR3225^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the GRENADA FROM DATE
+                               field.  
+  
+ .3226       GRENADA TO DATE        .322;6 DATE  
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR3226^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the GRENADA TO DATE field.
+  
+ .3227       PANAMA SERVICE INDICATED?  .322;7  SET   
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR3227^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the PANAMA SERVICE
+                               INDICATED? field.  
+  
+ .3228       PANAMA FROM DATE       .322;8 DATE 
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR3228^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the PANAMA FROM DATE
+                               field.  
+  
+ .3229       PANAMA TO DATE         .322;9 DATE  
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR3229^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the PANAMA TO DATE field.
+  
+ .324        SERVICE DISCHARGE TYPE [LAST] .32;4 POINTER TO TYPE OF 
+                                                 DISCHARGE FILE (#25) 
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR324^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the SERVICE DISCHARGE TYPE
+                               [LAST] field.  
+                               
+ .325        SERVICE BRANCH [LAST]  .32;5 POINTER TO BRANCH OF SERVICE FILE
+                                                                      (#23)
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR325^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the SERVICE BRANCH [LAST]
+                               field.  
+                               
+ .326        SERVICE ENTRY DATE [LAST]  .32;6 DATE 
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR326^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the SERVICE ENTRY DATE 
+                               [LAST] field. 
+  
+ .327        SERVICE SEPARATION DATE [LAST] .32;7 DATE  
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR327^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the SERVICE SEPARATION
+                               DATE [LAST] field. 
+  
+ .328        SERVICE NUMBER [LAST]  .32;8 FREE TEXT 
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR328^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the SERVICE NUMBER [LAST]
+                               field. 
+  
+ .329        SERVICE DISCHARGE TYPE [NTL].32;9 POINTER TO TYPE OF DISCHARGE
+                                                          FILE (#25) 
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR329^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the SERVICE DISCHARGE TYPE
+                               [NTL] field.  
+                               
+ .3291       SERVICE BRANCH [NTL]  .32;10 POINTER TO BRANCH OF SERVICE FILE
+                                                                      (#23)
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR3291^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the SERVICE BRANCH [NTL]
+                               field. 
+  
+ .3292       SERVICE ENTRY DATE [NTL] .32;11 DATE 
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR3292^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the SERVICE ENTRY DATE 
+                               [NTL] field. 
+  
+ .3293       SERVICE SEPARATION DATE [NTL] .32;12 DATE 
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR3293^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the SERVICE SEPARATION
+                               DATE [NTL] field. 
+  
+ .3294       SERVICE NUMBER [NTL]  .32;13 FREE TEXT 
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR3213^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the SERVICE NUMBER [NTL]
+                               field. 
+  
+ .3295       SERVICE DISCHARGE TYPE [NNTL] .32;14 POINTER TO TYPE OF
+                                                  DISCHARGE FILE (#25)
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR3295^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the SERVICE DISCHARGE TYPE
+                               [NNTL] field.  
+                                
+ .3296       SERVICE BRANCH [NNTL] .32;15 POINTER TO BRANCH OF SERVICE FILE
+                                                                      (#23)
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR3296^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the SERVICE BRANCH [NNTL]
+                               field. 
+  
+ .3297       SERVICE ENTRY DATE [NNTL] .32;16 DATE 
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR3297^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the SERVICE ENTRY DATE 
+                               [NNTL] field. 
+  
+ .3298       SERVICE SEPARATION DATE [NNTL] .32;17 DATE  
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR3298^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the SERVICE SEPARATION
+                               DATE [NNTL] field. 
+  
+ .3299       SERVICE NUMBER [NTL]  .32;18 FREE TEXT 
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR3299^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the SERVICE NUMBER [NNTL]
+                               field. 
+  
+ .525        POW STATUS INDICATED?  .52;5 SET
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENRL525^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the POW STATUS
+                               INDICATED? field.  
+  
+ .526        POW CONFINEMENT LOCATION .52;6 POINTER TO POW PERIOD FILE(#22)
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR526^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the POW CONFINEMENT
+                               LOCATION field.  
+  
+ .527        POW FROM DATE          .52;7 DATE 
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR527^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the POW FROM DATE field.
+    
+ .528        POW TO DATE            .52;8 DATE 
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR528^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the POW TO DATE field.
+  
+ .5291       COMBAT SERVICE INDICATED?  .52;11 SET
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR5291^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the COMBAT SERVICE
+                               INDICATED? field.  
+  
+ .5292       COMBAT SERVICE LOCATION .52;12 POINTER TO POW PERIOD FILE(#22)
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR5292^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the COMBAT SERVICE
+                               LOCATION field.  
+  
+ .5293       COMBAT FROM DATE       .52;13 DATE 
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR5293^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the COMBAT FROM DATE
+                               field.
+    
+ .5294       COMBAT TO DATE         .52;14 DATE 
+             1. Added a new cross-reference:
+             CROSS-REFERENCE:  2^AENR5294^MUMPS 
+                               1)= D EVENT^IVMPLOG(DA)
+                               2)= D EVENT^IVMPLOG(DA)
+                               This MUMPS cross-reference is used to notify
+                               HEC of changes to the COMBAT TO DATE field.
+    
+ .5295       COMBAT VETERAN END DATE      .52;15 DATE
+             1. Added new cross-reference:
+             CROSS-REFERENCE:  2^AENR52951^MUMPS 
+                               1)= D AUTOUPD^DGENA2(DA)
+                               2)= D AUTOUPD^DGENA2(DA)
+                               3)= DO NOT DELETE
+                               This cross-reference is used to update the
+                               patient's current Patient Enrollment
+                               record.  
+  
+  
+ PATIENT ENROLLMENT FILE (#27.11)
+ -------------------------------- 
+  
+ NEW FIELDS:
+ 50.17   UNEMPLOYABLE           E;17 SET
+  
+                               'Y' FOR YES; 
+                               'N' FOR NO; 
+    
+             DESCRIPTION:      Is this patient unemployable due to an SC
+                               condition as rated by VARO? 
+  
+  
+ 50.18   COMBAT VETERAN END DATE E;18 DATE
+  
+             INPUT TRANSFORM:  S %DT="EX" D ^%DT S X=Y K:X<1 X
+  
+             DESCRIPTION:      For veterans who have combat vet
+                               eligibility, this field represents the date
+                               when that eligibility ends.  
+   
+  
+  
+ OPTIONS:
+ ========
+  
+ The following new menu option will be added:
+  
+  Unsupported CV End Dates Report [DG UNSUPPORTED CV END DATES RPT]
+  
+  - This option will produce a list of veterans with CV End Dates that
+    are not supported by their Military Service Data.
+  
+    The list can be sorted by Veteran Name or DFN (Internal ID).
+ 
+    For more information on the Unsupported CV End Date Report, please refer to
+    the documentation being released with this patch.
+ 
+ The following menu options will be modified:
+                                                                        
+  Supervisor ADT Menu [DG SUPERVISOR MENU]
+  - The new option, Unsupported CV End Dates Report, will be added to
+    this menu.
+  
+  Registration Menu [DG REGISTRATION MENU]
+  - The new option, Unsupported CV End Dates Report, will be added to
+    this menu.
+ 
+ BULLETIN: 
+ =========
+ HEC will send an UNSUPPORTED CV END DATE bulletin to the DGEN ELIGIBILITY
+ ALERT mail group on VistA when the CV Eligibility End Date changes, and the
+ site does not have supporting Military Service data on file.
+ 
+ For more information please refer to the user documentation updates being
+ released with this patch.
+ 
+ ROUTINE SUMMARY:
+ ================
+ The following is a list of the routine(s) included in this patch.  The
+ second line of each of these routine(s) will look like:
+  
+     <tab>;;5.3;Registration;**[patch list]**; Aug 13,1993
+  
+                             CHECK^XTSUMBLD results
+ Routine name      Before Patch          After Patch         Patch List
+ ============      ============          ===========         ==========
+ DG53A564                   N/A             6339149             564
+ DGCV                   5657009             5335653         528,576,564
+ DGCVRPT                    N/A             5064039             564
+ DGENA                  1901380             2009868     121,122,147,232,314
+                                                                564
+ DGENA1A                3627065             3726674     121,147,232,314,564
+ DGENEGT1              13912999            13188867     232,417,454,491,513
+                                                              451,564
+ DGENELA                3989706             4047400     121,147,232,314,451
+                                                                564
+ DGENELA1              22464604            22479353     147,327,314,367,497
+                                                              451,564
+ DGENELA4              13082559            14555893     232,275,306,327,314
+                                                        367,417,437,456,491
+                                                              451,564
+ DGENL1                19156625            20391165     121,147,232,266,343
+                                                                564
+ DGENU                  9487568             9548645     121,122,147,232,314
+                                                                564
+ DGENUPL                7167600             7167636     147,222,232,363,472
+                                                              497,564
+ DGENUPL9               4048664             3963864       232,378,451,564
+ DGENUPLA               8993602             9391500     397,379,497,451,564
+ DGMTA                 13595347            13605221      33,45,137,166,177
+                                                        182,290,344,332,433
+                                                          458,535,612,564
+ DGMTCOR                9786215             9540473      21,45,182,290,305
+                                                          330,344,495,564
+ DGMTCOU1               3968368             4669879      33,45,54,335,358
+                                                          401,436,445,564
+ DGMTR1                 9048290             9053254     182,344,433,456,564
+ DGRPC1                 7067819             6824079       314,342,451,564
+ DGRPC2                14544544            14470769      45,69,108,121,205
+                                                        218,342,387,470,467
+                                                        489,505,507,528,451
+                                                                564
+ VAFHLZPD               8631075             8791899     94,122,160,220,247
+                                                              545,564
+  
+  
+ SOFTWARE AND DOCUMENTATION RETRIEVAL
+ ====================================  
+ The software for this patch is being distributed in a host file.  The 
+ host file will contain three KIDS builds.
+   
+     Host file name: DG_53_P564.KID
+   
+             Builds:  DG*5.3*564
+                      IVM*2.0*97
+                      SD*5.3*395
+  
+ Sites may retrieve the software and documentation directly using FTP 
+ from  the ANONYMOUS.SOFTWARE directory at the following OI Field Offices:
+  
+             Albany:  ftp.fo-albany.med.va.gov
+              Hines:  ftp.fo-hines.med.va.gov
+     Salt Lake City:  ftp.fo-slc.med.va.gov
+  
+ The following documentation will be available:
+   
+     File Name                 Description
+     ---------                 -----------
+     DG_5_3_P564_ADTBE_UM.PDF  Revised PIMS ADT User Manual, Menus, Intro,
+                               Orientation, etc.
+     DG_5_3_P564_SADT_UM.PDF   Revised PIMS ADT User Manual, Supervisor ADT
+                               Menu Module
+     DG_5_3_P564_REG_UM.PDF   Revised PIMS ADT User Manual, Registration
+                               Menu Module
+     IVM_2_P97_TM.PDF          Revised IVM V. 2.0 Technical Manual
+     
+  
+     Note: Use ASCII mode when transferring the .KID file.
+           Use Binary mode when transferring the .PDF file.  The .PDF 
+           files can be read on a PC using the Adobe Acrobat Reader program.
+           The VistA Documentation Library [VDL] contains all end-user 
+           manuals.
+  
+  
+   
+ INSTALLATION INSTRUCTIONS
+ =========================  
+   
+         * * * * * *  A  T  T  E  N  T  I  O  N  * * * * * * 
+    
+ It is recommended this patch be installed outside of normal business 
+ hours to avoid any complications resulting from users on the system. 
+ Installation will take approximately 2 minutes.
+   
+ This patch should NOT be installed while the following jobs are running:
+ 
+       IVM BACKGROUND JOB [IVM BACKGROUND JOB]
+       SCDX AMBCAR NIGHTLY XMIT - Ambulatory Care Nightly Transmission to NPCDB
+       SDAM APPT MGT - Appointment Management
+   
+ Installation Steps
+ ==================
+   
+ 1. Download the KIDS file DG_53_P564.KID from the ANONYMOUS.SOFTWARE 
+    directory of either Albany, Hines, or the Salt Lake CIOFO to the 
+    appropriate directory on your system.
+   
+ 2. Use the 'LOAD A DISTRIBUTION' option on the KIDS INSTALLATION menu, 
+    and enter: DG_53_P564.KID. 
+   
+ 3. Review your mapped set.  If any of the routines listed in the ROUTINE 
+    SUMMARY section of patches DG*5.3*564, IVM*2*97 or SD*5.3*395 are
+    mapped, they should be removed from the mapped set at this time.
+   
+ 4. From the 'Kernel Installation & Distribution System' menu, select
+    the Installation menu.
+   
+ 5. From this menu, you may elect to use the following options (when 
+    prompted for INSTALL NAME, enter DG*5.3*564).
+   
+      a. Backup a Transport Global - This option will create a backup
+         message of any routines exported with the patch.  It will NOT
+         backup any other changes such as DDs or templates.
+   
+      b. Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when the patch
+         is installed.  It compares all components of the patch
+         (routines, DDs, templates, etc.).
+   
+      c. Verify Checksums in Transport Global - This option will allow
+         you to ensure the integrity of the routines that are in the
+         transport global.
+   
+      d. Print Transport Global - This option will allow you to view
+         the components of the KIDS build.
+  
+ 6. Use the Install Package(s) option and select DG*5.3*564.
+   
+ 7. When prompted 'Want KIDS to INHIBIT Logon's during the install? 
+    YES//', it is recommended you answer NO.
+   
+ 8. When prompted 'Want to DISABLE Scheduled Options, Menu Options,
+    and Protocols? YES//', respond YES, and place the following option out of
+    order:
+  
+      IVM BACKGROUND JOB [IVM BACKGROUND JOB]
+      SCDX AMBCAR NIGHTLY XMIT - Ambulatory Care Nightly Transmission to NPCDB
+      SDAM APPT MGT - Appointment Management
+  
+ POST-INSTALL JOB
+ ================
+ Following the installation of this patch, a post install job, SET^DG53A564
+ will be queued to set the Agent Orange Exposure Location field equal to
+ VIETNAM, for all veterans whose Agent Orange Exposure indicator is YES and
+ Agent Orange Exposure Location is null.  
+ 
+ The following mail message will be generated upon successful completion of the
+ post-install:
+ 
+    Subj: DG*5.3*564A post init has run to completion.  [#19389]
+    From: PATCH DG*5.3*564A  In 'IN' basket.   Page 1  *New*
+    --------------------------------------------------------------------------
+    Routine to populate AGENT ORANGE EXPOSURE LOCATION field (#.3213) with
+    VIETNAM for all patients claiming exposure to agent orange (AGENT ORANGE
+    EXPOS. INDICATED? equals YES) and Exposure Location equals NULL ran to
+    completion on Oct 27, 2004@15:45:57.
+ 
+    Post init routine DG53A564 can be deleted.
+ 
+    Enter message action (in IN basket): Ignore//
+ 
+ 
+ **Note: The following step should only be performed if the above job does not
+         complete successfully.
+ 
+ If the job did not complete appropriately, and it is necessary to rerun the
+ process, the follow command should be entered at the programmer's prompt:
+  
+      D QUEUE^DG53A564 
+ 
+
+Routine Information:
+====================
+
+Routine Name:
+  - DG53A564
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGCV
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGCVRPT
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGENA
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGENA1A
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGENELA
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGENELA1
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGENELA4
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGENU
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGENUPL
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGENUPLA
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGMTA
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGMTCOR
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGMTCOU1
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGMTR1
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGRPC1
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGRPC2
+
+
+Routine Checksum:
+
+Routine Name:
+  - VAFHLZPD
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGENEGT1
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGENL1
+
+
+Routine Checksum:
+
+Routine Name:
+  - DGENUPL9
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:
+Entered By  : MORGAN,BRIAN                  Date Entered  : OCT 31, 2003
+Completed By: DESMOND,LINDA                 Date Completed: NOV 02, 2004
+Released By : GROOMS,ANTHONY E              Date Released : NOV 03, 2004
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

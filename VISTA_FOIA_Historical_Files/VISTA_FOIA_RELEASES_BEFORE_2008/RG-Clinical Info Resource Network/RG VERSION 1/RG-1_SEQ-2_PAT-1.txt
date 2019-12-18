@@ -1,0 +1,472 @@
+$TXT Created by DAVIS,PAULETTE T at DEVCRN.ISC-ALBANY.VA.GOV  (KIDS) on TUESDAY, 10/12/99 at 13:43
+=============================================================================
+Run Date: JAN 20, 2000                     Designation: RG*1*1
+Package : RG - CLINICAL INFO  NETWORKPriority: Mandatory
+Version : 1         SEQ #2                     Status: Released
+=============================================================================
+
+
+Subject: EXCEPTION MESSAGE ENHANCEMENTS
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Enhancement (Mandatory)
+
+Description: 
+============
+
+  Y2K Waiver Request ID#:  Y2KW0001      Y2K Waiver Status: Approved
+       This patch may be installed during the Y2K Moratorium, after
+       1/15/2000.
+   
+  1.)  RESOLVING POTENTIAL MATCHES DURING DIRECT CONNECT &
+       POTENTIAL MATCH EXCEPTION MESSAGE ENHANCEMENT
+       This patch addresses the related issues of resolving potential 
+       matches during a direct connect and potential match exception 
+       messages that are generated each night during the Local/Missing 
+       ICN Resolution Background Job [MPIF LOC/MIS ICN RES].
+   
+       Potential Matches During a Direct Connect:
+       ------------------------------------------
+       Originally, the software functioned in the following fashion.
+       While using Registration for a new patient or accessing a 
+       patient who doesn't have a national Integration Control Number 
+       (ICN) through Load/Edit, a direct connect is made to the Master 
+       Patient Index (MPI) to get the patient an ICN.  A check is made 
+       to see if the patient already exists on the MPI.  During that 
+       check, the user may be presented with a list of potential 
+       matches to review.  The user can decide that one of the 
+       potential matches looks like an exact match and make that 
+       selection, reject everyone on the list and create a new ICN, 
+       or elect to QUIT the List Manager screen and a local ICN is 
+       assigned.
+   
+       This patch brings in the following functionality.
+       During Registration or Load/Edit, if a direct connect to the MPI
+       would result in a list of potential matches, the patient is 
+       instead given a local ICN and an exception is logged in the CIRN
+       HL7 EXCEPTION LOG file (#991.1).  A new option, View Potential
+       Match Patient [RG EXCEPTION POTENTIAL MATCH], is used to list 
+       patients that must be manually resolved to the MPI.  The 
+       person(s) designated to resolve these patients is notified of 
+       pending resolutions when he/she logs on to the system.  The
+       Single Patient Initialization to MPI option [MPIF IND MPI LOAD]
+       is used to match the patient to the MPI, thus taking this 
+       responsibility off of the registration clerk.
+        
+       Potential Match Exception Messages:
+       -----------------------------------
+       Originally, the software functioned in the following fashion.
+       During the initialization to the MPI, any patient who cannot be
+       resolved automatically is placed in the CIRN HL7 EXCEPTION LOG
+       file (#991.1).  A local E-Mail message is sent to all members of
+       the MPIF EXCEPTIONS mail group stating that the patient needs to
+       be resolved manually through the Single Patient Initialization
+       to MPI option [MPIF IND MPI LOAD].  A message is sent for each
+       patient who needs to be resolved, resulting in a large number of
+       messages.  Also, the nightly Local/Missing ICN Resolution
+       Background JOB attempts an automatic resolution for all patients
+       with local ICNs or who are missing an ICN.  Any failed attempts
+       result in more exception messages.  This is repeated each night
+       until the patient is resolved manually.  This produced hundreds
+       of individual messages (many duplicates) that are cumbersome to
+       review.
+   
+       This patch brings in the following functionality.
+       The E-Mail messages have been eliminated for the potential match
+       exceptions.  A new option, View Potential Match Patient [RG 
+       EXCEPTION POTENTIAL MATCH], prints patients in the CIRN HL7
+       EXCEPTION LOG file (#991.1) who currently need a national ICN.
+       Members of the RG CIRN DEMOGRAPHIC ISSUES mail group are 
+       notified when they sign on to the system if there are any 
+       patients in the CIRN HL7 EXCEPTION LOG file (#991.1) who have an
+       exception type of 'Potential Matches Returned' that do not have
+       a national ICN.
+    
+  2.)  BULLETIN GENERATED IF REMOTE PATIENT MARKED AS DECEASED
+       If a shared patient is flagged as deceased at one treating facility,
+       a bulletin is generated to the RG CIRN DEMOGRAPHIC ISSUES mail
+       group at the subscribing sites.  The bulletin is generated when the
+       remote site has a date of death and the subscribing site does not
+       and also when the remote site has a date of death which is different
+       from the subscribing site's date of death (excluding time).  Each
+       subscriber can then review whether the patient should be marked as
+       deceased at their site.  The following message is displayed when the
+       remote site has a date of death and the subscribing site does not.
+    
+           Subj: Remote Date of Death Indicated
+           From: CIRN PACKAGE  in 'IN' basket
+           -----------------------------------------------------------
+           The CIRN Package has received a message from:
+           MIAMI --> Site Number: 546
+    
+           This message indicates that patient DOE,JOHN
+           has a date of death at the other facility but not at
+           your facility.
+   
+           Date of Death from other facility:  Jun 11, 1999
+   
+       The following message is displayed when the remote site has a
+       date of death that is different from the subscribing site's
+       date of death.
+   
+           Subj: Remote Date of Death Indicated
+           From: CIRN PACKAGE  in 'IN' basket
+           -----------------------------------------------------------
+           The CIRN Package has received a message from:
+           BAY PINES, FL --> Site Number: 516
+    
+           This message indicates that patient DOE,JOHN
+           has a different date of death at the other facility than at
+           your facility.
+   
+           Date of Death from other facility:  Jun 04, 1999
+           Date of Death at your facility:  Jun 11, 1999
+   
+  3.)  EXCEPTION MESSAGE GENERATED IF SCN IS NULL
+       During the initial load to the Master Patient Index (MPI) or
+       during an individual direct connect to the MPI, a facility makes
+       it's first contact to the MPI for a patient.  If the patient
+       already exists on the MPI, the patient's Integration Control
+       Number (ICN) and CIRN Master of Record (CMOR) are returned.
+       Using this information, the site sends a request to the CMOR
+       to be added as a treating facility for the patient and as a
+       subscriber to data updates for the patient (Subscription Request).
+       After processing these requests, the CMOR broadcasts messages to
+       all subscriber sites to add the new facility as well.  If the
+       CMOR has a site erroneously listed as subscriber, this patch
+       allows the CIRN software to detect that fact and generates an
+       exception message to the RG CIRN DEMOGRAPHIC ISSUES mail group.
+       A copy of the message follows.
+    
+           Subj: CIRN Exception: Patient Does Not Exist
+           From: HL7 Msg#716449  in 'IN' basket
+           -----------------------------------------------------------
+           Patient Does Not Exist: Msg#716449 DOE,JOHN Does not exist
+           in patient database.
+   
+           See Appendix F of the Clinical Information Resource Network
+           Patient Demographics (CIRN-PD) and Master Patient Index (MPI)
+           Installation and Implementation Guide.
+   
+  4.)  A minor change was made to routine RGRSDYN1 to correct the
+       DO dot structure.
+   
+  5.)  The code to generate the sensitive patient bulletin in RGRSPT
+       was inadvertently "commented out" during testing.  That code has
+       now been activated.
+   
+  6.)  Checks were added to insure that subscription messages do not
+       go to "Non-CIRN" sites.  The node is checked in the HL LOGICAL
+       LINK file (#870) to insure that it is a VA* node.  An exception
+       message, with the text "Missing/Unable to get Logical Link", goes
+       out to the MPIF EXCEPTIONS mail group.  This indicates that the
+       institution is linked to a node that it should not be linked to
+       in the HL LOGICAL LINK file (#870).  This modification was made
+       to address NOIS message MIA-0899-30007.  The MPIF EXCEPTIONS mail
+       group should contain only the remote mail group, CIRN EXCEPTION
+       MGT on FORUM.  This mail group, composed of Technical Services and
+       National VistA Support members, will process the technical
+       exceptions from the CIRN sites.
+   
+  7.)  In routine RGJCSUB, code was added to handle situations where the
+       site has duplicate station numbers in the Institution (#4) file.
+   
+  8.)  Code was modified in RGJCREC, RGJCTS01 and RGJCSUB to pass the DFN
+       for CIRN HL7 Exceptions so that the "ADFN" cross-reference in the
+       CIRN HL7 EXCEPTION LOG file (#991.1) will be populated.
+   
+  9.)  A NOIS was reported by Atlanta regarding a "CIRN - MISSING DATA"
+       exception message.  This synchronization problem created a bulletin
+       because the incoming HL7 message was attempting to process a non-ADT
+       message.  The message contained no data for all fields.  CIRN should
+       only process the message if it is an "ADT" type message.  Code was 
+       added to routine RGRSPT to check for message type (ADT) to resolve 
+       NOIS message ISP-1099-N0294.
+   
+  Data Dictionary Changes:
+  ========================
+  The "Patient Does Not Exist" entry, Internal Entry Number (IEN) 228 and
+  "Duplicate Station Number in Institution File (#4)" entry, IEN 229 were
+  added to the CIRN HL7 EXCEPTION TYPE file (#991.11).
+   
+  A new field was added to the CIRN HL7 EXCEPTION LOG file (#991.1).
+  The PATIENT (#3) field was added to the EXCEPTION multiple.  A MUMPS type 
+  cross-reference for quick identification of patient specific exceptions 
+  is used to eliminate duplicate exceptions as well as group exceptions by
+  type and patient.
+   
+  New Options:
+  ============
+  Message Exception Menu [RG EXCEPTION MENU]
+    This menu is used to view CIRN Health Level Seven (HL7) message
+    exceptions logged in the CIRN HL7 EXCEPTION LOG file (#991.1).
+   
+  IRM can assign the Message Exception Menu [RG EXCEPTION MENU] to
+  selected users as needed for exception review.
+   
+  CIRN HL7 Exception Notifier [RG EXCEPTION NOTIFIER]
+    This option is used to notify members of the RG CIRN DEMOGRAPHIC 
+    ISSUES Mail Group that there are exceptions to review.
+   
+  IRM:  The CIRN HL7 Exception Notifier [RG EXCEPTION NOTIFIER] option 
+  is NOT a user option and should not be added to user's menus.
+   
+  View Potential Match Patient [RG EXCEPTION POTENTIAL MATCH]
+    This option produces a list of patients from the CIRN HL7 EXCEPTION 
+    LOG file (#991.1) who have been identified as having more than one
+    potential match on the Master Patient Index (MPI).  These patients
+    have not been resolved using the Single Patient Initialization to
+    MPI option [MPIF IND MPI LOAD].
+    Before producing the report, this option purges DUPLICATE potential
+    match entries from the CIRN HL7 EXCEPTION LOG file (#991.1).
+    
+  Test Sites:
+  ===========
+  Atlanta, GA
+  Alexandria, LA
+  Augusta, GA
+  Battle Creek, MI
+  Bay Pines, FL
+  Big Spring, TX
+  Central Alabama HCS
+  Charleston, SC
+  Connecticut HCS
+  Danville, IL
+  El Paso, Tx
+  Fayetteville, AR
+  Houston, TX
+  Indianapolis, IN
+  Manchester, NH
+  Miami, FL
+  Mountain Home, TN
+  Nashville, TN
+  Prescott, AZ
+  Saginaw, MI
+  Salt Lake City, UT
+  San Francisco, CA
+  Southern Colorado HCS
+  West Palm Beach, FL
+   
+  Associated NOIS:
+  ================
+  MIA-0899-30007
+  ISP-1099-N0294
+   
+  Routine Summary:
+  ================
+  The following is a list of the routine(s) included in this patch.  The
+  second line of each of these routine(s) will look like:
+   
+  <TAB>;;1.0; CLINICAL INFO RESOURCE NETWORK ;**[Patch List]**;30 Apr 99
+  CHECK^XTSUMBLD results:
+   
+  Routine       Before Patch       After Patch       Patch List
+  --------      ------------       ------------      ----------
+  RGEVPM               N/A            7338460           1
+  RGHLLOG          2524310            3763356           1
+  RGJCREC         14023460           22405882           1
+  RGJCSUB         10701198           15191772           1
+  RGJCTS01         1115126            4119447           1
+  RGP1ENV              N/A             510763           1
+  RGRSBUL1         5146413            7407808           1
+  RGRSDYN1         8571379            8460215           1
+  RGRSPT           6105474            6205472           1
+  RGRSUTIL         2734373            3871163           1
+   
+  Installation Instructions:
+  ==========================
+  This patch may be loaded with users on the system.  You may wish
+  to install it during non-peak hours.  Installation will take less
+  than 5 minutes.
+   
+  Note: Version 1.0 of the CLINICAL INFO RESOURCE NETWORK must be 
+        installed prior to installing this patch.  The environment 
+        check routine fails without version 1.0 of CIRN PD/MPI.
+        This patch should be installed immediately before MPIF*1*1.
+   
+  1.  Using the TaskMan option Schedule/Unschedule Options [XUTM SCHEDULE],
+      unschedule the following option:
+        VAFC BATCH UPDATE          UPDATE BATCH JOB FOR HL7 v2.3
+   
+  2.  Use the INSTALL/CHECK MESSAGE option on the Packman menu.  [Note: 
+      TEXT PRINT/DISPLAY option in the PackMan menu will display the 
+      patch text only.]
+   
+  3.  None of the routines in the CIRN Patient Demographics package
+      have been recommended for routine mapping.
+   
+  4.  From the Kernel Installation and Distribution System Menu, select
+      the Installation menu.
+   
+  5.  From this menu, you may elect to use the following options (when
+      prompted for the INSTALL NAME, enter RG*1.0*1).
+   
+      (a)  Backup a Transport Global - this option will create a backup
+           message of any routines exported with the patch.  It will NOT
+           backup any other changes such as DDs or templates.
+   
+      (b)  Compare Transport Global to Current System - this option will
+           allow you to view all changes that will be made when the
+           patch is installed.  It compares all components of the patch
+           (routines, DDs, templates, etc.).
+   
+      (c)  Verify Checksums in Transport Global - this option will allow
+           you to ensure the integrity of the routines that are in the
+           transport global.
+   
+      (d)  Print Transport Global - this option will allow you to view the
+           components of the KIDS build.
+   
+  6.  Use the Install Package(s) option and select the package RG*1.0*1.
+   
+  7.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols? YES//', respond NO.
+   
+  8.  Using the TaskMan option Schedule/Unschedule Options [XUTM SCHEDULE],
+      schedule the option VAFC BATCH UPDATE [UPDATE BATCH JOB FOR HL7 v2.3]
+      to run every 10 minutes.
+   
+  9.  Routine RGP1ENV can be deleted from your system after successful
+      installation.
+   
+  Sample Installation:
+  =====================
+   
+  Select Kernel Installation & Distribution System Option: Installation
+   
+  Select Installation Option: Install Package(s)
+  Select INSTALL NAME: RG*1.0*1
+           Loaded from Distribution  7/9/99@10:39:25
+      => RG*1*1
+  This Distribution was loaded on Jul 09, 1999@10:39:25 with
+  header of RG*1*1
+  It consisted of the following Install(s):
+  RG*1.0*1
+   
+    RG*1.0*1
+  Will first run the Environment Check Routine, RGP1ENV
+   
+  Environment check is ok.
+   
+  Install Questions for RG*1.0*1
+   
+  Incoming Files:
+   
+    991.1     CIRN HL7 EXCEPTION LOG  (Partial Definition)
+  Note:  You already have the 'CIRN HL7 EXCEPTION LOG' File.
+   
+    991.11    CIRN HL7 EXCEPTION TYPE  (including data)
+  Note:  You already have the 'CIRN HL7 EXCEPTION TYPE' File.
+  I will MERGE your data with mine.
+   
+  Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// NO
+   
+  Enter the Device you want to print the Install messages.
+  You can queue the install by enter a 'Q' at the device prompt.
+  Enter a '^' to abort the install.
+   
+  DEVICE: HOME// <RET>
+   
+  Install Started for RG*1.0*1 : 
+                Jul 09, 1999@10:42:40
+  
+  Installing Routines:..........
+                Jul 09, 1999@10:42:40
+  
+  Installing Data Dictionaries: ...
+                Jul 09, 1999@10:42:42
+  
+  Installing Data: 
+                Jul 09, 1999@10:42:42
+  
+  Installing PACKAGE COMPONENTS: 
+  
+  Installing OPTION......
+                Jul 09, 1999@10:42:43
+  
+  Updating Routine file......
+  
+  Updating KIDS files.......
+  
+  RG*1.0*1 Installed. 
+                Jul 09, 1999@10:42:44
+   
+  Install Message sent #11197855
+
+Routine Information:
+====================
+
+Routine Name:
+  - RGJCREC
+
+
+Routine Checksum:
+
+Routine Name:
+  - RGRSDYN1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RGRSBUL1
+
+
+Routine Checksum:
+
+Routine Name:
+  - RGRSPT
+
+
+Routine Checksum:
+
+Routine Name:
+  - RGP1ENV
+
+
+Routine Checksum:
+
+Routine Name:
+  - RGEVPM
+
+
+Routine Checksum:
+
+Routine Name:
+  - RGHLLOG
+
+
+Routine Checksum:
+
+Routine Name:
+  - RGRSUTIL
+
+
+Routine Checksum:
+
+Routine Name:
+  - RGJCSUB
+
+
+Routine Checksum:
+
+Routine Name:
+  - RGJCTS01
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : LAZABARA,CINDY F              Date Entered : JUN 07, 1999
+Completed By: DAVIS,PAULETTE                Date Completed: JAN 20, 2000
+Released By : CARLSON-GOTTS,NANCY           Date Released : JAN 20, 2000
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

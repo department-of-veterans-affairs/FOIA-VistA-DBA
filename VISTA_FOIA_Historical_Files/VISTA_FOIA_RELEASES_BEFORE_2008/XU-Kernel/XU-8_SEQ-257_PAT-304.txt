@@ -1,0 +1,212 @@
+$TXT Created by BEUSCHEL,GARY at NXT.KERNEL.FO-OAKLAND.MED.VA.GOV  (KIDS) on Tuesday, 07/15/03 at 10:24
+=============================================================================
+Run Date: JUL 24, 2003                     Designation: XU*8*304
+Package : XU - KERNEL                          Priority: Mandatory
+Version : 8       SEQ #257                       Status: Released
+                  Compliance Date: AUG 24, 2003
+=============================================================================
+
+Associated patches: (v)XU*8*229    <<= must be installed BEFORE `XU*8*304'
+
+Subject: KIDS FIXES
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Enhancement (Mandatory)
+
+Description: 
+============
+
+ XU*8.0*304
+ 
+ Blood Bank Team Clearance: 5/28/2003
+ Test Sites: Fayetteville, AR; Montana HCS; FO Washington; Biloxi, MS;
+             Northern California HCS; Birmingham, AL
+ 
+ This patch fixes problems in KIDS.
+ 
+ NOIS: FAV-0799-70204
+ The routine ^XPDKRN does not have the option to backup a transport global.
+ This patch adds it.  The post-init deletes the global ^DOPT("XPD"), and then
+ recreates it with the added option.
+ 
+ NOIS: ISW-0798-21077, ISL-0599-51459
+ If you select the Full Comparison in the option [XPD COMPARE TO SYSTEM]
+ Compare Transport Global to Current System, data that is exported for a file
+ is not compared if the "Update the DD" question was answered NO.  That's not
+ right.  The data should be compared regardless of whether the DD is updated.
+ This patch fixes that in routine ^XPDCOMG.
+ 
+ NOIS: PBG-0801-N0871
+ If you select the Full Comparison in the option [XPD COMPARE TO SYSTEM]
+ Compare Transport Global to Current System, and items (such as mail groups,
+ options, etc.) to be deleted do not exist on the current system, KIDS will
+ report that they are to be ADDED. This patch fixes that in routine ^XPDCOMG.
+ 
+ NOIS: ISP-0403-N0060
+ When editing a build, on the File information screen, at the Resolve Pointers
+ prompt, the help text is not clear.  This patch fixes that by altering the
+ DD for the field as follows:
+ 
+ STANDARD DATA DICTIONARY #9.6 -- BUILD FILE
+ STORED IN ^XPD(9.6,           (VERSION 8.0)
+ DATA        NAME               GLOBAL        DATA
+ ELEMENT     TITLE              LOCATION      TYPE
+ ------------------------------------------------------------------------
+ 9.64,222.5  RESOLVE POINTERS   222;5 SET
+                                'y' FOR YES; 
+                                'n' FOR NO; 
+             DESCRIPTION:YES means you want to have all pointer type
+                         field values resolved at the installing site.
+ 
+                         NO means you do not want any pointer type field
+                         values resolved.
+ 
+ NOIS: MON-0799-51103
+ Under the "Build File Print" option,
+ a. If you simply press return at the BUILD NAME: prompt, it should exit.
+    Instead it prompts for DEVICE:
+ b. If the patch description contains lines that are longer than 80
+    characters, it should wrap the lines.  Instead, it may truncate them.
+ This patch fixes both these problems in routine ^XPDDP.
+ 
+ NOIS: ISW-0500-22871
+ In the FILE (#9.64) subfile of the BUILD (#9.6) file, let's say that the
+ DATA COMES WITH FILE (#222.7) field is set to YES, and the SITE'S DATA
+ (#222.8) field is set to MERGE. If DATA COMES WITH FILE is changed to NO,
+ SITE'S DATA remains unchanged.  That can be confusing.
+ It should be deleted, as should other fields associated with data.  This
+ patch fixes that by adding a new style xref (AD) to the following field:
+ 
+ STANDARD DATA DICTIONARY #9.64 -- FILE SUB-FILE
+ STORED IN ^XPD(9.6,D0,4,
+ DATA        NAME                 GLOBAL        DATA
+ ELEMENT     TITLE                LOCATION      TYPE
+ ----------------------------------------------------------------------------
+ 
+ 9.64,222.7  DATA COMES WITH FILE   222;7 SET
+ 
+                              'y' FOR YES;
+                              'n' FOR NO;
+             DESCRIPTION:     YES means that the data should be included in
+                              the initialization routines.
+ 
+                              NO means that the data should be left out.
+ 
+             NOTES:           TRIGGERED by the SEND FULL OR PARTIAL DD field
+                              of the FILE sub-field of the BUILD File
+ 
+             FIELD INDEX:     AD (#38)    MUMPS        ACTION
+                Short Descr:  Delete fields if data no longer comes with
+                              file.
+                Description:  If DATA COMES WITH FILE (#222.7) is changed
+                              from YES (to NO or null), then make sure that
+                              any fields associated with data coming with the
+                              file are null.
+                  Set Logic:  D ADXREF^XPDKRN
+                   Set Cond:  S X=(X1(1)="y")
+                 Kill Logic:  Q
+                       X(1):  DATA COMES WITH FILE  (9.64,222.7)
+ 
+ Here's ADXREF^XPDKRN:
+ ADXREF  ;New-style 'AD' xref for FILE (#9.64) subfile of the BUILD (#9.6)
+         ;file. If DATA COMES WITH FILE is changed from YES to NO, then
+         ;make sure these other fields are empty.
+         N XPDFDA,XPDIENS
+         S XPDIENS=DA_","_DA(1)_","
+         S XPDFDA(9.64,XPDIENS,222.5)="@" ; RESOLVE POINTERS
+         S XPDFDA(9.64,XPDIENS,222.6)="@" ; DATA LIST
+         S XPDFDA(9.64,XPDIENS,222.8)="@" ; SITE'S DATA
+         S XPDFDA(9.64,XPDIENS,222.9)="@" ; MAY USER OVERRIDE DATA UPDATE
+         S XPDFDA(9.64,XPDIENS,224)="@"   ; SCREEN TO SELECT DATA
+         D FILE^DIE("","XPDFDA")
+         Q
+ 
+ NOTE: This patch may be installed at any time.  Users may be on the system.
+ It requires patch XU*8*229.
+ ============================================================================
+ 
+ ROUTINES:
+ The second line of the routine now looks like:
+        ;;8.0;KERNEL;**[patch list]**;Jul 10, 1995
+ 
+            Before     After
+ Name       Checksum   Checksum   Patch List
+ --------------------------------------------------------------------
+ XPDCOMG     8382178    8172855   304
+ XPDDP      12809857   13533895   21,28,44,68,100,108,229,304
+ XPDKRN       818184    1546806   304
+ * Checksums produced by CHECK^XTSUMBLD
+ 
+ This patch introduces no new routines.
+ ===========================================================================
+  
+ INSTALLATION:
+ NOTE: This patch may be installed at any time.  Users may be on the system.
+ It requires patch XU*8*229.
+ 1.  Users may be on the system during installation of this patch.
+ 2.  On the PackMan menu, use the 'INSTALL/CHECK MESSAGE' option.  This loads
+     the patch into a Transport Global on your system.
+ 3.  Users may be on the system.  You do not need to stop TaskMan.
+ 4.  On the KIDS:Installation menu, use the following options to install the
+     Transport Global.  It will take less than 2 minutes.
+        Verify Checksums in Transport Global
+        Print Transport Global
+        Compare Transport Global to Current System
+        Backup a Transport Global
+        Install Package(s)
+  Select INSTALL NAME:    XU*8.0*304    Loaded from Distribution <date/time>
+                          ==========
+  Install Questions for XU*8.0*304
+ 
+  Incoming Files:
+ 
+    9.6       BUILD  (Partial Definition)
+  Note:  You already have the 'BUILD' File.
+ 
+  Want KIDS to INHIBIT LOGONs during the install? YES// NO
+                                                        ==
+  Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// NO
+                                                                        ==
+  Enter the Device you want to print the Install messages.
+  You can queue the install by enter a 'Q' at the device prompt.
+  Enter a '^' to abort the install.
+ 
+  DEVICE: HOME// <You may queue it if you wish>
+                 -----------------------------
+ ============================================================================
+
+Routine Information:
+====================
+
+Routine Name:
+  - XPDCOMG
+
+
+Routine Checksum:
+
+Routine Name:
+  - XPDDP
+
+
+Routine Checksum:
+
+Routine Name:
+  - XPDKRN
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : BEUSCHEL,GARY                  Date Entered : MAY 21, 2003
+Completed By: SINGH,GURBIR                  Date Completed: JUL 23, 2003
+Released By : TILLIS,LEWIS                  Date Released : JUL 24, 2003
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

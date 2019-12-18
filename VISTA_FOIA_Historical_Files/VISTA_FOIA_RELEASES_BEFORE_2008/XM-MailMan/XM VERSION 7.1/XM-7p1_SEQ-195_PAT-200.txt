@@ -1,0 +1,276 @@
+$TXT Created by BEUSCHEL,GARY at MAILMAN.FO-OAKLAND.MED.VA.GOV  (KIDS) on FRIDAY, 11/30/01 at 12:29
+=============================================================================
+Run Date: DEC 26, 2001                     Designation: XM*7.1*200
+Package : XM - MAILMAN                         Priority: Mandatory
+Version : 7.1       SEQ #195                     Status: Released
+=============================================================================
+
+Associated patches: (v)XM*7.1*163  <<= must be installed BEFORE `XM*7.1*200'
+                    (v)XM*7.1*177  <<= must be installed BEFORE `XM*7.1*200'
+
+Subject: WHO FORWARDED IT?
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Other
+
+Description: 
+============
+
+ Patch XM*7.1*200
+  
+ NOIS PUG-1101-52069
+ Test Site: Puget Sound HCS
+  
+ When auto-forwarding or filter-forwarding messages, MailMan does not retain
+ the event chain as well as it should.  This can lead to questions as to how
+ a message was forwarded.  This patch addresses that problem by making it
+ clear how messages came to be forwarded.
+  
+ Here are some scenarios:
+  
+ 1. A user has a forwarding address, with no local delivery.  Someone
+ forwards the user a message, and it gets auto-forwarded.  We can't tell
+ who forwarded the message to the user.  This is the situation described
+ in the NOIS.  Here's the QD before the patch:
+  
+ ANNA.GLYPTA@MED.VA.GOV
+                    Forwarded by: GLYPTA,ANNA 27 Nov 01 11:11
+  
+ Here's the QD after the patch:
+  
+ ANNA.GLYPTA@MED.VA.GOV
+                    Auto-Forwarded by: GLYPTA,ANNA 27 Nov 01 11:11
+                    Forwarded to GLYPTA,ANNA by: OLEUM,LYNN
+  
+ 2. Same scenario as above, but a different forwarder.
+ Here's the QD before the patch:
+  
+ ANNA.GLYPTA@MED.VA.GOV
+                    Forwarded by: GLYPTA,ANNA 27 Nov 01 11:11
+  
+ Here's the QD after the patch:
+  
+ ANNA.GLYPTA@MED.VA.GOV
+                    Auto-Forwarded by: GLYPTA,ANNA 27 Nov 01 11:11
+                    Filter-Forwarded to GLYPTA,ANNA by: PATCH,USER
+  
+ 3. This is a simpler scenario.  There's no question as to who forwarded
+ the message, but we're not sure how.  Here's the QD before the patch:
+  
+ GLYPTA,ANNA
+                    Forwarded by: PATCH,USER 27 Nov 01 11:11
+  
+ Here's the QD after the patch:
+  
+ GLYPTA,ANNA
+                    Filter-Forwarded by: PATCH,USER 27 Nov 01 11:11
+  
+ The API QD^XMXUTIL3 is enhanced to include this new information.  Additional
+ fields returned under XMTROOT for each recipient:
+ "FWD TYPE"         (present only if forwarding is not "regular")
+                    Type of forwarding.
+                    "F" - Filter-Forward
+                    "A" - Auto-Forward
+                    "R" - Regular-Forward (default)
+  
+ "FWD BY ORIG"      (present only if "FWD TYPE" is "A")
+                    Name of the person, possibly followed by, in parentheses,
+                    the name of the surrogate of the person, who forwarded
+                    the message to the recipient, who had auto-forwarding.
+  
+ "FWD TYPE ORIG"    (present only if "FWD TYPE" is "A" and the "FWD BY ORIG"
+                    person filter-forwarded to the recipient.)
+                    Type of forwarding, which led to the auto-forwarding.
+                    "F" - Filter-Forward
+                    "R" - Regular-Forward (default)
+  
+ In order to facilitate this, three new fields are added to the recipient
+ multiple in file 3.9:
+  
+ STANDARD DATA DICTIONARY #3.91 -- RECIPIENT SUB-FILE STORED IN ^XMB(3.9,
+  
+ DATA       NAME                  GLOBAL        DATA
+ ELEMENT    TITLE                 LOCATION      TYPE
+ --------------------------------------------------------------------------
+ 3.91,8.02  FWD TYPE               F;3 SET
+                              'F' FOR Filter-Forward;
+                              'A' FOR Auto-Forward;
+                              'R' FOR Regular-Forward;
+            LAST EDITED:      NOV 28, 2001
+            HELP-PROMPT:      What kind of forwarding?
+            DESCRIPTION:      Regular-Forward - A user simply forwarded this
+                              message to the recipient in the .01 field.
+                              This is the default, if this field is null.
+  
+                              Auto-Forward - A user has a forwarding address
+                              listing the recipient in the .01 field.  This
+                              message was sent to the user and then
+                              automatically forwarded to the recipient.
+  
+                              Filter-Forward - A user has an active message
+                              filter listing the recipient in the .01 field
+                              as a "forward to" person.  This message was
+                              sent to the user and then automatically
+                              forwarded to the recipient during message
+                              delivery.
+  
+ 3.91,8.03  FWD BY ORIGINAL        F;4 FREE TEXT
+            INPUT TRANSFORM:  K:$L(X)>110!($L(X)<1) X
+            LAST EDITED:      NOV 28, 2001
+            HELP-PROMPT:      Answer must be 1-110 characters in length.
+            DESCRIPTION:      This field is only used if FWD TYPE is
+                              Auto-Forward.  This field lists the original
+                              user (and possibly the user's surrogate) who
+                              forwarded the message to the user with the
+                              forwarding address.
+  
+ 3.91,8.04  FWD TYPE ORIGINAL      F;5 SET
+                              'F' FOR Filter-Forward;
+                              'R' FOR Regular-Forward;
+            LAST EDITED:      NOV 28, 2001
+            HELP-PROMPT:      What kind of forwarding, originally?
+            DESCRIPTION:      This field is only used if FWD TYPE is
+                              Auto-Forward.  This field reveals how the
+                              message was forwarded to the user who had the
+                              forwarding address listing the recipient in
+                              the .01 field.
+  
+                              Regular-Forward - A user simply forwarded this
+                              message to the user with the forwarding
+                              address.  This is the default, if this field
+                              is null.
+  
+                              Filter-Forward - A user has an active message
+                              filter listing the user with the forwarding
+                              address as a "forward to" person.  This message
+                              was sent to the user and then automatically
+                              forwarded to the user during message delivery.
+  
+                              Note that Auto-Forward is not a possibility,
+                              because Auto-Forward is allowed only to remote
+                              recipients or to devices or servers.
+  
+ NOTE: This patch should be installed during off hours, when user activity
+ is at a minimum.  It requires MailMan patches XM*7.1*163 & *177.
+ ============================================================================ 
+  
+ ROUTINES:
+ The second line of the routine now looks like:
+        ;;7.1;MailMan;**[patch list]**;Jun 02, 1994
+  
+            Before       After
+ Name       Checksum     Checksum     Patch List
+ ----------------------------------------------------------------------
+ XMJMQ      13062269     14102654     40,57,70,50,96,110,131,172,200
+ XMKP       16277893     16071912     50,89,119,147,151,200
+ XMKP1       * NEW *      1811191     200
+ XMTDT       8336537      8338601     50,142,150,177,200
+ XMXADDR    15486856     15771323     50,96,101,104,107,131,148,163,200
+ XMXUTIL4    8751511      9367334     50,96,127,200
+ * Checksums produced by CHECK^XTSUMBLD
+  
+ This patch introduces the following new routines:
+ XMKP1 - has no user-callable entry point
+ ===========================================================================
+  
+ INSTALLATION:
+ NOTE: This patch should be installed during off hours, when user activity
+ is at a minimum.  It requires MailMan patches XM*7.1*163 & *177.
+ 1.  Users may be on the system during installation of this patch.
+ 2.  DSM Sites: If any of these routines is mapped, disable mapping for the 
+     affected routine(s).  
+ 3.  On the PackMan menu, use the 'INSTALL/CHECK MESSAGE' option.  This loads 
+     the patch into a Transport Global on your system.  
+ 4.  Users may be on the system.  You do not need to stop TaskMan,
+     but you should stop the background filer.
+     On the Manage MailMan:Local Delivery Management menu, use the
+     following option to stop the background filer:
+        STOP background filer
+ Are you sure you want the BACKGROUND FILERS to STOP delivering mail? NO// YES
+                                                                           ===
+ << Background filer will stop soon. >>
+ 5.  On the KIDS:Installation menu, use the following options to install the
+     Transport Global:
+        Verify Checksums in Transport Global
+        Print Transport Global
+        Compare Transport Global to Current System
+        Backup a Transport Global
+        Install Package(s)
+  Select INSTALL NAME:    XM*7.1*200    Loaded from Distribution  <date/time>
+                          ==========
+  Install Questions:
+  Incoming Files:
+    3.9       MESSAGE  (Partial Definition)
+  Note:  You already have the 'MESSAGE' File.
+  
+  Want KIDS to INHIBIT LOGONs during the install? YES// NO
+                                                        ==
+  Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// NO
+                                                                        ==
+  Enter the Device you want to print the Install messages.
+  You can queue the install by enter a 'Q' at the device prompt.
+  Enter a '^' to abort the install.
+  
+  DEVICE: HOME// <It's up to you.  You may queue it if you wish.>
+                 ------------------------------------------------
+ 6.  Start the background filer.
+     On the Manage MailMan:Local Delivery Management menu, use the following
+     option to start the background filer:
+        START background filer
+ << Background filer will start soon. >>
+ 7.  DSM Sites: After patch has installed, rebuild your map set, if necessary.
+ ===========================================================================
+
+Routine Information:
+====================
+
+Routine Name:
+  - XMJMQ
+
+
+Routine Checksum:
+
+Routine Name:
+  - XMKP
+
+
+Routine Checksum:
+
+Routine Name:
+  - XMKP1
+
+
+Routine Checksum:
+
+Routine Name:
+  - XMTDT
+
+
+Routine Checksum:
+
+Routine Name:
+  - XMXADDR
+
+
+Routine Checksum:
+
+Routine Name:
+  - XMXUTIL4
+
+
+Routine Checksum:
+
+=============================================================================
+User Information:                               
+Entered By  : BEUSCHEL,GARY                  Date Entered : NOV 29, 2001
+Completed By: SINGH,GURBIR                  Date Completed: DEC 11, 2001
+Released By : GRAY,STEPHEN                  Date Released : DEC 26, 2001
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

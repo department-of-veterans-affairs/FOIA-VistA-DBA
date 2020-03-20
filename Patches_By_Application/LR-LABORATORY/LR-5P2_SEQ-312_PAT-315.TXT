@@ -1,0 +1,456 @@
+$TXT Created by ANZALDUA,CAROL K at CHLVSS.FO-ALBANY.MED.VA.GOV  (KIDS) on Thursday, 07/23/09 at 14:53
+=============================================================================
+Run Date: SEP 25, 2009                     Designation: LR*5.2*315
+Package : LR - LAB SERVICE                    Priority: Mandatory
+Version : 5.2       SEQ #312                    Status: Released
+                  Compliance Date: OCT 26, 2009
+=============================================================================
+
+Associated patches: (v)LR*5.2*259  <<= must be installed BEFORE `LR*5.2*315'
+                    (v)LR*5.2*308  <<= must be installed BEFORE `LR*5.2*315'
+                    (v)TIU*1*175   <<= must be installed BEFORE `LR*5.2*315'
+                    (v)USR*1*25    <<= must be installed BEFORE `LR*5.2*315'
+                    (v)LR*5.2*317  <<= must be installed BEFORE `LR*5.2*315'
+                    (v)LR*5.2*352  <<= must be installed BEFORE `LR*5.2*315'
+                    (v)LR*5.2*365  <<= must be installed BEFORE `LR*5.2*315'
+
+Subject: AP REPORT CAUSES UNSIGNED CPRS ALERT AND NEW CPT APIs 
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ BLOOD BANK Clearance:
+ =====================
+ VISTA Laboratory Package patch LR*5.2*315 contains changes to software 
+ controlled by VHA DIRECTIVE 2004-058, titled VISTA BLOOD BANK SOFTWARE. 
+ Changes include: 
+  Routines:
+  ---------
+  LRBLJPP1
+  LRBLPC1
+  LRBLPCSS
+  LRBLS
+  
+ All of the above changes have been reviewed by the VISTA Blood Bank 
+ Developer and found to have no impact on the VISTA BLOOD BANK SOFTWARE 
+ control functions.
+  
+ RISK ANALYSIS: Changes made by patch LR*5.2*315 have limited effect on 
+ Blood Bank software functionality, therefore RISK is low.
+  
+ EFFECT ON BLOOD BANK FUNCTIONAL REQUIREMENTS: Patch LR*5.2*315 does not 
+ alter or modify any software design safeguards or safety critical 
+ elements functions.
+  
+ POTENTIAL IMPACT ON SITES: This patch contains changes to 4 routines and 
+ 0 files identified in Veterans Health Administration (VHA) Directive 
+ 2004-058, group A listing.
+  
+ VALIDATION REQUIREMENTS BY OPTION: 
+ ---
+ OPTION: (EF-MS) Maximum surgical blood order edit  [LRBLSMS]
+  
+  NORMAL:
+  
+  1.  Enter a valid entry from the Current Procedure Terminology
+      File (#81) at the "Select OPERATION" prompt.
+  2.  Verify that the text displayed is the correct text for the
+      procedure selected.
+  3.  Press "Enter" at the "Selection OK ? YES//" prompt
+  4.  Verify that the "Select BLOOD COMPONENT REQUEST:" prompt is 
+      displayed.
+  5.  Enter "^" at the "Select BLOOD COMPONENT REQUEST:" prompt and "Enter"
+      at the "Select OPERATION:" prompt to exit.
+   
+    **EXPECTED OUTCOME:
+        The correct text is displayed for the procedure selected.
+  
+  EXCEPTIONAL:
+  N/A for coding changes made
+  
+  BOUNDARY:
+  This scenario applies to all sites.
+  
+  STRESS:
+  Repeat this scenario for 3 different procedures.
+ ---
+ OPTION: (UR-TX) Transfusion follow-up tests  [LRBLTXA]
+  
+  NORMAL:
+  
+  1.  Enter a valid start date at the "Start with Date TODAY//" prompt.
+  2.  Press "Enter" at the "Go to Date TODAY//" prompt.
+  4.  Verify that the descriptive text listed for the ICD 9 codes is 
+      accurate.
+  
+   
+    **EXPECTED OUTCOME:
+        The correct text is displayed for the ICD 9 code displayed.
+  
+  EXCEPTIONAL:
+  N/A for coding changes made
+  
+  BOUNDARY:
+  This scenario applies to all sites.
+  
+  STRESS:
+  N/A.
+ ---
+  
+  
+ Description:
+ ============
+ 1). This patch corrects the following problem which can occur when an 
+ Anatomic Pathology (AP) report is released:
+ PROBLEM (HVH-0804-11491/HD0000000070948): When an AP report is electronically
+ signed containing 3 sequential characters defined in the BLANK CHARACTER STRING 
+ field (#1.06), of the TIU PARAMETERS file (#8925.99), the Text 
+ Integration Utility (TIU) electronic signature fails without giving 
+ notification to the user.  The AP report is successfully created and 
+ stored in TIU, but is marked in TIU as an unsigned document, which in 
+ turn, may generate an alert in Computerized Patient Record System (CPRS).
+  
+ RESOLUTION: This patch adds a new parameter to the code that 
+ calls the TIU API, NEW^TIUPNAPI. This TIU API is called at the time the 
+ AP report is electronically signed; it creates and stores the AP report
+ in the TIU DOCUMENT file (#8925).
+  
+  Old call: D NEW^TIUPNAPI(.LRTIUPTR,DFN,DUZ,LRNTIME,LRTITLE,,,,DUZ)
+  New call: D 
+ NEW^TIUPNAPI(.LRTIUPTR,DFN,DUZ,LRNTIME,LRTITLE,,,,DUZ,,1)
+ where 1 is the new parameter.
+  
+ When the new parameter is set to 1 the following functionality is 
+ evoked:
+  
+ a. Triggers the TIU API to abort creation and storage of the AP 
+ Report in TIU if the electronic signature fails. 
+  
+ b. An error message provides detailed information on the aborted 
+ storage of the AP Report in TIU when an electronic signature fails.  The 
+ error message is:
+  
+     *** Signature in TIU failed. ***
+ 
+ 
+ Possible causes:
+ 
+ 1. Report contains 3 sequential characters matching those defined
+ in the BLANK CHARACTER STRING field (#1.06), TIU PARAMETERS file (#8925.99)
+ which are @@@.
+ 
+ To correct this situation use a data entry option to remove
+ these characters from this report.
+ 
+ 2.  There is some other TIU document setup problem.
+ 
+ Report this situation to the Laboratory ADP Coordinator.
+ 
+ 
+      *** Report storage in TIU failed. ***
+  
+ 2). The patch updates routine: LREPI3 and LREPI5 to point to the correct
+     ICD9 code for LEGIONNAIRES' DISEASE. Changed from 482.80 to 482.84
+  
+ 3). API Updates:
+     ------------ 
+     a. The ICD DIAGNOSIS file (#80) has unsupported fields: (#3) DIAGNOSIS
+        and (#10) DESCRIPTION. The following APIs have been provided to
+        retrieve these fields:
+        $$ICDDX^ICDCODE and $$ICDD^ICDCODE.
+        The Lab Service routines affected are as follows:
+        LR7OB63C, LR7OB63D, LR7OSAP1, LRAPCUM1, LRAPQAT1, LRAPT3, LRAUSICD,
+        LRBEBA, LRBEBA2, LRBLJPP1, LRBLPC1, LREPI1A, LREPI3, LRSPRPT1,
+        LRSPSICD and LRPXAPIU.
+  
+     b. The ICD OPERATION/PROCEDURE file (#80.1) has unsupported fields:
+        (#4) OPERATION/PROCEDURE and (#10) DESCRIPTION. The following API
+        has been provided to retrieve these fields:
+        $$ICDOP^ICDCODE
+        The Lab Service routines affected are as follows:
+        LRBLPC1, LRBLJPP1 and LRAPQAT1.
+  
+     c. The CPT file (#81) has an unsupported field: (#2) SHORT NAME.
+        The following APIs have been provided to retrieve the field:
+        $$CPT^ICPTCOD and $$CPTD^ICPTCOD.
+        The Lab Service routines affected are as follows:
+        LRBEECPT, LRBLPCSS and LRBLS.
+  
+  
+ Associated E3R:
+ ===============
+ N/A
+  
+ Associated NOIS / Remedy Ticket:
+ ================================
+ HVH-0804-11491 / HD0000000070948
+  
+      Duplicates:
+      UNY-0904-11549 / HD0000000071019
+      MUS-1004-71347 / HD0000000071048
+      N/A            / HD0000000098477
+      N/A            / HD0000000226508
+      N/A            / HD0000000275681
+  
+ Test Sites:
+ ===========
+ Upstate NY HCS- Large/Integrated
+ Durham VAMC-Large
+ Wilmington VAMROC- Medium
+  
+  
+ Software Retrieval
+ ==================
+ VistA Laboratory AP Report Causes Unsigned CPRS Alert and New CPT APIs
+ patch LR*5.2*315 software is distributed by Packman.
+  
+ Documentation Retrieval
+ =======================
+ Veterans Health Information Systems and Architecture (VistA) Laboratory 
+ Anatomic Pathology (AP) Report Causes Unsigned Computerized Patient 
+ Record System (CPRS) Alert and New Current Procedural Terminology (CPT)
+ Application Programming Interface (APIs) Patch LR*5.2*315 User Guide is
+ available at the following Office of Information Field Offices (OIFOs)
+ ANONYMOUS.SOFTWARE directories:
+  
+ OI Field Office     FTP Address                 Directory
+ ---------------     -----------                 ---------
+ ALBANY              ftp.fo-albany.med.va.gov    [ANONYMOUS.SOFTWARE]
+ HINES               ftp.fo-hines.med.va.gov     [ANONYMOUS.SOFTWARE]
+ SALT LAKE CITY      ftp.fo-slc.med.va.gov       [ANONYMOUS.SOFTWARE]
+  
+  
+ Documentation Retrieval Formats
+ ===============================
+ VistA Laboratory AP Report Causes Unsigned CPRS Alert and New CPT 
+ APIs Patch LR*5.2*315 User Guide files are exported in the following
+ retrieval formats:
+  
+ File Name          Contents                       Retrieval Formats
+ ---------          --------                       -----------------
+ LAB_52_315_UG.doc  VistA Laboratory AP Report     BINARY
+                    Causes Unsigned CPRS Alert 
+                    and New CPT APIs Patch 
+                    LR*5.2*315 User Guide      
+  
+ LAB_52_315_UG.pdf  VistA Laboratory AP Report     BINARY
+                    Causes Unsigned CPRS Alert
+                    and New CPT APIs Patch 
+                    LR*5.2*315 User Guide      
+  
+ VistA Website Locations:
+ ========================
+ VistA Laboratory AP Report Causes Unsigned CPRS Alert and New CPT APIs
+ Patch LR*5.2*315 User Guide is accessible in MS Word (.DOC) format and
+ Portable Document Format (.PDF) at the following VistA locations:
+  
+ Laboratory Version 5.2 Home Page
+ --------------------------------
+ http://vista.med.va.gov/ClinicalSpecialties/lab/
+  
+ VistA Documentation Library (VDL)
+ ---------------------------------
+ www.va.gov/vdl/
+  
+  
+ Installation Instructions:
+ ==========================
+ This patch may be loaded with users on the system.  You may wish to install
+ it during non-peak hours.  Installation will take less than 1 minute.
+ It is recommended to disable the Anatomic Pathology [LRAP] option at the
+ "DISABLE Scheduled Options, Menu Options, and Protocols?" prompt.
+  
+ 1.  Use the INSTALL/CHECK MESSAGE option on the Packman Menu.  
+   
+ 2.  From the Kernel Installation and Distribution System (KIDS) Menu, 
+     select the Installation menu.  
+  
+ 3.  From the Installation menu, you may select to use the following 
+     options (when prompted for INSTALL NAME, enter LR*5.2*315): 
+  
+     a.  Backup a Transport Global 
+     b.  Compare Transport Global to Current System
+     c.  Print Transport Global 
+     d.  Verify Checksums in Transport Global
+  
+ 4.  Use the Install Package(s) option and select the package LR*5.2*315.
+  
+ 5.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? NO//',
+     respond NO.
+  
+ 6.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and 
+     Protocols? YES//', accept YES and select the Anatomic Pathology [LRAP]
+     option to disable.
+  
+  Note: Routine LR315 will be deleted after successful patch installation.
+  
+ Installation Example:
+ =====================
+  
+ Select Installation Option: 6  Install Package(s)
+ Select INSTALL NAME:    LR*5.2*315     Loaded from Distribution  10/18/08@16:48:
+ 47
+      => LR*5.2*315
+  
+ This Distribution was loaded on Oct 18, 2008@16:48:47 with header of 
+    LR*5.2*315
+    It consisted of the following Install(s):
+      LR*5.2*315
+ Checking Install for Package LR*5.2*315
+ Will first run the Environment Check Routine, LR315
+  
+  
+                Sending install started alert to mail group G.LMI                
+  
+                         --- Environment Check is Ok ---                         
+  
+ Install Questions for LR*5.2*315
+  
+  
+  
+ Want KIDS to INHIBIT LOGONs during the install? NO// 
+ Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES// 
+  
+ Enter options you wish to mark as 'Out Of Order': LRAP
+      1   LRAP       Anatomic pathology
+      2   LRAP ADD       Add patient(s) to report print queue
+      3   LRAP DELETE       Delete report print queue
+      4   LRAP ESIG SWITCH       Turn Electronic Signature On/Off
+      5   LRAP PRINT ALL ON QUEUE       Print all reports on queue
+ Press <RETURN> to see more, '^' to exit this list, OR
+ CHOOSE 1-5: 1  LRAP     Anatomic pathology
+  
+ Enter options you wish to mark as 'Out Of Order': 
+  
+ Enter protocols you wish to mark as 'Out Of Order': 
+  
+ Delay Install (Minutes):  (0-60): 0// 
+  
+ Enter the Device you want to print the Install messages.
+ You can queue the install by enter a 'Q' at the device prompt.
+ Enter a '^' to abort the install.
+  
+ DEVICE: HOME// ;;1000  UCX/TELNET
+  
+  
+  Install Started for LR*5.2*315 : 
+                Oct 18, 2008@16:49:53
+  
+ Build Distribution Date: Oct 18, 2008
+  
+  Installing Routines:
+                Oct 18, 2008@16:49:53
+  
+  Running Pre-Install Routine: PRE^LR315
+  
+                           *** Pre install started ***                           
+  
+                                    LR*5.2*315                                   
+ --------------------------------------------------------------------------------
+                          *** Pre install completed ***                          
+  
+  Running Post-Install Routine: POST^LR315
+  
+                           *** Post install started ***                          
+  
+                          *** Post install completed ***                         
+  
+               Sending install completion alert to mail group G.LMI              
+  
+  Updating Routine file...
+  
+  Updating KIDS files...
+  
+  LR*5.2*315 Installed. 
+                Oct 18, 2008@16:49:53
+  
+  Install Message sent #87004
+ --------------------------------------------------------------------------------
+           +------------------------------------------------------------+
+   100%    |             25             50             75               |
+ Complete  +------------------------------------------------------------+
+  
+  
+ Install Completed
+ 
+ 
+ 
+ 
+ 
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.2;LAB SERVICE;**[Patch List]**;Sep 27, 1994;Build 25
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: LR315
+    Before:       n/a   After:  B8131114  **315**
+Routine Name: LR7OB63C
+    Before: B25404308   After: B24889065  **121,187,315**
+Routine Name: LR7OB63D
+    Before: B26909360   After: B27039441  **121,187,315**
+Routine Name: LR7OSAP1
+    Before: B26109314   After: B26800282  **121,227,230,259,317,315**
+Routine Name: LR7OSAP3
+    Before: B13148912   After: B14099729  **259,315**
+Routine Name: LRAPALRT
+    Before:  B3310137   After:  B3313237  **365,315**
+Routine Name: LRAPCUM1
+    Before:  B6817233   After:  B6249474  **315**
+Routine Name: LRAPQAT1
+    Before:  B4493847   After:  B4707143  **201,315**
+Routine Name: LRAPRES
+    Before: B94733481   After:B105539463  **259,295,317,315**
+Routine Name: LRAPRES2
+    Before:       n/a   After:  B2613006  **315**
+Routine Name: LRAPT3
+    Before:  B2676661   After:  B2760449  **1,259,315**
+Routine Name: LRAPTIUP
+    Before: B26816671   After: B29244140  **259,315**
+Routine Name: LRAUSICD
+    Before:  B4103170   After:  B4216631  **72,253,315**
+Routine Name: LRBEBA
+    Before: B63890691   After: B64577037  **291,352,315**
+Routine Name: LRBEBA2
+    Before: B74544434   After: B74568328  **291,359,352,315**
+Routine Name: LRBEECPT
+    Before: B83809805   After: B83900210  **291,315**
+Routine Name: LRBLJPP1
+    Before:  B7552606   After:  B7950187  **247,315**
+Routine Name: LRBLPC1
+    Before:  B8545473   After:  B9166467  **247,315**
+Routine Name: LRBLPCSS
+    Before: B12594925   After: B13448992  **1,247,315**
+Routine Name: LRBLS
+    Before: B18390322   After: B20512427  **97,247,267,275,315**
+Routine Name: LREPI1A
+    Before: B18417132   After: B18814182  **175,260,315**
+Routine Name: LREPI3
+    Before: B37366385   After: B38193002  **132,175,260,281,320,315**
+Routine Name: LREPI5
+    Before:  B5654489   After:  B5654909  **281,315**
+Routine Name: LRPXAPIU
+    Before: B26516082   After: B27291140  **295,315**
+Routine Name: LRSPRPT1
+    Before: B10408921   After: B10719224  **1,259,315**
+Routine Name: LRSPSICD
+    Before:  B4329392   After:  B4454107  **72,253,315**
+
+=============================================================================
+User Information:
+Entered By  : LYON,KAREN                    Date Entered  : APR 05, 2004
+Completed By: KIRBY,ROSE                    Date Completed: SEP 22, 2009
+Released By : MURCH,CLAUDETTE               Date Released : SEP 25, 2009
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

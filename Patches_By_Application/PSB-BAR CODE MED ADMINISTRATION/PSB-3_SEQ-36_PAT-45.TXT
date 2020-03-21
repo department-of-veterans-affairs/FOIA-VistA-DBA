@@ -1,0 +1,287 @@
+$TXT Created by THOMPSON,SETH at DAYT17.FO-BAYPINES.MED.VA.GOV  (KIDS) on Monday, 01/12/09 at 07:21
+=============================================================================
+Run Date: JUN 23, 2009                     Designation: PSB*3*45
+Package : PSB - BAR CODE MED ADMIN            Priority: Mandatory
+Version : 3        SEQ #36                      Status: Released
+                  Compliance Date: JUL 24, 2009
+=============================================================================
+
+Associated patches: (v)PSB*3*13    <<= must be installed BEFORE `PSB*3*45'
+                    (v)PSB*3*25    <<= must be installed BEFORE `PSB*3*45'
+                    (v)PSB*3*38    <<= must be installed BEFORE `PSB*3*45'
+
+Subject: MAH AND MED LOG INITIALS
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ This patch corrects two problems in BCMA in which initials are overwritten
+ or incorrectly displayed and also defines two new fields in the BCMA 
+ MEDICATION LOG (#53.79) file.
+  
+ Associated Remedy ticket(s):
+ ============================
+ 1. HD0000000226037 - Initials don't show on MAH or Med log for first action 
+                      on med
+ 2. HD0000000190817 - Record needs to show the initials of the nurse who 
+                      administered the medication not the initials of nurse 
+                      who created the error.
+ 3. HD0000000255639 - Missing Field Definition
+ 4. HD0000000260760 - Routine's Don't meet 1995 M standard. 
+  
+ Associated NSR(s):
+ ==================
+  N/A   
+  
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ PUGET SOUND HCS
+ SALISBURY, NC
+ SAN DIEGO, CA
+  
+  
+ OVERVIEW OF REMEDY TICKETS:
+ ==========================
+  
+ 1. HD0000000226037 - Initials don't show on MAH or Med log for first action 
+                      on med
+  
+ Problem:
+ --------------------------
+ The initial entry in the Audit Log of the BCMA MEDICATION file (#53.79) 
+ was not being properly stored. Because this initial action was not being 
+ recorded, if this first action was undone or overridden with a different 
+ action, such as giving a held medication, or undoing giving a medication,
+ the initial action user was overwritten by the user who performed the last 
+ action.  This caused the initial entry not to appear on the Medication 
+ Administration History (MAH) Legend.
+  
+ Resolution:
+ --------------------------
+ The routines PSBML and PSBOMH1 were modified to record the initial audit 
+ log entry.  The modification will also search through the audit log and 
+ add any user found to the Legend on the Medication Administration History 
+ report.
+  
+  
+ 2. HD0000000190817 - Record needs to show the initials of the nurse who 
+                      administered the medication not the initials of nurse 
+                      who created the error.
+  
+ Problem:
+ --------------------------
+ When a medication patch was unintentionally removed using BCMA, the Edit Med 
+ Log option was used to undo the error.  When the patch removal was undone, 
+ the Edit Med Log showed the current user initials as the user who initially 
+ gave the patch instead of the original user.
+  
+ Resolution:
+ --------------------------
+ Similarly to HD226037, this is a problem with the Audit Log and is 
+ corrected by modifying the routines PSBML, PSBML2, and PSBUTL. The first
+ entry in the audit log is not being entered correctly. The ACTION BY LOG 
+ field (#.05) in the AUDIT LOG SUB-FILE (#53.799) was added to track the
+ user who entered the previous action. This field is used in the event an 
+ undo is necessary, which reverts to the action of the previous user. By 
+ using this new field, the Edit Med Log will show the correct information 
+ by showing the original user who marked the drug as given. 
+  
+ 3. HD0000000255639 - Missing Field Definition
+  
+ Problem:
+ --------------------------
+ The ACTION STATUS LOG field (#.04) in the AUDIT LOG SUB-FILE (#53.799) 
+ was being set but was previously undefined.
+  
+ Resolution:
+ --------------------------
+ The data dictionary has been modified to include a definition for the 
+ ACTION STATUS LOG field (#.04).
+  
+  
+ 4. HD0000000260760 - Routine's Don't meet 1995 M standard.
+  
+ Problem:
+ --------------------------
+ It was discovered that certain routines contain the use of $Q(<>,-1)
+ The use of "-1" in a $Q command is not valid in the 1995 M standard
+ currently used by VistA.
+  
+  
+ Resolution:
+ --------------------------
+ Modify routine PSBOMH1 to remove the use of $Q with a "-1" parameter.
+ To conform to the current VistA standards.  
+ Note that fixing this routine will not close this ticket.  This fix will 
+ be made to routines only as they are part of other fixes.  The ticket will 
+ be closed when all affected routines have been modified.
+  
+  
+ Data Dictionary Changes
+ =======================
+ The ACTION STATUS LOG field (#.04) was added to store the previously undefined
+ log entry.
+ The ACTION BY LOG field (#.05) in the AUDIT LOG SUB-FILE (#53.799) was added 
+ to track the user who entered the previous action.
+  
+ BEFORE
+ ------
+ STANDARD DATA DICTIONARY #53.799 -- AUDIT LOG SUB-FILE   
+  
+ DATA          NAME                  GLOBAL        DATA
+ ELEMENT       TITLE                 LOCATION      TYPE
+ ------------------------------------------------------------------------
+ CROSS REFERENCED BY: AUDIT LOG(B)
+  
+ 53.799,.01    AUDIT LOG         0;1 DATE (Multiply asked)
+  
+               INPUT TRANSFORM:  S %DT="ESTXR" D ^%DT S X=Y K:Y<1 X
+               LAST EDITED:      MAR 20, 1999 
+               DESCRIPTION:      Date/time of audit being filed.  
+               CROSS-REFERENCE:  53.799^B 
+                                 1)= S ^PSB(53.79,DA(1),.9,"B",$E(X,1,30),DA)=""
+                                 2)= K ^PSB(53.79,DA(1),.9,"B",$E(X,1,30),DA)
+  
+  
+ 53.799,.02    USER              0;2 POINTER TO NEW PERSON FILE (#200)
+               LAST EDITED:      MAR 20, 1999 
+               DESCRIPTION:      Pointer to the user making the change.  
+  
+  
+ 53.799,.03    TEXT              0;3 FREE TEXT 
+               INPUT TRANSFORM:  K:$L(X)>150!($L(X)<1) X
+               LAST EDITED:      MAR 20, 1999 
+               HELP-PROMPT:      Answer must be 1-150 characters in length. 
+               DESCRIPTION:      Description of the change made.  
+  
+  
+  
+ AFTER
+ -----
+ STANDARD DATA DICTIONARY #53.799 -- AUDIT LOG SUB-FILE   
+  
+ DATA          NAME                  GLOBAL        DATA
+ ELEMENT       TITLE                 LOCATION      TYPE
+ ------------------------------------------------------------------------
+ CROSS REFERENCED BY: AUDIT LOG(B)
+  
+ 53.799,.01    AUDIT LOG         0;1 DATE (Multiply asked) 
+               INPUT TRANSFORM:  S %DT="ESTXR" D ^%DT S X=Y K:Y<1 X
+               LAST EDITED:      MAR 20, 1999 
+               DESCRIPTION:      Date/time of audit being filed.  
+               CROSS-REFERENCE:  53.799^B 
+                                 1)= S ^PSB(53.79,DA(1),.9,"B",$E(X,1,30),DA)=""
+                                 2)= K ^PSB(53.79,DA(1),.9,"B",$E(X,1,30),DA)
+  
+  
+ 53.799,.02    USER              0;2 POINTER TO NEW PERSON FILE (#200)
+               LAST EDITED:      MAR 20, 1999 
+               DESCRIPTION:      Pointer to the user making the change.  
+  
+  
+ 53.799,.03    TEXT              0;3 FREE TEXT
+               INPUT TRANSFORM:  K:$L(X)>150!($L(X)<1) X
+               LAST EDITED:      MAR 20, 1999 
+               HELP-PROMPT:      Answer must be 1-150 characters in length. 
+               DESCRIPTION:      Description of the change made.  
+  
+  
+ 53.799,.04    ACTION STATUS LOG 0;4 FREE TEXT
+               INPUT TRANSFORM:  K:$L(X)>15!($L(X)<1) X
+               LAST EDITED:      JUN 24, 2008 
+               HELP-PROMPT:      Please enter the ACTION STATUS that is being 
+                                 set in 1-15 characters. 
+               DESCRIPTION:      Action Status that this log entry is tracking.  
+  
+  
+ 53.799,.05    ACTION BY LOG     0;5 POINTER TO NEW PERSON FILE (#200)
+               LAST EDITED:      JUN 24, 2008 
+               HELP-PROMPT:      Please select the user that made the previous 
+                                 change to the ACTION STATUS. 
+               DESCRIPTION:      Pointer to the user who was listed as
+                                 performing the previous action.
+  
+  
+  INSTALLATION INSTRUCTIONS:
+  ==========================
+  
+   *************************** NOTE ****************************
+   *  IF A USER IS ON THE SYSTEM AND USING THESE PROGRAMS      *
+   *  AN EDITED ERROR WILL OCCUR.                              *
+   *  The patch should be installed when NO BCMA Client        *
+   *  users are on the system.                                 *
+   * ***********************************************************
+  
+   Installation will take less than 1 minute.
+  
+   Suggested time to install: Non-peak requirement hours.
+ 
+  1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+  
+  2. From the Kernel Installation & Distribution System menu, select
+     the Installation menu.
+  
+  3. From this menu, you may select to use the following options
+     (when prompted for INSTALL NAME, enter PSB*3*45):
+         a.  Verify Checksums in Transport Global - This option will allow
+             you to ensure the integrity of the routines that are in the
+             transport global.
+         b.  Print Transport Global - This option will allow you to view
+             the components of the KIDS build.
+         c.  Compare Transport Global to Current System - This option will
+             allow you to view all changes that will be made when this 
+             patch
+             is installed.  It compares all components of this patch
+             (routines, DD's, templates, etc.).
+         d.  Backup a Transport Global - This option will create a backup
+             message of any routines exported with this patch. It will not
+             backup any other changes such as DD's or templates.
+  
+  4. Use the Install Package(s) option and select the package PSB*3*45.
+  
+  5. When prompted "Want KIDS to INHIBIT LOGONs during the install? NO//"
+     respond NO.
+  6. When prompted "Want to DISABLE Scheduled Options, Menu Options, and
+     Protocols? NO//" respond NO.
+ 
+ 
+ 
+ 
+ 
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;3.0;BAR CODE MED ADMIN;**[Patch List]**;Mar 2004;Build 9
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PSBML
+    Before: B78540880   After: B79215429  **6,3,4,9,11,13,25,45**
+Routine Name: PSBML2
+    Before: B67471852   After: B72294246  **3,18,22,23,13,45**
+Routine Name: PSBOMH1
+    Before: B71636432   After: B75284685  **6,3,9,11,26,38,45**
+Routine Name: PSBUTL
+    Before: B82318781   After: B84133234  **3,9,13,38,45**
+ 
+Routine list of preceding patches: 25, 38
+
+=============================================================================
+User Information:
+Entered By  : THOMPSON,SETH                 Date Entered  : JUN 13, 2008
+Completed By: GOLDSMITH,JAMES H             Date Completed: MAY 26, 2009
+Released By : LYTTLE,KIM M                  Date Released : JUN 23, 2009
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

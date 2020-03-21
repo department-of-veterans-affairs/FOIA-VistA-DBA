@@ -1,0 +1,369 @@
+$TXT Created by FINNIE,DONALD at VMPDEV20.FO-BAYPINES.MED.VA.GOV  (KIDS) on Thursday, 09/27/07 at 10:10
+=============================================================================
+Run Date: JAN 22, 2008                     Designation: PSU*4*12
+Package : PSU - PHARMACY BENEFITS MANAGEMENT  Priority: Mandatory
+Version : 4         SEQ #9                      Status: Released
+                  Compliance Date: FEB 22, 2008
+=============================================================================
+
+Associated patches: (v)PSU*4*8     <<= must be installed BEFORE `PSU*4*12'
+
+Subject: PBM Pharmacy Statistics Report
+
+Category: 
+  - Routine
+
+Description:
+============
+
+  
+ This patch will correct the following problems:
+ 1.  A problem with the Pharmacy Statistics Report listing incomplete
+     Non-VA Physicians.
+ 2.  Change the tripper for the Patient demographic data purge.
+ 3.  Corrects the problem with PBMPRO report.
+ 4.  Corrects an error in PSU Map Pharmacy Locations.
+ 5.  Corrects an error with the monthly report being run before any
+     data is actually filed.
+ 6.  Corrects problems with processing the monthly report when a 
+     Automatic Pharmacy Statistics [PSU PBM AUTO] option is run and then
+     a Manual Pharmacy Statistics [PSU PBM MANUAL] report is started.
+  
+  
+ ASSOCIATED REMEDY TICKETS:
+ ==========================
+ HD151482       -      Report requires info on FEE BASIS docs
+ HD168976       -      Purge for Patient Demographics not being triggered
+ HD163046       -      provider class/subspecialty as missing data
+  Dup HD125362  -      PROVIDER DATA MISSING
+  Dup HD171327  -      Provider summary report missing data
+ HD185666       -      Mapping a new Pharmacy Area of Use problem
+ HD102999       -      PBM REPORT ERRORS OUT
+ HD115651       -      Tasked PSU PBM AUTO did not complete
+ HD193055       -      Code will not work when no records to purge
+  
+ ASSOCIATED NSR:
+ ===============
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Iron Mountain, MI
+ Oklahoma City, OK
+ Chillicothe, OH
+ Hines, IL
+  
+ REMEDY OVERVIEW:
+ ================
+ 1. HD151482       -      Report requires info on FEE BASIS docs
+  
+ Problem
+ -------
+ Providers are listed on the Provider Summary report as Incomplete because
+ they are missing service/section, specialty and subspecialty
+ information.  However, non-VA providers do not have this information so
+ these providers continue to appear on the report even though they are
+ complete.
+  
+ Resolution
+ ----------
+ Modify the report logic so that non-VA provider records are not listed on
+ the report as missing data.
+  
+ 2. HD168976      -      Purge for Patient Demographics is not being triggered
+  
+ Problem
+ -------
+ The purge of Patient demographic data is triggered by running the option
+ Retransmit Patient Demographic Data [PSU RETRANSMIT PATIENT DATA] in the
+ PSU PBM Manager menu.  Since this option is not run very often, the purge
+ is rarely run.
+  
+ Resolution
+ ----------
+ Move the trigger of the Patient demographic purge from the Retransmit
+ Patient Demographic Data [PSU RETRANSMIT PATIENT DATA] option to the
+ Manual Pharmacy Statistics [PSU PBM Manual] option and to the Automatic
+ Pharmacy Statistics [PSU PBM Auto] option.  This will insure that the purge
+ is run at minimum whenever the automatic reports are run.  Including the
+ trigger in the manual option insures that the purge can be run at will.
+  
+ 3. HD163046    -     provider class/subspecialty as missing data
+  
+ Problem
+ -------
+ Providers are listed on the monthly PBMPRO report as missing provider
+ class where that data is present.
+  
+ Resolution
+ ----------
+ The report currently only checks for provider class abbreviation.
+ Modified to check provider class name if the abbreviation does not exist.
+  
+ 4. HD185666       -      Mapping a new Pharmacy Area of Use problem
+  
+ Problem
+ -------
+ <UNDEFINED> occurs when user enters a string-string at
+  
+         "Select the dispensing/procurement location:"
+  
+ prompt.
+  
+ Resolution
+ ----------
+ The input validation for this prompt compares input with possible
+ entries.  However, the loop begins with a 0 so string-string entries slip
+ through even though they're invalid. The validation was corrected.
+  
+  
+ 5. HD102999       -      PSB Report errors out
+  
+ Problem
+ -------
+ The Automatic Pharmacy Statistics [PSU PBM AUTO] report generated a <SUSBCRIPT>
+ error condition.  Error condition was generated at HL7+6^PSUDEM1.  PSUSDT
+ variable was NULL when trying to locate a second subscript in the global.  This
+ error was created when the report was run before any monthly data was filed.
+  
+ Resolution
+ ----------
+ Modify routine PSUDEM1 to quit loop when PSUSDT variable is NULL.
+  
+  
+ 6. HD193055        -     Code will not work when no records to purge
+  
+ Problem
+ -------
+ This problem was uncovered in testing HD168976.  It is caused by multiple
+ calls to the Automatic Pharmacy Statistics [PSU PBM AUTO] and Manual Pharmacy
+ Statistics [PSU PBM MANUAL] menu options.
+  
+ In both the PSU PBM AUTO and PSU PBM MANUAL options, there is a call to a
+ routine PSUCP3.  This routine purges all PSU temporary globals before
+ starting the current process.  If an AUTO process is run and then a
+ MANUAL process is executed before the AUTO process finishes, the purge in
+ the MANUAL process will kill the temporary globals needed by the AUTO
+ process and the AUTO process will fail.
+  
+ It was noted that two different flags exist in the extract routine to prevent
+ concurrent execution. However, the extract could be started multiple times.
+  
+ Resolution
+ ----------
+ The ^XTMP global for the monthly report is built according to SACC
+ standards and thus, unneeded copies of the global will be purged as part
+ of the system wide purge process.  The local purge is not necessary so it
+ was removed from both the AUTO and MANUAL options. A call to a clean up
+ routine that killed the running flags before the job started was eliminated.
+ The flags will only be killed after the extract finishes.
+  
+ The first time that option PSU PBM MANUAL is used (or PSU PBM AUTO is invoked)
+ following installation of this patch will initiate the purge of patient
+ demographics.  This may cause the option to hang for up to 5 minutes
+ before the user prompts for the manual option appear.  Please allow the
+ purge to complete.  The hang is not expected to occur in subsequent uses
+ of the option, as large amounts of data older than 75 days will no longer
+ have accumulated.
+  
+ TECHNICAL DESCRIPTION:
+ ======================
+ HD151482
+ Add code in PROV^PSUSUM1 to ignore the record if there is a PERSON CLASS
+ entry in the NEW PERSON file (#200)
+  
+ HD168976
+ Remove the call to CLEAUP^PSUHL from routine PSURT1.  Add this call to
+ MANUAL^PSUCP and AUTO^PSUCP.
+  
+ HD163046
+ Added code to CLASS^PSUDEM4 to check for provider class name (^DD(7,.01))
+ if the provider class abbrev. title (^DD(7,1)) does not exist.
+  
+ HD185666
+ Modified MODHLP^PSUMAP0 input validation to start loop at NULL instead of 0.
+  
+ HD102999
+ Changed HL7+6^PSUDEM1 to quit if PSUSDT variable is NULL:
+  
+    F S PSUSDT=$O(^PSUDEM("B",PSUSDT)) Q:PSUSDT="" Q:PSUSDT>PSUEDT D
+  
+ HD193055
+ Change routine PSUCP and remove the calls to routine PSUCP3 in both the
+ AUTO and MANUAL tags. Eliminated call to EXIT label from AUTO label.
+ 
+ Documentation Retrieval:
+ ========================
+  The Pharmacy Benefits Management User Manual has been updated to reflect 
+  a change in patch PSU*4*12 that moves the trigger of the Patient demographic
+  purge from the Retransmit Patient Demographic Data option to the PSU PSM 
+  Manual option and to the PSU PBM Auto option. 
+  
+  The revised Pharmacy Benefits Management User Manual is available on the
+  ANONYMOUS.SOFTWARE directory at one of the following Office of
+  Information (OI) Field Offices. This file needs to be retrieved in binary
+  format.
+   
+  Sites may retrieve documentation in one of the following ways:
+  
+   (1) The preferred method is to FTP the files from
+       download.vista.med.va.gov, which will transmit the files from the
+       first available FTP server.
+   
+   (2) Sites may also elect to retrieve documentation directly from a
+       specific server as follows:
+   
+                  Albany          ftp.fo-albany.med.va.gov
+                  Hines           ftp.fo-hines.med.va.gov
+                  Salt Lake City  ftp.fo-slc.med.va.gov
+   
+   The documentation distribution includes:
+  
+  
+   FILE NAMES                      DESCRIPTION                    FORMAT
+  ==========                      ===========                     ======  
+  PSU_4_UM_R0108.PDF     Pharmacy Benefits Management             BINARY
+                          V.4.0 User Manual
+  
+  PSU_4_P12_UM_CP.PDF    User Manual V.4.0 Change Pages           BINARY 
+  
+ INSTALL INSTRUCTIONS:
+ =====================
+  
+   Installation will take less than 1 minute.
+  
+   Suggested time to install: non-peak requirement hours.
+  
+  
+   1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+  
+   2. From the Kernel Installation & Distribution System menu, select
+      the Installation menu.
+  
+   3. From this menu, you may select to use the following options (when
+ prompted for INSTALL NAME, enter PSU*4.0*12):
+          a.  Verify Checksums in Transport Global - This option will
+ allow you to ensure the integrity of the routines that are in the
+ transport global.
+          b.  Print Transport Global - This option will allow you to view
+ the components of the KIDS build.
+          c.  Compare Transport Global to Current System - This option
+ will allow you to view all changes that will be made when this patch is
+ installed.  It compares all components of this patch (routines, DD's,
+ templates, etc.).
+          d.  Backup a Transport Global - This option will create a backup
+ message of any routines exported with this patch. It will not backup any
+ other changes such as DD's or templates.
+  
+   4. Use the Install Package(s) option and select the package PSU*4.0*12.
+  
+   5. When prompted "Want KIDS to INHIBIT LOGONs during the install?
+ YES//" respond NO.
+  
+   6. When prompted "Want to DISABLE Scheduled Options, Menu Options, and
+ Protocols? YES//" respond NO.
+  
+  
+  
+ INSTALL EXAMPLE:
+ ================
+ Select Installation Option: 6  Install Package(s)
+ Select INSTALL NAME:    PSU*4.0*12     Loaded from Distribution
+ 4/13/07@15:24:53
+  
+      => PSU*4.0*12
+  
+  
+  
+ This Distribution was loaded on Apr 13, 2007@15:24:53 with header of
+ PSU*4.0*12
+  
+ It consisted of the following Install(s):
+  
+ PSU*4.0*12
+  
+ Checking Install for Package PSU*4.0*12
+  
+  
+ Install Questions for PSU*4.0*12
+  
+  
+  
+ Want KIDS to INHIBIT LOGONs during the install? YES//
+ NO
+ Want to DISABLE Scheduled Options, Menu Options, and Protocols? YES//
+ NO
+  
+  
+ Enter the Device you want to print the Install
+ messages.
+ You can queue the install by enter a 'Q' at the device
+ prompt.
+ Enter a '^' to abort the install.
+  
+  
+ DEVICE: HOME//   TELNET TERMINAL
+ -----------------------------------------------------------------------
+  
+  
+  Install Started for PSU*4.0*12 : Apr 13, 2007@15:31:22
+  
+  
+ Build Distribution Date: Apr 13, 2007
+  
+  
+  Installing
+ Routines:                   Apr 13, 2007@15:31:22
+  
+  
+  Updating Routine file...
+  
+  
+  Updating KIDS files...
+  
+  
+  PSU*4.0*12
+  
+ Installed.                   Apr 13, 2007@15:31:23
+  
+  
+ Install Completed
+ 
+ 
+ 
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;4.0;PHARMACY BENEFITS MANAGEMENT;**[Patch List]**;MARCH, 2005;Build 19
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PSUCP
+    Before: B89043924   After: B89472373  **12**
+Routine Name: PSUDEM1
+    Before: B42786369   After: B43130660  **12**
+Routine Name: PSUDEM4
+    Before: B52077577   After: B53465700  **8,12**
+Routine Name: PSUMAP0
+    Before: B34947359   After: B35150529  **12**
+Routine Name: PSURT1
+    Before: B23572846   After: B23549755  **12**
+Routine Name: PSUSUM1
+    Before: B18204899   After: B19056601  **12**
+ 
+Routine list of preceding patches: 8
+
+=============================================================================
+User Information:
+Entered By  : JOHNSTON,BROOKS               Date Entered  : FEB 20, 2007
+Completed By: CHANDARANA,RISHAN             Date Completed: JAN 22, 2008
+Released By : HEMBREE,SUSAN                 Date Released : JAN 22, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

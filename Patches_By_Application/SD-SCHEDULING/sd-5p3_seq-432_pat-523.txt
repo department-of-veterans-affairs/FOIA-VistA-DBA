@@ -1,0 +1,253 @@
+$TXT Created by CURTIS,RICHARD L at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 12/17/07 at 14:54
+=============================================================================
+Run Date: APR 03, 2008                     Designation: SD*5.3*523
+Package : SD - SCHEDULING                     Priority: Mandatory
+Version : 5.3       SEQ #432                    Status: Released
+                  Compliance Date: MAY 04, 2008
+=============================================================================
+
+Associated patches: (v)SD*5.3*398  <<= must be installed BEFORE `SD*5.3*523'
+                    (v)SD*5.3*455  <<= must be installed BEFORE `SD*5.3*523'
+                    (v)SD*5.3*487  <<= must be installed BEFORE `SD*5.3*523'
+                    (v)SD*5.3*517  <<= must be installed BEFORE `SD*5.3*523'
+
+Subject: Cancelling appointment problem, enrollment totals and No Show issues
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch will fix a problem that exists when cancelling a clinic, 
+ restoring the clinic for the same date, rescheduling patients to a second 
+ clinic, cancelling the first clinic again (for the same date) and 
+ printing cancellation letters.  
+  
+ This patch will also fix incorrect enrollment totals that are appearing on
+ the Clinic Assignment Listing.  Finally, this patch will correct a
+ subscript error which periodically occurs when running the No-Show Report.
+ It will also insure that No Show letters are not printed for Domicile
+ patients, who should technically be treated the same as Inpatients, who do
+ not receive these letters.
+  
+  
+ ASSOCIATED NSR(S):
+ ==================
+ N/A
+  
+ ASSOCIATED REMEDY TICKETS:
+ ==========================
+ 1) HD183161 - Cancelling appointment problem
+ 2) HD214444 - SDCLINIC ASSIGNMENT option gives incorrect enrollment
+               numbers
+    Duplicates:
+    HD216275 - SDCLINIC ASSIGNMENT report is incorrect
+    HD222209 - SDCLINIC ASSIGNMENT prints all patients
+    HD223193 - SDCLINIC ASSIGNMENT has wrong # days enrolled and inactive
+               patients
+ 3) HD217363 - <SUBSCRIPT>CHK^SDNOS0
+    Duplicates:
+    HD228964 - <SUBSCRIPT>CHK^SDNOS0
+    HD237989 - <SUBSCRIPT>CHK^SDNOS0 - No Show Report
+    HD242955 - ERROR:  <SUBSCRIPT>CHK^SDNOS0
+ 4) HD148935 - No Show letter not printing
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ ERIE, PA
+ FAYETTEVILLE, AR
+ OKLAHOMA CITY, OK
+ UPSTATE NEW YORK HCS
+  
+ REMEDY TICKET OVERVIEW:
+ =======================
+ 1) HD183161 - Cancelling appointment problem
+  
+    Problem:
+    --------
+    This problem occurs when the following actions are taken:
+  
+    Patients are scheduled for appointments on a specific date for a 
+    clinic.  The clinic is then cancelled for that date and cancellation
+    letters are printed for the patients.  However, the clinic is then
+    restored for that date and the patients are rescheduled for
+    appointments for the same date/time of their original appointments.  
+    Then, one or more of the patients are rescheduled for the same
+    date/time in another clinic and their appointments in the first clinic
+    are cancelled.  Finally, the first clinic is cancelled again for the
+    same date it was previously cancelled.  This time when the letters are
+    printed, they include letters for the patients who had been rescheduled
+    to the second clinic.  Additionally, their appointments in the second
+    clinic are shown as being cancelled, even though they are still valid
+    appointments.
+  
+    Resolution:
+    -----------
+    Routine SDC will be modified to check the clinic being cancelled.  This
+    will resolve both issues, insuring cancellation letters are only
+    printed for the applicable patients and preventing rescheduled
+    appointments for patients in a second clinic showing as cancelled.
+  
+ 2) HD214444 - SDCLINIC ASSIGNMENT option gives incorrect enrollment
+               numbers.
+  
+    Problem:
+    --------
+    When running the Clinic Assignment Listing, enrollment totals appear to
+    be nearly doubled on the report.  For example, a clinic may have about
+    270 patients enrolled, but the report is indicating an enrollment of
+    412 patients.
+  
+    Resolution:
+    -----------
+    Two FOR loops in routine SDCLAS will be corrected so that the FOR loops
+    begin with the correct 'as of' date.  Right now, these two FOR loops
+    are reading through the appointment node in the Hospital Location file
+    (#44) for the specified clinic, starting with the first appointment
+    date in the file for that clinic, instead of starting with the 'as of'
+    date specified by the user.
+  
+ 3) HD217363 - <SUBSCRIPT>CHK^SDNOS0
+  
+    Problem:
+    --------
+    When the No Show Report is run, it periodically errors because of a bad 
+    subscript in the appointment node of the Hospital Location file (#44).  
+    The existing logic does not contain any kind of check to insure the 
+    piece of data being extracted exists before using it as a subscript in 
+    another file.
+  
+    Resolution:
+    -----------
+    Routine SDNOS0 will be modified to add a necessary check to insure
+    variable SDPAT is not null before attempting to use it as a subscript
+    in the Patient file (#2).
+  
+ 4) HD148935 - No Show letter not printing
+   
+    Problem:
+    --------
+    Presently, when a user No Shows an appointment for a Domicile patient,
+    does not auto-rebook the appointment and answers 'Yes' to print the
+    No Show letter, a letter does not print.  This is correct.  Legally,
+    domicile patients are considered outpatients; however, because they
+    are admitted through ADT options in PIMS, Scheduling sees them as
+    inpatients and No Show letters do not print for inpatients.
+    However, if the user No Shows one of these appointments and does
+    auto-rebook the appointment and answers 'Yes" to print the No Show
+    letter, a letter does print.  This is incorrect.  A No Show letter
+    should not print for a domicile patient, whether the appointment is
+    auto-rebooked or not.
+  
+    Resolution:
+    -----------
+    Routines SDLT and SDN1 will be modified so that No Show letters do
+    not print for domicile patients.
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ Users can be on the system during the installation of this patch.
+ However, since options will be out of service, it is recommended 
+ that installation be queued for off-peak hours.  
+  
+ Installation should take less than 5 minutes.
+  
+ 1.  LOAD TRANSPORT GLOBAL
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the
+     INSTALL/CHECK MESSAGE PackMan option.
+  
+ 2.  START UP KIDS
+     -------------
+     Start up the Kernel Installation and Distribution System Menu
+     [XPD MAIN]
+  
+           Edits and Distribution ...
+           Utilities ...
+           Installation ...
+  
+     Select Kernel Installation & Distribution System Option:  INStallation
+                                                               ---
+  
+     1     Load a Distribution
+     2     Verify Checksums in Transport Global
+     3     Print Transport Global
+     4     Compare Transport Global to Current System
+     5     Backup a Transport Global
+     6     Install Package(s)
+           Restart Install of Package(s)
+           Unload a Distribution
+  
+ 3.  From this menu, you may elect to use the following options
+     (when prompted for INSTALL NAME, enter SD*5.3*523):
+  
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch.  It will NOT
+         backup any other changes such as DDs or templates.
+  
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when the patch
+         is installed.  It compares all components of the patch
+         (routines, DDs, templates, etc.).
+  
+     c.  Verify Checksums in Transport Global - This option will ensure
+         the integrity of the routines that are in the transport global.
+  
+     d.  Print Transport Global - This option will allow you to view
+         the components of the KIDS build.
+  
+ 4.  Use the Install Package(s) option and select the package SD*5.3*523.
+  
+     a.  When prompted "Want KIDS to INHIBIT LOGONS during the
+         install? NO//", respond NO.
+  
+     b.  When prompted "Want to DISABLE Scheduled Options, Menu Options,
+         and Protocols? NO//", respond YES.
+  
+         1) When prompted "Enter options you wish to mark as "Out of
+            Order":" enter the following option:
+  
+            Cancel Clinic Availability [SDCANCEL]
+            Clinic Assignment Listing  [SDCLINIC ASSIGNMENT]
+            No-Show Report             [SD NOSHOW REPORT]
+  
+         2) When prompted "Enter protocols you wish to mark as "Out of
+            Order":" just press <Return>.
+ 
+ 
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.3;Scheduling;**[Patch List]**;Aug 13, 1993;Build 6
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: SDC
+    Before: B24948807   After: B25530077  **15,32,79,132,167,478,487,523**
+Routine Name: SDCLAS
+    Before: B18871590   After: B18970304  **63,243,517,523**
+Routine Name: SDLT
+    Before: B15272019   After: B15803609  **185,213,281,330,398,523**
+Routine Name: SDN1
+    Before: B20640360   After: B21253578  **330,340,398,455,523**
+Routine Name: SDNOS0
+    Before: B27834725   After: B28179889  **20,194,410,517,523**
+ 
+Routine list of preceding patches: 455, 487, 517
+
+=============================================================================
+User Information:
+Entered By  : CURTIS,RICHARD                Date Entered  : AUG 21, 2007
+Completed By: CHANDARANA,RISHAN             Date Completed: APR 03, 2008
+Released By : BENBOW,PHYLLIS O              Date Released : APR 03, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

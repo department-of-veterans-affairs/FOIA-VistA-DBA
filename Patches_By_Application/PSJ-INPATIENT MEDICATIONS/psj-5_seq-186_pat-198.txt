@@ -1,0 +1,266 @@
+$TXT Created by THOMPSON,SETH at DAYT17.FO-BAYPINES.MED.VA.GOV  (KIDS) on Wednesday, 12/03/08 at 10:30
+=============================================================================
+Run Date: MAR 10, 2009                     Designation: PSJ*5*198
+Package : PSJ - INPATIENT MEDICATIONS         Priority: Mandatory
+Version : 5       SEQ #186                      Status: Released
+                  Compliance Date: APR 10, 2009
+=============================================================================
+
+Associated patches: (v)PSJ*5*141   <<= must be installed BEFORE `PSJ*5*198'
+                    (v)PSJ*5*160   <<= must be installed BEFORE `PSJ*5*198'
+                    (v)PSJ*5*174   <<= must be installed BEFORE `PSJ*5*198'
+
+Subject: PREVENT COPY COMMAND FUNCTION FROM MENU OPTION
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ *********************** WARNING ***************************
+ ***********************************************************
+ If your facility has the Pyxis/Omnicell/McKesson interface 
+ from ILC this patch will overwrite any "local" modifications 
+ in routine PSGOER. This could affect certain orders being 
+ sent across this interface.  The modifications will have to 
+ be reintroduced following installation of this patch.
+ ************************************************************
+ ************************************************************
+ 
+ ASSOCIATED REMEDY TICKETS: 
+ ==========================
+ 1. HD0000000200323 - <UNDEFINED>COPY+10^PSIVOD
+ 2. HD0000000193154 - Inappropriate Remote Order Check message
+ 3. HD0000000211655 - Nurse finishes order and its active 
+ 4. HD0000000216471 - Renew single order routine setting the wrong node for 
+                      the PSGRFOUR variable
+ 5. HD0000000210106 - Meds on extended profile do not match CPRS orders tab 
+  
+ ASSOCIATED NSR:
+ ===============
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ MINNEAPOLIS, MN
+ PUGET SOUND HCS
+ OKLAHOMA CITY, OK
+ 
+  
+ OVERVIEW OF REMEDY TICKETS:
+ ==========================
+ 1. HD0000000200323 - User gets error trying to use COPY functionality in menu 
+    option [PSJI LBLI] (Individual Labels (IV))
+  
+ Problem
+ --------------------------------------------
+ While using option [PSJI LBLI] and after selecting an order going to the NL 
+ (Print New Labels) RL (Reprint IV Labels), the user selected Items area then 
+ typed a "CO". User responded "Yes" when asked if the user wanted to copy this 
+ order. After responding "YES" the following error was logged: 
+ N OLDACT,PSIVCHG S OLDACT=PSGACT S PSGACT=PSGACT_"E"^,P(17)="N",(P("LOG"),
+ P("LF"))="",P(21)="" K P("NAT")
+ <UNDEFINED>COPY+10^PSIVOD
+  
+ Resolution
+ ----------------------------
+ Updated the routine PSJLMUTL so that it does not allow the copy command 
+ to function when this menu option is being used.
+  
+ ----------------------------
+  
+ 2. HD0000000193154 - Remote order check message printing in menu option 
+    it shouldn't
+  
+ Problem
+ ----------------------------
+ The following check and display should not be made when printing an 
+ Inpatient Profile.
+  
+ "Remote data not available - Only local order checks processed."
+ Message appeared while in option Inpatient Profile [PSJ PR]. This message 
+ should only appear on menu options if user can do more allowable actions
+ on an order such as editing an order. Also several other 
+ menu options incorrectly displayed this message. These included the following:
+  
+ Inpatient Profile [PSJ PR]
+ Patient Profile (Extended) [PSJ EXTP]
+ Patient Profile Report (IV) [PSJI PROFILE REPORT]
+ Action Profile #1 [PSJU AP-1]
+ Action Profile #2 [PSJU AP-2]
+ Patient Profile (Unit Dose) [PSJU PR]
+ Pharmacy Patient Data Edit [PSJU EPPD]
+  
+  
+ Resolution
+ ----------------------------
+ The Entry Action and Exit Actions fields were modified in the OPTION file: 
+ Entry Action: S PSJNODIS=1
+ Exit Action: K PSJNODIS
+ The routine PSJDPT checks to see if this variable exists. If this variable 
+ exists then the message won't display in the menu options above.
+ Note: Only options listed in the problem section are affected by the fix.
+  
+ ----------------------------
+  
+ 3. HD0000000211655 - Nurse finishes an order that was renewed in CPRS and 
+    order says it is active.
+  
+ Problem
+ ----------------------------
+ A problem occurred when a provider went into CPRS and renewed an order 
+ that had already been verified by both a nurse and a pharmacist. A nurse 
+ then went into the Non-Verified/Pending Orders [PSJU VBW] option and 
+ verified the order. Once this happened, the order became active and the 
+ pharmacist wasn't able to verify the order.
+  
+  
+ Resolution
+ ----------------------------
+ In line UPDREN of the routine PSGOER there is a check to see if the 
+ DATE VERIFIED BY NURSE field (#17) in the UNIT DOSE SUB-FILE (#55.06) of 
+ the PHARMACY PATIENT file (#55) is less than the renewed date. If it is, 
+ the entries in the VERIFYING NURSE field (#16) and the DATE VERIFIED BY 
+ NURSE field (#17) are killed. The kill was added for the VERIFYING PHARMACIST
+ field (#18) and DATE VERIFIED BY PHARMACIST field (#19) as well.  This 
+ resolution is for an non-complex order.  A future patch will resolve this 
+ issue for a complex order.
+  
+ ----------------------------
+  
+ 4. HD0000000216471 - Renew single order routine setting the wrong node for 
+    the PSGRFOUR variable
+   
+ Problem
+ --------------------------- 
+ A variable was being set to the PROVIDER field (#1) of the UNIT DOSE SUB-FILE 
+ (#55.06) where it should have been set to the DATE VERIFIED BY NURSE field 
+ (#17) of the UNIT DOSE SUB-FILE (#55.06). There is a check to determine if 
+ this value is less than the value of the renewed date.  This check is being 
+ miscalculated because it is comparing the DUZ of the verifying nurse instead 
+ of the DATE VERIFIED BY NURSE.
+ This is a problem because of the following two scenarios.
+   A) If the Provider has a large DUZ number, it will fail this check and not 
+       execute the code to delete the VERIFYING NURSE field (#16) and DATE 
+       VERIFIED BY NURSE field (#17) entries in the UNIT DOSE SUB-FILE (#55.06) 
+  
+   B) If the Provider has a DUZ which is less than the renew date, which is 
+      the FileMan time of renewal.  If this is the case, the order renewal 
+      date will be deleted.
+  
+  
+ Resolution
+ ----------------------------
+ Modified UPDREN^PSGOER such that the variable PSGRFOUR is set to the ,4) level 
+ instead of the ,0) level shown below. 
+ S PSGRFOUR="^PS(55,"_PSGP_",5,"_+PSGORD_",0)",PSGRFOUR=@PSGRFOUR 
+ I $P(PSGRFOUR,"^",2)<RNWDT S DR=DR_";16////@;17////@" With this variable being 
+ set to the correct node the code $P(PSGRFOUR,"^",2) will correctly pull the 
+ DATE VERIFIED BY NURSE field (#17) of the UNIT DOSE SUB-FILE (#55.06) instead 
+ of the PROVIDER field (#1) of the UNIT DOSE SUB-FILE (#55.06).
+  
+ ----------------------------
+  
+ 5. HD0000000210106 - Unit dose orders use different date search criteria than 
+    IV orders when orders displayed from the Patient Profile (Extended) menu 
+    option.
+  
+ Problem
+ ---------------------------- 
+ There is an inconsistency between unit dose and IV orders in the way the 
+ "Date to start searching from" prompt determines whether to display an 
+ order in option [PSJ EXTP] Patient Profile (Extended).
+  
+ Resolution
+ ----------------------------
+ In routine SET^PSJH1 there is a check to determine if the Start Date of 
+ an order is less than the value entered in the "Date to start searching from 
+ (optional):" prompt. If it is, the routine will quit and not display that 
+ order. The routine was changed from checking against the Start Date to 
+ checking against the Stop Date of the order.
+  
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+  
+  ************************ NOTE ************************
+   IF A USER IS ON THE SYSTEM AND USING THESE PROGRAMS 
+   AN EDITED ERROR WILL OCCUR.  
+   The patch should be installed when NO Inpatient Pharmacy 
+   users are on the system.
+   ******************************************************
+   
+  Installation will take less than 1 minute.
+  
+  Suggested time to install: non-peak requirement hours.
+  
+  
+   1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+  
+   2. From the Kernel Installation & Distribution System menu, select
+      the Installation menu.
+  
+   3. From this menu, you may select to use the following options
+      (when prompted for INSTALL NAME, enter PSJ*5.0*198):
+          a.  Verify Checksums in Transport Global - This option will allow
+              you to ensure the integrity of the routines that are in the
+              transport global.
+          b.  Print Transport Global - This option will allow you to view
+              the components of the KIDS build.
+          c.  Compare Transport Global to Current System - This option will
+              allow you to view all changes that will be made when this patch
+              is installed.  It compares all components of this patch
+              (routines, DD's, templates, etc.).
+          d.  Backup a Transport Global - This option will create a backup
+              message of any routines exported with this patch. It will not
+              backup any other changes such as DD's or templates.
+  
+   4. Use the Install Package(s) option and select the package PSJ*5.0*198.
+  
+   5. Want KIDS to Rebuild Menu Trees Upon Completion of Install? NO//
+      respond NO. 
+  
+   6. When prompted "Want KIDS to INHIBIT LOGONs during the install? NO//"
+      respond NO.
+  
+   7. When prompted "Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols? YES//" respond NO. 
+ 
+ 
+ 
+ 
+ 
+ 
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.0; INPATIENT MEDICATIONS ;**[Patch List]**;16 DEC 97;Build 7
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PSGOER
+    Before: B72290048   After: B73856519  **11,30,29,35,70,58,95,110,111,
+                                           133,141,198**
+Routine Name: PSJDPT
+    Before:  B6283782   After:  B7019925  **53,124,166,160,198**
+Routine Name: PSJH1
+    Before: B16117698   After: B16255146  **35,47,58,85,174,198**
+Routine Name: PSJLMUTL
+    Before: B55033114   After: B56399275  **7,67,58,85,111,160,198**
+
+=============================================================================
+User Information:
+Entered By  : ZEMANSKI,GARY                 Date Entered  : SEP 14, 2007
+Completed By: GOLDSMITH,JAMES H             Date Completed: MAR 10, 2009
+Released By : CONNOLLY,BARBARA              Date Released : MAR 10, 2009
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

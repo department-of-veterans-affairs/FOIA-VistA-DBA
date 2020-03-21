@@ -1,0 +1,289 @@
+$TXT Created by OWEN,STEVE at CHEY11.FO-BAYPINES.MED.VA.GOV  (KIDS) on Wednesday, 12/03/08 at 11:24
+=============================================================================
+Run Date: MAR 03, 2009                     Designation: SD*5.3*532
+Package : SD - SCHEDULING                     Priority: Mandatory
+Version : 5.3       SEQ #445                    Status: Released
+                  Compliance Date: APR 03, 2009
+=============================================================================
+
+Associated patches: (v)SD*5.3*297  <<= must be installed BEFORE `SD*5.3*532'
+                    (v)SD*5.3*499  <<= must be installed BEFORE `SD*5.3*532'
+                    (v)SD*5.3*515  <<= must be installed BEFORE `SD*5.3*532'
+
+Subject: PCMM PHASE III - INACTIVATION OF PROVIDERS
+
+Category: 
+  - Routine
+  - Print Template
+
+Description:
+============
+
+ This patch modifies the current behavior of PCMM (Patient Care Management
+ Module) with regards to provider inactivation, PCMM HL7 message type A08
+ errors: 001M, 104M, 113M, and a patient inactivation issue associated with
+ reactivating a previously auto inactivated patient.
+  
+ Patch SD*5.3*297 introduced provider inactivation as a one time event to 
+ be initiated six months after installation of the patch.  This patch will
+ provide functionality for a monthly inactivation of providers whose Person
+ Class is inappropriate for their role.  Providers are first marked for
+ inactivation and the scheduled inactivation is listed in the email 
+ bulletin "PC Providers Scheduled for Inactivation."  The provider marked
+ for inactivation does not receive this email; instead, the bulletin is
+ directed to the mail group PCMM PATIENT/PROVIDER INACTIVE.  The PCMM menu 
+ option "Staff Sched for Inactivation" [SCMC PRACTITIONER FLAGGED] provides
+ an on demand listing of providers marked for inactivation.
+  
+ Once a provider has been identified and marked for inactivation, the 
+ responsible party will have a grace period of at least 30 days to correct 
+ the Person Class issue.  If the Person Class issue remains uncorrected 
+ after 30 days, the provider will be inactivated from the Team Position on 
+ the next end of month processing event.
+  
+ To address Remedy ticket 212756, the PCMM HL7 transmission routines have 
+ been updated to correct logic introduced in patch SD*5.3*515 that 
+ resulted in segments being dropped from the PCMM A08 HL7 message
+ payload.  Dropped message segments resulted in error types:
+ 001M - ENV segment missing
+ 104M - Event Date missing or out of range.
+ 113M - Event Type is not 'A08'
+  
+ Remedy ticket #248638 identified an issue with patients who were 
+ automatically inactivated and subsequently reactivated.  These patients 
+ were not flagged for future inactivation because the date of reactivation 
+ was recorded in field #.17 (DATE DISINACTIVATED) of the Patient Team 
+ Position Assignment file (#404.43).  A value in this field caused the 
+ tasked job, PCMM NIGHTLY TASK [SCMC PCMM NIGHTLY TASK], to not evaluate
+ the patient for future inactivations.  The use of this field to evaluate
+ inactivations has been discontinued.
+  
+ ASSOCIATED NSR(s):
+ ==================
+  
+ N/A
+  
+ ASSOCIATED REMEDY:
+ ==================
+  
+ 1.  HD248638     PCMM:  Patient Reactivation
+ 2.  HD212756     Transmission errors 113M, 104M and 001M - source unknown
+     Duplicates:  HD240558  PCMM Transmission Errors
+                  HD241890  PCMM Transmission Errors
+                  HD245769  Transmission Errors
+                  HD249418  Transmission Errors 113M, 104M and 001M
+                  HD252184  Transmission error same ticket 245769
+                  HD254450  Transmission error 185 UNKNOWN
+                  HD254717  Several errors in PCMM transmission error list
+                            have no patient names
+                  HD262131  Need assistance with transmission error
+                            corrections
+                  HD271648  PCMM errors
+                  HD220091  PCMM missing PID and EVN segments #561 East
+                            Orange
+                  HD220096  PCMM missing PID and EVN segments - #656 - St.
+                            Cloud
+                  HD220098  PCMM missing segments - #573 - Gainesville
+                  HD274996  Assistance with clearing errors
+                  HD277764  Errors listed in Transmission report
+                  HD279240  Misc. Errors in PCMM
+ 3  HD170675      SD*5.3*297 and inactive providers
+  
+ Overview of Remedy Ticket(s):
+ =============================
+  
+ 1.  HD248638     PCMM:  Patient Reactivation
+  
+ Problem:
+ --------
+ If the DATE DISINACTIVATED field (#.17), of an entry in the
+ PATIENT TEAM POSITION ASSIGNMENT file (#404.43) has a value entered
+ (the patient was reactivated after being auto inactivated) the
+ PCMM NIGHTLY TASK [SCMC PCMM NIGHTLY TASK] job fails to evaluate the
+ reactivated entry for any possible future automatic inactivation.
+  
+  
+ Resolution:
+ -----------
+ This field is no longer used and the condition is eliminated. Patients
+ that have been reactivated will now be evaluated for any possible future
+ automatic inactivation.
+  
+  
+ 2.  HD212756  Transmission errors 113M, 104M and 001M - source unknown
+     Duplicates:  HD240558  PCMM Transmission Errors
+                  HD241890  PCMM Transmission Errors
+                  HD245769  Transmission Errors
+                  HD249418  Transmission Errors 113M, 104M and 001M
+                  HD252184  Transmission error same ticket 245769
+                  HD254450  Transmission error 185 UNKNOWN
+                  HD254717  Several errors in PCMM transmission error list 
+                            have no patient names  
+                  HD262131  Need assistance with transmission error 
+                            corrections
+                  HD271648  PCMM errors
+                  HD220091  PCMM missing PID and EVN segments #561 East
+                            Orange
+                  HD220096  PCMM missing PID and EVN segments - #656 - St.
+                            Cloud
+                  HD220098  PCMM missing segments - #573 - Gainesville
+                  HD274996  Assistance with clearing errors
+                  HD277764  Errors listed in Transmission report
+                  HD279240  Misc. Errors in PCMM
+ Problem:
+ --------
+ The PCMM Transmission Error Processing [SCMC PCMM TRANS ERROR PROC] report
+ displays errors of type 113M, 104M, and 001M.  Patient name associated
+ with the error is listed as "Unknown."  These types of errors are the
+ result the PCMM HL7 A08 type messages missing the EVN and PID segments.  
+ These "missing segment" messages were the result of incorrect program
+ logic which caused the message creation process to delete the EVN and PID
+ segments under certain circumstances.
+  
+ Resolution
+ ----------
+ In routine SCMCHLB, the code was modified to set the variables correctly, 
+ resulting in correct execution of the branching code logic.
+  
+            Before  IF SCTPTPA=1 S SCLOW=$$GETOEF(PTPI,"","") 
+            After   S SCLOW=$$GETOEF(PTPI,"","")
+  
+            Before  ....IF $L(SCNEWROL) D
+            After   ....I SCNEWROL?1.3A D
+  
+ 3.  HD170675     SD*5.3*297 and inactive providers
+  
+ Problem:
+ --------
+ SD*5.3*297 introduced the inactivation of providers with inactive Person
+ Class assignments.  A one time inactivation of these providers occurred
+ six months after the installation of the patch.  It was requested this
+ functionality be modified to perform a monthly inactivation of providers
+ with inactive Person Class assignments.
+  
+ Resolution
+ ----------
+ The PCMM NIGHTLY TASK [SCMC PCMM NIGHTLY TASK] will now identify providers
+ with inactive person class assignments.  Notification of providers to be
+ inactivated is provided by bulletin "PC Providers Scheduled for
+ Inactivation." An on demand option is also available, "Staff Sched for
+ Inactivation" [SCMC PRACTITIONER FLAGGED], from the "PROVIDER/POSITION
+ REPORTS AND OPTIONS" [SCMC PCMM PROVIDER RPTS MENU] of the PCMM Menu.
+  
+ Components Sent With Patch
+ ==========================
+  
+ The following is a list of templates included in the patch:
+  
+ Template Name         Type         File Name (Number)
+ =============         ====         ==================
+ SC PROVIDER FLAGGED   PRINT        POSITION ASSIGNMENT HISTORY  (#404.52)
+  
+  
+ Test Sites:
+ ===========
+  
+ Lebanon PA. VAMC
+ Tampa FL. VAMC
+ Connecticut HCS - West Haven 
+  
+ ========================== INSTALLATION INSTRUCTIONS =====================
+  
+  
+ Install Time - less than 5 minutes.  Users may remain on the system 
+ during the patch installation.
+  
+ 1. LOAD TRANSPORT GLOBAL
+    ---------------------
+    Choose the PackMan message containing this patch and invoke the 
+    INSTALL/CHECK MESSAGE PackMan option.
+  
+ 2. START UP KIDS
+    -------------
+    Start up the Kernel Installation and Distribution System Menu
+    [XPD MAIN]:
+  
+        Edits and Distribution ...
+        Utilities ...
+        Installation ...
+  
+ Select Kernel Installation & Distribution System Option: INStallation
+                                                          ---
+        Load a Distribution
+        Print Transport Global
+        Compare Transport Global to Current System
+        Verify Checksums in Transport Global
+        Install Package(s)
+        Restart Install of Package(s)
+        Unload a Distribution
+        Backup a Transport Global
+  
+ Select Installation Option:
+  
+ 3. Select Installation Option:
+    ---------------------------
+    NOTE: The following are OPTIONAL - (When prompted for the INSTALL
+          NAME, enter SD*5.3*532:
+  
+          a. Backup a Transport Global - This option will create a backup
+             message of any routines exported with the patch. It will not
+             backup any other changes such as DD's or templates.
+  
+          b. Compare Transport Global to Current System - This option will
+             allow you to view all changes that will be made when this
+             patch is installed. It compares all components of this patch
+             (routines, DD's, templates, etc.)
+  
+          c. Verify Checksums in Transport Global - This option will allow
+             you to ensure the integrity of the routines that are in the
+             transport global.
+  
+ 4. Select Installation Option: Install Package(s)
+                                ------------------
+    **This is the step to start the installation of this KIDS patch:
+  
+    a. Choose the Install Package(s) option to start the patch install 
+       and select the package SD*5.3*532.
+  
+    b. When prompted 'Want KIDS to INHIBIT LOGONS during the install? NO//'
+       press return
+    c. When prompted 'Want to DISABLE Scheduled Options, Menu Options,
+       and Protocols? NO//' press return
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.3;Scheduling;**[Patch List]**;AUG 13, 1993;Build 21
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: SCMCHLB
+    Before: B67658651   After: B71450267  **177,204,210,224,515,532**
+Routine Name: SCMCTSK1
+    Before: B79722253   After: B79165926  **297,498,527,499,532**
+Routine Name: SCMCTSK2
+    Before: B91467456   After: B97672367  **297,498,527,499,532**
+Routine Name: SCMCTSK3
+    Before: B82723614   After: B82393568  **297,499,532**
+Routine Name: SCMCTSK5
+    Before: B83482396   After: B82463254  **297,532**
+Routine Name: SCMCTSK6
+    Before: B62522590   After: B61678804  **297,532**
+Routine Name: SCMCTSKI
+    Before:       n/a   After:  B1128625  **532**
+ 
+Routine list of preceding patches: 499, 515
+
+=============================================================================
+User Information:
+Entered By  : HOUTCHENS,THOMAS              Date Entered  : FEB 06, 2008
+Completed By: OWEN,STEVEN W                 Date Completed: MAR 03, 2009
+Released By : BENBOW,PHYLLIS O              Date Released : MAR 03, 2009
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,325 @@
+$TXT Created by WINN,TAMI at DEVCRN.FO-ALBANY.MED.VA.GOV  (KIDS) on Friday, 11/21/08 at 11:12
+=============================================================================
+Run Date: NOV 30, 2009                     Designation: XT*7.3*113
+Package : XT - TOOLKIT                        Priority: EMERGENCY
+Version : 7.3        SEQ #94                    Status: Released
+                  Compliance Date: DEC 03, 2009
+=============================================================================
+
+Associated patches: (v)XT*7.3*42   <<= must be installed BEFORE `XT*7.3*113'
+                    (v)XT*7.3*43   <<= must be installed BEFORE `XT*7.3*113'
+                    (v)XT*7.3*47   <<= must be installed BEFORE `XT*7.3*113'
+
+Subject: IDENTITY HUB CHANGES FOR DUPLICATE RECORD MERGE
+
+Category: 
+  - Routine
+  - Enhancement ()
+  - Data Dictionary
+
+Description:
+============
+
+  Changes to the KERNEL Duplicate Resolution System [XDR MAIN MENU] options
+  to support the new PSIM Probabilistic Search.  This patch is related to
+  VistA patch MPIF*1.0*52 and Master Patient Index Austin patches
+  MPI*1.0*62 and MPI*1.0*71.
+  
+  XT*7.3*42, XT*7.3*43, and XT*7.3*47 are required builds for patch
+  XT*7.3*113.
+  
+  *************************************************************************
+  NOTE:  The compliance date of this patch has been shortened due to
+  dependencies which exist with the MPI Austin patch MPI*1.0*71, 
+  the Person Service Identity Management (PSIM) and Identity Management 
+  (IMDQ) Toolkit software releases.  These releases support the switch to
+  Initiate Identity Hub probabilistic algorithm during MPI searches.  It is
+  imperative that this patch be installed no later than the compliance date
+  to ensure we are ready for the switch over. Your understanding and
+  support is appreciated.
+  ************************************************************************ 
+      
+  The Person Service Identity Management (PSIM) centralized probabilistic
+  Initiate search algorithm will replace the local KERNEL Duplicate
+  Resolution System [XDR MAIN MENU] search process for identifying local
+  potential duplicate PATIENT (#2) records.  See patch MPIF*1.0*52
+  for additional information.
+  
+  After the probabilistic algorithm is implemented on the Master 
+  Patient Index (MPI), most pairs of duplicate patients will be added to
+  the VistA DUPLICATE RECORD (#15) file by the MPI package, when the search
+  on the MPI identifies a pair as exact matches, or when Healthcare
+  Identity Management (HC IdM) uses the new IMDQ Toolkit application to
+  verify that a pair of patients are a match. The KERNEL Duplicate
+  Resolution System options that were previously used to search the PATIENT
+  file for potential matches will no longer be available for PATIENT
+  searches. Records will be loaded onto the DUPLICATE RECORD (#15) file
+  with a status of POTENTIAL DUPLICATE, UNVERIFIED.  Once records have been
+  loaded, the existing KERNEL Duplicate Resolution System [XDR MAIN MENU]
+  options will be used as before to validate the potential duplicate
+  patients, and to perform the merge on the PATIENT (#2) file.
+   
+  NOTE: The option "Add Verified Duplicate Pair" on the KERNEL Duplicate 
+  Resolution system Utilities menu will still be available, so facility 
+  staff will still be able to use the duplicate record system to add 
+  duplicate patient pairs for merging.
+  
+  DETAILED DESCRIPTION OF CHANGES:
+  
+  A new routine, XDRDADDS, and remote procedure, XDR ADD POTENTIAL PATIENT
+  DUP will be called from the Master Patient Index (MPI) system to add
+  records to the local VistA DUPLICATE RECORD (#15) file when potential
+  matches are identified.  This routine will generate an email message to 
+  the mail group in the DUPLICATE MANAGER MAIL GROUP (#.11)  field in the
+  DUPLICATE RESOLUTION (#15.1) file.
+  
+  A new field SUPPRESS NEW DUP EMAIL (#99) was added to the DUPLICATE 
+  RESOLUTION file (#15.1) to control whether to send or not send the email 
+  message when entries are added to the DUPLICATE RECORD file as described 
+  above. During the initial installation of the MPI patch related to the
+  new Initiate search engine, a job will search the entire central database
+  to look for matches using the new algorithm. This job might add several
+  pairs of patients to the DUPLICATE RECORD file at local VistA sites. HD
+  IdM will use an option to temporarily set the SUPPRESS NEW DUP EMAIL
+  field at the VistA sites so that multiple email messages will not be
+  sent. After the bulk processing is complete, HC IdM will notify the sites
+  to check their DUPLICATE RECORD file for new entries and determine
+  whether to either merge the patient pairs, or to set their status to
+  VERIFIED, NOT A DUPLICATE. HC IdM will then run the option to reset the
+  SUPPRESS NEW DUP EMAIL flag so that the email messages will no longer be
+  suppressed.
+  
+  New routine XDRDEFLG was created to be executed from new Remote Procedure
+  XDR UPD SUPPR EMAIL. This is called from a new IMDQ option on the MPI
+  server. It sets the SUPPRESS NEW DUP EMAIL (#99) field on the DUPLICATE 
+  RESOLUTION file (#15.1) to either stop or resume sending the email
+  messages when a new entry is added to the DUPLICATE RECORD file as
+  described above.
+  
+  Routine XDRDPICK was modified.  If the status on a pair of patient
+  records is changed to 'VERIFIED, NOT A DUPLICATE', and if this VistA
+  system is attached to the MPI, new routine MPIFDNL calls Remote Procedure
+  MPI DNLADD UPD on the MPI server, to add a record to the MPI DO NOT LINK
+  (#985.28) file. This file will prevent the patients from being identified
+  as potential duplicates again. NOTE: Because this routine will call an
+  RPC, the personnel who access the XDR menus must be set up as valid 
+  users who have access to run an RPC. See details in Installation 
+  Instructions.
+  
+  Routine XDRDEDT was modified.  If the status on a patient pair is changed
+  from VERIFIED, NOT A DUPLICATE back to POTENTIAL DUPLICATE, UNVERIFIED,
+  and if the VistA system is attached to the MPI new routine MPIFDNL calls
+  Remote Procedure MPI DNL ADD UPD on the MPI server, to inactivate the
+  record on the MPI DO NOT LINK (#985.28) file.
+     
+  Routine XDRMADD was changed so that duplicate record checking (scoring) 
+  will no longer be performed when a pair of PATIENT records is added to 
+  the DUPLICATE RECORD file (#15) using the option 'Add Verified Duplicate 
+  Pair' as described below.
+  
+  Routines XDRDCNT, XDRDCOMP, XDRDFPD, XDRDLIST, XDRDPICK, XDRDPRGE and
+  XDRDQUE were changed in support of either allowing or not allowing the 
+  PATIENT (#2) file to be selected as described in the OPTION changes
+  below.
+  
+  
+  Several of the KERNEL Duplicate Resolution System [XDR MAIN MENU] options
+  were altered:
+   
+  (1) Utilities [XDR UTILITIES MENU] options:
+     - Add Verified Duplicate Pair [XDR ADD VERIFIED DUPS] - The option
+     will no longer calculate a score on patient pairs.
+     - Check Pair of Records to see if Duplicates [XDR CHECK PAIR] - This
+     option will no longer be available for patients.
+     - Find Potential Duplicates for an Entry in a File [XDR FIND POTENTIAL
+     DUPLICATES] - This option will no longer be available for patients.
+   
+  (2) Manager Utilities [XDR MANAGER UTILITIES] options:
+     - Purge Duplicate Record File [XDR PURGE] - This option be put 'OUT
+     OF ORDER', and will be removed from the XDR MANAGER UTILITIES menu.
+     - Start/Halt Duplicate Search [XDR SEARCH ALL] - This option will no
+     longer be available for patients.
+  
+  A post-init routine XT73P113 will run. This routine will place the option
+  XDR PURGE 'OUT OF ORDER', and will remove it from the XDR MANAGER 
+  UTILITIES menu option.
+   
+  
+  Documentation Update:
+  =====================
+  The following KERNEL Duplicate Resolution System VISTA documentation is
+  available, updated for patch XT*7.3*113.  Facilities should download the
+  revised documentation listed as follows:
+  
+      User Manual                         xt_73_p113_um.pdf
+      Release Notes                       xt_73_p113_rn.pdf
+      Technical Manual                    xt_73_p113_tm.pdf
+   
+  The preferred retrieval method is to FTP from the ANONYMOUS.SOFTWARE
+  directory at: DOWNLOAD.VISTA.MED.VA.GOV
+  This transmits the file from the first available FTP server.
+  Sites may also elect to retrieve software directly from one
+  of the following servers.
+  
+  OI Field Office         FTP Address                  Directory
+  ------------------------------------------------------------------
+  Albany             ftp.fo-albany.med.va.gov     ANONYMOUS.SOFTWARE
+  Hines              ftp.fo-hines.med.va.gov      ANONYMOUS.SOFTWARE
+  Salt Lake City     ftp.fo-slc.med.va.gov        ANONYMOUS.SOFTWARE
+  
+  Note:  These files must be transferred in binary or IMAGE,
+         not ASCII, mode.
+   
+  The documents can also be downloaded from the VistA Documentation
+  Library (VDL) Web page in both Acrobat PDF and MS-Word DOC formats:
+   
+      http://www.va.gov/vdl/application.asp?appid=16
+   
+  Associated Remedy Ticket(s):
+  ============================
+  There are no associated Remedy Tickets.
+   
+  Associated New Service Request (NSR):
+  =====================================
+  There is no associated NSR with the patch.
+    
+  Test Sites:
+  ===========
+  Altoona
+  North Texas
+  Phoenix
+  
+  Blood Bank Team Coordination
+  ============================
+  Clearance: 11/06/2008 (from Randy Morton)  
+   
+  EFFECT ON BLOOD BANK FUNCTIONAL REQUIREMENTS: Patch XT*7.3*113 contains 
+  changes to a package referenced in VHA OI SEPG SOP 192-023 Review of 
+  VISTA Patches for Effects on VISTA Blood Bank Software. This patch does 
+  not alter or modify any VistA Blood Bank software design safeguards or 
+  safety critical elements functions.
+   
+  RISK ANALYSIS: Changes made by patch XT*7.3*113 have no effect on Blood 
+  Bank software functionality, therefore RISK is none.
+  
+   
+  Installation Instructions:
+  ==========================
+   This patch can be loaded with users on the system.  Installation
+   will take less than 5 minutes. 
+   
+   These installation instructions apply to the M portion of the
+   application.
+  
+   1.  Stop any active merge processes that are running using the option 
+       Stop an active Merge Process [XDR STOP MERGE PROCESS] and say YES to
+       stop all merges.
+                   
+   2.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu to unload
+       the KIDS distribution included with this message.
+   
+   3.  From the Kernel Installation and Distribution System Menu, select 
+       the Installation menu.  
+   
+   4.  From this menu, you may elect to use the following options
+       (when prompted for INSTALL NAME, enter XT*7.3*113): 
+   
+       a.  Backup a Transport Global - this option will create a backup
+           message of any routines exported with the patch.  It will NOT
+           backup any other changes such as DDs or templates.
+       b.  Compare Transport Global to Current System  - this option will
+           allow you to view all changes that will be made when the patch
+           is installed.  It compares all components of the patch 
+           (routines, DDs, templates, etc.).
+       c.  Verify Checksums in Transport Global - this option will
+           allow you to ensure the integrity of the routines that are in
+           the transport global.
+       d.  Print Transport Global - this option will allow you to view the
+           components of the KIDS build.
+   
+   5.  Use the Install Package(s) option and select the package 
+       XT*7.3*113.
+   
+   6.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+       NO//',respond NO.
+   
+   7.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, 
+       and Protocols? NO//', respond Yes. The following OPTIONS should be
+       disabled during the installation.
+         Duplicate Resolution System     [XDR MAIN MENU]
+         Operations                      [XDR OPERATIONS MENU]
+         Utilities                       [XDR UTILITIES MENU]
+         Manager Utilities               [XDR MANAGER UTILITIES]
+  
+   8.  A post-init routine XT73P113 will run. This routine will place the 
+       option XDR PURGE 'OUT OF ORDER', and will remove it from the XDR
+       MANAGER UTILITIES menu option.
+  
+   9.  If any merges were stopped in step 1, use the Restart a Merge 
+       Process [XDR RESTART MERGE PROCESS] option to resume merging.
+  
+  10.  Because a new Remote Procedure Call (RPC) is now called when the
+       verifier sets the status on a pair of potential duplicate patients
+       to "VERIFIED, NOT A DUPLICATE", any user of this option needs to be
+       set up with required fields for executing an RPC. Make sure the
+       users who have access to the XDR OPERATIONS MENU have the following
+       fields in their NEW PERSON file entry.
+         .01 NAME field is not null
+         2   ACCESS CODE is not null
+         11  VERIFY CODE is not null
+         9   SSN is not null, not a pseudo SSN (followed by "P"), and
+             not a test SSN (i.e., it should not start with 5 leading
+             zeros)
+         9.2 TERMINATION DATE is null or follows the current date
+       
+       In addition, the site that the user is logged on to (in variable
+       DUZ(2)) must have a valid STATION NUMBER field in its INSTITUTION
+       file entry (file #4, field #99).
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;7.3;TOOLKIT;**[Patch List]**;Apr 25, 1995;Build 5
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: XDRCNT
+    Before: B18892090   After: B19633357  **23,113**
+Routine Name: XDRDADDS
+    Before:       n/a   After: B13998263  **113**
+Routine Name: XDRDCOMP
+    Before: B11858573   After: B12808569  **23,113**
+Routine Name: XDRDEDT
+    Before: B30537900   After: B33732705  **23,43,113**
+Routine Name: XDRDEFLG
+    Before:       n/a   After:  B1931825  **113**
+Routine Name: XDRDFPD
+    Before: B13529157   After: B14210534  **113**
+Routine Name: XDRDLIST
+    Before: B15430835   After: B16235628  **23,113**
+Routine Name: XDRDPICK
+    Before: B76108435   After: B86863530  **23,47,113**
+Routine Name: XDRDPRGE
+    Before:  B8257141   After:  B9048519  **23,42,113**
+Routine Name: XDRDQUE
+    Before: B18790342   After: B20836456  **23,47,113**
+Routine Name: XDRMADD
+    Before: B35442806   After: B42800986  **23,113**
+Routine Name: XT73P113
+    Before:       n/a   After:  B2774672  **113**
+ 
+Routine list of preceding patches: 42, 43, 47
+
+=============================================================================
+User Information:                          Hold Date     : NOV 30, 2009
+Entered By  : WINN,TAMI                     Date Entered  : APR 29, 2008
+Completed By: CHESNEY,CHRISTINE M           Date Completed: NOV 30, 2009
+Released By : HEUER,CINDY                   Date Released : NOV 30, 2009
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

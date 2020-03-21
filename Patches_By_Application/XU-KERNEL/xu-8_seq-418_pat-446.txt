@@ -1,0 +1,978 @@
+KIDS build text print for PATCH,USER
+Printed at VAHACG.FO-ALBANY.MED.VA.GOV  11/03/10@17:09
+Subj: Released XU*8*446 SEQ #418  [#42495] 06/03/09@15:06
+From: <"National Patch Module"@FORUM.VA.GOV> Page 1
+-------------------------------------------------------------------------------
+
+$TXT Created by FORT,WALLY at KRN.FO-OAKLAND.MED.VA.GOV  (KIDS) on Wednesday, 12/10/08 at 13:43
+=============================================================================
+Run Date: JUN 03, 2009                     Designation: XU*8*446
+Package : XU - KERNEL                         Priority: Mandatory
+Version : 8       SEQ #418                      Status: Released
+                  Compliance Date: JUL 04, 2009
+=============================================================================
+
+Associated patches: (v)XU*8*192        install with patch       `XU*8*446'
+                    (v)XU*8*242        install with patch       `XU*8*446'
+                    (v)XU*8*339    <<= must be installed BEFORE `XU*8*446'
+                    (v)XU*8*355    <<= must be installed BEFORE `XU*8*446'
+                    (v)XU*8*425    <<= must be installed BEFORE `XU*8*446'
+
+Subject: TaskMan Fix for Cache 5
+
+Category: Subj: Released XU*8*446 SEQ #418  [#42495]   Page 2
+-------------------------------------------------------------------------------
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ Patch Tracking #: 45309946
+ Test Sites: Amarillo VAMC, COLUMBUS,OH, Indianapolis VAMC, 
+             HEARTLAND-WEST HCS
+  
+ Blood Bank Clearance: 12/20/2007 
+  
+ After installing this patch, if a TaskMan hang happens, Please enter the 
+ following before doing anything else:
+  
+ JOB EN^XUTMHR("1,5")
+  
+ This will enter data into the SNAPSHOT file so it can be analyzed later.
+  
+ HD 174305, 175486, 176587, 182009
+ TaskMan Hangs. When this happens hundreds of tasks sit waiting for Subj: Released XU*8*446 SEQ #418  [#42495]   Page 3
+-------------------------------------------------------------------------------
+ partitions. Sometimes running ZTMON will get the sub-managers running
+ again. At this time the true cause is unknown.  This patch should
+ help with finding the cause.
+  
+ Added a proxy user "TASKMAN,PROXY USER", if DUZ would be zero when
+ running a task, DUZ will be set to the Proxy user.
+  
+ ZTLOAD1, Lock ^%ZTSCH("SCHQ") before adding to schedule.
+  
+ ZTLOAD2, ASKSTOP locking inconsistent.
+  
+ ZTLOAD5, When checking the status of a task the STAT API would return 
+ "Active: Running" without checking that the %ZTSCH("TASK",ztsk) global was 
+ locked.  This could give a false indication that the task was still 
+ running. The Lock is done with a zero timeout that could falsely report 
+ that the task was still running.
+  
+ ZTMON, Added space for longer Box:Volume names.
+  
+ ZTMON1, Calls %ZTMS5 with a zero lock timeout.
+  Subj: Released XU*8*446 SEQ #418  [#42495]   Page 4
+-------------------------------------------------------------------------------
+ ZTMON2, This version of the TaskMan monitor uses a non-zero lock
+ timeout when checking the sub-manager nodes and reports any that are
+ old or are not holding their lock.  It also reports a status from
+ the sub-manager as to what was the last thing it did before going into
+ a wait status.
+  
+ ZTM, Changed to allow it to do IDLE work when at Job limit.  Moved Job 
+ limit check to the NEWJOB sub-routine. Changed the TaskStatus to record the 
+  $J in the status node of the task.  Most locks now use the value from 
+ %ZTLKTM value, some zero timeout remain with code to keep checking.
+ Changed to lock ^%ZTSCH("SCHQ") to synchronize data and control access and not 
+ use ^%ZTSCH(ZTDTH) which was done after accessing the global.
+ Added code to start one sub-manager in the idle loop if the JOB list is longer
+ than 15.
+  
+ ZTM5, Changed to load the value of ^DD("DILOCKTM") into a local variable 
+ %ZTLKTM. Changed to use the %ZTLKTM value in most locks.  Uses %ZTLKTM when 
+ calling %ZTMS5 to do the sub-manager counts.
+ Every hour it schedules HOUR^XUTMHR to run.
+  
+ ZTM6, Changed ^%ZTSCH("LOAD",value)=who^when to Subj: Released XU*8*446 SEQ #418  [#42495]   Page 5
+-------------------------------------------------------------------------------
+ ^%ZTSCH("LOAD")=who^value^when If the load balance got an error it would 
+ turn off load balancing, Changed to try 10 times before turning load 
+ balancing off.  Locks use the value from DILOCKTM.  If it can't lock 
+ ^%ZTSCH("LOAD"), return continue running value. Put the balance code in a 
+ transaction.
+  
+ ZTMS Changed to load the value of ^DD("DILOCKTM") into a local variable 
+ ZTLKTM.
+  
+ ZTMS0, Changed the checks before calling %ZISC to close the current device
+ and to see if there is a second device open.  Tested to see that a task
+ with a resource device that gets an error doesn't leave the resource
+ slot in use.
+  
+ ZTMS1, Added variable STATUS to keep track of what the sub-manager is 
+ doing.  The STATUS value is also saved in the ^%ZTSCH("SUB",$J) node by the 
+ sub-manager when it goes into its idle loop. A value of "JOB Q" means it 
+ checked the JOB Q and did not find any work. A value of "No JOBQ Lock" 
+ failed to lock the ^%ZTSCH("JOBQ") node. A value of "No ZTSK Lock" means it 
+ failed to lock the ^%ZTSK(ZTSK) node. This is still done with a lock 
+ timeout of zero. Most lock timeouts have been changed from 0 to ZTLKTM.Subj: Released XU*8*446 SEQ #418  [#42495]   Page 6
+-------------------------------------------------------------------------------
+  
+ ZTMS3, Will set DILOCKTM for any task that is run. Make sure the cleanup
+ doesn't kill the ZTLKTM variable TaskMan uses.
+  
+ ZTMS5, This routine checks and updates the sub-manager count every hour or
+ when ZTMON is run. Changed the lock timeout from 0 to a passed in value.
+ TaskMan passes in the value of DILOCKTM and ZTMON uses zero.
+  
+ ZTMGRSET New entry point to allow a patch to call it to update
+ %Z* routine without the user having to remember to run it.
+  
+ XUTMHR This new routine has two parts, one is to be run every hour by 
+ TaskMan to check if there are any scheduled jobs that have lost their task
+ or did not get re-queued for a future time.  The second is thru the option
+ XUTM SNAPSHOT to save a snapshot of TaskMan work counts and save them in
+ the TASKMAN SNAPSHOT file (#14.72). When the Task is scheduled it takes an
+ entry in the TASK PARAMETERS field. This is how many MINUTES to sample
+ for, "," and how many SECONDS to wait between samples. It has a limit of
+ 480 minutes (8 hours) and a minimum of 2 seconds to wait. At these limits
+ it would record 14400 samples.  It will default to 60 minutes with a
+ sample every 60 seconds.Subj: Released XU*8*446 SEQ #418  [#42495]   Page 7
+-------------------------------------------------------------------------------
+ It can also be started by JOB EN^XUTMHR("1,5").
+  
+ Sample Inquire to TASKMAN SNAPSHOT file (#14.72):
+ DATE: JUL 02, 2008@16:21:26             TASKMAN CURRENT: Yes
+   TASKMAN COUNT: 2                      TASKMAN BALANCE: NXT:KDAISC6A2
+   BALANCE WEIGHT: 36                    SCHEDULE COUNT: 22
+   SCH LATE BY: 0                        SCH LATE CNT: 0
+   IO DEVICE CNT: 0                      IO TASK COUNT: 0
+   IO LATE: 0                            JOBQ: 0
+   JOBQ LATE: 0                          SUBMANAGER COUNT: 3
+   RUNNING TASKS: 44                     TOTAL JOBS: 41
+ MANAGER: 538970340                      DATETIME: Jul 02, 2008@16:21:22
+   STATUS: BALANCE                       PAIR: NXT:KDAISC6A1
+   LONG STATUS: Load Balance Wait.
+ MANAGER: 541067451                      DATETIME: Jul 02, 2008@16:21:19
+   STATUS: RUN                           PAIR: NXT:KDAISC6A2
+   LONG STATUS: Main Loop
+ SUBMANAGER: 539376343                   DATETIME: Jul 02, 2008@16:21:25
+   STATUS: Balance Wait                  BALANCE: YES
+   PAIR: NXT:KDAISC6A1
+ SUBMANAGER: 541583902                   DATETIME: Jul 02, 2008@16:21:26Subj: Released XU*8*446 SEQ #418  [#42495]   Page 8
+-------------------------------------------------------------------------------
+   STATUS: JOB Q                         BALANCE: NO
+   PAIR: NXT:KDAISC6A2
+ SUBMANAGER: 541583942                   DATETIME: Jul 02, 2008@16:21:26
+   STATUS: JOB Q                         BALANCE: NO
+   PAIR: NXT:KDAISC6A2
+   
+ XUTMK, Pass DILOCKTM to SUBCHK^ZTMS5.  Clean up TASKMAN MONITOR data
+ that is more that a year old.
+  
+ TaskMan has been saving data in this file but it did not have a DD.
+  
+ STANDARD DATA DICTIONARY #14.71 -- TASKMAN MONITOR FILE
+                      FEB 19,2008@14:14:26  PAGE 1
+ STORED IN ^%ZIS(14.71,(3681 ENTRIES) SITE: SF CIOFO, KERNEL PATCH ACCOUNT
+  
+ DATA          NAME                  GLOBAL        DATA
+ ELEMENT       TITLE                 LOCATION      TYPE
+ ----------------------------------------------------------------------------
+ This Taskman file hold counts that taskman has collected during the day.  Each
+ of the fields 3 to 26 holds the count for 1 hour starting from midnight.  
+  Subj: Released XU*8*446 SEQ #418  [#42495]   Page 9
+-------------------------------------------------------------------------------
+  
+               DD ACCESS: @
+               RD ACCESS: 
+               WR ACCESS: @
+              DEL ACCESS: @
+            LAYGO ACCESS: @
+            AUDIT ACCESS: @
+  
+         (NOTE: Kernel's File Access Security has been installed in this UCI.)
+  
+  
+ CROSS
+ REFERENCED BY: DATE(B)
+  
+    CREATED ON: MAR 13,2000 by FORT,WALLY
+  
+ 14.71,.01     DATE                   0;1 DATE (Required)
+  
+               INPUT TRANSFORM:  S %DT="EX" D ^%DT S X=Y K:Y<1 X
+               LAST EDITED:      MAR 13, 2000 
+               DESCRIPTION:      This field holds the FM date that this set ofSubj: Released XU*8*446 SEQ #418  [#42495]   Page 10
+-------------------------------------------------------------------------------
+                                 monitor data is for.  
+  
+               CROSS-REFERENCE:  14.71^B 
+                                 1)= S ^%ZIS(14.71,"B",$E(X,1,30),DA)=""
+                                 2)= K ^%ZIS(14.71,"B",$E(X,1,30),DA)
+  
+  
+ 14.71,2       BOX-VOLUME PAIR        0;2 FREE TEXT
+  
+                4am                      
+               INPUT TRANSFORM:  K:$L(X)>30!($L(X)<3) X
+               LAST EDITED:      MAR 13, 2000 
+               HELP-PROMPT:    Answer must be 3-30 characters in length. 
+               DESCRIPTION:    This field holds the Taskman ZTPAIR data. It
+                               should match a current Taskman Box-Volume pair. 
+  
+  
+  
+ 14.71,3       Task Count 0           0;3 NUMBER
+  
+                5am                      Subj: Released XU*8*446 SEQ #418  [#42495]   Page 11
+-------------------------------------------------------------------------------
+               INPUT TRANSFORM:  K:+X'=X!(X>9999999)!(X<0)!(X?.E1"."1.N) X
+               LAST EDITED:      OCT 18, 2007 
+               HELP-PROMPT:      Type a number between 0 and 9999999, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:      This field holds the count of the number of
+                                 tasks that the manager moved from the schedule
+                                 queue for time 00:00-00:59.  
+  
+  
+ 14.71,4       Task Count 1           0;4 NUMBER
+  
+                6am                      
+               INPUT TRANSFORM:  K:+X'=X!(X>9999999)!(X<0)!(X?.E1"."1.N) X
+               LAST EDITED:      OCT 18, 2007 
+               HELP-PROMPT:      Type a number between 0 and 9999999, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:      This field holds the count of the number of
+                                 tasks that the manager moved from the schedule
+                                 queue for time 1:00-1:59.  
+  
+  Subj: Released XU*8*446 SEQ #418  [#42495]   Page 12
+-------------------------------------------------------------------------------
+ 14.71,5       Task Count 2           0;5 NUMBER
+  
+                7am                      
+               INPUT TRANSFORM:  K:+X'=X!(X>9999999)!(X<0)!(X?.E1"."1.N) X
+               LAST EDITED:      MAR 13, 2000 
+               HELP-PROMPT:      Type a number between 0 and 9999999, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:      This field holds the count of the number of
+                                 tasks that the manager moved from the schedule
+                                 queue for time 2:00-2:59.  
+  
+  
+ 14.71,6       Task Count 3           0;6 NUMBER
+  
+                8am                      
+               INPUT TRANSFORM:  K:+X'=X!(X>9999999)!(X<0)!(X?.E1"."1.N) X
+               LAST EDITED:      MAR 13, 2000 
+               HELP-PROMPT:      Type a number between 0 and 9999999, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:      This field holds the count of the number of
+                                 tasks that the manager moved from the scheduleSubj: Released XU*8*446 SEQ #418  [#42495]   Page 13
+-------------------------------------------------------------------------------
+                                 queue for time 3:00-3:59.  
+  
+  
+ 14.71,7       Task Count 4           0;7 NUMBER
+  
+                9am                      
+               INPUT TRANSFORM:  K:+X'=X!(X>9999999)!(X<0)!(X?.E1"."1.N) X
+               LAST EDITED:      MAR 13, 2000 
+               HELP-PROMPT:      Type a number between 0 and 9999999, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:      This field holds the count of the number of
+                                 tasks that the manager moved from the schedule
+                                 queue for time 4:00-4:59.  
+  
+  
+ 14.71,8       Task Count 5           0;8 NUMBER
+  
+               10am                      
+               INPUT TRANSFORM:  K:+X'=X!(X>9999999)!(X<0)!(X?.E1"."1.N) X
+               LAST EDITED:      MAR 13, 2000 
+               HELP-PROMPT:      Type a number between 0 and 9999999, 0 Decimal Subj: Released XU*8*446 SEQ #418  [#42495]   Page 14
+-------------------------------------------------------------------------------
+                                 Digits 
+               DESCRIPTION:      This field holds the count of the number of
+                                 tasks that the manager moved from the schedule
+                                 queue for time 5:00-5:59.  
+  
+  
+ 14.71,9       Task Count 6           0;9 NUMBER
+  
+               11am                      
+               INPUT TRANSFORM:  K:+X'=X!(X>9999999)!(X<0)!(X?.E1"."1.N) X
+               LAST EDITED:      MAR 13, 2000 
+               HELP-PROMPT:      Type a number between 0 and 9999999, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:      This field holds the count of the number of
+                                 tasks that the manager moved from the schedule
+                                 queue for time 6:00-6:59.  
+  
+  
+ 14.71,10      Task Count 7           0;10 NUMBER
+  
+               12am                      Subj: Released XU*8*446 SEQ #418  [#42495]   Page 15
+-------------------------------------------------------------------------------
+               INPUT TRANSFORM:  K:+X'=X!(X>9999999)!(X<0)!(X?.E1"."1.N) X
+               LAST EDITED:      MAR 13, 2000 
+               HELP-PROMPT:      Type a number between 0 and 9999999, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:      This field holds the count of the number of
+                                 tasks that the manager moved from the schedule
+                                 queue for time 7:00-7:59.  
+  
+  
+ 14.71,11      Task Count 8           0;11 NUMBER
+  
+                1pm                      
+               INPUT TRANSFORM:  K:+X'=X!(X>9999999)!(X<0)!(X?.E1"."1.N) X
+               LAST EDITED:      MAR 13, 2000 
+               HELP-PROMPT:      Type a number between 0 and 9999999, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:      This field holds the count of the number of
+                                 tasks that the manager moved from the schedule
+                                 queue for time 8:00-8:59.  
+  
+  Subj: Released XU*8*446 SEQ #418  [#42495]   Page 16
+-------------------------------------------------------------------------------
+ 14.71,12      Task Count 9           0;12 NUMBER
+  
+                2pm                      
+               INPUT TRANSFORM:  K:+X'=X!(X>9999999)!(X<0)!(X?.E1"."1.N) X
+               LAST EDITED:      MAR 13, 2000 
+               HELP-PROMPT:      Type a number between 0 and 9999999, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:      This field holds the count of the number of
+                                 tasks that the manager moved from the schedule
+                                 queue for time 9:00-9:59.  
+  
+  
+ 14.71,13      Task Count 10          0;13 NUMBER
+  
+                3pm                      
+               INPUT TRANSFORM:  K:+X'=X!(X>9999999)!(X<0)!(X?.E1"."1.N) X
+               LAST EDITED:      MAR 13, 2000 
+               HELP-PROMPT:      Type a number between 0 and 9999999, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:      This field holds the count of the number of
+                                 tasks that the manager moved from the scheduleSubj: Released XU*8*446 SEQ #418  [#42495]   Page 17
+-------------------------------------------------------------------------------
+                                 queue for time 10:00-10:59.  
+  
+  
+ 14.71,14      Task Count 11          0;14 NUMBER
+  
+                4pm                      
+               INPUT TRANSFORM:  K:+X'=X!(X>9999999)!(X<0)!(X?.E1"."1.N) X
+               LAST EDITED:      MAR 13, 2000 
+               HELP-PROMPT:      Type a number between 0 and 9999999, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:      This field holds the count of the number of
+                                 tasks that the manager moved from the schedule
+                                 queue for time 11:00-11:59.  
+  
+  
+ 14.71,15      Task Count 12          0;15 NUMBER
+  
+                5pm                      
+               INPUT TRANSFORM:  K:+X'=X!(X>9999999)!(X<0)!(X?.E1"."1.N) X
+               LAST EDITED:      MAR 13, 2000 
+               HELP-PROMPT:      Type a number between 0 and 9999999, 0 Decimal Subj: Released XU*8*446 SEQ #418  [#42495]   Page 18
+-------------------------------------------------------------------------------
+                                 Digits 
+               DESCRIPTION:      This field holds the count of the number of
+                                 tasks that the manager moved from the schedule
+                                 queue for time 12:00-12:59.  
+  
+  
+ 14.71,16      Task Count 13          0;16 NUMBER
+  
+                6pm                      
+               INPUT TRANSFORM:  K:+X'=X!(X>9999999)!(X<0)!(X?.E1"."1.N) X
+               LAST EDITED:      MAR 13, 2000 
+               HELP-PROMPT:      Type a number between 0 and 9999999, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:      This field holds the count of the number of
+                                 tasks that the manager moved from the schedule
+                                 queue for time 13:00-13:59.  
+  
+  
+ 14.71,17      Task Count 14          0;17 NUMBER
+  
+                7pm                      Subj: Released XU*8*446 SEQ #418  [#42495]   Page 19
+-------------------------------------------------------------------------------
+               INPUT TRANSFORM:  K:+X'=X!(X>9999999)!(X<0)!(X?.E1"."1.N) X
+               LAST EDITED:      MAR 13, 2000 
+               HELP-PROMPT:      Type a number between 0 and 9999999, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:      This field holds the count of the number of
+                                 tasks that the manager moved from the schedule
+                                 queue for time 14:00-14:59.  
+  
+  
+ 14.71,18      Task Count 15          0;18 NUMBER
+  
+                8pm                      
+               INPUT TRANSFORM:  K:+X'=X!(X>9999999)!(X<0)!(X?.E1"."1.N) X
+               LAST EDITED:      MAR 13, 2000 
+               HELP-PROMPT:      Type a number between 0 and 9999999, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:      This field holds the count of the number of
+                                 tasks that the manager moved from the schedule
+                                 queue for time 15:00-15:59.  
+  
+  Subj: Released XU*8*446 SEQ #418  [#42495]   Page 20
+-------------------------------------------------------------------------------
+ 14.71,19      Task Count 16          0;19 NUMBER
+  
+                9pm                      
+               INPUT TRANSFORM:  K:+X'=X!(X>9999999)!(X<0)!(X?.E1"."1.N) X
+               LAST EDITED:      MAR 13, 2000 
+               HELP-PROMPT:      Type a number between 0 and 9999999, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:      This field holds the count of the number of
+                                 tasks that the manager moved from the schedule
+                                 queue for time 16:00-16:59.  
+  
+  
+ 14.71,20      Task Count 17          0;20 NUMBER
+  
+               10pm                      
+               INPUT TRANSFORM:  K:+X'=X!(X>9999999)!(X<0)!(X?.E1"."1.N) X
+               LAST EDITED:      MAR 13, 2000 
+               HELP-PROMPT:      Type a number between 0 and 9999999, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:      This field holds the count of the number of
+                                 tasks that the manager moved from the scheduleSubj: Released XU*8*446 SEQ #418  [#42495]   Page 21
+-------------------------------------------------------------------------------
+                                 queue for time 17:00-17:59.  
+  
+  
+ 14.71,21      Task Count 18          0;21 NUMBER
+  
+               11pm                      
+               INPUT TRANSFORM:  K:+X'=X!(X>9999999)!(X<0)!(X?.E1"."1.N) X
+               LAST EDITED:      MAR 13, 2000 
+               HELP-PROMPT:      Type a number between 0 and 9999999, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:      This field holds the count of the number of
+                                 tasks that the manager moved from the schedule
+                                 queue for time 18:00-18:59.  
+  
+  
+ 14.71,22      Task Count 19          0;22 NUMBER
+  
+               12pm                      
+               INPUT TRANSFORM:  K:+X'=X!(X>9999999)!(X<0)!(X?.E1"."1.N) X
+               LAST EDITED:      MAR 13, 2000 
+               HELP-PROMPT:      Type a number between 0 and 9999999, 0 Decimal Subj: Released XU*8*446 SEQ #418  [#42495]   Page 22
+-------------------------------------------------------------------------------
+                                 Digits 
+               DESCRIPTION:      This field holds the count of the number of
+                                 tasks that the manager moved from the schedule
+                                 queue for time 19:00-19:59.  
+  
+  
+ 14.71,23      Task Count 20          0;23 NUMBER
+  
+               INPUT TRANSFORM:  K:+X'=X!(X>9999999)!(X<0)!(X?.E1"."1.N) X
+               LAST EDITED:      MAR 13, 2000 
+               HELP-PROMPT:      Type a number between 0 and 9999999, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:      This field holds the count of the number of
+                                 tasks that the manager moved from the schedule
+                                 queue for time 20:00-20:59.  
+  
+  
+ 14.71,24      Task Count 21          0;24 NUMBER
+  
+               INPUT TRANSFORM:  K:+X'=X!(X>9999999)!(X<0)!(X?.E1"."1.N) X
+               LAST EDITED:      MAR 13, 2000 Subj: Released XU*8*446 SEQ #418  [#42495]   Page 23
+-------------------------------------------------------------------------------
+               HELP-PROMPT:      Type a number between 0 and 9999999, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:      This field holds the count of the number of
+                                 tasks that the manager moved from the schedule
+                                 queue for time 21:00-21:59.  
+  
+  
+ 14.71,25      Task Count 22          0;25 NUMBER
+  
+               INPUT TRANSFORM:  K:+X'=X!(X>9999999)!(X<0)!(X?.E1"."1.N) X
+               LAST EDITED:      MAR 13, 2000 
+               HELP-PROMPT:      Type a number between 0 and 9999999, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:      This field holds the count of the number of
+                                 tasks that the manager moved from the schedule
+                                 queue for time 22:00-22:59.  
+  
+  
+ 14.71,26      Task Count 23          0;26 NUMBER
+  
+               INPUT TRANSFORM:  K:+X'=X!(X>9999999)!(X<0)!(X?.E1"."1.N) XSubj: Released XU*8*446 SEQ #418  [#42495]   Page 24
+-------------------------------------------------------------------------------
+               LAST EDITED:      MAR 13, 2000 
+               HELP-PROMPT:      Type a number between 0 and 9999999, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:      This field holds the count of the number of
+                                 tasks that the manager moved from the schedule
+                                 queue for time 23:00-23:59.  
+  
+  
+ 14.71,101     Daily Total             ;  COMPUTED
+  
+           MUMPS CODE: X ^DD(14.71,101,9.5) S X=X+$P(Y(14.71,101,1),U, 26)
+                       9.2 = S Y(14.71,101,1)=$S($D(^%ZIS(14.71,D0,0))
+                       :^(0),1:"") S X=$P(Y(14.71,101,1),U,3)+$P(Y(14.
+                       71,101,1),U,4)+$P(Y(14.71,101,1),U,5)+$P(Y(14.7
+                       1,101,1),U,6)+$P(Y(14.71,101,1),U,7)
+                       9.3 = X ^DD(14.71,101,9.2) S X=X+$P(Y(14.71,101
+                       ,1),U,8)+$P(Y(14.71,101,1),U,9)+$P(Y(14.71,101,
+                       1),U,10)+$P(Y(14.71,101,1),U,11)+$P(Y(14.71,101
+                       ,1),U,12)+$P(Y(14.71,101,1),U,13)
+                       9.4 = X ^DD(14.71,101,9.3) S X=X+$P(Y(14.71,101
+                       ,1),U,14)+$P(Y(14.71,101,1),U,15)+$P(Y(14.71,10Subj: Released XU*8*446 SEQ #418  [#42495]   Page 25
+-------------------------------------------------------------------------------
+                       1,1),U,16)+$P(Y(14.71,101,1),U,17)+$P(Y(14.71,1
+                       01,1),U,18)+$P(Y(14.71,101,1),U,19)
+                       9.5 = X ^DD(14.71,101,9.4) S X=X+$P(Y(14.71,101
+                       ,1),U,20)+$P(Y(14.71,101,1),U,21)+$P(Y(14.71,10
+                       1,1),U,22)+$P(Y(14.71,101,1),U,23)+$P(Y(14.71,1
+                       01,1),U,24)+$P(Y(14.71,101,1),U,25)
+           ALGORITHM:  #3+#4+#5+#6+#7+#8+#9+#10+#11+#12+#13+#14+#15+#1
+                       6+#17+#18+#19+#20+#21+#22+#23+#24+#25+#26
+           LAST EDITED:      FEB 19, 2008 
+ ============================================================
+ This is the new file to hold TaskMan Shapshots.
+ STORED IN ^%ZIS(14.72,(74 ENTRIES) SITE: SF CIOFO, KERNEL PATCH ACCOUNT                                                           
+          
+  
+ DATA          NAME                  GLOBAL        DATA
+ ELEMENT       TITLE                 LOCATION      TYPE
+ -----------------------------------------------------------------------------
+ This file holds Taskman SnapShot data.  This is a snapshot of the counts 
+ in the taskman ^%ZTSCH global.  There should be no user entry of this
+ data.  It is just for reporting.
+  Subj: Released XU*8*446 SEQ #418  [#42495]   Page 26
+-------------------------------------------------------------------------------
+  
+               DD ACCESS: @
+               RD ACCESS:  
+               WR ACCESS:  
+              DEL ACCESS:  
+            LAYGO ACCESS: @
+            AUDIT ACCESS: @
+  
+ CROSS
+ REFERENCED BY: DATE(B)
+  
+    CREATED ON: OCT 18,2007 by FORT,WALLY
+  
+ 14.72,.01     DATE                   0;1 DATE (Required)
+  
+               Date-Time                 
+               INPUT TRANSFORM:  S %DT="ESTXR" D ^%DT S X=Y K:Y<1 X
+               LAST EDITED:      OCT 18, 2007 
+               CROSS-REFERENCE:  14.72^B 
+                                 1)= S ^%ZIS(14.72,"B",$E(X,1,30),DA)=""
+                                 2)= K ^%ZIS(14.72,"B",$E(X,1,30),DA)Subj: Released XU*8*446 SEQ #418  [#42495]   Page 27
+-------------------------------------------------------------------------------
+  
+  
+ 14.72,2       TASKMAN CURRENT        0;2 SET
+  
+                                 '0' FOR NO; 
+                                 '1' FOR Yes; 
+               LAST EDITED:      OCT 18, 2007 
+               DESCRIPTION:
+                                 This hold the value returned by $$TM^%ZTLOAD.  
+  
+  
+ 14.72,3       TASKMAN COUNT          0;3 NUMBER
+  
+               INPUT TRANSFORM:  K:+X'=X!(X>10)!(X<0)!(X?.E1"."1N.N) X
+               LAST EDITED:      OCT 18, 2007 
+               HELP-PROMPT:      Type a Number between 0 and 10, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:      This is the count of the number of entries in
+                                 the ^%ZTSCH("STATUS") global.  
+  
+  Subj: Released XU*8*446 SEQ #418  [#42495]   Page 28
+-------------------------------------------------------------------------------
+ 14.72,4       TASKMAN BALANCE        0;4 FREE TEXT
+  
+               INPUT TRANSFORM:  K:$L(X)>20!($L(X)<3) X
+               LAST EDITED:      NOV 15, 2007 
+               HELP-PROMPT:      Answer must be 3-20 characters in length. 
+               DESCRIPTION:      This is what node is the current run node if
+                                 taskman is doing load balancing.  
+  
+  
+ 14.72,5       BALANCE WEIGHT         0;5 NUMBER
+  
+               INPUT TRANSFORM:  K:+X'=X!(X>1000)!(X<0)!(X?.E1"."1N.N) X
+               LAST EDITED:      NOV 15, 2007 
+               HELP-PROMPT:      Type a Number between 0 and 1000, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:      This field holds the Balance Weight of the
+                                 current Task Manager.  
+  
+  
+ 14.72,7       SCHEDULE COUNT         0;7 NUMBER
+  Subj: Released XU*8*446 SEQ #418  [#42495]   Page 29
+-------------------------------------------------------------------------------
+               INPUT TRANSFORM:  K:+X'=X!(X>999999)!(X<0)!(X?.E1"."1N.N) X
+               LAST EDITED:      OCT 18, 2007 
+               HELP-PROMPT:      Type a Number between 0 and 999999, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:      This is the number of tasks in the schedule
+                                 list.  
+  
+  
+ 14.72,8       SCH LATE BY            0;8 NUMBER
+  
+               INPUT TRANSFORM:  K:+X'=X!(X>99999)!(X<0)!(X?.E1"."1N.N) X
+               LAST EDITED:      JUN 11, 2008 
+               HELP-PROMPT:      Type a Number between 0 and 99999, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:      The number of seconds the first task in the
+                                 schedule list is late.  
+  
+  
+ 14.72,9       SCH LATE CNT           0;9 NUMBER
+  
+               INPUT TRANSFORM:  K:+X'=X!(X>99999)!(X<0)!(X?.E1"."1N.N) XSubj: Released XU*8*446 SEQ #418  [#42495]   Page 30
+-------------------------------------------------------------------------------
+               LAST EDITED:      JUN 11, 2008 
+               HELP-PROMPT:      Type a Number between 0 and 99999, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:      This field holds a count of the number of late
+                                 tasks in the schedule list.  
+  
+  
+ 14.72,10      IO DEVICE CNT          0;10 NUMBER
+  
+               INPUT TRANSFORM:  K:+X'=X!(X>999999)!(X<0)!(X?.E1"."1.N) X
+               LAST EDITED:      OCT 18, 2007 
+               HELP-PROMPT:      Type a number between 0 and 999999, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:
+                                 This is the number of IO WAIT queues.  
+  
+  
+ 14.72,11      IO TASK COUNT          0;11 NUMBER
+  
+               INPUT TRANSFORM:  K:+X'=X!(X>999999)!(X<0)!(X?.E1"."1N.N) X
+               LAST EDITED:      OCT 18, 2007 Subj: Released XU*8*446 SEQ #418  [#42495]   Page 31
+-------------------------------------------------------------------------------
+               HELP-PROMPT:      Type a Number between 0 and 999999, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:
+                                 This is the number of tasks in IO WAIT queues.  
+  
+  
+ 14.72,12      IO LATE                0;12 NUMBER
+  
+               INPUT TRANSFORM:  K:+X'=X!(X>999999)!(X<0)!(X?.E1"."1N.N) X
+               LAST EDITED:      OCT 18, 2007 
+               HELP-PROMPT:      Type a Number between 0 and 999999, 0 Decimal 
+                                 Digits 
+               DESCRIPTION: This is the number of seconds the first task 
+                            is late.  Will have to see if it has any value.
+  
+  
+ 14.72,15      JOBQ                   0;15 NUMBER
+  
+               INPUT TRANSFORM:  K:+X'=X!(X>999999)!(X<0)!(X?.E1"."1N.N) X
+               LAST EDITED:      OCT 18, 2007 
+               HELP-PROMPT:      Type a Number between 0 and 999999, 0 Decimal Subj: Released XU*8*446 SEQ #418  [#42495]   Page 32
+-------------------------------------------------------------------------------
+                                 Digits 
+               DESCRIPTION:      This is the number of tasks in the JOB and C
+                                 lists waiting to run.  
+  
+  
+ 14.72,16      JOBQ LATE              0;16 NUMBER
+  
+               INPUT TRANSFORM:  K:+X'=X!(X>999999)!(X<0)!(X?.E1"."1N.N) X
+               LAST EDITED:      OCT 18, 2007 
+               HELP-PROMPT:      Type a Number between 0 and 999999, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:      This is the number of seconds the first task
+                                 in the JOB list is late.  
+  
+  
+ 14.72,19      SUBMANAGER COUNT       0;19 NUMBER
+  
+               INPUT TRANSFORM:  K:+X'=X!(X>999999)!(X<0)!(X?.E1"."1N.N) X
+               LAST EDITED:      OCT 18, 2007 
+               HELP-PROMPT:      Type a Number between 0 and 999999, 0 Decimal 
+                                 Digits Subj: Released XU*8*446 SEQ #418  [#42495]   Page 33
+-------------------------------------------------------------------------------
+               DESCRIPTION:      This is the total number of submanagers
+                                 running.  
+  
+  
+ 14.72,20      RUNNING TASKS          0;20 NUMBER
+  
+               INPUT TRANSFORM:  K:+X'=X!(X>999999)!(X<0)!(X?.E1"."1N.N) X
+               LAST EDITED:      OCT 18, 2007 
+               HELP-PROMPT:      Type a Number between 0 and 999999, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:
+                                 This is the number of running tasks.  
+  
+  
+ 14.72,22      TOTAL JOBS             0;22 NUMBER
+  
+               INPUT TRANSFORM:  K:+X'=X!(X>9999)!(X<0)!(X?.E1"."1N.N) X
+               LAST EDITED:      NOV 15, 2007 
+               HELP-PROMPT:      Type a Number between 0 and 9999, 0 Decimal 
+                                 Digits 
+               DESCRIPTION:      This field holds the total number of runningSubj: Released XU*8*446 SEQ #418  [#42495]   Page 34
+-------------------------------------------------------------------------------
+                                 jobs as reported by $$ACTJ^%ZOSV.  
+  
+  
+ 14.72,101     MANAGERS               1;0 Multiple #14.72101
+  
+  
+ 14.72101,.01    MANAGER                0;1 NUMBER
+  
+                 INPUT TRANSFORM:  K:+X'=X!(X>999999999)!(X<1)!(X?.E1"."1N.N) X
+                 LAST EDITED:      JUN 19, 2008 
+                 HELP-PROMPT:      Type a Number between 1 and 999999999, 0 
+                                   Decimal Digits 
+                 DESCRIPTION:      To store info about each Task Manager
+                                   running.  
+  
+             CROSS-REFERENCE:  14.72101^B 
+                               1)= S ^%ZIS(14.72,DA(1),1,"B",$E(X,1,30),DA)=""
+                               2)= K ^%ZIS(14.72,DA(1),1,"B",$E(X,1,30),DA)
+  
+  
+ 14.72101,2      DATETIME             0;2 FREE TEXTSubj: Released XU*8*446 SEQ #418  [#42495]   Page 35
+-------------------------------------------------------------------------------
+  
+                 INPUT TRANSFORM:K:$L(X)>11!($L(X)<5) X
+                 OUTPUT TRANSFORM:S Y=$$HTE^XLFDT(Y)
+                 LAST EDITED:    JUN 11, 2008 
+                 HELP-PROMPT:    Answer must be 5-11 characters in length. 
+                 DESCRIPTION:
+                                 This is the short Status.  
+  
+  
+ 14.72101,3      STATUS               0;3 FREE TEXT
+  
+                 INPUT TRANSFORM:K:$L(X)>7!($L(X)<3) X
+                 LAST EDITED:    JUN 04, 2008 
+                 HELP-PROMPT:    Answer must be 3-7 characters in length. 
+                 DESCRIPTION:
+                                 The short Status word.  
+  
+  
+ 14.72101,4      PAIR                 0;4 FREE TEXT
+  
+                 INPUT TRANSFORM:K:$L(X)>20!($L(X)<3) XSubj: Released XU*8*446 SEQ #418  [#42495]   Page 36
+-------------------------------------------------------------------------------
+                 LAST EDITED:    JUN 18, 2008 
+                 HELP-PROMPT:    Answer must be 3-20 characters in length. 
+                 DESCRIPTION:
+                                 The Box:Volume pair name.  
+  
+  
+ 14.72101,5      LONG STATUS          0;5 FREE TEXT
+  
+                 INPUT TRANSFORM:K:$L(X)>30!($L(X)<2) X
+                 LAST EDITED:    JUN 04, 2008 
+                 HELP-PROMPT:    Answer must be 2-30 characters in length. 
+                 DESCRIPTION:
+                                 This is the Long Status message.  
+  
+  
+  
+ 14.72,201     SUBMANAGERS            2;0 Multiple #14.72201
+  
+  
+ 14.72201,.01    SUBMANAGER             0;1 NUMBER
+  Subj: Released XU*8*446 SEQ #418  [#42495]   Page 37
+-------------------------------------------------------------------------------
+                 INPUT TRANSFORM:  K:+X'=X!(X>999999999)!(X<1)!(X?.E1"."1N.N) X
+                 LAST EDITED:      JUN 19, 2008 
+                 HELP-PROMPT:      Type a Number between 1 and 999999999, 0 
+                                   Decimal Digits 
+                 DESCRIPTION: This field holds info about the sub-managers.
+  
+  
+                 CROSS-REFERENCE:  14.72201^B 
+                                1)= S ^%ZIS(14.72,DA(1),2,"B",$E(X,1,30),DA)=""
+                                2)= K ^%ZIS(14.72,DA(1),2,"B",$E(X,1,30),DA)
+  
+  
+ 14.72201,2      DATETIME             0;2 FREE TEXT
+  
+                 INPUT TRANSFORM:K:$L(X)>11!($L(X)<5) X
+                 OUTPUT TRANSFORM:S Y=$$HTE^XLFDT(Y)
+                 LAST EDITED:    JUN 11, 2008 
+                 HELP-PROMPT:    Answer must be 5-11 characters in length. 
+                 DESCRIPTION:    This is the $H time that this sub-manager
+                                 updated the node.  
+  Subj: Released XU*8*446 SEQ #418  [#42495]   Page 38
+-------------------------------------------------------------------------------
+  
+ 14.72201,3      STATUS               0;3 FREE TEXT
+  
+                 INPUT TRANSFORM:K:$L(X)>15!($L(X)<1) X
+                 LAST EDITED:    JUN 04, 2008 
+                 HELP-PROMPT:    Answer must be 1-15 characters in length. 
+                 DESCRIPTION:
+                                 This is the sub-managers status.  
+  
+  
+ 14.72201,4      BALANCE              0;4 SET
+  
+                                 '0' FOR NO; 
+                                 '1' FOR YES; 
+                 LAST EDITED:    JUN 04, 2008 
+                 DESCRIPTION:
+                                 Is the sub-manager in Balance mode.  
+  
+  
+ 14.72201,5      PAIR                 0;5 FREE TEXT
+  Subj: Released XU*8*446 SEQ #418  [#42495]   Page 39
+-------------------------------------------------------------------------------
+                 INPUT TRANSFORM:K:$L(X)>20!($L(X)<3) X
+                 LAST EDITED:    JUN 18, 2008 
+                 HELP-PROMPT:    Answer must be 3-20 characters in length. 
+                 DESCRIPTION:    This field hold the Box-Volume pair that the
+                                 submanagers is running on.  
+  
+ =========================================================================
+ Installation:
+  
+ >>>Users DO need to be off the system.
+ >>>TaskMan DOES need to be stopped.
+  
+   1.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This
+       option will load the KIDS package onto your system.
+  
+   2.  The patch has now been loaded into a Transport global on your
+       system. You now need to use KIDS to install the Transport global.
+       On the KIDS menu, under the 'Installation' menu, use the following
+       options:
+  
+          Verify Checksums in Transport GlobalSubj: Released XU*8*446 SEQ #418  [#42495]   Page 40
+-------------------------------------------------------------------------------
+          Print Transport Global
+          Compare Transport Global to Current System
+          Backup a Transport Global
+  
+   3.  Users can remain on the system. This patch can be loaded any
+       non-peak time.
+       This patch can not be queued.
+       Stop any HL7 filers.
+       Stop TaskMan and Sub-managers. (DO STOP^ZTMKU)
+  
+   4.  Installation will take less than 2 minutes.
+       Because XQ1 is updated you have to do the following:
+       In Programmer mode:
+       Use "D ^XPDKRN" then
+          Install Package(s)  'XU*8.0*446'
+                               ==========
+       Want KIDS to Rebuild Menu Trees Upon Completion of Install? NO// 
+  
+       Want KIDS to INHIBIT LOGONs during the install? NO//
+  
+       Want to DISABLE Scheduled Options, Menu Options, and Protocols? NO//Subj: Released XU*8*446 SEQ #418  [#42495]   Page 41
+-------------------------------------------------------------------------------
+  
+ POST-INIT: 
+ If TaskMan proxy has not been installed it is created.
+ ZTMGRSET is automatically run to rename the routines in Patch 446.
+  
+ ZTMGRSET Version 8.0 Patch level **34,36,69,94,121,127,136,191,275,355,446**
+ HELLO! I exist to assist you in correctly initializing the current account.
+ I think you are using OpenM-NT
+  
+ I will now rename a group of routines specific to your operating system.
+ ...
+  
+   5.  Restart Taskman. Use NVSMENU or ^ZTMB.
+  
+ =========================================================================
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;8.0;KERNEL;**[Patch List]**;Jul 10, 1995;Build 35
+Subj: Released XU*8*446 SEQ #418  [#42495]   Page 42
+-------------------------------------------------------------------------------
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: XQ1
+    Before: B36781128   After: B38155212  **1,15,59,67,46,151,170,242,446**
+Routine Name: XU8P446
+    Before:       n/a   After:   B672454  **446**
+Routine Name: XUTMHR
+    Before:       n/a   After: B19817174  **446**
+Routine Name: XUTMK
+    Before: B30883527   After: B33435876  **49,67,118,169,222,275,446**
+Routine Name: ZTLOAD1
+    Before: B23025754   After: B24362203  **112,118,127,162,275,363,409,
+                                           415,425,446**
+Routine Name: ZTLOAD2
+    Before:  B9439149   After:  B9668980  **1,67,118,275,339,446**
+Routine Name: ZTLOAD3
+    Before: B10401746   After: B10890458  **67,127,136,192,446**
+Routine Name: ZTLOAD5
+    Before: B10393417   After: B11826383  **49,339,446**
+Routine Name: ZTMSubj: Released XU*8*446 SEQ #418  [#42495]   Page 43
+-------------------------------------------------------------------------------
+    Before: B34923748   After: B46237405  **24,36,64,67,118,127,136,275,
+                                           355,446**
+Routine Name: ZTM0
+    Before: B16458023   After: B17449159  **42,36,67,88,118,127,136,175,
+                                           275,355,446**
+Routine Name: ZTM5
+    Before: B16898185   After: B22884813  **24,36,118,127,136,162,275,355,446**
+Routine Name: ZTM6
+    Before:  B9543070   After:  B9213954  **23,118,127,136,355,446**
+Routine Name: ZTMB
+    Before: B25235985   After: B24960683  **275,355,446**
+Routine Name: ZTMCHK1
+    Before: B10362512   After: B10420129  **127,446**
+Routine Name: ZTMGRSET
+    Before: B46344405   After: B54941338  **34,36,69,94,121,127,136,191,
+                                           275,355,446**
+Routine Name: ZTMON
+    Before:  B9427081   After:  B9524889  **118,127,136,355,446**
+Routine Name: ZTMON1
+    Before: B20323739   After: B20595166  **36,118,127,275,446**
+Routine Name: ZTMON2Subj: Released XU*8*446 SEQ #418  [#42495]   Page 44
+-------------------------------------------------------------------------------
+    Before:       n/a   After: B35614836  **446**
+Routine Name: ZTMS
+    Before: B15851747   After: B17897221  **2,18,24,36,67,94,118,127,136,
+                                           162,275,446**
+Routine Name: ZTMS0
+    Before:  B6894133   After:  B6489089  **24,118,275,446**
+Routine Name: ZTMS1
+    Before: B26930044   After: B35620816  **36,49,104,118,127,136,275,446**
+Routine Name: ZTMS2
+    Before: B23098676   After: B23695749  **2,18,23,36,67,118,127,163,
+                                           167,175,199,275,446**
+Routine Name: ZTMS3
+    Before: B24216355   After: B22900045  **1,18,36,49,64,67,94,118,127,
+                                           136,175,275,355,446**
+Routine Name: ZTMS5
+    Before:   B927042   After:  B1225600  **275,446**
+ 
+Routine list of preceding patches: 192, 242, 339, 355, 425
+
+=============================================================================
+User Information:Subj: Released XU*8*446 SEQ #418  [#42495]   Page 45
+-------------------------------------------------------------------------------
+Entered By  : FORT,WALLY                    Date Entered  : JAN 24, 2007
+Completed By: SINGH,GURBIR                  Date Completed: MAY 21, 2009
+Released By : TILLIS,LEWIS                  Date Released : JUN 03, 2009
+=============================================================================
+
+
+Packman Mail Message:
+=====================

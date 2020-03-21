@@ -1,0 +1,278 @@
+$TXT Created by DANG,CHAU at CHEY20.FO-BAYPINES.MED.VA.GOV  (KIDS) on Thursday, 04/16/09 at 13:35
+=============================================================================
+Run Date: SEP 28, 2009                     Designation: PSJ*5*193
+Package : PSJ - INPATIENT MEDICATIONS         Priority: Mandatory
+Version : 5       SEQ #193                      Status: Released
+                  Compliance Date: OCT 29, 2009
+=============================================================================
+
+Associated patches: (v)PSJ*5*183   <<= must be installed BEFORE `PSJ*5*193'
+
+Subject: ERROR IN INPATIENT ORDER ENTRY
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ When an Inpatient Medication Order is created or renewed in CPRS from the
+ Orders tab between midnight and 12:30 a.m. and the schedule on the order 
+ is ONCE, in pharmacy the start time was stored in the database as nulls.
+  
+ This caused 2 problems in the VistA system:
+  
+ 1.  The start time is blank in Pharmacy and Bar Code Medication
+     Administration (BCMA) packages.  This could cause a patient to miss 
+     a medication.
+  
+ 2.  The Missed Medications [PSBO MM] report errors out when it encounters
+     one of these records with nulls in the start time.
+  
+  
+ ASSOCIATED NSR(S):
+ ==================
+ N/A
+  
+  
+ ASSOCIATED REMEDY TICKETS:
+ ==========================
+ 1.  HD0000000220544 - PSI 07-222 -1 Start and Stop Times
+  
+     Duplicates:
+     HD0000000179104 - CPRS INPATIENT ORDER
+     HD0000000205281 - Start/Stop dates of //1699
+     HD0000000210073 - Start/Stop dates //1699
+  
+ 2.  HD0000000225731 - MISSED MED OR PRN EFFECTIVENESS REPORTS
+  
+     Duplicates:
+     HD0000000240989 - Missed Medication Report
+     HD0000000289160 - Missed Medication report Errors Out
+     HD0000000289960 - $ZE= <SUBSCRIPT>EN1+62^PSBOMM
+     HD0000000304095 - <><SUBSCRIPT>EN1+62^PSBOMM *PSBSTXT
+     HD0000000327061 - Missed Medication Report keeps erroring out
+     HD0000000335893 - SUBSCRIPT>EN1+62^PSBOMM
+  
+ PATIENT SAFETY ISSUE:
+ =====================
+ PSI 07-222, PSPO #818, Assessment >24
+  
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Boston HCS
+ Bronx VAMC
+ Providence VAMC
+  
+  
+ Remedy Ticket Overview:
+ =======================
+ 1.  HD0000000220544 - PSI 07-222 -1 Start and Stop Times
+  
+ Problem:
+ --------
+ When an Inpatient Medication Order is created or renewed in CPRS from the
+ Orders tab between midnight and 12:30 a.m. and the schedule is Once, and
+ the DEFAULT START DATE CALCULATION field (#.05) of the INPATIENT WARD
+ PARAMETERS file (#59.6) is set to USE CLOSEST ADMIN TIME AS DEFAULT, the
+ START DATE/TIME (sub-field #10) of the UNIT DOSE (sub-file #62) of the
+ PHARMACY PATIENT file (#55) is set to null.
+  
+ This null value in the START DATE/TIME field would cause the start time to
+ be blank in Pharmacy or BCMA resulting in missed medications for patients.
+  
+  
+ 2.  HD0000000225731 - MISSED MED OR PRN EFFECTIVENESS REPORTS
+  
+ Problem:
+ --------
+ The null value in the START DATE/TIME field also caused the MISSED 
+ MEDICATIONS [PSBO MM] report to error out.
+  
+ Resolution:
+ -----------
+ This resolution will address both problems listed above and will be 
+ accomplished in 2 steps:
+  
+ 1.  Routine PSGNE3, which is used to retrieve the START DATE/TIME from 
+ FileMan, assumes this field is a valid value but occasionally this routine
+ can return a null value.  The routine will be modified to use LOG-IN DATE
+ (field # 27.1) if the returned value is null.
+  
+ 2.  Post-Install routine PSJ5P193 will take a look at orders with a STOP 
+ DATE/TIME (field #34) not greater than 30 days from the START DATE/TIME.
+ If a null START DATE/TIME is found, the routine will plug in the value 
+ from the LOG-IN DATE field.
+  
+ The post-install routine will start when the patch is installed.  The 
+ installer of the patch will see the message, 'YOU WILL RECEIVE A MAILMAN 
+ MESSAGE WHEN TASK #6311994 HAS COMPLETED.  IF ERRORS ARE DETECTED, THE
+ VERIFYING PHARMACIST WILL RECEIVE A MESSAGE INDICATING CLEANUP HAS
+ COMPLETED.'
+  
+ When the routine finishes, it will send a MailMan message to the person
+ who installed the patch titled, "INPATIENT MEDS ORDER CHECK COMPLETED".
+  
+ If the routine encounters any bad START DATE/TIME fields, it will plug in 
+ the value found in the LOG-IN DATE field.  It will also send a second
+ MailMan message, "INPATIENT MEDS ORDER CLEANUP COMPLETED", to ALL
+ verifying pharmacists indicating that cleanup is complete, with a listing
+ of the affected patients and the orders. The list is provided so that
+ personnel can ensure the patients received their medications.  See the 
+ example MailMan message below:
+  
+ Subj: INPATIENT MEDS ORDER 1-2 CLEANUP COMPLETED  [#537827] 05/18/09@15:46
+ 6 lines
+ From: INPATIENT,MEDICATIONS  In 'IN' basket.   Page 1
+ --------------------------------------------------------------------------
+ The cleanup of Inpatient Medication orders (1-2) of 2 orders with
+ invalid dates completed as of MAY 18,2009@15:46:35.
+ INPATIENT-1,TEST           101016289  Unit Dose
+  WARFARIN                    Start: MAY 18,2009@00:05  Stop: MAY 
+ 19,2009@13:47:44
+  
+ INPATIENT-2,TEST           101066460  Unit Dose
+  INTERFERON BETA-1A          Start: MAY 14,2009@00:05  Stop: MAY 
+ 15,2009@15:19:25
+  
+ Enter message action (in IN basket): Ignore// 
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+  
+   ****************************** NOTE *******************************
+   IF A USER IS ON THE SYSTEM AND USING THESE PROGRAMS AN EDITED ERROR
+   WILL OCCUR.
+   The patch should be installed when NO Inpatient Pharmacy users are 
+   on the system.
+   *******************************************************************
+  
+   Installation will take less than 1 minute.
+  
+   The post-install routine PSJ5P193 will take between a few seconds to
+   several minutes to complete depending on how many orders have to be
+   processed and may be deleted upon successful installation of the patch.
+   
+   Suggested time to install: non-peak requirement hours.
+   
+   1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+     
+   2. From the Kernel Installation & Distribution System menu, select
+      the Installation menu.
+   
+   3. From this menu, you may select to use the following options
+      (when prompted for INSTALL NAME, enter PSJ*5.0*193):
+          a.  Verify Checksums in Transport Global - This option will allow
+              you to ensure the integrity of the routines that are in the
+              transport global.
+          b.  Print Transport Global - This option will allow you to view
+              the components of the KIDS build.
+          c.  Compare Transport Global to Current System - This option will
+              allow you to view all changes that will be made when this 
+              patch is installed.  It compares all components of this patch
+              (routines, DD's, templates, etc.).
+          d.  Backup a Transport Global - This option will create a backup
+              message of any routines exported with this patch. It will not
+              backup any other changes such as DD's or templates.
+    
+   4. Use the Install Package(s) option and select the package PSJ*5.0*193.
+  
+   5. When prompted "Want KIDS to INHIBIT LOGONs during the install? NO//"
+      respond NO.
+    
+   6. When prompted "Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols? NO//" respond NO. 
+  
+ Example Installation:
+ ===================== 
+ Select Installation Option: 6  Install Package(s)
+ Select INSTALL NAME: PSJ*5.0*193       Loaded from Distribution  
+ 2/2/09@11:30:31
+      => PSJ*5.0*193 V6 02/02/2009
+  
+ This Distribution was loaded on Feb 02, 2009@11:30:31 with header of 
+    PSJ*5.0*193 V6 02/02/2009
+    It consisted of the following Install(s):
+     PSJ*5.0*193
+ Checking Install for Package PSJ*5.0*193
+  
+ Install Questions for PSJ*5.0*193
+  
+  
+ Want KIDS to INHIBIT LOGONs during the install? NO// 
+ Want to DISABLE Scheduled Options, Menu Options, and Protocols? NO// 
+  
+ Enter the Device you want to print the Install messages.
+ You can queue the install by enter a 'Q' at the device prompt.
+ Enter a '^' to abort the install.
+  
+ DEVICE: HOME//   TELNET TERMINAL
+  
+  
+  Install Started for PSJ*5.0*193 : 
+                Feb 02, 2009@11:33:10
+  
+ Build Distribution Date: Feb 02, 2009
+  
+  Installing Routines:
+                Feb 02, 2009@11:33:11
+  
+  Running Post-Install Routine: ^PSJ5P193
+  
+                                   
+ PSJ*5.0*193                                   
+ --------------------------------------------------------------------------
+  
+ The check of existing Pharmacy orders is queued
+  (to start NOW).
+  
+ YOU WILL RECEIVE A MAILMAN MESSAGE WHEN TASK #53018 HAS COMPLETED.  IF
+ ERRORS ARE DETECTED, THE VERIFYING PHARMACIST WILL RECEIVE A MESSAGE 
+ INDICATING CLEANUP HAS COMPLETED.
+  
+  Updating Routine file...
+  
+  Updating KIDS files...
+  
+  PSJ*5.0*193 Installed. 
+                Feb 02, 2009@11:33:11
+  
+  Install Message sent 
+ --------------------------------------------------------------------------
+  
+           +------------------------------------------------------------+
+   100%    |             25             50             75               |
+ Complete  +------------------------------------------------------------+
+  
+ Install Completed
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.0; INPATIENT MEDICATIONS ;**[Patch List]**;16 DEC 97;Build 16
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PSGNE3
+    Before: B30386162   After: B30964253  **4,26,47,50,63,69,105,80,111,
+                                           183,193**
+Routine Name: PSJ5P193
+    Before:       n/a   After: B42787380  **193**
+ 
+Routine list of preceding patches: 183
+
+=============================================================================
+User Information:
+Entered By  : WILLIAMS,BRIAN                Date Entered  : MAY 07, 2007
+Completed By: WERNER,GARY                   Date Completed: SEP 24, 2009
+Released By : TEAGUE,LYN                    Date Released : SEP 28, 2009
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

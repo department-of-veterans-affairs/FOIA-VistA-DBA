@@ -1,0 +1,333 @@
+$TXT Created by ROCHA,MARCELO at CMNT.FO-BIRM.MED.VA.GOV  (KIDS) on Wednesday, 03/05/08 at 10:39
+=============================================================================
+Run Date: MAY 12, 2008                     Designation: PSO*7*293
+Package : PSO - OUTPATIENT PHARMACY           Priority: Mandatory
+Version : 7       SEQ #256                      Status: Released
+                  Compliance Date: JUN 12, 2008
+=============================================================================
+
+Associated patches: (v)PSO*7*257   <<= must be installed BEFORE `PSO*7*293'
+                    (v)PSO*7*260   <<= must be installed BEFORE `PSO*7*293'
+                    (v)PSO*7*292   <<= must be installed BEFORE `PSO*7*293'
+
+Subject: EXPIRATION DATE PROBLEM CLEAN UP
+
+Category: 
+  - Routine
+
+Description:
+============
+
+    --------------------------IMPORTANT---------------------------
+    PLEASE, DO NOT INSTALL THIS PATCH IN YOUR  PRODUCTION  ACCOUNT 
+    DURING NORMAL  BUSINESS  HOURS  AND  FOLLOW  THE  INSTALLATION 
+    INSTRUCTIONS BELOW IN ORDER TO AVOID DISRUPTIONS AT YOUR SITE.
+    --------------------------------------------------------------
+   
+ This patch performs the actual prescription clean up for prescriptions 
+ identified by patch PSO*7*283. Patch PSO*7*283 performed a tally, while 
+ this patch will correct the prescriptions with the expiration date and/or
+ status issues. In some cases the date is not present and other cases have 
+ a wrong date. Furthermore, most of the prescriptions with such problems 
+ are not in sync with Computerized Patient Record System (CPRS) V. 3.0
+ and/or Health Data Repository (HDR) in regards to their status. This
+ issue was classified as a Patient Safety issue and it is being tracked
+ under the number PSI-06-177. This patch makes the correction to the 
+ expiration date of these prescriptions and sends messages to CPRS and HDR
+ so these two applications can update the corresponding order with the
+ expired status on their systems. This patch will address these problems.
+ Below is a detailed description on this process:
+  
+ Expiration post-install job clean-up flow:
+ ------------------------------------------
+ In order to explain the process to clean up these prescriptions the
+ following terms will be mentioned below:
+  
+ 'CUTOFF DATE': 
+ -------------
+ This is the date last processed by the Auto Expiration Background Job.
+ This background job is supposed to be run nightly by every site. This date
+ is stored in the field DATE AUTO-EXPIRE COMPLETED (#49.95) in PHARMACY
+ SYSTEM file (#59.7) and it was introduced by the patch PSS*1*128 and it 
+ should be populated with a valid date in all sites. In case this field is
+ null, the post-install routine in this patch will set it to the date
+ corresponding to 2 days in the past from this patch installation date. For
+ example, if the patch is installed on March 5, 2008 and the field is null,
+ it will be set to March 3, 2008 (in the correct Fileman date format).
+  
+ CALCULATED EXPIRATION DATE:
+ --------------------------
+ The expiration date for prescription with a null expiration date is
+ calculated by the following formula:
+   
+  For Rx with no refills: 
+  
+       NUMBER OF DAYS SUPPLY FROM Rx ISSUE DATE (MININUM: 30 DAYS)|TAB|
+  
+  Rx with 1 or more refills: 
+   
+       Non-controlled Substances: Rx ISSUE DATE + 366 DAYS    
+  
+       Controlled Substances    : Rx ISSUE DATE + 184 DAYS        
+  
+ CPRS 'NON-ACTIVE' STATUS:
+ ------------------------
+ The following CPRS statuses: DISCONTINUED, EXPIRED, DISCONTINUED/EDIT and 
+ CANCELLED are considered 'NON-ACTIVE' by Pharmacy in this clean up process.
+ This means that Pharmacy will not send a prescription expiration event to 
+ CPRS if the CPRS order status is set to one of these.
+  
+ PHARMACY 'NON-ACTIVE' STATUS:
+ ---------------------------
+ The following Pharmacy statuses: EXPIRED, DISCONTINUED, DELETED, 
+ DISCONTINUED BY PROVIDER, DISCONTINUED (EDIT) are considered 'NON-ACTIVE'
+ by Pharmacy in this clean up process.
+   
+  
+ CLEAN UP PROCESS DESCRIPTION:
+ ---------------------------- 
+ Prescriptions with an expiration date problem are being analyzed and
+ cleaned up differently, depending on which GROUP
+  below they fall under:
+   
+ GROUP 1:
+ -------
+ Prescriptions with a null expiration date for patients.
+   
+   a) Set the CALCULATED EXPIRATION DATE in the EXPIRATION DATE
+      field (#26) of the PRESCRIPTION file (#52).
+   b) If the expiration date is on or before the 'CUTOFF DATE'
+      b1) If the prescription is not already in a Pharmacy 'NON-ACTIVE'
+          status, set the STATUS field (#100) in the PRESCRIPTION
+          file (#52) to EXPIRED.
+      b2) Update CPRS*
+      b3) Update HDR
+   c) If the expiration date is past the 'CUTOFF DATE'
+      c1) Update HDR
+    
+ GROUP 2:
+ -------
+ Expired prescriptions for patients.
+  
+   a) If the prescription expiration date is GREATER than 366 days
+      a1) A new expiration date will be calculated and set in the 
+          EXPIRATION DATE field (#26) of the PRESCRIPTION file (#52).
+      a2) Update CPRS*
+      a3) Update HDR
+   b) If the prescription expiration date is LESS than 366 days
+      b1) Update CPRS*
+      b2) Update HDR (if CPRS is updated)
+  
+ GROUP 3:
+ -------
+ Prescriptions with an expiration date on or before the 'CUTOFF DATE'
+ with a Pharmacy 'ACTIVE' status
+   
+   a) Set the STATUS field (#100) in the PRESCRIPTION file (#52) to 
+      EXPIRED.
+   b) If the CPRS order status is 'ACTIVE'
+      b1) Update CPRS*
+      b2) Update HDR (if CPRS is updated).
+   c) If the CPRS order status is 'NON-ACTIVE' 
+      c1) Update HDR
+   
+    NOTE: If the prescription does not have a corresponding CPRS Order
+          Number, the counter for this specific problem will be 
+          incremented. However, the HDR will not be updated. HDR will
+          perform their own clean up for these cases.
+  
+ GROUP 4:
+ -------
+ Deleted prescriptions for patients.
+  
+   a) Update HDR
+  
+  
+   * CPRS will only be updated if the prescription contains the 
+     corresponding CPRS Order Number for the prescription being cleaned
+     up. Furthermore, CPRS will not be updated if the corresponding 
+     CPRS order is on a 'NON-ACTIVE' status.
+  
+ The clean up process will start right after the patch is installed. If 
+ it is necessary to stop, restart the job or to know the status of the
+ job, do the following:
+  
+  
+ >D ^PSO293PI              
+  
+      Expiration Date clean up job for Outpatient Pharmacy prescriptions
+      ==================================================================
+      Current status: RUNNING (Last Rx IEN: 2587430)
+  
+      Select one of the following:
+  
+           SP        STOP CLEAN UP JOB
+           VW        VIEW PARTIAL CLEAN UP JOB RESULTS
+           QT        QUIT
+  
+ (SP)Stop,(VW)View,(QT)Quit: VIEW//  VIEW PARTIAL CLEAN UP JOB RESULTS
+  
+  
+ Expiration Date clean up job for Outpatient Pharmacy prescriptions
+ ==================================================================
+ Current status: COMPLETED ON Nov 06, 2007@17:03:36
+ DATE AUTO-EXPIRE COMPLETED field: 01/19/2008
+  
+ 1. Institution   : SITE NAME VAMC (999)
+                                                               # of  Rx's
+ Group 1: RX'S WITH NO EXPIRATION DATE                         cleaned up
+ -------------------------------------                         ----------
+ 2.  Calc exp date > CUTOFF (update HDR)                              363
+ 3.  Calc exp date < CUTOFF,CPRS active (update HDR/CPRS)               0
+ 4.  Calc exp date < CUTOFF,CPRS non-active (update HDR)                0
+ 5.  No CPRS order# (Update HDR)                                        0
+  
+ Group 2: RX'S IN EXPIRED STATUS
+ -------------------------------
+ 6.  CPRS active (update CPRS/HDR)                                  5,400
+ 7.  Exp>366 days,reset date,CPRS order# (update CPRS/HDR)              0
+ 8.  Exp>366 days,reset date,no CPRS order# (update HDR)               18
+  
+ Group 3: RX'S PAST EXPIRATION DATE BUT STILL ACTIVE
+ ---------------------------------------------------
+ 9.  CPRS active (update CPRS/HDR)                                      0
+ 10. CPRS DC'd or expired (update HDR)                                  0
+ 11. No CPRS order# (HDR will run own update)                           0
+  
+ Group 4: RX's IN DELETED STATUS
+ -------------------------------
+ 12. No CPRS order# (update HDR)                                    2,275
+  
+ 13. TOTAL NUMBER OF PRESCRIPTIONS ANALYZED:                    6,653,607
+  
+ Up-arrow ('^') separated values:
+ SITE NAME VAMC (999)^363^0^0^0^5400^0^18^0^0^0^2275^6653607
+  
+ Run Log:
+ --------------------------------------------------------------------------
+ SEQ DATE/TIME         INITIATOR             ACTION
+ --------------------------------------------------------------------------
+   1 01/21/08@12:01:25 USER1,TEST            PATCH INSTALLATION
+   2 01/21/08@12:01:25 USER1,TEST            DATE AUTO-EXPIRE set: 01/19/08
+   3 01/21/08@12:01:27 USER1,TEST            QUEUED
+   4 01/21/08@12:01:29 USER1,TEST            STARTED
+   5 01/21/08@18:12:29 USER1,TEST            COMPLETED
+ <END>
+  
+ Once the clean up process is completed, the same information above will be
+ sent via Mailman message locally to the user who installed the patch and
+ to the following support personnel below (via FORUM mail):
+  
+ |TAB|
+         NAME                     Role
+         -----------------------------------------------
+         Bruun, Jesse             HDR
+         Consentino, Albert       EPS
+         Jones, Tres              Functional Analyst
+         Mohamed, Anwer           Developer
+         Rocha, Marcelo           Developer
+         Ruzbacki, Ron            Developer
+         Willette, Candice        Implementation Analyst
+         Williamson, Eric         Project Manager
+  
+  
+ Note: The sites will not have to take any action once they receive the
+       result message above generated by the post-install. The message 
+       will not be generated from non-production accounts (e.g., test
+       account).
+  
+    
+ Associated Patient Safety Issues:
+ =================================
+ PSI-06-177
+  
+ Associated New Service Request (NSR):
+ =====================================
+ N/A
+   
+ Associated Remedy ticket(s):
+ =====================================
+ HD0000000174649
+ HD0000000214867   
+  
+ Test Sites:
+ -----------
+ MONTANA HCS
+ NEW YORK HCS
+ OKLAHOMA CITY, OK
+  
+ ===================INSTALLATION INSTRUCTIONS ========================
+ Since the post-install clean-up task is queued to run right after the 
+ patch is installed, sites should queue the patch installation to run 
+ during off-hours (e.g. after 18:00 local time for week-days) as the 
+ clean-up may increase the network traffic to the Health Data 
+ Repository (HDR). If running on the weekend, when HDR maintenance is
+ being performed, transactions will queue up and will automatically 
+ continue sending once the maintenance is complete. To minimize impact
+ on the Vitria Interface Engine (VIE), it is also requested, if 
+ possible, that sites avoid installing this patch between the 1st-4th
+ or 15th-19th day of the month. 
+  
+ The post-install process in this patch can run concurrently with 
+ the
+ CMOP transmission or the Nightly Rx Auto-Expire jobs.
+  
+ It should take less than 2 minutes to install this patch.
+  
+    1. Choose the PackMan message containing this patch and invoke the
+       INSTALL/CHECK MESSAGE PackMan option.  
+   
+    2. From the Kernel Installation & Distribution System menu, select 
+       the Installation menu.  
+   
+    3. From this menu, you may select to use the following options: 
+       (when prompted for INSTALL NAME, enter PSO*7.0*293)
+   
+         a.  Verify Checksums in Transport Global - This option will allow
+             you to ensure the integrity of the routines that are in the
+             transport global.
+         b.  Print Transport Global - This option will allow you to view
+             the components of the KIDS build.
+         c.  Compare Transport Global to Current System - This option will
+             allow you to view all changes that will be made when this patch
+             is installed.  It compares all components of this patch
+             (routines, DD's, templates, etc.).
+         d.  Backup a Transport Global - This option will create a backup
+             message of any routines exported with this patch. It will not
+             backup any other changes such as DD's or templates.
+   
+    4. Use the Install Package(s) option and select the package PSO*7.0*293.
+  
+    5. When Prompted "Want KIDS to INHIBIT LOGONs during the install? 
+       YES//" respond NO.  
+   
+    6. When Prompted "Want to DISABLE Scheduled Options, Menu Options, and 
+       Protocols? YES//" respond NO.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;7.0;OUTPATIENT PHARMACY;**[Patch List]**;DEC 1997;Build 22
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PSO293EN
+    Before:       n/a   After:  B3291669  **293**
+Routine Name: PSO293P1
+    Before:       n/a   After: B30602301  **293**
+Routine Name: PSO293PI
+    Before:       n/a   After: B68973166  **293**
+
+=============================================================================
+User Information:
+Entered By  : ROCHA,MARCELO                 Date Entered  : NOV 14, 2007
+Completed By: LEONARD,KEN                   Date Completed: MAY 08, 2008
+Released By : CONNOLLY,BARBARA              Date Released : MAY 12, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

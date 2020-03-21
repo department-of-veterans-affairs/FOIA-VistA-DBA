@@ -1,0 +1,174 @@
+$TXT Created by FORT,WALLY at NXT.FO-OAKLAND.MED.VA.GOV  (KIDS) on Monday, 09/29/08 at 16:17
+=============================================================================
+Run Date: MAR 31, 2009                     Designation: XWB*1.1*49
+Package : XWB - RPC BROKER                    Priority: Mandatory
+Version : 1.1        SEQ #40                    Status: Released
+                  Compliance Date: MAY 01, 2009
+=============================================================================
+
+Associated patches: (v)XWB*1.1*35  <<= must be installed BEFORE `XWB*1.1*49'
+                    (v)XWB*1.1*43  <<= must be installed BEFORE `XWB*1.1*49'
+
+Subject: Improve Support for Linux.
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ Patch Tracking #: 48008329
+ Test Sites: Puget Sound HCS,
+ Blood Bank Clearance: 12/08/2008
+  
+ Remedy Ticket: HD0000000200596
+ The $$OS tag in XWBTCPM returns the wrong value under GTM.
+ Fix: Return the correct value.
+ Test: In a GT.M environment do 'W $$OS^XWBTCPM' you should get "GT.M".
+  
+ Remedy Ticket: HD0000000242689
+ Make Broker work with xinetd on Linux with Cache.
+ Code changes in XWBTCPM.
+ To test setup Linux box as Cache client, install patch, setup xinetd service
+ use broker app. to test service.
+  
+ Here is the script for /etc/xinetd.d/xwbtcp
+  
+ #default: on
+ #description: VA RPC Broker Listener port 9200
+ #
+ service xwbtcp
+ {
+         disable         = no
+         socket_type     = stream
+         type            = UNLISTED
+         port            = 9200
+         protocol        = tcp
+         wait            = no
+         user            = cache
+         server          = /usr/cachesys/bin/csession
+         server_args     = cache -ci -U VHA CACHEVMS^XWBTCPM
+         instances       = UNLIMITED
+ }
+ The port number, user name, server path, cache config and namespace will 
+ all have to be adapted to the local install.
+  
+         server          = /usr/cachesys/bin/csession
+                           ^^^^^^^^^^^^^       
+         server_args     = cache -ci -U VHA CACHEVMS^XWBTCPM
+                           ^^^^^        ^^^
+ The parts of server and server_args that need to be adapted to the local
+ environment.   
+  
+ =========================================================================
+ VMS Sites: Only start the RPC Broker with the minimum required privileges!
+ For more information on this topic, review AXP alert #97.
+  
+ >>>Users may remain on the system.
+ >>>Stop Broker users
+ >>>Stop RPC Broker application processes
+ >>>Roll and Scroll Users may remain on the system.
+  
+ Installation:
+  
+   1.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This
+       option will load the KIDS package onto your system.
+   
+   2. Stop the Broker Listener on the server. 
+       a. VMS site running listener as a service, on one node using sysman.
+           At the sysman prompt (node1-n where listener runs): 
+                     SET ENVIRONMENT/NODE=(<node1>,<node2>,<nodeN>)
+                     DO TCPIP DISABLE SERVICE <servicename>
+           or
+       b. Listener not running as a service, and using the "controlled by 
+             listener" parameter, use the Vista menu:
+                        Stop All RPC Broker Listeners
+           or
+       c. Listener not running as a service and not using the "control by 
+          listener" parameter, on each node where listener runs and for each 
+          RPC port, at the programmer prompt:
+                   D STOP^XWBTCP(<portnumber>) 
+   
+   3.  During the installation, do not run any RPC-Broker-based Client/Server
+       software (e.g., CPRS, PCMM, BCMA).  No Broker-based client/server 
+       software should be running while installing this patch on the 
+       server.  You can identify these jobs by checking the system status 
+       and verifying if any XWBTCPM or XWBRW (i.e., Broker Handler) 
+       routines are running.  Stop any users that are using Broker 
+       applications. This applies to any job in CPRS, BCMA, PCMM, CCR,
+       iMed, Imaging, Care Management, etc.  If you find any of these jobs
+       running on the system, notify users to logoff or FORCEX the jobs.  
+       Active users will get <EDITED> or <NOROUTINE> errors.
+           
+   4.  The patch has now been loaded into a Transport global on your
+       system. Now you need to use KIDS to install the Transport global.
+       On the KIDS menu, under the 'Installation' menu, use the following
+       options:
+  
+          Verify Checksums in Transport Global
+          Print Transport Global
+          Compare Transport Global to Current System
+          Backup a Transport Global
+                 
+   5.  Roll and Scroll Users can remain on the system.
+       TaskMan can remain running.
+   
+   6.  Installation will take less than 2 minutes.
+       On the KIDS menu, under the 'Installation' menu, use the following
+       option:
+        Install Package(s)  'XWB*1.1*49'
+                             ==========
+  
+       
+       Want KIDS to INHIBIT LOGONs during the install? NO//
+  
+       Want to DISABLE Scheduled Options, Menu Options, and Protocols? NO//
+  
+  
+   7. Re-enable the TCPIP service.
+       a. VMS site running listener as a service, on one node using Sysman
+           At the SYSMAN prompt (node1-n where listener runs): 
+                      SET ENVIRONMENT/NODE=(<node1>,<node2>,<nodeN>)
+                      DO TCPIP ENABLE SERVICE <servicename>
+           or
+       b. VMS site not running listener as a service, on each node where 
+          listener runs
+           At the Cache  prompt: 
+                        D ^NVSSTB 
+                       Select "Manually Start Broker Listener"
+  
+    8. Copy the xinetd service config text into the proper directory.
+       Make any needed changes.
+       Reload xinetd and test access.
+  
+ ============================================================================
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;1.1;RPC BROKER;**[Patch List]**;Mar 28, 1997;Build 2
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: XWBRW
+    Before:  B8441815   After:  B9161692  **35,49**
+Routine Name: XWBTCPM
+    Before: B54122124   After: B55441602  **35,43,49**
+Routine Name: XWBTCPMT
+    Before:  B8829013   After: B11122547  **43,49**
+ 
+Routine list of preceding patches: 43
+
+=============================================================================
+User Information:
+Entered By  : IVEY,JOEL                     Date Entered  : APR 03, 2007
+Completed By: SINGH,GURBIR                  Date Completed: MAR 18, 2009
+Released By : PALMER,MICHAEL                Date Released : MAR 31, 2009
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

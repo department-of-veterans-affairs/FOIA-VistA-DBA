@@ -1,0 +1,472 @@
+
+=============================================================================
+Run Date: AUG 20, 2008                     Designation: PSO*7*225
+Package : PSO - OUTPATIENT PHARMACY           Priority: Mandatory
+Version : 7       SEQ #262                      Status: Released
+                  Compliance Date: OCT 06, 2008
+=============================================================================
+
+Associated patches: (v)PSO*7*206   <<= must be installed BEFORE `PSO*7*225'
+                    (v)PSO*7*264   <<= must be installed BEFORE `PSO*7*225'
+                    (v)PSO*7*274   <<= must be installed BEFORE `PSO*7*225'
+                    (v)PSO*7*275   <<= must be installed BEFORE `PSO*7*225'
+                    (v)PSO*7*278   <<= must be installed BEFORE `PSO*7*225'
+                    (v)PSO*7*292   <<= must be installed BEFORE `PSO*7*225'
+
+Subject: PHARMACY CHANGES TO SUPPORT CPRS GUI V27 AND EVC R2
+
+Category: 
+  - Routine
+  - Enhancement (Mandatory)
+  - Data Dictionary
+  - Informational
+
+Description:
+============
+
+ This patch contains changes in support of the Enrollment VistA Changes 
+ (EVC) project and Computerized Patient Record System (CPRS) GUI v27
+ release.
+  
+ CPRS GUI v27 consists of two host files: OR_PSJ_PSO_27.KID and
+ CPRS_BUNDLE_GUI_27_REQ_REL.KID.
+ These two host files contain software patches that support CPRS GUI v27
+ functionality. The host files were created to simplify installation at
+ Veterans Health Administration (VHA) facilities. Please refer to the
+ "CPRS GUI v.27 and Associated Patches Installation Guide" for installation
+ sequence information. This document is exported as OR_30_243IG.doc and
+ OR_30_243IG.pdf and is included in OR_30_243.ZIP.  
+  
+ No additional installation or set-up steps specific to Outpatient 
+ Pharmacy are required once the software is installed.
+  
+ The Enrollment VistA Changes (EVC) project is being undertaken to support 
+ technology and business changes that are occurring with the implementation
+ of the Health Eligibility Center (HEC) Enrollment System Redesign (ESR)
+ project. Some modified and new business functionality is being included in
+ the new system and corresponding changes are necessary in VistA for
+ preliminary determination of veterans Enrollment and Eligibility status.
+ The EVC project has been rolled out in three phases. This release 
+ represents the third and last phase called EVC Release 2.
+  
+ This patch provides the functionality changes to determine, process and
+ disseminate the newly added Environmental Indicator (EI) called Project
+ 112/SHAD Exposure (a.k.a SHAD), where applicable.
+  
+ This patch also changed the EI, "Environmental Contaminant" to read
+ as "Southwest Asia Conditions".
+  
+  1. For the following options, when creating a new order, renewing an
+     existing order, copying an existing order to a new order, or editing
+     an existing order that results in a new order, the copay status of the
+     prescription needs to be determined for billing purposes.
+  
+     a. Patient Prescription Processing [PSO LM BACKDOOR ORDERS]
+     b. Barcode Batch Prescription Entry [PSO BATCH BARCODE]
+     c. Complete Orders from OERR [PSO LMOE FINISH]
+  
+    If a patient is found eligible for SHAD then the prompt 
+    "Was treatment related to PROJ 112/SHAD?" will be presented to the
+    pharmacist.
+  
+    A "YES" or "NO" response will be stored in the new fields, PROJ
+    112/SHAD field (#122.01) of the PRESCRIPTION file (#52) and in the PROJ
+    112/SHAD field (#8) of the ICD DIAGNOSIS sub-file (#52.052311) of the
+    PRESCRIPTION file (#52).
+  
+  2. The Integration Control Registration (ICR) #2534, provides
+     Computerized Patient Record System V. 1.0 (CPRS) with all the eligible
+     EI questions that will be prompted during the pharmacy order entry
+     process. This ICR is modified to include the SHAD prompt.
+  
+  3. When a verbal or telephone order is placed in backdoor pharmacy, it
+     requires an electronic signature from the provider. During the
+     signature entry process in CPRS, the provider may update the SC, EI,
+     or the ICD diagnosis information. This updated information is passed
+     back to pharmacy via the ICR #4666, which is modified to include the
+     SHAD changes.
+  
+  4. The PENDING OUTPATIENT ORDERS file (#52.41) that stores the pharmacy
+     orders entered via CPRS is modified to include the provider's response
+     to the SHAD question. The provider's response will be stored in the
+     new fields, PROJ 112/SHAD field (#110.2) of the PENDING OUTPATIENT
+     ORDERS file (#52.41) and the PROJ 112/SHAD field (#8) of the DIAGNOSIS
+     sub-file (#52.41311) of the PENDING OUTPATIENT ORDERS file (#52.41).
+  
+  5. During the release of a prescription, if the SHAD question applies and
+     is unanswered, the MailMan message that is sent to the finishing 
+     pharmacist, ordering provider, and holders of the PSO COPAY key, to
+     get answers to the EI questions will have the SHAD question if
+     applicable.
+  
+  6. The Reset Copay Status/Cancel Charges [PSOCP RESET COPAY STATUS]
+     option is modified to include the SHAD question wherever applicable.
+  
+  7. During label printing, if the prescription is flagged as SHAD then the
+     text "NO COPAY" will be printed in the label.
+  
+ Unrelated to the Enrollment VistA Changes (EVC) features, this patch also 
+ provides the following changes to support CPRS v27.
+  
+  a. To add the proper escape sequences to the standard HEALTH LEVEL
+     SEVEN (HL7) encoding characters to messages sent to CPRS / remove
+     escape sequences received from CPRS and replace them with standard HL7
+     encoding characters. This will help avoid errors that can occur if
+     special delimiting characters are encountered during parsing of the
+     HL7 messages.
+  
+  b. Integration Control Registration (ICR) #2400, will be modified to
+     provide new sorting sequences of the patient medication profile that 
+     is viewed under the CPRS-Meds Tab including the Non-VA medications.
+     
+     VIEW 0 or null - This provides the medication list as it was prior to 
+              GUI 27 so that other applications calling this API will not
+              see any changes.
+     VIEW 1 - This provides the medication list sorted by prescription 
+              Status Group and Stop Date/Expiration Date. Following is the
+              order:
+             Pending group
+               Non-Verified
+               Pending              
+             Active group:
+               Active
+               Hold
+               Suspended (Active/Susp)
+               Provider Hold
+             Expired group
+               Expired
+             Discontinued/Deleted group
+               Discontinued by Provider
+               Discontinued (Edit)
+     
+     VIEW 2 - This provides the medication list sorted by prescription
+              Status Group, Status, and Drug Name.
+             Active group:
+               Active
+               Hold
+             Pending group
+               Non-Verified
+               Pending  
+             Discontinued
+               Discontinued by Provider
+               Discontinued (Edit)
+  
+     VIEW 3 - This provides the medication list sorted by Drug Name,
+            active/suspended and Stop Date/Expiration Date.
+  
+  c. Flag/Un-Flag functionality (PSI-06-041)
+     It was requested in the Remedy ticket #133716 that the flagging
+     capability that is available in CPRS be made available for
+     Outpatient Pharmacy use. This patch provides the flagging
+     functionality for Pending orders only.
+  
+  d. As per the E3R numbers 19973 and 19876, to improve communication 
+     between the provider and the pharmacist, Outpatient Pharmacy will now 
+     send the actual comments made by the pharmacist to CPRS when a 
+     prescription is put on Hold, Discontinued, and Returned to Stock 
+     replacing the generic "per pharmacy request" text. 
+  
+  e. When the DC-Discontinue ListMan option is used to discontinue a 
+     pending "renewal" order, the software will now check for an active 
+     prescription for the same drug. If found it will prompt the following:
+     "There is an active Rx for this pending order, Discontinue both
+     (Y/N)".
+     This will provide the user with the option to discontinue both pending
+     and the active order.
+  
+  f. A problem was reported in one of the error messages displayed on CPRS 
+     side when a provider tries to discontinue an Outpatient Pharmacy
+     order from the Orders Tab and that order for some reason is
+     not found in the PRESCRIPTION file (#52). The solution provided is to
+     replace the error message "Unable to locate order" with "Invalid
+     Pharmacy order number" to be in consistent with the Inpatient 
+     Medications V. 5.0 error messages.
+  
+  g. At the request of CPRS active calls to obsolete routine OR3CONV have
+     been removed from Outpatient Pharmacy V. 7.0.  
+  
+  h. When finishing a pending order placed in CPRS, it was reported that
+     the patient instructions sent across to CPRS was getting truncated.
+     This patch fixes the problem.
+  
+  i. PSI-07-057 - Potential of inappropriate or misleading provider
+     comments to be automatically included on new medication orders.
+     To fix this problem CPRS is dropping (will not carry over) the
+     original provider comments during renewals of Outpatient Pharmacy
+     medications.
+     To follow suit with CPRS, Outpatient Pharmacy is also dropping the
+     original provider comments from all backdoor renewals.
+  
+  
+ Associated Patient Safety Issues:
+ =================================
+ PSI-06-041
+ PSI-07-057
+  
+  
+ Associated New Service Request (NSR):
+ =====================================
+ N/A
+  
+  
+ Associated Remedy Ticket(s):
+ ============================
+ HD0000000096952
+ HD0000000133716
+ HD0000000137210
+ HD0000000144709
+ HD0000000152435
+ HD0000000179478
+ HD0000000181591 
+  
+  
+ Associated E3Rs:
+ ================
+ 19973
+ 19876
+  
+  
+ Test Sites:
+ ===========
+ CHARLESTON, SC
+ CLEVELAND, OH
+ HEARTLAND-EAST HCS
+ HUDSON VALLEY HCS
+ LOMA LINDA, CA
+ NORTHERN CALIFORNIA HCS
+ PALO ALTO HCS
+ PHILADELPHIA, PA
+ SAN DIEGO, CA
+ TAMPA, FL
+  
+ Documentation Retrieval:
+ ========================
+ The documentation is available on the ANONYMOUS.SOFTWARE directory
+ at one of the following Office of Information (OI) Field Offices.
+  
+ Sites may retrieve documentation in one of the following ways:
+  
+ (1) The preferred method is to FTP the files from
+     download.vista.med.va.gov, which will transmit the files from the
+     first available FTP server.
+  
+ (2) Sites may also elect to retrieve documentation directly from a
+     specific server as follows:
+  
+     Albany              ftp.fo-albany.med.va.gov
+     Hines               ftp.fo-hines.med.va.gov
+     Salt Lake City      ftp.fo-slc.med.va.gov
+  
+ The documentation distribution includes:
+  
+ FILE NAME                    DESCRIPTION
+ PSO_7_MAN_UM_R0808.PDF       Manager's User Manual
+ PSO_7_P225_MAN_UM_CP.PDF     Manager's User Manual Change Pages
+ PSO_7_PHAR_UM_R0808.PDF      Pharmacist's User Manual
+ PSO_7_P225_PHAR_UM_CP.PDF    Pharmacist's User Manual Change Pages
+ PSO_7_TECH_UM_R0808.PDF      Technician's User Manual
+ PSO_7_P225_TECH_UM_CP.PDF    Technician's User Manual Change Pages
+ PSO_7_TM_R0808.PDF           Technical Manual/Security Guide
+ PSO_7_P225_TM_CP.PDF         Technical Manual/Security Guide Change Pages
+ PSJ_5_PSO_7_PSS_1_RN.PDF     Pharmacy Changes to Support CPRS GUI v27 
+                              Release Notes
+  
+ (3) Documentation can also be retrieved from VistA Documentation Library
+ (VDL) on the Internet at the following address, http://www.va.gov/vdl.
+  
+ Installation Instructions:
+ ==========================
+ CPRS GUI version 27 consists of three patches. The patches are combined
+ in host file OR_PSJ_PSO_27.KID in order to simplify installation at
+ Veterans Health Administration (VHA) facilities. Installation of this
+ file should be coordinated among the three packages affected since only
+ one installation is necessary. The patches are:
+  
+     PSJ*5.0*134    INPATIENT MEDICATIONS
+     PSO*7.0*225    OUTPATIENT MEDICATIONS
+     OR*3.0*243     ORDER ENTRY/RESULTS REPORTING
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;7.0;OUTPATIENT PHARMACY;**[Patch List]**;DEC 1997;Build 29
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PSOCAN3
+    Before: B73551199   After: B70221168  **15,24,27,32,36,94,88,117,131,
+                                           146,139,132,223,235,148,249,
+                                           225**
+Routine Name: PSOCAN3N
+    Before:       n/a   After:   B656532  **225**
+Routine Name: PSOCAN4
+    Before: B42203941   After: B42375050  **20,24,27,63,88,117,131,259,
+                                           268,225**
+Routine Name: PSOCIDC2
+    Before: B70634486   After: B71704423  **226,225**
+Routine Name: PSOCP
+    Before: B65342782   After: B67321239  **20,46,71,85,137,157,143,219,
+                                           239,201,225**
+Routine Name: PSOCP1
+    Before:  B5020940   After:  B5367762  **137,239,225**
+Routine Name: PSOCPC
+    Before: B69783975   After: B74796456  **10,9,71,85,114,157,143,239,
+                                           201,275,225**
+Routine Name: PSOCPE
+    Before: B80510322   After: B80668529  **26,71,85,114,157,219,268,225**
+Routine Name: PSODIAG
+    Before: B63073470   After: B63590551  **143,219,239,268,225**
+Routine Name: PSOHLDA
+    Before: B10413296   After: B10014334  **148,225**
+Routine Name: PSOHLNE1
+    Before: B72518246   After: B73330251  **1,9,46,71,98,111,117,131,157,
+                                           181,143,235,239,225**
+Routine Name: PSOHLNE2
+    Before: B59959932   After: B60250922  **1,7,59,46,225**
+Routine Name: PSOHLNE3
+    Before: B56031313   After: B61361284  **143,239,201,225**
+Routine Name: PSOHLNE4
+    Before: B10329069   After: B17206219  **201,225**
+Routine Name: PSOHLNEW
+    Before: B77643201   After: B80329211  **1,7,15,46,71,98,111,124,117,
+                                           131,146,132,143,223,235,148,
+                                           239,249,225**
+Routine Name: PSOHLPII
+    Before: B53689474   After: B53884421  **46,225**
+Routine Name: PSOHLPIS
+    Before: B63830287   After: B64280169  **46,225**
+Routine Name: PSOHLSN1
+    Before: B82545457   After: B71972158  **1,10,24,27,55,46,71,101,99,
+                                           121,139,157,181,143,235,239,
+                                           292,225**
+Routine Name: PSOHLSN2
+    Before:  B9304423   After:  B7919233  **143,226,239,225**
+Routine Name: PSOHLSN3
+    Before:       n/a   After:  B4822097  **225**
+Routine Name: PSOHLSNC
+    Before: B54609968   After: B54704997  **111,157,143,225**
+Routine Name: PSOHLUP
+    Before: B19956951   After: B20030650  **5,225**
+Routine Name: PSOLBL
+    Before: B70822934   After: B63143813  **8,19,30,36,47,71,92,120,157,
+                                           244,206,225**
+Routine Name: PSOLBL1
+    Before: B23861694   After: B29469598  **107,110,225**
+Routine Name: PSOLLLI
+    Before: B65877294   After: B66409595  **120,157,189,161,244,200,206,225**
+Routine Name: PSOLMAO
+    Before:   B221625   After:   B247627  **225**
+Routine Name: PSOLMPO
+    Before:   B844163   After:  B1183408  **46,225**
+Routine Name: PSOLMPO1
+    Before:   B853281   After:  B1200387  **46,71,225**
+Routine Name: PSOLMPO2
+    Before:   B527625   After:   B590140  **46,71,225**
+Routine Name: PSOLMRN
+    Before:   B502787   After:   B567748  **11,46,84,225**
+Routine Name: PSOLMUTL
+    Before: B10324003   After: B10572703  **19,46,84,99,131,132,148,268,225**
+Routine Name: PSOMLLD2
+    Before: B18734428   After: B28319271  **143,219,239,225**
+Routine Name: PSOMLLDT
+    Before: B88755927   After: B86446402  **71,157,143,219,278,225**
+Routine Name: PSON52
+    Before: B62362504   After: B62785056  **1,16,23,27,32,46,71,111,124,
+                                           117,131,139,157,143,219,148,
+                                           239,201,268,260,225**
+Routine Name: PSONEW
+    Before: B28071554   After: B28292272  **11,27,32,46,94,130,268,225**
+Routine Name: PSONEW2
+    Before: B31577282   After: B32398190  **32,37,46,71,94,124,139,157,
+                                           143,226,237,239,225**
+Routine Name: PSONEWF
+    Before: B35718015   After: B38013501  **71,157,143,219,226,239,225**
+Routine Name: PSONEWG
+    Before: B23242345   After: B25309370  **71,157,143,219,226,239,225**
+Routine Name: PSONFI
+    Before:  B8417929   After:  B9036524  **46,94,131,225**
+Routine Name: PSOORFI1
+    Before: B72652086   After: B74027837  **7,15,23,27,32,44,51,46,71,
+                                           90,108,131,152,186,210,222,258,
+                                           260,225**
+Routine Name: PSOORFI2
+    Before: B74849096   After: B90909677  **7,15,23,27,46,130,146,177,222,225**
+Routine Name: PSOORFI3
+    Before: B74956889   After: B74814603  **15,27,32,46,84,99,130,117,
+                                           139,172,225**
+Routine Name: PSOORFI5
+    Before:       n/a   After: B18224487  **225**
+Routine Name: PSOORFI6
+    Before:       n/a   After: B23497771  **225**
+Routine Name: PSOORFIN
+    Before: B69856075   After: B59563720  **7,15,27,32,44,46,84,106,111,
+                                           117,131,146,139,195,225**
+Routine Name: PSOORFL
+    Before:       n/a   After:   B917206  **225**
+Routine Name: PSOORNE4
+    Before: B67601401   After: B68513696  **11,27,32,36,46,75,96,103,99,
+                                           117,131,225**
+Routine Name: PSOORNE5
+    Before: B60770626   After: B60780567  **11,27,32,46,78,99,117,131,
+                                           146,171,180,210,222,268,206,
+                                           225**
+Routine Name: PSOORNEW
+    Before: B66909716   After: B72157265  **11,23,27,32,55,46,71,90,94,
+                                           106,131,133,143,237,222,258,
+                                           206,225**
+Routine Name: PSOORRL
+    Before: B56134945   After: B64370128  **4,20,9,34,54,82,124,132,159,
+                                           214,225**
+Routine Name: PSOORRL3
+    Before:       n/a   After: B23985690  **225**
+Routine Name: PSOORRLN
+    Before:       n/a   After: B43625961  **225**
+Routine Name: PSOORRLO
+    Before:       n/a   After: B39129717  **225**
+Routine Name: PSOORRNW
+    Before: B20892446   After: B24091362  **11,27,51,46,71,94,130,131,
+                                           146,206,225**
+Routine Name: PSOORUT1
+    Before: B66564679   After: B67437810  **1,14,30,46,132,148,233,274,225**
+Routine Name: PSOORUTL
+    Before: B42770378   After: B42932698  **14,46,146,132,118,199,223,
+                                           148,249,274,225**
+Routine Name: PSOPFSU0
+    Before: B16719657   After: B16719729  **201,225**
+Routine Name: PSOPFSU1
+    Before: B33416408   After: B33416502  **201,225**
+Routine Name: PSOPTPST
+    Before: B26961793   After: B27932490  **7,71,88,146,157,143,225**
+Routine Name: PSORENW1
+    Before: B64596305   After: B60533620  **20,37,51,46,71,117,157,143,
+                                           219,239,225**
+Routine Name: PSORENW4
+    Before: B57297144   After: B56219403  **11,23,27,32,37,64,46,75,71,
+                                           100,130,117,152,148,264,225**
+Routine Name: PSORN52
+    Before: B43085141   After: B46207711  **1,11,27,37,46,79,71,100,117,
+                                           157,143,219,148,239,201,225**
+Routine Name: PSORN52A
+    Before: B18015106   After: B18565756  **157,148,268,225**
+Routine Name: PSORN52C
+    Before: B49841543   After: B49927643  **1,7,11,27,46,75,87,100,111,
+                                           124,117,131,146,148,200,225**
+Routine Name: PSORN52D
+    Before: B30768895   After: B41922848  **143,219,239,225**
+ 
+Routine list of preceding patches: 5, 110, 172, 177, 195, 206, 214, 226
+                           259, 260, 264, 274, 275, 278, 292
+
+=============================================================================
+User Information:
+Entered By  : ANWER,MOHAMED                 Date Entered  : OCT 27, 2005
+Completed By: FARMER,LINDA                  Date Completed: AUG 07, 2008
+Released By : VECE,VIRGINIA                 Date Released : AUG 20, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+No routines included

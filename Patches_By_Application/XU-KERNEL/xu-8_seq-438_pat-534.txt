@@ -1,0 +1,170 @@
+$TXT Created by FORT,WALLY at KRN.FO-OAKLAND.MED.VA.GOV  (KIDS) on Wednesday, 12/16/09 at 13:41
+=============================================================================
+Run Date: SEP 02, 2010                     Designation: XU*8*534
+Package : XU - KERNEL                         Priority: Mandatory
+Version : 8       SEQ #438                      Status: Released
+                  Compliance Date: OCT 03, 2010
+=============================================================================
+
+Associated patches: (v)XU*8*344    <<= must be installed BEFORE `XU*8*534'
+                    (v)XU*8*446    <<= must be installed BEFORE `XU*8*534'
+
+Subject: Taskman Cleanup
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ Patch Tracking #: 50752139
+ Test Sites: Cleveland VAMC, Dublin VAMC, SALISBURY VAMC
+ Blood Bank Clearance:  12/15/2009
+  
+ 1.  HD345545: HSTS (Health Systems Technical Support) found that some
+ old tasks kept getting re-scheduled at a site. Further investigation
+ showed tasks wanted a HFS or SPOOL device that was not available. Each
+ time this happens the IO Reschedule Count field (#88) of the TASKS file
+ (#14.4) is incremented.  In checking we found one task that been
+ rescheduled 500,000 times. We have added code that will check this count
+ and compare it to the new field RE-QUEUES BEFORE UN-SCHEDULE (#10) in the
+ VOLUME SET file (#14.5).  Please edit this field after the patch is
+ installed.  Minimum value is '6' and a value of '12' is recommended.
+  
+ After patch, once the count reaches the value entered in the field
+ mentioned above then the Task will be un-scheduled and an alert will be
+ sent to the user that queued the task. Example: Your task #XX stopped,
+ could not get device HFS;P-OTHER
+  
+ We HIGHLY RECOMMEND that soon after sites install the patch, ADD a
+ value in field RE-QUEUES BEFORE UN-SCHEDULE, and DO the following command
+ at the programmer mode: DO DEVREJ^XUTMHR(1)
+  
+ By running this code manually the first time (it is automatically 
+ executed every hour), sites can avoid users receiving 100-1000 ALERTS 
+ for scheduled tasks waiting for devices(output will print to screen).
+  
+ 2.  HD335952: New code in patch XU*8*446 to check the Task Schedule file
+ (#19.2) can cause tasks to skip a run. This new code runs on the hour and
+ if a task is scheduled to run on the hour they could both end up
+ re-scheduling the task at the same time and have it miss a run.
+  
+ 3.  HD63171: The input transform on the VA# (#53.3) field in New Person
+ File (#200) should not allow  duplicate entries.  Updated field VA# to 
+ not allow duplicates.
+  
+ 4.  DD changes:
+ Updated SUBTYPE field (#3) in the DEVICE File (#3.5) to not allow LAYGO.
+ ------------------------------------------------------------------
+ New field in the TaskMan VOLUME SET file (14.5).
+ 14.5,10       RE-QUEUES BEFORE UN-SCHEDULE 0;12 NUMBER
+  
+               INPUT TRANSFORM:  K:+X'=X!(X>99999)!(X<6)!(X?.E1"."1N.N) X
+               LAST EDITED:    SEP 09, 2009 
+               HELP-PROMPT:    Type a number between 6 and 99999, the number 
+                               of re-queue times. 
+               DESCRIPTION:    This field holds the number of times that a
+                               task to a HFS or SPOOL device will be re-queued
+                               for a 5 minute delay before it is un-scheduled. 
+                               The routine XUTMHR does this work once an hour. 
+                               It will send an alert to the user that queued
+                               the task.  A value of 12 would be an hour and
+                               288 would be a day.
+ ------------------------------------------------------------------------ 
+ Updated field in the New Person File
+ (#200).200,53.3 VA#      PS;3               FREE TEXT
+  
+               INPUT TRANSFORM:  K:X[""""!($A(X)=45) X I $D(X) 
+                                 K:$L(X)>10!($L(X) <3) X D VANUM^XUSER2
+               LAST EDITED:    OCT 08, 2009 
+               HELP-PROMPT:    Enter the VA number 3 to 10 characters. 
+               DESCRIPTION:    This field is used to enter the VA number.  The
+                               VA number must be unique.  
+  
+            EXECUTABLE HELP:  D EN^DDIOL("Enter the VA number.  VA number must
+                              be unique among active providers.",,"!,?5")
+               GROUP:            PSO
+               NOTES:            XXXX--CAN'T BE ALTERED EXCEPT BY PROGRAMMER
+  
+               CROSS-REFERENCE:  200^PS2 
+                                 1)= S ^VA(200,"PS2",$E(X,1,30),DA)=""
+                                 2)= K ^VA(200,"PS2",$E(X,1,30),DA)
+                                 3)= Lookup providers by their VA number
+                                 This was 'APS2' before. Also used to stop
+                                 duplicate numbers.  
+ -------------------------------------------------------------------
+ =========================================================================
+ Installation:
+  
+ *****  After Installation, at the programer mode: DO DEVREJ^XUTMHR(1)  ***** 
+  
+ >>>Users may remain on the system.
+ >>>TaskMan does *not* need to be stopped.
+  
+   1.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This
+       option will load the KIDS package onto your system.
+  
+   2.  The patch has now been loaded into a Transport global on your
+       system. You now need to use KIDS to install the Transport global.
+       On the KIDS menu, under the 'Installation' menu, use the following
+       options:
+  
+          Verify Checksums in Transport Global
+          Print Transport Global
+          Compare Transport Global to Current System              
+          Backup a Transport Global
+  
+   3.  Users can remain on the system. 
+       This patch can be queued and installed at any time.
+       TaskMan can remain running.
+  
+   4.  Installation will take less than 2 minutes, install just after the hour.
+          Install Package(s)  'XU*8.0*534'
+                               ==========
+       Accept the following defaults.
+  
+       Want KIDS to INHIBIT LOGONs during the install? NO//
+  
+       Want to DISABLE Scheduled Options, Menu Options, and Protocols? NO//
+  
+    5. Edit the VOLUME SET file (#14.5) and enter a value ('12' is 
+       recommended) for RE-QUEUES BEFORE UN-SCHEDULE #(10).
+       Also, at the programmer prompt do the following command:
+  
+       DO DEVREJ^XUTMHR(1)
+  
+       By doing this command, the first time the job runs, it can
+       be run without sending the ALERTs and just printing to the
+       screen.  Otherwise, the first time it runs it could create a
+       lot of alerts for some users.
+    
+ = ========================================================================
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;8.0;KERNEL;**[Patch List]**;Jul 10, 1995;Build 6
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: XUSER2
+    Before: B11587344   After: B13847196  **267,251,344,534**
+Routine Name: XUTMHR
+    Before: B19817174   After: B29133359  **446,534**
+ 
+Routine list of preceding patches: 344, 446
+
+=============================================================================
+User Information:
+Entered By  : FORT,WALLY                    Date Entered  : AUG 26, 2009
+Completed By: SINGH,GURBIR                  Date Completed: AUG 31, 2010
+Released By : TILLIS,LEWIS                  Date Released : SEP 02, 2010
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

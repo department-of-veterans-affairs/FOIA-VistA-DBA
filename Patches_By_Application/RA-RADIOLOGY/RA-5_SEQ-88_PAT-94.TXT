@@ -1,0 +1,399 @@
+$TXT Created by MCNEILE,KEN at DEV.DEV.FO-HINES.MED.VA.GOV  (KIDS) on Tuesday, 06/09/09 at 09:25
+=============================================================================
+Run Date: SEP 28, 2009                     Designation: RA*5*94
+Package : RA - RADIOLOGY/NUCLEAR MEDICINE     Priority: Mandatory
+Version : 5        SEQ #88                      Status: Released
+                  Compliance Date: OCT 28, 2009
+=============================================================================
+
+Associated patches: (v)RA*5*65     <<= must be installed BEFORE `RA*5*94'
+                    (v)RA*5*84     <<= must be installed BEFORE `RA*5*94'
+
+Subject: REMOVE GMT OFFSET FROM D/T STAMP & FIX LOCK ISSUE
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch will correct the following issues:
+      
+ 1.  After the installation of patch RA*5*84, some voice recognition 
+ systems are experiencing an issue in the form of date/time being recorded 
+ as 00/00/00 00:00:00.
+      
+ 2.  Removal of Patch 81 from the 2nd line in Routine RAUTL1.
+      
+ 3.  Correct the locking issues following the installation of patch 
+ RA*5*84. 
+  
+ 4.  PRIMARY DIAGNOSTIC CODE field was not properly being updated.
+      
+ 5.  The Reason for Study field becomes a required field in CPRS v27.
+ Some sites utilizing voice recognition cannot accept Reason for Study from
+ the HL7 message.
+                
+ Associated Remedy tickets:
+ ==========================
+ 1.  HD0000000258383 - RA*5*84 and Talk Issue
+ Duplicate:
+   HD0000000261230 - Report already on file message generated each time
+      
+ 2.  HD0000000258531 - Remove patch 81 from the second line of routine
+     RAUTL1
+      
+ 3.  HD0000000259589 - TalkStation locking case numbers
+ Duplicate:
+   HD0000000264155 -  TALK dropping message body  
+      
+ 4.  HD0000000259432 - Palo Alto: A non-teleradiology report event occurs
+     in PowerScribe (PS) and that report is broadcast to VistA. VistA fails
+     to file the Diagnostic Code associated with the report.
+      
+ 5.  HD0000000272792 - Reason for Study can not be displayed in Agfa
+     Talkstation 
+ Duplicates:
+   HD0000000276071 Reason for Study Field not transmitting
+   HD0000000275790 CPRS patch V.27 issue
+   HD0000000275936 Reason for Study issue due to CPRS V27
+   HD0000000276276 Clinical History vs Reason For Study
+   HD0000000277346 New Imaging Order in Ver 27
+           
+  
+ Associated NSR(s):
+ ==================
+ N/A
+       
+ Participating Test Sites:
+ =========================
+ Tampa
+ Atlanta
+ Salisbury
+ Palo Alto
+      
+ Remedy Overview:
+ ================     
+  
+ Problem #1:
+ -----------
+ After Patch RA*5*84 is installed, VistA will send the date/time in OBR-7 
+ to the Voice Recognition products with a GMT offset of a dash and 
+ 4 numbers (-9999).  Some versions of  the Voice Recognition products cannot 
+ process this offset and causing a data problem.
+   
+ Resolution #1:
+ --------------
+ A modification will be made in routine RAHLR to strip off the GMT offset 
+ from the data before sending it to subscribers.
+      
+ Problem #2:
+ -----------
+ Patch 81 was inadvertently included in the second line patch list of 
+ routine RAUTL1 and needs to be removed.
+      
+ Resolution #2:
+ --------------
+ Patch 81 will be removed from the 2nd line patch list in routine RAUTL1.
+      
+ Problem #3:
+ -----------
+  After installation of patch RA*5*84, sites began to receive HL7 errors 
+  relating to exam being locked.  Report data is showing up in VistA without
+  report or impression text.  When the sites attempt to resend reports from 
+  voice recognition they are receiving an HL7 error 'Accession locked within
+  VistA'.
+        
+ Resolution #3:
+ --------------
+  - RAHLO has had the lock of the report moved from inside this routine
+    and placed within the scope of RAHLO1. This change was made in order
+    to lock a record within a single component and not across components.
+    
+    Centrally locating the lock and unlock events makes testing and
+    supporting these types of events much easier.
+  
+  - RAHLO1 has been edited to lock and unlock the report record from the 
+    same routine. The filing of data into the RAD/NUC MED REPORT file was 
+    done in the past by calling the traditional VA FileMan data filing
+    utility DIE. Due to the nature of this interface (a TCP/IP background 
+    process), a far more efficient way of filing the data into the RAD/NUC
+    MED REPORT file was to utilize the silent Database Server call
+    UPDATE^DIE to create a new report and FILE^DIE to file data into the
+    existing report record.
+  
+    RAHLO1 introduces the function NEWIEN^RAHLTCPU() which is called
+    whenever a new report is created.
+  
+  - RAHLTCPU has been edited to include the new NEWIEN() function. This 
+    function finds the next available Internal Entry Number (IEN) from 
+    the RAD/NUC MED REPORT file and locks the new record. In this way our
+    record number is unique to this particular process. The lock executed 
+    in the new NEWIEN() function is released in RAHLO1.
+  
+  - RAHLRPTT has been edited to kill the variable RATELE in the TELE 
+    subroutine if the report was not signed by a teleradiologist. This
+    issue was identified by Palo Alto. (Remedy 259432: Failure to file a 
+    Dx Code for non-teleradiology reports with a report status of 
+    RELEASED/NOT VERIFIED)
+  
+ Problem #4:
+ -----------
+ PRIMARY DIAGNOSTIC CODE field was not properly being updated. As a   
+ result, the "AD" cross-reference was inaccurate. Other issues with the
+ definition of this field include WRITE statements in the data dictionary
+ (see NODEL^RADD1 prior to the installation of RA*5.0*94) and the use of
+ an IF statement in the PDC^RADD1 function.
+  
+ Resolution #4:
+ --------------
+  - RADD1 has been edited to change the following in the PDC^RADD1() 
+    function:
+  
+    REPLACE
+    -------
+     I $P(^RA(78.3,+Y,0),U,5)="Y" Q 0
+     I $D(^RADPT(DA(2),"DT",DA(1),"P",DA,"DX","B",+Y)) Q 0
+  
+    WITH
+    ----
+    Q:$P(^RA(78.3,+Y,0),U,5)="Y" 0
+    Q:$D(^RADPT(DA(2),"DT",DA(1),"P",DA,"DX","B",+Y)) 0
+  
+    for the NODEL^RADD1() function:
+    
+    REPLACE
+    -------
+    I RASECCHK W "   Required"
+  
+    WITH
+    ----
+    I RASECCHK D EN^DDIOL("   Required","","?0")
+  
+  - RA94PST has been created to correct the issue where the whole file 
+    traditional "AD" cross-reference on the PRIMARY DIAGNOSTIC CODE 
+    (70.03, 0;13) field was not deleted and the new style "AD"
+    cross-reference on the PRIMARY DIAGNOSTIC CODE field was not created.
+  
+    To correct this issue, RA94PST takes three direct actions:
+    * If it exists, the traditional "AD" cross-reference on the PRIMARY
+      DIAGNOSTIC CODE field is deleted. The indexed cross-reference 
+      '^RADPT("AD"' is also killed.
+    * If it exists, the new style "AD" cross-reference on the PRIMARY
+      DIAGNOSTIC CODE field is deleted. The indexed cross-reference 
+      '^RADPT("AD"' is also killed (because we cannot assume the existing
+      "AD" index is accurate).
+    * Create the new style "AD" cross-reference on the PRIMARY DIAGNOSTIC
+      CODE field and generate the "AD" index '^RADPT("AD",Dx Code 
+      IEN,DA(2),DA(1),DA)' for all the appropriate PRIMARY DIAGNOSTIC CODE
+      data on file.
+  
+  Note: 'DA(2)' is the top level IEN of the RAD/NUC MED PATIENT (#70) file,
+        'DA(1)' is the second level IEN of a record in file 70, and 'DA' is
+        the third level ('EXAMINATIONS') IEN of a record in file 70.
+        
+        The creation of the new style "AD" cross-reference does not 
+        remove any locally created cross-references on the PRIMARY
+        DIAGNOSTIC CODE field. Be aware that locally created 
+        cross-references may be incompatible with the new style "AD" 
+        cross-reference.
+  
+ Problem #5:
+ ----------- 
+   With the installation of CPRS v27, Reason for Study field becomes a 
+   required field and, currently, sites running Agfa Talkstation can not
+   accept 'Reason for Study' from the HL7 message (OBR31) because it 
+   has a limit as to the length (245) of segment it can accept.  
+      
+ Resolution #5:
+ --------------
+   Routine RAHLR is being modified to add the 'Reason for Study' (as a 
+   prefix) in the text for Clinical History in OBX11.  Reason for Study 
+   will still be sent in OBR31 as well.  This will allow Talkstation to 
+   display the 'Reason for Study' field.
+   
+ Installation Instructions:
+ ==========================
+      
+ If installed during the normal workday, it is recommended that the 
+ the Radiology users be off the system.  Other VISTA users
+ will not be affected.
+  
+ Install Time - less than 5 minutes 
+  
+ SPECIAL NOTE:  Users may experience an XINDEX error after the 
+ installation of this patch.  This XINDEX error occurs because a line 
+ of code has been added for handling a future version of HL7 (2.3).  This 
+ line of code is checked to determine if HL7 (2.3) is being used and 
+ then checks for the presence of routine RAHLR1.  If both are true it 
+ will call routine RAHLR1.  This XINDEX error does not affect the 
+ software in this patch. 
+  
+ 1. Shut down the specific voice recognition system HL7 message receipt and
+ broadcast services
+  
+ 2. Shut down the specific VistA Radiology/Nuclear Medicine logical links 
+ used to broadcast and receive HL7 messages. Use the following menu path 
+ to accomplish this task:
+  
+ Select OPTION NAME: HL7 MAIN MENU  HL MAIN MENU     HL7 Main Menu
+  
+  
+           Event monitoring menu ...
+           Systems Link Monitor
+           Filer and Link Management Options ...
+           Message Management Options ...
+           Interface Developer Options ...
+           Site Parameter Edit
+    HLO    HL7 (Optimized) MAIN MENU ...
+  
+  
+ Select HL7 Main Menu Option: Filer and Link Management Options
+  
+  
+    SM     Systems Link Monitor
+    FM     Monitor, Start, Stop Filers
+    LM     TCP Link Manager Start/Stop
+    SA     Stop All Messaging Background Processes
+    RA     Restart/Start All Links and Filers
+    DF     Default Filers Startup
+    SL     Start/Stop Links
+    PI     Ping (TCP Only)
+    ED     Link Edit
+    ER     Link Errors ...
+  
+  
+ Select Filer and Link Management Options Option: SL  Start/Stop Links
+  
+ This option is used to launch the lower level protocol for the
+ appropriate device.  Please select the node with which you want
+ to communicate
+  
+ Select HL LOGICAL LINK NODE: <enter the name of the radiology links here >
+  
+ 1.  Load Transport Global 
+  
+     Choose the PackMan message containing this patch and invoke the 
+     INSTALL/CHECK MESSAGE PackMan option.  
+              
+ 2.  Start Up KIDS 
+  
+     Start up the Kernel Installation and Distribution System Menu 
+     [XPD MAIN]: 
+          Edits and Distribution ...  
+          Utilities ...  
+          Installation ...  
+    
+     Select Kernel Installation & Distribution System Option: INStallation 
+                                                              ---
+          Load a Distribution 
+          Print Transport Global 
+          Compare Transport Global to Current System 
+          Verify Checksums in Transport Global 
+          Install Package(s) 
+          Restart Install of Package(s) 
+          Unload a Distribution 
+          Backup a Transport Global 
+    
+ 3.  Select the 'Verify Checksums in Transport Global' option. If there are
+     discrepancies then do not install RA*5.0*94.
+  
+ 4.  Select the 'Backup a Transport Global' option. This is a requirement
+     that should not be bypassed.
+  
+     Note: The following options are optional but should be exercised for
+     the benefit of the facility installing the patch:
+  
+       a. Print Transport Global - This option lets you compare the 
+          components of a Transport Global, that is currently loaded
+          in the XTMP global, to your current system.
+  
+       b. Compare Transport Global to Current System - This option will
+          verify checksums for the components of a Transport Global and
+          will report any checksums that are incorrect.
+  
+ 5.  Select the 'Install Package(s)' option. This option starts the install
+     process for all Packages in a Transport Global that are part of a
+     distribution.  Note that you must load the distribution before you can
+     use this option to install it. 
+  
+     **This is the step to start the installation of this KIDS patch**
+  
+       a. Choose the Install Package(s) option to start the patch install.
+  
+       b. When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+          NO//' answer NO 
+  
+       c. When prompted 'Want to DISABLE Scheduled Options, Menu Options,
+          and Protocols? NO//' answer YES
+  
+           When prompted "Enter options you wish to mark as 'Out of
+           Order':", enter the following to disable all Rad/Nuc Med
+           options:
+      
+            RA*
+   
+           When prompted "Enter protocols you wish to mark as 'Out of 
+           Order':", enter the following to disable all Rad/Nuc Med
+           protocols:
+   
+            RA*
+   
+ 5.  Verify that the patch installation completed correctly by using the
+     KIDS 'Utilities...' [XPD UTILITY] option 'Install File Print' [XPD
+     PRINT INSTALL FILE] and selecting this patch (RA*5.0*94).
+  
+ 6.  The post-installation routine, RA94PST, can be deleted.
+  
+ 7.  Enable HL7 communication between VistA and COTS applications.
+  
+       a. Start the HL7 message receipt and broadcast services of the 
+          voice recognition system in use at your facility.
+  
+       b. Start the specific VistA Radiology/Nuclear Medicine logical
+          links used to broadcast and receive HL7 messages. Use the menu
+          path outlined above for the VistA side logical link shutdown to
+          execute the 'SL' (Start/Stop Links) to accomplish this task:
+  
+ 8.  All radiology, and those users utilizing CPRS to place radiology 
+     orders, can resume their normal activities.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.0;Radiology/Nuclear Medicine;**[Patch List]**;Mar 16, 1998;Build 9
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: RA94PST
+    Before:       n/a   After: B39745362  **94**
+Routine Name: RADD1
+    Before: B18784553   After: B20320820  **1,5,10,65,94**
+Routine Name: RAHLO
+    Before: B47630507   After: B46090166  **4,8,27,55,66,84,94**
+Routine Name: RAHLO1
+    Before: B58238892   After: B64407342  **4,5,12,17,21,27,48,55,66,87,84,94**
+Routine Name: RAHLR
+    Before: B54233244   After: B58728135  **2,12,10,25,71,82,75,80,84,94**
+Routine Name: RAHLRPTT
+    Before: B17479415   After: B17860544  **84,94**
+Routine Name: RAHLTCPU
+    Before:  B2063802   After:  B5185299  **84,94**
+Routine Name: RAUTL1
+    Before: B52485172   After: B52864092  **5,9,18,71,82,84,94**
+ 
+Routine list of preceding patches: 65, 84
+
+=============================================================================
+User Information:
+Entered By  : MCNEILE,KEN                   Date Entered  : JUL 03, 2008
+Completed By: CRICHLOW,SHERRY               Date Completed: AUG 25, 2009
+Released By : REGA,ANNE                     Date Released : SEP 28, 2009
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

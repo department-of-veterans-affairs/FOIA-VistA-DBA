@@ -1,0 +1,347 @@
+$TXT Created by HSI,TUAN at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Wednesday, 07/09/08 at 14:32
+=============================================================================
+Run Date: JUL 22, 2008                     Designation: SD*5.3*458
+Package : SD - SCHEDULING                     Priority: Mandatory
+Version : 5.3       SEQ #436                    Status: Released
+                  Compliance Date: AUG 22, 2008
+=============================================================================
+
+Associated patches: (v)SD*5.3*205  <<= must be installed BEFORE `SD*5.3*458'
+                    (v)SD*5.3*297  <<= must be installed BEFORE `SD*5.3*458'
+
+Subject: Patient Team Assign, PCMM Error & Preceptor Link, File & Rept. Correction
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ This patch will correct the following issues:
+ 1). Problem with the Patient Team assignment not showing correctly within
+     the CPRS package. 
+  
+ 2). The following error will also be fixed:
+  
+     <SUBSCRIPT>SORT+39^SCMCHLR2 when working in the PCMM Transmission 
+     Error Processing [SCMC PCMM TRANS ERROR PROC] option.
+  
+ 3). The OUTPATIENT PROFILE (#404.41) file fields 201-204 will
+     be distributed with the proper documentation as currently it states
+     incorrectly that these fields are not implemented. 
+  
+ 4). The inclusion of all 13 options on the Wait List (Sch/PCMM) 
+     Reports [SD WAIT LIST REPORTS MENU]. Five of them were unintentionally
+     detached with previously released patch SD*5.3*297.
+  
+ 5). There is a problem with the Preceptor Link not being updated 
+     correctly.  In some cases, the user receives a message that the
+     Preceptor Position requires a staff assignment. In other cases, the
+     user just isn't allowed to remove the staff assignment or the
+     preceptor assignment. The confusion comes in as the Preceptor Team
+     Position may be inactive but the status of the Preceptor link may see
+     it as active since it was not updated correctly. Changes are not saved
+     because the "AD" MUMPS cross-reference is not being updated correctly.
+     This cross-reference is triggered by the PRECEPTOR TEAM POSITION
+     (#.06) field of the PRECEPTOR ASSIGNMENT HISTORY (#404.53) file.
+  
+  
+ ASSOCIATED NSR(s):
+ ==================
+ N/A
+  
+  
+ ASSOCIATED REMEDY:
+ =================
+ 1. HD185928 Assignments not showing up in CPRS for provider.
+    Duplicate(s): HD195856 Provider Not Assigned to Team.
+ 2. HD64077 HEH-0704-41807 SORT+39^SCMCHLR2 ERROR
+    Duplicate(s): HD64423  STX-1104-71245 %DSM-E-NULLSUBSCR
+                           SORT+39^SCMCHLR2:1
+                  HD184622 SUBSCRIPT ERROR.
+                  HD220446 $ZE= <SUBSCRIPT>SORT+39^SCMCHLR2 SALISBURY
+                  HD238177 PCMM Error Transmission Report giving 
+                           printing error
+ 3. HD63259 ISB-1201-32447 Misleading field descriptions in file 404.41
+ 4. HD179635 Patch SD*5.3*419
+ 5. HD183442 Issue with deactivating a provider in PCMM.
+    Duplicate(s): HD186130 Preceptor problems.             
+  
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Oklahoma City, OK
+ Salisbury, NC
+ Dayton, OH 
+  
+  
+ REMEDY OVERVIEW:
+ ===============
+ 1. HD185928 Assignments not showing up in CPRS for provider.
+  
+ Problem:
+ --------
+ The PCMM assignment header in CPRS is not showing the TEAM assignment
+ correctly. The remote procedure call ORWPT1 PCDETAIL chooses the wrong
+ entry when the patient has multiple entries for the same date/team
+ assignment or same date/multiple team assignments. It selects the first
+ entry which is not the most recent. In selecting the first entry it may
+ find an inactivated entry and not return the correct Team assignment or if
+ there is not an inactivated entry it could return the wrong team.
+  
+ Resolution:
+ -----------
+ Routine SCAPMCU2 will be modified to select the latest and most current
+ entry and report the Team assignment correctly.
+  
+   
+ 2. HD64077 HEH-0704-41807 SORT+39^SCMCHLR2 ERROR
+  
+ Problem:
+ --------
+ When running the ER PCMM Transmission Error Report [SCMC PCMM TRANS 
+ ERROR REPORT] from within the PCMM HL7 AND MAINTENANCE MENU [SCMC HL7 
+ MENU] option with selection:  A (All Errors) | P (Provider) | 1 (New), 2
+ (Checked) or 3 (Both), the following error <SUBSCRIPT>SORT+39^SCMCHLR2
+ occurs because of a logical error in routine SCMCHLR2 that does not
+ terminate processing when a valid HL7 ID is not found.
+  
+ Solution:
+ --------
+ The routine in question SCMCHLR2 will be modified to not continue with 
+ processing when a valid HL7 ID is not found. This will resolve the error 
+ condition reported. 
+  
+  
+ 3. HD63259 ISB-1201-32447 Misleading field descriptions in OUTPATIENT 
+ PROFILE (#404.41) file.
+  
+ Problem:
+ --------
+ The field descriptions for fields 201-204 incorrectly state that the 
+ fields have not been implemented, and field 201 has a misspelling
+ 'This is calcultes' instead of 'This calculates'.
+  
+ 404.41,201      CURRENT PC PRACTITIONER   ;  COMPUTED  
+   
+                 CURRENT PRIMARY CARE PRACTITIONER     
+                 MUMPS CODE:     S X=$P($$NMPCPR^SCAPMCU2(D0,DT,1),U,2)  
+                 ALGORITHM:      S X=$P($$NMPCPR^SCAPMCU2(D0,DT,1),U,2)  
+                 LAST EDITED:    MAY 20, 1996   
+                 DESCRIPTION:    This has not been implemented yet. This is
+                                 calcultes the current Primary Care
+                                 Practitioner from the Primary Care  
+                                 Profile History File.  
+   
+   
+ 404.41,202      *CURRENT PC ATTENDING   ;  COMPUTED  
+   
+                 CURRENT PRIMARY CARE ATTENDING     
+                 MUMPS CODE:     S X=$P($$NMPCPR^SCAPMCU2(D0,DT,2),U,2)  
+                 ALGORITHM:      S X=$P($$NMPCPR^SCAPMCU2(D0,DT,2),U,2)  
+                 LAST EDITED:    JUN 01, 1999   
+                 DESCRIPTION:    This has not been implemented yet.  This  
+                                 calculates the current primary care  
+                                 attending practitioner from the Patient  
+                                 Team/Position Assignment file.  
+   
+   
+ 404.41,203      CURRENT PC TEAM         ;  COMPUTED  
+   
+                 CURRENT PRIMARY CARE TEAM     
+                 MUMPS CODE:     S X=$P($$NMPCTM^SCAPMCU2(D0,DT,1),U,2)  
+                 ALGORITHM:      S X=$P($$NMPCTM^SCAPMCU2(D0,DT,1),U,2)  
+                 LAST EDITED:    MAY 20, 1996   
+                 DESCRIPTION:    This has not been implemented yet.  This  
+                                 calculates the current primary care team.
+   
+   
+ 404.41,204      CURRENT PC PRACTITIONER POS  ;  COMPUTED  
+   
+                 CURRENT PRIMARY CARE PRACTITIONER POSITION     
+                 MUMPS CODE:     S X=$P($$NMPCTP^SCAPMCU2(D0,DT,1),U,2)  
+                 ALGORITHM:      S X=$P($$NMPCTP^SCAPMCU2(D0,DT,1),U,2)  
+                 LAST EDITED:    MAY 20, 1996   
+                 DESCRIPTION:    This has not been implemented yet.  This  
+                                 calculates the current primary care  
+                                 practitioner position.  
+  
+ Resolution:
+ -----------
+ The description on these fields will be modified to remove the statement
+ "This has not been implemented yet." and the misspelling 'This is 
+ calcultes' will be changed to 'This calculates' for CURRENT PC 
+ PRACTITIONER field (#201).
+  
+  
+ 4. HD179635 Patch SD*5.3*419
+  
+ Problem:
+ -------
+ Sites could see the options but they were not attached to a parent menu: 
+ Wait List (Sch/PCMM) Reports [SD WAIT LIST REPORTS MENU]option.  The only
+ attached options were as follows:
+  
+  SD WAIT LIST REPORTS MENU     Wait List (Sch/PCMM) Reports
+  
+    1      Appointment (Sch/PCMM) Wait List Report
+    2      PCMM Team/Position Wait List (Sch/PCMM) Report
+    3      Overdue Appointment Wait List(Sch/PCMM) Report
+    4      Wait List (Sch/PCMM) Statistic Report
+    5      Enrollment Wait List (Sch/PCMM) Statistic Report
+    6      EWL Reopened Entries
+    8      Print Transfer Requests
+   13      30, Over 30, Over 120 Day Report
+  
+ All 13 options should have been attached:
+  
+  SD WAIT LIST REPORTS MENU     Wait List (Sch/PCMM) Reports
+  
+ Select Wait List (Sch/PCMM) Reports Option: ?
+  
+    1      Appointment (Sch/PCMM) Wait List Report
+    2      PCMM Team/Position Wait List (Sch/PCMM) Report
+    3      Overdue Appointment Wait List(Sch/PCMM) Report
+    4      Wait List (Sch/PCMM) Statistic Report
+    5      Enrollment Wait List (Sch/PCMM) Statistic Report
+    6      EWL Reopened Entries
+    7      EWL 30 Day Report
+    8      Print Transfer Requests
+    9      EWL Non-Removal Reason Report
+    10     EWL Wait Time Statistics
+    11     Ad Hoc Report V1
+    12     Ad Hoc Report V2
+    13     30, Over 30, Over 120 Day Report
+  
+ Resolution:
+ -----------
+ Wait List (Sch/PCMM) Reports [SD WAIT LIST REPORTS MENU] option will be
+ 'SENT TO SITE' with missing options sent as 'ATTACHED TO MENU" to include
+ all expected options as attached to the Wait List (Sch/PCMM) Reports 
+ [SD WAIT LIST REPORTS MENU].
+  
+ All 13 options will be attached as shown above.
+   
+   
+ 5. HD183442 Issue with deactivating a provider in PCMM.
+  
+ Problem:
+ --------
+ Users are unable to remove the staff assignment from preceptor positions 
+ as the cross reference for Status ("AD") is not being updated properly. 
+ The MUMPS cross-reference 'AD' on PRECEPTOR TEAM POSITION (#.06) field 
+ in the PRECEPTOR ASSIGNMENT HISTORY (#404.53) file incorrectly uses the
+ file for its Kill logic. This caused the Kill logic to kill the same
+ record that the Add logic was about to create, thus having no effect on
+ updating the record.
+  
+ Solution:
+ ---------
+ This Kill logic will be modified to use the "AD" cross-reference to
+ correctly identify which record to remove.
+  
+ Before:
+  
+ CROSS-REFERENCE:  404.53^AD^MUMPS 
+                   1)= N SC1,SC4,SC6,SCX S SCX=$G(^SCTM(404.53,DA,
+                   0)),SC4=$P(SCX,U,4) I SC4]"" S SC1=$P(SCX,U) I
+                   SC1]"" S SC6=$P(SCX,U,6) I SC6]"" S ^SCTM(404.5
+                   3,"AD",SC6,SC1,SC4,DA)=""
+  
+                   2)= N SC1,SC4,SC6,SCX S SCX=$G(^SCTM(404.53,DA,
+                   0)),SC4=$P(SCX,U,4) I SC4]"" S SC1=$P(SCX,U) I
+                   SC1]"" S SC6=$P(SCX,U,6) I SC6]"" K ^SCTM(404.5
+                   3,"AD",SC6,SC1,SC4,DA) 
+                   Sorts for preceptor links from top down.  Sorts
+                   by preceptor position, precepted position, and
+                   status.  
+  
+ After:
+  
+ CROSS-REFERENCE:  404.53^AD^MUMPS 
+                   1)= N SC1,SC4,SC6,SCX S SCX=$G(^SCTM(404.53,DA,
+                   0)),SC4=$P(SCX,U,4) I SC4]"" S SC1=$P(SCX,U) I
+                   SC1]"" S SC6=$P(SCX,U,6) I SC6]"" S ^SCTM(404.5
+                   3,"AD",SC6,SC1,SC4,DA)=""
+  
+                   2)= N SC1 S SC1="^SCTM(404.53,""AD"")" F  S    
+                   SC1=$Q(@SC1) Q:SC1'["AD"  I +$P(SC1,",",6)=DA K @SC1 Q
+                   Sorts for preceptor links from top down.  Sorts
+                   by preceptor position, precepted position, and
+                   status.  
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ This patch can be installed during business hours, but because some 
+ options will be out of service during the installation process, it is
+ suggested that it be queued for non-peak hours. Installation will take
+ less than 5 minutes. Users do not have to be off the system.
+  
+ 1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu. [Note: TEXT 
+    PRINT/DISPLAY option in the PackMan menu still displays the patch text
+    only].
+  
+ 2. From the Kernel Installation and Distribution System (KIDS) menu,
+    select the Installation menu.
+  
+ 3. From this menu, you may elect to use the following options:
+    (when prompted for INSTALL NAME enter SD*5.3*458)
+    
+    a. Backup a Transport Global - this option will create a backup message
+       of any routines exported with the patch. It will NOT backup any 
+       other changes such as DDs or templates.
+    b. Compare Transport Global to Current System - this option will allow
+       you to view all changes that will be made when the patch is 
+       installed. It compares all components of the patch (routines, DDs, 
+       templates, etc.).
+    c. Verify Checksums in Transport Global - this option will allow you
+       to ensure the integrity of the routines that are in the Transport
+       Global.
+    d. Print Transport Global - this option will allow you to view the
+       components of the KIDS build.
+  
+ 4. Use the Install Package(s) option and select the package SD*5.3*458.
+  
+ 5. When prompted to 'Rebuild Menu Trees', respond NO. 
+  
+ 6. When prompted 'Want KIDS to INHIBIT LOGONs during the install? NO//',
+    respond NO.
+  
+ 7. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+    Protocols? YES//', respond YES.
+  
+ 8. When prompted to select the options you would like to place out of
+    of order, enter the following:
+  
+    Wait List (Sch/PCMM) Reports [SD WAIT LIST REPORTS MENU]
+    PCMM HL7 AND MAINTENANCE MENU [SCMC HL7 MENU]
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.3;Scheduling;**[Patch List]**;AUG 13, 1993;Build 14
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: SCAPMCU2
+    Before: B43664400   After: B44993468  **41,177,205,458**
+Routine Name: SCMCHLR2
+    Before: B22203753   After: B22282774  **210,272,297,458**
+ 
+Routine list of preceding patches: 205, 297
+
+=============================================================================
+User Information:
+Entered By  : VILLELLA,ROSS                 Date Entered  : SEP 14, 2005
+Completed By: TSAIMEUCHONG,BRENDA           Date Completed: JUL 22, 2008
+Released By : BENBOW,PHYLLIS O              Date Released : JUL 22, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

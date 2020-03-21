@@ -1,0 +1,413 @@
+
+=============================================================================
+Run Date: AUG 20, 2008                     Designation: TIU*1*219
+Package : TIU - TEXT INTEGRATION UTILITIES    Priority: Mandatory
+Version : 1       SEQ #225                      Status: Released
+                  Compliance Date: OCT 06, 2008
+=============================================================================
+
+Associated patches: (v)TIU*1*98    <<= must be installed BEFORE `TIU*1*219'
+                    (v)TIU*1*112   <<= must be installed BEFORE `TIU*1*219'
+                    (v)TIU*1*136   <<= must be installed BEFORE `TIU*1*219'
+
+Subject: DS Attending Requirements, Graphing - CPRS GUI 27
+
+Category: 
+  - Routine
+  - Other
+  - Data Dictionary
+  - Informational
+
+Description:
+============
+
+ I.  DESCRIPTION:
+     ============
+ This patch is being released in conjunction with CPRS GUI v27.  CPRS GUI 
+ version 27 consists of two host files:  OR_PSJ_PSO_27.KID and 
+ CPRS_BUNDLE_GUI_27_REQ_REL.KID.  These two host files contain software 
+ patches that support CPRS GUI v27 functionality.  The host files were 
+ created to simplify installation at Veterans Health Administration (VHA) 
+ facilities.  Please refer to the "CPRS GUI v.27 and Associated Patches 
+ Installation Guide" for installation sequence information.  This document 
+ is exported as OR_30_243IG.doc and OR_30_243IG.pdf and is included in 
+ OR_30_243.ZIP.  
+  
+ Installation and set-up information specific to TIU*1*219 is included in
+ this patch description.
+  
+ OR_PSJ_PSO_27.KID includes the CPRS and Pharmacy patches required for 
+ CPRS GUI v27.  It includes builds for the following patches:
+ OR*3*243
+ PSJ*5*134
+ PSO*7*225
+  
+ CPRS_BUNDLE_GUI_27_REQ_REL.KID includes the related and required patches 
+ needed to support CPRS GUI v27 functionality.  It includes builds for the 
+ following patches:
+ GMRA*4*38
+ GMPL*2*35
+ GMTS*2.7*80
+ LR*5.2*365
+ TIU*1*219
+ WV*1*23
+  
+                           *** NOTE ***
+ TIU*1*219 makes DD changes.  If you wish to compare the new DDs with your
+ current DDs, be sure to do so BEFORE installing host file
+ CPRS_BUNDLE_GUI_27_REQ_REL.KID. See INSTALLATION INSTRUCTIONS below.
+  
+  
+ Changes in TIU*1*219
+ ====================
+ 1. This patch changes the requirements for a user to be selected as an 
+    Attending FOR DISCHARGE SUMMARIES ONLY.  Users who themselves 
+    require cosignature may no longer be selected.  (See TIU DOCUMENT 
+    PARAMETER 'USERS REQUIRING COSIGNATURE'.)
+      NOTE: In order for this parameter to be respected under all 
+            circumstances, it should be set for CLASS Discharge Summary.  
+            Lower settings are usually respected, but not always.
+    Also, users are now required to have User Class PROVIDER in the USR
+    Authorization/Subscription Utility in order to be selected as
+    Attendings. Person Class in the New Person file [#200] is no longer
+    checked when selecting Attendings FOR DISCHARGE SUMMARIES. These
+    changes hold in both the CPRS GUI V27 and TIU VISTA.
+  
+    NOTE: While the TIU VISTA list of selectable Attendings does enforce
+          these new requirements, it differs from the CPRS GUI list in that
+          the TIU VISTA list fails to omit Attendings who have been
+          disusered.  This problem will be addressed in a future TIU patch
+          and will ensure that the VISTA list matches the CPRS GUI list
+          exactly.
+  
+ 2. Changes are made to facilitate CPRS GUI Graphing as it looks up TIU
+    documents. These changes are transparent to the user.
+  
+  
+ ClearQuest
+ ==========
+ These APIs satisfy ClearQuest:
+ HDS00010834 - DBIA's graphing with TIU
+ HDS00010833 - DBIA's for TIU 8925.1 and 8925. 
+ New DBIAs have been written for these APIs, to replace temporary IAs 4477
+ and 4478.
+ HDS00011666 - Remedy 69237:  Users can cosign their own notes
+ HDS00016231 - PTM 874: Change Help Text for USERS REQUIRING 
+ COSIGNATURE to be consistent with software changes
+ HDS00016262 - St. Louis:  Resident Physician can sign DS; Business Rule 
+ requires Resident to have Co-signer
+  
+ Remedy
+ ======
+ 69237 DUR-0300-31223  inconsistency in expected co-signer
+  
+  
+ II. TECHNICAL COMPONENTS:
+     =====================
+  
+ DATA DICTIONARY (DD) Changes:
+ ============================
+      TIU DOCUMENT DEFINITION file [#8925]:
+ The screen on the TIU DOCUMENT DEFINITION file [#8925], field ATTENDING 
+ PHYSICIAN [#1209] is changed to prohibit persons requiring 
+ cosignature from being designated as Attendings for Discharge Summaries.  
+ The new screen also requires such persons to be in User Class PROVIDER.  
+ The screen no longer checks Person Class in the NEW PERSON file [#200}.  
+ These changes apply to Discharge Summaries ONLY.
+  
+ New Screen on ATTENDING PHYSICIAN:
+ =================================
+ 8925,1209     ATTENDING PHYSICIAN  12;9 POINTER TO NEW PERSON FILE (#200)
+  
+               HELP-PROMPT:      Enter the name of the Attending Physician.
+  
+               INPUT TRANSFORM:  S DIC("S")="I +$G(DA),
+                                 +$$SCRATT^TIULA3(+DA,+Y) 
+                                 D ^DIC K DIC S DIC=DIE,X=+Y K:Y<0 X
+  
+               SCREEN:           S DIC("S")="I +$G(DA),
+                                 +$$SCRATT^TIULA3(+DA,+Y) 
+  
+               EXPLANATION: DS Attendings may not be terminated, must be 
+                            in USR Class PROVIDER, and may not require
+                            cosignature. Other Attendings must be active
+                            providers.
+  
+  
+ Previous Screen for your information:
+ =====================================
+  
+ 8925,1209     ATTENDING PHYSICIAN  12;9 POINTER TO NEW PERSON FILE (#200)
+  
+               INPUT TRANSFORM:  S DIC("S")="I '+$$ISTERM^USRLM(+Y),
+                                 +$$PROVIDER^TIUPXAP1(+Y,DT)" D ^DIC K DIC
+                                 S DIC=DIE,X=+Y K: Y<0 X
+  
+               LAST EDITED:      JAN 13, 1999 
+  
+               HELP-PROMPT:      Enter the name of the Attending Physician.
+  
+               SCREEN:           S DIC("S")="I '+$$ISTERM^USRLM(+Y),
+                                 +$$PROVIDER^TIUPXAP1(+Y,DT)"
+  
+               EXPLANATION:      Only active PROVIDERS may be selected.
+  
+  
+ New Description for field REFERENCE DATE [#1301]
+ ================================================
+ The Description for field 1301 REFERENCE DATE in the TIU DOCUMENT FILE
+ [#8925} has been updated to more accurately describe its values for
+ Discharge Summaries.
+  
+ New Description:
+ ===============
+ 8925,1301     REFERENCE DATE         13;1 DATE
+  
+               DESCRIPTION:      This is the Date (and time) by which the
+                                 clinician will reference the document.  
+                                 For Progress Notes, this will likely be
+                                 the date of the provider's encounter with
+                                 the patient.  For Discharge Summaries, it
+                                 will correspond to the Discharge Date of
+                                 the Admission referenced in the
+                                 document. (If there is no Discharge Date
+                                 when dictated, it will correspond to the 
+                                 dictation date of the record instead.)
+  
+ Old Description for your information:
+ ====================================
+               DESCRIPTION:      This is the Date (and time) by which the
+                                 clinician will reference the document.  
+                                 For Progress Notes, this will likely be
+                                 the date of the provider's encounter with
+                                 the patient.  For documents which have
+                                 been dictated, and transcribed (e.g.,
+                                 discharge summaries), it will correspond
+                                 to the dictation date of the record.  In
+                                 all cases, this is the date by which the
+                                 document will be referenced and sorted.
+  
+  
+      TIU DOCUMENT PARAMETERS FILE [#8925.95}
+ New Description for field USERS REQUIRING COSIGNATURE [#5]
+ ==========================================================
+ The Description for field USERS REQUIRING COSIGNATURE
+ in the TIU DOCUMENT PARAMETERS FILE [#8925.95} has been updated to 
+ describe the field's new use for Discharge Summaries.
+  
+ New Description:
+ ===============
+ 8925.95,5     USERS REQUIRING COSIGNATURE 5;0 POINTER Multiple #8925.955
+  
+               DESCRIPTION:      Please indicate which groups of users 
+                                 (i.e., User Classes) require cosignature
+                                 for the type of document in question.
+                                 For example, STUDENTS, INTERNS, LPNs,
+                                 and other user classes may be identified
+                                 as requiring a cosignature for PROGRESS
+                                 NOTES.  
+                                  
+                                 NOTE: Users specified as requiring a
+                                 cosignature for DISCHARGE SUMMARY 
+                                 documents cannot be selected as Attending
+                                 Physicians for these documents. This
+                                 ensures that users who require a
+                                 cosignature cannot cosign these
+                                 documents.  
+  
+  
+ Old Description for your information:
+ ====================================
+               DESCRIPTION:      Applies to all types of documents EXCEPT
+                                 DISCHARGE SUMMARIES.  
+                                  
+                                 Please indicate which groups of users 
+                                 (i.e., User Classes) require cosignature
+                                 for the type of document in question.
+                                 For example, STUDENTS, INTERNS, LPNs,
+  
+                                 and other user classes may be identified
+                                 as requiring a cosignature for PROGRESS
+                                 NOTES.  
+                                  
+                                 NOTE: Independent of this parameter, 
+                                 DISCHARGE SUMMARIES ALWAYS require
+                                 cosignature by the ATTENDING PHYSICIAN,
+                                 EXCEPT when the ATTENDING PHYSICIAN
+                                 dictates the summary himself.  
+  
+  
+ Remote Procedure Call
+ =====================
+ New RPC:
+  TIU IS USER A USR PROVIDER
+  
+  
+ III. TIU DOCUMENTATION RETRIEVAL:
+      ============================
+  Several TIU Manuals have been updated to reflect the enhancements
+  provided by this patch. The updated documentation is available in the
+  form of (.PDF) files, as follows:
+    TIUUM.PDF       TIU User Manual
+    TIUIM.PDF       TIU Implementation Guide
+  The files can be retrieved in BINARY format by FTP. The preferred
+  method is to FTP the files from:
+  
+     download.vista.med.va.gov    
+  
+  which will transmit the files from the first available FTP server.
+  
+  The files may also be downloaded directly from a particular FTP location
+  at the following locations:
+  
+   CIO FIELD OFFICE   FTP ADDRESS                 DIRECTORY
+    ----------------   -------------------------   --------------------
+    Albany             ftp.fo-albany.med.va.gov    [anonymous.software]
+    Hines              ftp.fo-hines.med.va.gov     [anonymous.software]
+    Salt Lake City     ftp.fo-slc.med.va.gov       [anonymous.software]
+  
+  
+  Documentation can also be found at:  http://www.va.gov/vdl
+  
+  
+  
+ IV. TIU*1*219 INSTALLATION INSTRUCTIONS:                       
+     ====================================
+  
+ TIU*1*219 is installed as part CPRS GUI version 27.  It does not
+ itself contain any software.
+  
+  
+ NOTE:  TIU*1*219 contains TIU DD changes.  If you wish to compare new 
+        and current DDs for TIU*1*219, do so BEFORE Installing Host File
+            CPRS_BUNDLE_GUI_27_REQ_REL.KID
+  
+  
+ 1.  UP TO THE POINT of installing host file 
+        CPRS_BUNDLE_GUI_27_REQ_REL.KID,
+ carry out all of the general instructions in  "CPRS GUI v.27 and
+ Associated Patches Installation Guide" mentioned at the top of this patch
+ description. Also check other included patches separately for additional
+ instructions.
+  
+ 2.  When you are ready to install CPRS_BUNDLE_GUI_27_REQ_REL.KID, use 
+ option 
+             Load a Distribution
+ under the KIDS 'INSTALLATION' menu and load host file
+          CPRS_BUNDLE_GUI_27_REQ_REL.KID
+  
+ 3.  After loading the host file but BEFORE installing it, follow these 
+ specific instructions for the particular installation of TIU*1*219. (See 
+ other patches for their parts of the installation.)
+  
+   
+ 4.  *** If you wish to compare TIU DD changes with your current DDs, do so
+        BEFORE INSTALLING the Host File but AFTER loading it. *** 
+  
+   Use Option 
+       Compare Transport Global to Current System
+   on the KIDS Installation menu and do a full comparison.  Capture the
+   output to a file so that you can search for the relevant parts.
+  
+ 5. You may also use other Pre-Installation options as desired:
+         Print Transport Global
+         Compare Transport Global to Current System [already mentioned]
+         Verify Checksums in Transport Global
+         Backup a Transport Global    
+  
+ 6. TIU*1*219 itself does not require users to be off the system.  It does 
+ require the installation to be performed at a non-peak time of day to
+ minimize disruption to users. However other builds in the host file may
+ have more stringent requirements.  Please follow the most stringent
+ requirements when choosing an install time.
+           
+ 7. When you are ready to install the host file, use option INSTALL 
+ under the KIDS 'INSTALLATION' menu and install
+            CPRS_BUNDLE_GUI_27_REQ_REL.KID
+  
+   a. Patch TIU*1*219 itself should take less than 5 minutes of the total 
+ host file installation time.
+  
+   b. For TIU*1*219 itself, for prompt "Want KIDS to INHIBIT LOGONs during 
+ the install?" YES//", respond 'NO'.
+  
+   c. For TIU*1*219 itself, when prompted 'Want to DISABLE Scheduled 
+ Options, Menu Options, and Protocols? YES//', respond 'YES', and DISABLE 
+ the TIU* Options and Protocols.
+  
+   d. For TIU*1*219 itself, when prompted 'Delay Install (Minutes):  
+ (0-60): 0//; respond '0'.
+  
+  
+      
+ V. TIU*1*219 POST-INSTALLATION INSTRUCTIONS:                       
+    =========================================
+       
+ 1. The TIU*1*219 Post-Installation Routine recompiles the Discharge 
+ Summary Input Template as part of the DD change.  (Other templates are not
+ compiled and do not require recompilation.)  You should see a section of
+ the install beginning 'Compiling TIU ENTER/EDIT DS Input Template of File
+ 8925.' followed by a list of routines that were filed. (You will also see
+ routines generated when recompiling cross-references.)
+  
+ 2. Please check the Install File and confirm that the Discharge Summary
+ Input Template was successfully recompiled.
+  
+ 3. After confirming the recompilation and checking the checksum of POST-
+ INSTALL routine TIUPS219 to confirm that you have the correct routine,
+ please delete routine TIUPS219.
+   
+ 4. The change in requirements for DS Attendings is NOT retroactive. To
+ find and change incorrect Attendings entered before this patch is
+ installed, please use VISTA hidden option EC EDIT COSIGNER.  This option
+ questions incorrect existing Attendings and permits Attendings to be
+ changed.  Option EC was enhanced to provide this functionality in released
+ patch TIU*1*234.
+  
+  
+ VI. ROUTINE SUMMARY: **Old Checksums**
+     ==================================
+  The following is a list of the routine(s) included in Patch TIU*1*219.
+  The second line of each of these routine(s) will look like:
+  
+ <tab>;;1.0;TEXT INTEGRATION UTILITIES;**[patch list]**;Jun 20, 1997
+  
+                             CHECK^XTSUMBLD results
+  Routine name      Before Patch     After Patch       Patch List
+  ============      ============     ===========       ==========
+  TIULX                  9410962         9668454    1,28,79,100,136,219
+  TIUSRVP1               9252695         9558206    19,59,89,100,109,
+                                                     167,113,112,219
+  TIULA3                 4433749         5761499      50,79,98,219 
+  TIUPS219                    NA          759269           219
+ 
+ 
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;1.0;TEXT INTEGRATION UTILITIES;**[Patch List]**;Jun 20, 1997;Build 11
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: TIULA3
+    Before: B10926325   After: B16648234  **50,79,98,219**
+Routine Name: TIULX
+    Before: B41667839   After: B45161741  **1,28,79,100,136,219**
+Routine Name: TIUPS219
+    Before:       n/a   After:   B947121  **219**
+Routine Name: TIUSRVP1
+    Before: B37579653   After: B41331651  **19,59,89,100,109,167,113,112,219**
+
+=============================================================================
+User Information:
+Entered By  : MCCLENAHAN,MARGARET           Date Entered  : JUN 19, 2006
+Completed By: OLSEN,JAMES                   Date Completed: AUG 07, 2008
+Released By : BOYER,EDWARD                  Date Released : AUG 20, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+

@@ -1,0 +1,241 @@
+$TXT Created by FRANCE,VENESSA at VMPDEV20.FO-BAYPINES.MED.VA.GOV  (KIDS) on Friday, 01/11/08 at 13:19
+=============================================================================
+Run Date: APR 02, 2008                     Designation: PSO*7*257
+Package : PSO - OUTPATIENT PHARMACY           Priority: Mandatory
+Version : 7       SEQ #252                      Status: Released
+                  Compliance Date: MAY 03, 2008
+=============================================================================
+
+Associated patches: (v)PSO*7*148   <<= must be installed BEFORE `PSO*7*257'
+                    (v)PSS*1*128   <<= must be installed BEFORE `PSO*7*257'
+
+Subject: MED STATUS, AMIS COMPILE ERROR
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ PROBLEM:
+ --------
+ HD156961 - Medication status of renewed for meds past stop date
+  
+ PSI-06-177 - MED STATUS RENEWED PAST STOP DATE
+ This patch will modify the Manual Auto Expire Rxs [PSO MANUAL AUTO EXPIRE]
+ option and the Expire Prescriptions [PSO EXPIRE PRESCRIPTIONS] option to
+ check for more values of the STATUS field (#5) in the ORDER file (#100) in
+ the Computerized Patient Record System (CPRS) before deciding whether to 
+ send the expire transaction. Before, the expire transaction was sent if 
+ the STATUS field was "ACTIVE". This patch checks for the CPRS status not
+ being any of the following and if not, will send the expire transaction:
+   DISCONTINUED
+   CANCELLED
+   DISCONTINUED/EDIT
+   EXPIRED
+  
+ This patch corrects an additional issue with mis-calculating the default 
+ value for the start date prompt for the Manual Auto Expire Rxs [PSO MANUAL
+ AUTO EXPIRE] option. 
+  
+  
+ ==================
+ ** IMPORTANT!! **:
+ ================== 
+ Please check that the nightly expire - PSO EXPIRE PRESCRIPTIONS job is
+ tasked to run on a 24 hour rescheduling frequency. This is very important,
+ as it relates to the HDR, because this job sets the status of a
+ prescription to Expired the day after the prescription expiration date,
+ and also updates CPRS and the HDR with this information. If this job is
+ not running, prescriptions could show as Active in the HDR, when the
+ expiration date is in the past.
+  
+ The job in TaskMan would look something like this:
+  
+ 2478948: PSO EXPIRE PRESCRIPTIONS - Expire Prescriptions.  No device.
+          CHYSQA,ROU.  From Today at 1:11,  By you. Scheduled for 
+          Tomorrow at 0:01.
+   
+  
+  
+ Please check to see if this job is tasked to run on a 24 hour 
+ rescheduling frequency. To access the set-up of this job in Outpatient 
+ Pharmacy, follow these steps:
+  
+  
+ Begin Capture **********
+  
+  
+ Select OPTION NAME: PSO MANAGER       Outpatient Pharmacy Manager
+ Outpatient Pharmacy software - Version 7.0
+  
+ Division:    ALBANY  500 
+  
+           You are logged on under the ALBANY division.
+  
+ Select PROFILE PRINTER: HOME//   COMPUTER ROOM
+  
+ Select LABEL PRINTER: HOME//   COMPUTER ROOM
+  
+ OK to assume label alignment is correct? YES// 
+  
+ Bingo Board Display: OUTPATIENT//   
+  
+  
+ Select Outpatient Pharmacy Manager Option: MAintenance (Outpatient 
+ Pharmacy)
+  
+  
+ Select Maintenance (Outpatient Pharmacy) Option: EXPire Prescriptions
+  
+ NOTE:
+ (The only fields that need to be filled in are the  "QUEUED TO RUN AT 
+ WHAT TIME" field to what time you want the job to run,  and the 
+ "RESCHEDULING FREQUENCY" field, which should be set to 24H.)
+  
+                           Edit Option Schedule
+     Option Name: PSO EXPIRE PRESCRIPTIONS      
+     Menu Text: Expire Prescriptions                      TASK ID: 74539  
+   _______________________________________________________________________
+  
+   QUEUED TO RUN AT WHAT TIME: MAR 23,2006@00:01             
+  
+ DEVICE FOR QUEUED JOB OUTPUT:
+  
+  QUEUED TO RUN ON VOLUME SET:
+  
+       RESCHEDULING FREQUENCY: 24H                           
+  
+              TASK PARAMETERS:
+  
+             SPECIAL QUEUEING: 
+ ________________________________________________________________________
+ Exit     Save     Next Page     Refresh
+  
+ Enter a command or '^' followed by a caption to jump to a specific field.
+  
+ COMMAND: Save 
+  
+  
+ End Capture ********** 
+  
+ RESOLUTION:
+ -----------
+ The fix for issue where the status do not match between the Prescription and
+ the Order is to modify the Expire Prescriptions and Manual Auto Expire Rxs 
+ routines (PSOHLEXP and PSOMAUEX respectively) to no longer check the status 
+ of the Order file (#100) before expiring the prescription and order.
+  
+ The fix for the default date prompt is to modify the Manual Auto Expire 
+ routine (PSOMAUEX) so the default date prompt is correct.
+  
+ PROBLEM:
+ --------
+ HD189511 - REF^PSOAMIS0
+ This patch fixes an error received when running the Compile AMIS Data
+ (NIGHT JOB) [PSO AMIS COMPILE].  When the Expire Prescriptions [PSO EXPIRE
+ PRESCRIPTIONS] or Manual Auto Expire Rxs [PSO MANUAL AUTO EXPIRE] processes
+ run at the same time the CMOP transmission is running bad data can be created.
+ The Expire Prescriptions and Manual Auto Expire Rxs processes will delete
+ the last refill data if the refill does not have a label printed (CMOP fills
+ do not have one) and does not have a Release Date/Time which they do not if
+ CMOP has not yet released the refill.  The refill node is deleted and when
+ CMOP does release the refill it only sets the Released Date/Time and
+ Dispensed Date so this will be the only data set for the refill which causes
+ the error in the AMIS compile.
+  
+ RESOLUTION:
+ -----------
+ Need to modify the Expire Prescriptions and Manual Auto Expire Rxs routines
+ (PSOHLEXP and PSOMAUEX respectively) to check if the prescription has been 
+ sent to CMOP and do not delete the refill if it has. 
+  
+ Associated Remedy ticket(s):
+ ============================
+ HD156961
+   Duplicate: HD169616
+              HD170905
+              HD194079
+ HD189511
+   Duplicate: HD206174
+              HD206423
+              HD209076
+              HD209119
+  
+ Associated NSR(s):
+ ==================
+  
+ Test Sites:
+ ===========
+ S. Texas
+ Chillicothe
+  
+  
+ ==============INSTALLATION INSTRUCTIONS =================
+  
+ It is not necessary to disable any options.  You may install 
+ these routines at any time without interruption to users. 
+  
+ It should take less than 2 minutes to install this patch.
+  
+    1. Choose the PackMan message containing this patch and invoke the
+       INSTALL/CHECK MESSAGE PackMan option.  
+   
+    2. From the Kernel Installation & Distribution System menu, select 
+       the Installation menu.  
+   
+    3. From this menu, you may select to use the following options: 
+       (when prompted for INSTALL NAME, enter PSO*7.0*257)
+   
+         a.  Verify Checksums in Transport Global - This option will allow
+             you to ensure the integrity of the routines that are in the
+             transport global.
+         b.  Print Transport Global - This option will allow you to view
+             the components of the KIDS build.
+         c.  Compare Transport Global to Current System - This option will
+             allow you to view all changes that will be made when this patch
+             is installed.  It compares all components of this patch
+             (routines, DD's, templates, etc.).
+         d.  Backup a Transport Global - This option will create a backup
+             message of any routines exported with this patch. It will not
+             backup any other changes such as DD's or templates.
+   
+    4. Use the Install Package(s) option and select the package PSO*7.0*257.
+  
+  
+    5. When Prompted "Want KIDS to INHIBIT LOGONs during the install? 
+       YES//" respond NO.  
+   
+    6. When Prompted "Want to DISABLE Scheduled Options, Menu Options, and 
+       Protocols? YES//" respond NO.
+    
+    7. Verify that the nightly auto-expire is queued to run daily as 
+       described above in the patch description.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;7.0;OUTPATIENT PHARMACY;**[Patch List]**;DEC 1997;Build 19
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PSOHLEXP
+    Before: B10259031   After: B14786719  **10,22,36,73,148,257**
+Routine Name: PSOMAUEX
+    Before: B21036438   After: B27411106  **40,73,139,148,257**
+ 
+Routine list of preceding patches: 148
+
+=============================================================================
+User Information:
+Entered By  : JACOBSON,PHIL                 Date Entered  : AUG 16, 2006
+Completed By: HEFFERNAN,COREY               Date Completed: MAR 31, 2008
+Released By : CONNOLLY,BARBARA              Date Released : APR 02, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

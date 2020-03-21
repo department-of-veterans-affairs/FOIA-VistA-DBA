@@ -1,0 +1,732 @@
+
+=============================================================================
+Run Date: SEP 02, 2009                     Designation: LEX*2*55
+Package : LEX - LEXICON UTILITY               Priority: Mandatory
+Version : 2        SEQ #61                      Status: Released
+                  Compliance Date: OCT 02, 2009
+=============================================================================
+
+Associated patches: (v)LEX*2*43    <<= must be installed BEFORE `LEX*2*55'
+                    (v)LEX*2*56    <<= must be installed BEFORE `LEX*2*55'
+
+Subject: Adding BI-RADS and AAA codes
+
+Category: 
+  - Routine
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+  This is a multi-package Kernel Installation and Distribution System
+  (KIDS) distribution consisting of the following two builds:
+  
+    Build        Package     Subject               Comment
+    ----------   ---------   --------------------  --------------------------
+    LEX*2.0*55   Lexicon     BI-RAD Codes          install name is LEX*2.0*55
+    RA*5.0*97    Radiology   BI-RAD and AAA Codes
+  
+    NOTE:  This message is neither KIDS nor Packman and contains no KIDS
+           build, no routines and no data, and is not installable.  The
+           installable KIDS distribution can be obtained using the FTP
+           instructions found later in this patch description.
+ 
+  This patch exports the Mammography Assessment Categories from the 
+  Breast Imaging Reporting and Data System (BI-RADS) for the Lexicon 
+  Utility in support of the Radiology Outside Reporting project and
+  makes minor changes to the Lexicon lookup to access these BI-RADS
+  terms.  It also adds BI-RADS and Abdominal Aortic Aneurysm (AAA) 
+  codes to the DIAGNOSTIC CODES file #78.3, using internal entry 
+  numbers 1100 thru 1106 and 1200 thru 1202, respectively.
+  
+  
+  ENHANCEMENTS:
+  ============
+  
+  
+    Lexicon Enhancements
+    --------------------
+  
+      BI-RADS and MQSA terms and codes have been added to the Expression
+      file 757.01 and Codes file 757.02.  These terms and codes are 
+      taken from the American College of Radiology (ACR) Breast Imaging
+      Reporting and Data System (BI-RADS) and the Mammography Quality 
+      Standards Act of 1992 (MQSA).
+       
+         BI-RADS  Breast Imaging Reporting and Data System
+       
+          0   Incomplete, need additional imaging evaluation and/or 
+              prior Mammograms for comparison
+          1   Negative
+          2   Benign Finding(s)
+          3   Probably Benign Finding, Initial Short-Interval 
+              Follow-Up Suggested
+          4   Suspicious Abnormality, Biopsy should be considered
+          5   Highly Suggestive of Malignancy, appropriate action
+              should be taken
+          6   Known Biopsy, Proven Malignancy, appropriate action
+              should be taken
+       
+        Mammography Quality Standards Act of 1992 (MQSA)
+       
+          0   Incomplete: Need Additional Imaging Evaluation
+          1   Negative
+          2   Benign
+          3   Probably Benign
+          4   Suspicious
+          5   Highly Suggestive of Malignancy
+          6   Known Biopsy Proven Malignancy
+       
+      Two new special lookup variables are implemented with this patch
+      (see Lexicon Technical Manual, Special Variables, Variables 
+      affecting the Lookup).  Added:
+       
+          LEXSRC    The documented source of terminology (from the 
+                    Lexicon Source file 757.14)
+       
+          LEXCAT    If a source is divided into categories, this is
+                    the category/sub-category within the source 
+                    (from the Lexicon Source Category file 757.13)
+       
+  
+    Radiology Enhancements
+    ---------------------
+  
+      BI-RADS and Abdominal Aortic Aneurysm (AAA) codes are added to
+      the DIAGNOSTIC CODES file #78.3, using internal entry numbers 
+      1100 thru 1106 and 1200 thru 1202, respectively.
+  
+      It also adds the display of the MQSA coding text next to the 
+      BI-RADS code for file look up and all reports and API's that 
+      currently display diagnostic codes.  It checks if a BI-RADS 
+      diagnostic code is required for an outside report, and if so,
+      would display a warning message if the required BI-RADS 
+      diagnostic code wasn't entered during the use of the 'Outside 
+      Report Entry/Edit' [RA OUTSIDE RPTENTRY] option.
+  
+      The maintenance portion fixes routine RABWORD1 and two print
+      templates so that they use APIs to retrieve CPT modifiers 
+      and ICD9 codes, instead of reading directly from old fields
+      that are scheduled for deletion.
+  
+  
+  ROUTINE ENHANCEMENTS:
+  ====================
+  
+  
+    Lexicon Routine Enhancements
+    ----------------------------
+  
+      LEXA      This routine has been modified by adding two new 
+                parameters (Source and Category) to the entry point 
+                LOOK^LEXA.  If defined, terms associated with the Source
+                and/or Category will be placed on the list of terms found
+                in the ^TMP("LEXFND") global array.  The two extrinsic 
+                functions $$SRC and $$CAT have been added to resolve the
+                two new parameters to files 757.14 and 757.13 
+                respectively.
+       
+      LEXA1     This is the Lexicon Special Lookup routine.  It has been 
+                modified to look for the variables LEXSRC and LEXCAT and 
+                pass them to LOOK^LEXA.  It has also been modified to 
+                look for special characters (control characters and 
+                apostrophes, see Remedy Tickets).
+       
+      LEXAL     This routine builds the list of terms found during the
+                lookup.  It has been modified to utilized the Source and 
+                Category fields in 757.01 to place source specific
+                terminology on the search list in ^TMP("LEXFND").
+       
+      LEXAR     This routine gets the response from the user and is 
+                called by special lookup ^LEXA1.  It has been modified 
+                to leave the lookup defaults found in global array
+                ^TMP("LEXSCH") for subsequent lookups.  See Remedy
+                Tickets below.
+  
+      LEXAR4    This routine provides information about a term and is 
+                called by INFO^LEXA.  It has been modified to allow 
+                the source and category of an expression to be saved in
+                the LEX("SEL") array.
+       
+      LEXAR5    This routine provides additional information about a 
+                term.  It has been modified to allow the BI-RADS codes
+                to be saved in the LEX("SEL") array.
+       
+      LEXTOLKN  This routine takes a string (term) and parses it into 
+                words.  It has been modified to process apostrophe
+                "s" as both a word and a plural word to facilitate
+                various forms of user input during lookup. It has also
+                been modified to remove control characters.
+       
+                   Term              Cross-Referenced as
+                   BIRAD'S                 BIRAD
+                                           BIRADS
+       
+  
+    Radiology Routine Enhancements
+    ------------------------------
+  
+      RA97PST   This is a new routine used to add BI-RADS and AAA records 
+                into the DIAGNOSTIC CODES file (#78.3).  It is also used 
+                to add the display of the MQSA coding system's text
+                alongside the BI-RADS code during user selection lookup.  
+                It resets the record counter for file #78.3 after the patch
+                installation.
+  
+      RA97PST1  This is a new routine used during the patch installation to
+                retrieve BI-RADS codes from the Lexicon application's 
+                EXPRESSIONS file (#757.01).
+  
+      RABIRAD   This is a new routine used for the 'Outside Report
+                Entry/Edit' [RA OUTSIDE RPTENTRY] option.  It checks if a
+                case should require a BI-RADS code.  If the case is missing
+                a required BI-RADS code, then a warning message will be
+                displayed.  It also displays extra fields after BI-RADS and
+                AAA records whenever the user enters a "?" or "??" at the
+                DIAGNOSTIC CODES prompt.  The extra field displayed for
+                BI-RADS is the MQSA coding system's text from the Lexicon's
+                EXPRESSIONS file (#757.01).  The extra field displayed for
+                AAA is the DESCRIPTION from the DIAGNOSTIC CODES file
+                (#78.3).
+  
+      RABWORD1  This routine has been modified to convert a direct read of 
+                the ICD DIAGNOSIS file (#80) to a supported code set 
+                versioning API:  $$ICDDX^ICDCODE( ).
+  
+      RADLQ1    This routine has been modified to display the correct report
+                status for an electronically filed report in the 'Delinquent
+                Status Report' [RA DELINQUENT] option.  It is also modified 
+                to add a screen pause at the end of the last screen so the 
+                display won't scroll off the screen.
+  
+      RAEDCN    This routine has been modified to disallow the use of the
+                'Diagnostic Code and Interpreter Edit by Case No.' [RA
+                DIAGCN] option for a case that doesn't have a report yet or
+                has a stub report or an electronically filed report.
+  
+      RAO7PC2   This routine has been modified to output the MQSA coding 
+                system's text next to the BI-RADS diagnostic code.  This is
+                a routine that is used by other applications to display a
+                Radiology report.
+  
+      RAPRINT   These routines have been modified for the 'Abnormal Exam
+      RAPRINT1  Report' [RA ABNORMAL] option to allow the user to select
+                data by VA radiologist only, Electronically Filed only, or
+                both.  RAPRINT1 was also modified to display the MQSA
+                coding system's text beneath the BI-RADS code and correct a
+                bug found during development testing.  The bug occurred
+                when a case had two abnormal diagnostic codes, and the case
+                # displayed under the first abnormal diagnostic code but
+                not under the second abnormal diagnostic code. This was due
+                to the case being the last case with the first abnormal
+                diagnostic code and the first case with the second abnormal
+                diagnostic code.
+  
+      RART      This routine has been modified for the 'Display a Rad/Nuc 
+                Med Report' [RA RPTDISP] option to display the MQSA coding
+                system's text next to the BI-RADS diagnostic code.
+  
+      RARTE5    This routine has been modified for the 'Outside Report 
+                Entry/Edit' [RA OUTSIDE RPTENTRY] option to use routine
+                RABIRAD to check for a required BI-RADS code.
+  
+      RARTE7    This routine has been modified for the 'Outside Report
+                Entry/Edit' [RA OUTSIDE RPTENTRY] option to generate an
+                "Imaging Results" alert when an outside report has been
+                entered the first time and it doesn't have an abnormal
+                diagnostic code.  (The wording of this alert is changed 
+                to "Imaging Results,Non Critical" by the released patch
+                RA*5*93.)  Previously, only abnormal diagnostic codes would
+                cause an alert to be generated from this option.
+  
+      RARTR1    This routine has been modified for options: 'Draft Report 
+                (Reprint)' [RA REPRINT], 'Select Report to Print by 
+                Patient' [RA RPTPAT] and the background processing that
+                sends a verified report to the requesting physician.  This 
+                modification adds the display of the MQSA coding system's
+                text alongside the BI-RADS code in the output.
+  
+  
+  
+  FILE ENHANCEMENTS:
+  =================
+  
+  
+    Lexicon Files
+    -------------
+  
+      Patch LEX*2.0*55 writes to the following files:
+       
+         File Name           File #    File Root      Action
+         ----------------    --------  ------------   ----------
+         MAJOR CONCEPT MAP   #757      ^LEX(757,      Data Added
+         CONCEPT USAGE       #757.001  ^LEX(757.001,  Data Added
+         EXPRESSIONS         #757.01   ^LEX(757.01,   Data Added
+         CODES               #757.02   ^LEX(757.02,   Data Added
+         CODING SYSTEMS      #757.03   ^LEX(757.03,   Data Added
+         SEMANTIC MAP        #757.1    ^LEX(757.1,    Data Added
+         SEMANTIC CLASS      #757.11   ^LEX(757.11,   Data Added
+         SEMANTIC TYPE       #757.12   ^LEX(757.12,   Data Added
+         SOURCE CATEGORY     #757.13   ^LEX(757.13,   Data Added
+         SOURCE              #757.14   ^LEX(757.14,   Data Added
+         SUBSET DEFINITIONS  #757.2    ^LEXT(757.2,   Data Added
+  
+           Before installing this patch, make a backup copy of the 
+           ^LEX and ^LEXT globals.
+  
+   
+    Radiology Files
+    ---------------
+  
+      Patch RA*5.0*97 includes the following files and fields:
+  
+         File Name          File #    File Root     Field/Action
+         ----------------   --------  ------------  -----------------------
+         DIAGNOSTIC CODES   #78.3     ^RA(78.3,     .001 NUMBER
+                                                    Blocked 999 and higher
+                                                    Changed Help Prompt
+                                                    Changed Field Description
+  
+         DIAGNOSTIC CODES   #78.3     ^RA(78.3,     .01  DIAGNOSTIC CODE
+                                                    Made Un-Editable
+  
+         DIAGNOSTIC CODES   #78.3     ^RA(78.3,     6    EXPRESSION
+                                                    New and Un-Editable
+  
+  
+  PRINT TEMPLATE ENHANCEMENTS:
+  ===========================
+  
+  
+    Radiology Print Templates
+    -------------------------
+   
+      The following print templates have been modified to use $$MOD^ICPTMOD 
+      to retrieve the names of CPT modifiers.
+  
+        RA IMAGE LOC LIST 
+        RA PROCEDURE LIST
+  
+      
+  REMEDY TICKETS:
+  ==============
+  
+    Lexicon Remedy Tickets
+    ----------------------
+     Ticket           Problem
+     HD0000000070373  Lookup with apostrophe 's'
+     HD0000000219980  Default values deleted causing inconsistency
+     HD0000000251024  <SUBSCRIPT>PTX+25^LEXTOLKN error (control characters)
+  
+       
+  DOCUMENTATION RETRIEVAL:
+  =======================
+  
+    Updated documentation describing the functionality introduced by this 
+    patch is available in the [ANONYMOUS.SOFTWARE] directories at the 
+    following Internet addresses:
+  
+    Files:
+  
+      File Name            Document File Description          FTP Protocol
+      -------------        -------------------------------    ------------
+      RA5_0UM.PDF          Radiology User Manual                 binary
+      RA5_0TM.PDF          Radiology Technical Manual            binary
+      RA5_0RN_P97.PDF      Released Notes                        binary
+  
+    FTP Servers:
+  
+      The documentation may be downloaded directly from the following FTP
+      servers:
+  
+          FTP Server                 Internet address
+          ----------------------     -------------------------
+        * Preferred Server           download.vista.med.va.gov  <-- 
+          Albany                     ftp.fo-albany.med.va.gov
+          Hines                      ftp.fo-hines.med.va.gov
+          Salt Lake City             ftp.fo-slc.med.va.gov
+  
+        * The preferred server download.vista.med.va.gov will transmit the
+          file from the first available FTP server.
+  
+          Files are available in the ANONYMOUS.SOFTWARE directory. 
+  
+    Internet:
+  
+      After this patch is released, the updated manuals may also be 
+      retrieved from the Internet at:
+  
+         http://www.va.gov/vdl
+  
+         In the "Browse" box, select "Clinical"
+         On the Clinical Page, select "Radiology/Nuclear Medicine"
+         On the Radiology/Nuclear Medicine download the files listed above
+  
+       
+  FTP SOFTWARE RETRIEVAL:
+  =======================
+  
+    Filename:  LEX_RA_BIRADS_97.KID
+  
+    The file may be downloaded directly from the following FTP servers:
+  
+        FTP Server                 Internet address
+        ----------------------     -------------------------
+      * Preferred Server           download.vista.med.va.gov  <-- 
+        Albany                     ftp.fo-albany.med.va.gov
+        Hines                      ftp.fo-hines.med.va.gov
+        Salt Lake City             ftp.fo-slc.med.va.gov
+  
+      * The preferred server download.vista.med.va.gov will transmit the
+        file from the first available FTP server.
+  
+        Files are available in the ANONYMOUS.SOFTWARE directory. 
+  
+  Test Sites
+  ----------
+     1. Martinez, CA
+     2. Bronx, NY
+     3. Charleston, SC
+     4. Bay Pines, FL
+     5. Puget Sound, OR
+  
+  
+  INSTALLATION INSTRUCTIONS:
+  =========================
+       
+    1)  Radiology users should be off the system during the installation
+        of this host file but other users may be on the system. It is
+        recommended that this host file be installed during non-peak hours.
+        The global backup (step 2) may take up to 30 minutes.  The KIDS
+        installation should take less than 5 minutes.
+  
+    2)  Create a backup of the following global files before continuing:
+   
+            Lexical Files                #757-757.41    ^LEX
+            Sub-Set Definition             #757.2       ^LEXT
+   
+        These backup files may get as large as 1.17 gigabytes.  Make sure
+        space is available before proceeding.  It should take from 15 to
+        40 minutes to create the backup files.
+  
+        When you are creating a backup of non-subscripted globals, you are
+        saving the entire global.  You should use the utility ^%GO for
+        non-subscripted globals, and when prompted for a global, enter 
+        the global root (global name only, no open parenthesis, no file
+        number and no commas, as shown below).  Example:
+   
+            Enter            To create a Backup copy of:
+            ------           --------------------------
+            ^LEX             Lexical Files
+            ^LEXT            Sub-Set Definition File
+  
+    3)  Set up user and IO variables (D ^XUP) for programmer access.
+       
+    4)  Distribution Load:
+       
+        Load the KIDS Distribution from the host file LEX_RA_BIRADS_97.KID
+        which you obtained via FTP.
+  
+    5)  KIDS Installation:
+              
+        Use the KIDS Installation Menu.
+                 
+        a)  Pre-Install Options:
+  
+            From the KIDS Installation Menu, you may choose the following 
+            options prior to installing this patch:
+                 
+                 2    Verify Checksums in Transport Global
+                 3    Print Transport Global
+                 4    Compare Transport Global to Current System
+                 5    Backup a Transport Global
+                 
+              For each of the above options, respond "LEX*2.0*55" only 
+              at the "Select INSTALL NAME:" prompt.
+                 
+              Do *NOT*  enter the Radiology patch name.  These options 
+              will automatically bring in the Radiology patch for you.
+                 
+        b)  Install Option:
+  
+            From the KIDS Installation Menu, use the following option to
+            install the contents of the host file:
+                 
+                6   Install Package(s)
+                 
+              Respond "LEX*2.0*55"  only at the "Select INSTALL NAME:"
+              prompt.
+                  
+                Do *NOT* enter the Radiology patch name.
+                Do *NOT* reload the host file to install the Radiology patch.
+                  
+                The Install file LEX*2.0*55 will automatically install both 
+                LEX*2.0*55 and RA*5.0*97, creating individual entries in
+                both the BUILD and INSTALL files for both the Lexicon and
+                Radiology patches.
+                  
+              Respond "NO" at the "Want KIDS to INHIBIT LOGONs during
+              the install?" prompt.
+                  
+              Respond "YES" at the "Want to DISABLE Schedule Options,
+              Menu Options, and Protocols?" prompt.
+                  
+              Respond "RA*" at the "Enter options you wish to mark as
+              'Out Of Order'" prompt to disable RA namespaced options.
+                  
+              Respond "RA*" at the "Enter protocols you wish to mark 
+              as 'Out Of Order'" prompt to disable RA namespaced 
+              protocols.
+                  
+              Respond "0" at the "Delay Install (Minutes)" prompt proceed
+              with the install immediately after the options and protocols
+              have been disabled.
+           
+    6)  Cleanup
+       
+        The Post-Install routine LEX2055P should be deleted using 
+        the KERNEL option 'Delete Routines' [XTRDEL] upon completion
+        of the installation.
+       
+        Routines LEX2055A, LEX2055B, LEX2055C, LEX2055D, LEX2055E,
+        LEX2055F, LEX2055G, LEX2055H and LEX2055I will be deleted by
+        the post-install routine LEX2055P.
+  
+        The Post-Install routines RA97PST and RA97PST1 may be deleted
+        if the patch processing displayed :
+  
+        *** 10 of 10 BI-RADS and Abdominal Aortic Aneurysm codes have been
+        successfully added to the DIAGNOSTIC CODES file #78.3. ***
+  
+    7)  Post Installation Overview
+  
+  
+        Post LEX*2.0*55
+  
+          The post installation routine LEX2055P will generate an install
+          message and send it to G.LEXINS@FO-SLC.MED.VA.GOV and a copy to
+          the installer.  If an error is encountered in the install of the
+          Lexicon patch it will be reflected in this message, else it will
+          simply list the install times of the components.
+  
+  
+        Post RA*5.0*97
+  
+          1. For sites that will use the exported BI-RADS and AAA codes
+             from Voice Recognition (VR) systems, such as PowerScribe or
+             TalkStation, the VR systems manager must add the BI-RADS and
+             AAA codes exported from Patch RA*5*97 into the diagnostic file
+             of the VR system. The exported BI-RADS and AAA field values
+             are described in item 2.
+  
+             It is known that PowerScribe has an inactivation feature and
+             TalkStation does not. For sites that will not use the exported
+             BI-RADS and AAA codes from VR systems with the inactivation
+             feature, the VR systems manager can add the exported codes
+             into the diagnostic file of the VR system and inactivate the
+             codes. This keeps the diagnostic codes in VistA in sync with
+             the diagnostic codes on the VR system.
+  
+          2. The post installation routines RA97PST and RA97PST1 will add
+             the following records to the DIAGNOSTIC CODES file (#78.3):
+    
+            [Field Number] : Stored value  -> Displayed value
+  
+            [.001]: 1100                            
+            [.01] : BI-RADS CATEGORY 0
+            [2]   : Incomplete: Need Additional Imaging Evaluation
+            [3]   : Y -> YES         
+            [4]   : y -> YES
+            [6]   : 80 -> Incomplete: Need Additional Imaging Evaluation
+           
+            [.001]: 1101                            
+            [.01] : BI-RADS CATEGORY 1
+            [2]   : Negative                 
+            [3]   : N -> NO
+            [4]   : n -> NO          
+            [6]   : 82 -> Negative
+           
+            [.001]: 1102                            
+            [.01] : BI-RADS CATEGORY 2
+            [2]   : Benign                   
+            [3]   : N -> NO
+            [4]   : n -> NO          
+            [6]   : 84 -> Benign
+           
+            [.001]: 1103                            
+            [.01] : BI-RADS CATEGORY 3
+            [2]   : Probably Benign          
+            [3]   : Y -> YES
+            [4]   : y -> YES         
+            [6]   : 86 -> Probably Benign
+           
+            [.001]: 1104                            
+            [.01] : BI-RADS CATEGORY 4
+            [2]   : Suspicious               
+            [3]   : Y -> YES
+            [4]   : y -> YES         
+            [6]   : 88 -> Suspicious
+           
+            [.001]: 1105                            
+            [.01] : BI-RADS CATEGORY 5
+            [2]   : Highly Suggestive of Malignancy
+            [3]   : Y -> YES         
+            [4]   : y -> YES
+            [6]   : 90 -> Highly Suggestive of Malignancy
+           
+            [.001]: 1106                            
+            [.01] : BI-RADS CATEGORY 6
+            [2]   : Known Biopsy Proven Malignancy
+            [3]   : Y -> YES         
+            [4]   : y -> YES
+            [6]   : 92 -> Known Biopsy Proven Malignancy
+           
+            [.001]: 1200
+            [.01] : ABDOMINAL AORTIC ANEURYSM NOT PRESENT
+            [2]   : The maximum width of the infrarenal aorta is less than
+                    three centimeters.                                
+            [3]   : N -> NO
+            [4]   : n -> NO
+           
+            [.001]: 1201
+            [.01] : ABDOMINAL AORTIC ANEURYSM PRESENT
+            [2]   : The maximum width of the infrarenal aorta is greater 
+                    than three centimeters.                             
+            [3]   : Y -> YES
+            [4]   : y -> YES
+  
+            [.001]: 1202
+            [.01] : DOES NOT SATISFY SCREEN FOR AAA
+            [2]   : Exam is not technically adequate for AAA screening.
+            [3]   : N -> NO          
+            [4]   : n -> NO
+  
+  
+             If your site already has data in the range 1100-1106 and/or 
+             1200-1202, then the post installation will  not  add any of
+             the ten records to the DIAGNOSTIC CODES file #78.3.  Instead,
+             it will send a mail message to the patch installer and an
+             Outlook message to the "VA OIT VHIT Radiology Facility Level
+             Application Issues" mail group to notify them that your
+             facility has a conflict with one or more internal entry
+             numbers (IENS) in file #78.3.
+  
+             If there is no conflict with the IENs, then the post
+             installation will reset the third piece of ^RA(78.3,0) to the
+             highest IEN under 999 and also display the following message: 
+  
+         *** 10 of 10 BI-RADS and Abdominal Aortic Aneurysm codes have 
+         been successfully added to the DIAGNOSTIC CODES file #78.3. ***
+  
+          3. The description of the diagnostic code from the 'Diagnostic 
+             Code List' [RA DIAGP] option is taken from the Description
+             field of the DIAGNOSTIC CODES file (#78.3).  But the MQSA
+             coding system's text of BI-RADS from the following options and
+             features is taken from the EXPRESSIONS file (#757.01) of the
+             Lexicon application:
+  
+                Display a Rad/Nuc Med Report  [RA RPTDISP]
+                Draft Report (Reprint)  [RA REPRINT]
+                Select Report to Print by Patient  [RA RPTPAT]
+                CPRS Report tab
+                Email message of a verified report sent to the requester
+  
+             The description and the MQSA coding system's text from the
+             options will remain identical as long as there are no local
+             changes made to the Description field in the DIAGNOSTIC CODES
+             file (#78.3) or national changes made to the Displayable Text
+             field in the EXPRESSIONS file (#757.01).
+  
+  
+  MULTI-PACKAGE DISTRIBUTION ROUTINE SUMMARY:
+  ==========================================
+  
+    LEX*2.0*55
+    ==========
+  
+      The second line of each of these routines will look like:
+  
+          <tab>;;2.0;LEXICON UTILITY;**[PATCH LIST]**;Sep 23, 1996
+  
+      The following checksums were created using CHECK1^XTSUMBLD
+  
+                    Checksums     Checksums  
+        Routine    Before Patch  After Patch  Patch List (2nd Line)
+        --------  -------------  -----------  ---------------------
+        LEX2055P    <Post-Ins>     22882820     55
+        LEX2055A      <new>        55248924     55
+        LEX2055B      <new>        66701747     55
+        LEX2055C      <new>        53113878     55
+        LEX2055D      <new>        68192938     55
+        LEX2055E      <new>        68482263     55
+        LEX2055F      <new>        71730942     55
+        LEX2055G      <new>        75516224     55
+        LEX2055H      <new>        72557384     55
+        LEX2055I      <new>       125880515     55
+        LEXA        31301237       42625550     3,4,6,19,25,36,38,43,55
+        LEXA1       30130787       28014387     3,4,6,11,15,38,55
+        LEXAL       25956299       37971689     6,55
+        LEXAR       18400371       17442980     3,19,25,55
+        LEXAR4       9380127        9905737     4,5,6,25,55
+        LEXAR5      25100906       25098898     14,25,26,38,55
+        LEXTOLKN    11678633       16578878     4,55
+  
+  
+    RA*5.0*97
+    ==========
+  
+      The second line of each of these routines will look like:
+  
+          <tab>;;5.0;Radiology/Nuclear Medicine;**[PATCH LIST]**;Mar 16, 1998
+  
+      The following checksums were created using CHECK1^XTSUMBLD
+  
+                  Checksums     Checksums  
+        Routine  Before Patch  After Patch  Patch List (2nd Line)
+        -------- ------------ -----------  ---------------------
+        RA97PST      <new>     30429917    97
+        RA97PST1     <new>     11847551    97
+        RABIRAD      <new>      7783867    97
+        RABWORD1   20761340    21044448    41,57,70,97
+        RADLQ1     28026450    28970876    15,97
+        RAEDCN     57573116    69681618    5,13,10,18,28,31,34,45,85,97
+        RAO7PC2    45083529    47517488    1,11,14,16,22,27,45,75,56,95,97
+        RAPRINT    22198588    31817816    97
+        RAPRINT1   25798821    27115956    34,97
+        RART       23124716    24437904    2,5,15,18,43,82,56,97
+        RARTE5     93390991   100088941    56,95,97
+        RARTE7     23668703    23848565    56,95,97
+        RARTR1     46270637    53930536    8,18,56,97
+ 
+
+Routine Information:
+====================
+Routine Name: LEX2055A
+Routine Name: LEX2055B
+Routine Name: LEX2055C
+Routine Name: LEX2055D
+Routine Name: LEX2055E
+Routine Name: LEX2055F
+Routine Name: LEX2055G
+Routine Name: LEX2055H
+Routine Name: LEX2055I
+Routine Name: LEX2055P
+Routine Name: LEXA
+Routine Name: LEXA1
+Routine Name: LEXAL
+Routine Name: LEXAR
+Routine Name: LEXAR4
+Routine Name: LEXAR5
+Routine Name: LEXTOLKN
+
+=============================================================================
+User Information:
+Entered By  : ROWE,KIMBALL                  Date Entered  : JAN 26, 2008
+Completed By: BASKETT,BARBARA J             Date Completed: SEP 02, 2009
+Released By : SCHWARTZ,VIKIE                Date Released : SEP 02, 2009
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+

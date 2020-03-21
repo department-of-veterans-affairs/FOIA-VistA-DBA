@@ -1,0 +1,1054 @@
+$TXT Created by WOLF,ED at MNTVBB.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 07/01/08 at 10:49
+=============================================================================
+Run Date: AUG 06, 2008                     Designation: SD*5.3*491
+Package : SD - SCHEDULING                     Priority: Mandatory
+Version : 5.3       SEQ #437                    Status: Released
+                  Compliance Date: SEP 06, 2008
+=============================================================================
+
+Associated patches: (v)SD*5.3*80   <<= must be installed BEFORE `SD*5.3*491'
+                    (v)SD*5.3*266  <<= must be installed BEFORE `SD*5.3*491'
+                    (v)SD*5.3*269  <<= must be installed BEFORE `SD*5.3*491'
+                    (v)SD*5.3*280  <<= must be installed BEFORE `SD*5.3*491'
+                    (v)SD*5.3*357  <<= must be installed BEFORE `SD*5.3*491'
+                    (v)SD*5.3*358  <<= must be installed BEFORE `SD*5.3*491'
+                    (v)SD*5.3*376  <<= must be installed BEFORE `SD*5.3*491'
+                    (v)SD*5.3*397  <<= must be installed BEFORE `SD*5.3*491'
+                    (v)SD*5.3*417  <<= must be installed BEFORE `SD*5.3*491'
+                    (v)SD*5.3*427  <<= must be installed BEFORE `SD*5.3*491'
+                    (v)SD*5.3*467  <<= must be installed BEFORE `SD*5.3*491'
+                    (v)SD*5.3*478  <<= must be installed BEFORE `SD*5.3*491'
+
+Subject: EWL, PAIT AND SCHEDULING CORRECTIONS
+
+Category: 
+  - Routine
+  - Sort Template
+  - Data Dictionary
+
+Description:
+============
+
+ This patch addresses several issues related to:
+  -      Electronic Wait List
+  -      Patient Appointment Information Transmission
+  -      Scheduling 
+  and reported on the listed Remedy tickets.
+   
+  ASSOCIATED REMEDY TICKETS:
+  =========================
+   
+      1) HD0000000149055 - Austin not rec'g PAIT/EWL CBOC numbers.
+          Duplicates:
+                    HD0000000143274
+                    HD0000000142863
+                    HD0000000137233
+                    HD0000000063534
+      2) HD0000000148668 - SC under Make Appt Question - Problem
+          Duplicates:
+                    HD0000000148577
+                    HD0000000148311
+                    HD0000000142722
+      3) HD0000000122687 - 358 - PAIT BACKGROUND JOB
+         Duplicate:
+                    HD0000000122914
+      4) HD0000000141312 - 673 have not completed PAIT
+         Duplicate:
+                    HD0000000167898
+      5) HD0000000150073 - Fix Rejects but keep coming back, plus two are test 
+                     patients
+         Duplicate:
+                    HD0000000152002
+      6) HD0000000153308 - PAIT BATCH ACKNOWLEDGEMENT message trouble
+      7) HD0000000153485 - Null entry for a new patient prompt asks for 
+                           confirmation
+      8) HD0000000063359 - SPO-1002-50568  Wait list output unintelligible.
+      9) HD0000000127368 - Problem when selecting dates
+     10) HD0000000140993 - <SUBSCRIPT>XEC^DIK1 when running SD WAIT LIST 
+                           CLEANUP
+         Duplicates:
+                    HD0000000138213
+                    HD0000000138968
+                    HD0000000143026
+     11) HD0000000135819 - INSTITUTION NOT UP DATING IN FILE 409.3
+     12) HD0000000161129 - SD WAIT LIST PAR ENTER/EDIT  allows to enter a 
+                           clinic without activation date.
+     13) HD0000000164123 - SD WAIT LIST PAR ENTER/EDIT allows to inactivate 
+                           a clinic that has open EWL entries.
+     14) HD0000000166261 - ERRONEOUS REMARKS DISPLAY UPON CHECKOUT
+     15) HD0000000194210 - Data not passed from CPRS to PCE.
+                           $ZE= <SUBSCRIPT>EN+23^SDAMVSC
+     16) HD0000000246529 - Inactivation Date in file 409.32 cannot be earlier 
+                           than Activation Date
+  
+  ASSOCIATED NSRs:
+  ================
+  N/A
+   
+  PARTICIPATING TEST SITES:
+  =========================
+  MANILA OC, PI
+  OKLAHOMA CITY, OK
+  PITTSBURGH HCS
+  SALISBURY, NC
+  SAN JUAN, PR
+  WHITE RIVER JUNCTION, VT
+  MUSKOGEE, OK 
+    
+  REMEDY OVERVIEW:
+  ================
+   
+      1) HD0000000149055 - Austin not rec'g PAIT/EWL CBOC numbers
+       
+      Problem:
+      =======   
+      1.1 Appointments and the EWL entries are occasionally transmitted to 
+      Austin with invalid institutions. The institution is primarily 
+      determined by EWL and PAIT software as the INSTITUTION field (#3) in 
+      the HOSPITAL LOCATION file (#44). The only option that populates this 
+      field is the Record Tracking option Borrower Set-Up 
+      [RT SYS-INDIVD-BORROWERS] but the primary option used to set up or 
+      modify Hospital Location entries is Set up a Clinic [SDBUILD].  This 
+      option does not populate the INSTITUTION field (#3), but instead 
+      populates the DIVISION pointer field (#3.5) which indirectly determines 
+      the institution by pointing to the MEDICAL CENTER DIVISION file (#40.8) 
+      which in turn has an INSTITUTION FILE POINTER field (#.07) pointing to 
+      the INSTITUTION file (#4).
+      
+      1.2 The option Wait List (Sch/PCMM) Parameter Enter/Edit [SD WAIT LIST 
+      PAR ENTER/EDIT] responded with "??" and no explanation to prevent users
+      from adding a new entry if the associated clinic's INSTITUTION field 
+      (#3) was not populated in the HOSPITAL LOCATION file (#44).
+      
+      1.3 An existing option, SD Wait List Cleanup [SD WAIT LIST CLEANUP] was
+      updating the INSTITUTION field (#3) in the HOSPITAL LOCATION file (#44) 
+      with the INSTITUTION field (#.02) from the SD WL CLINIC LOCATION file 
+      (#409.32). 
+      
+      Solution:
+      =========
+      1.1 EWL software will now follow the more common method of using the
+      following file pointer path to determine the institution from a clinic
+      entry in the Hospital Location file (#44):  DIVISION field (#3.5) -->
+      MEDICAL CENTER DIVISION file (#40.8) --> INSTITUTION FILE POINTER field 
+      (#.07) --> INSTITUTION file (#4) rather than the INSTITUTION field (#3) 
+      in the HOSPITAL LOCATION file (#44).
+        
+      All VistA facilities are responsible for proper configuration of their
+      Medical Center Divisions with institutions, and the INSTITUTION file 
+      (#4) is expected to be configured with correct Station Numbers. 
+      All other data transmissions to Austin Automation Center rely on this
+      path, and this approach will be consistent with the currently
+      adopted functionality by other VistA modules.
+      
+      NOTE:
+      ====
+      PAIT - Patient Appointment Information Transmission will be updated with
+      a new path to determine and transmit the institution in patch SD*5.3*528.
+  
+      Function $$CLIN^SDWLPE(CL) has been developed to accept 'CL' as 
+      a pointer to the Hospital Location file, and return the following:
+           1        2       3     4     5      6     7
+       - INST ^ STA NUM ^ SNAM ^ DIV ^ N/L ^ MESS ^ TYPE
+      
+       Where:
+       INST      INSTITUTION ien
+       STA NUM - STATION NUMBER field (#99) of the INSTITUTION file (#4)
+       SNAM    - INSTITUTION NAME field (#.01) of the INSTITUTION file (#4)
+       DIV     - MEDICAL CENTER DIVISION ien 
+       N/L     - N if National/L if Local
+       MESS    - optional Message, see below; No Message is returned if
+                 the Station Number is identified, and the Institution
+                 is active.
+       TYPE    - type of entry in the HOSPITAL LOCATION file (#44) 
+                 following description in DD
+                 'C' - for clinic
+      
+       optional Message:
+            
+       if an entry is not identified:
+      
+       -1 ^ ^ ^ ^ ^ ^ - No Clinic on file
+      
+       if STA NUM=""
+      
+       INST ^ ^ SNAM ^ DIV ^ N/L ^ - No Station Number on file ^ TYPE
+      
+       or
+      
+       0 ^ ^ ^ DIV ^ ^ - No Institution has been identified ^ TYPE
+       0 ^ ^ ^ -1 ^ ^ - No Division has been identified ^ TYPE
+      
+       if the Institution is inactivated:
+       
+       INST^ ^SNAM ^ DIV ^N/L^ - Inactive Institution ^ TYPE
+       
+      Several routines have been identified in EWL and Scheduling that
+      now directly or indirectly call the function described above
+      to retrieve the institution-related data through the following path:
+      HOSPITAL LOCATION file (#44) --> DIVISION field (#3.5)--> MEDICAL 
+      CENTER DIVISION file (#40.8) --> INSTITUTION FILE POINTER field (#.07)
+      --> INSTITUTION file (#4) --> STATION NUMBER field (#99)
+         
+      Those routines are:
+                        SDWLPE        SDWLCU3     SD53P491
+                        SDWLREB       SDWLCU5
+                        SDWLCU6
+           
+      1.2 Option Wait List (Sch/PCMM) Parameter Enter/Edit [SD WAIT LIST PAR
+      ENTER/EDIT] screens clinic selection by following the new path to 
+      identify an institution, and an informational message is displayed if 
+      the user's selection is not accepted. (See 1.1)
+         
+             Routine:   SDWLPE
+      
+      Other components: Data dictionary for CLINIC field (#.01) and 
+                        INSTITUTION field (#.02) of the SD WL CLINIC 
+                        LOCATION file (#409.32).  
+                        The INSTITUTION (#.02) field is now a required field.  
+                        Additionally, the trigger was removed from the 
+                        CLINIC field (#.01) field.
+   
+      1.3 The existing option SD Wait List Cleanup [SD WAIT LIST CLEANUP] was
+      modified to update the INSTITUTION field (#.02) in the SD WL CLINIC
+      LOCATION file (#409.32) based on how the clinic is set up in the 
+      HOSPITAL LOCATION file (#44).
+      
+      Post-install routine SD53P491 will call modified routine SDWLCU5, also
+      executed independently by option [SD WAIT LIST CLEANUP], to update
+      SD WL CLINIC LOCATION file (#409.32) with pointers to the institution as
+      returned from CLIN^SDWLPE(CL) outlined above in section 1.1.
+      Entries in the SD WAIT LIST file (#409.3) will be updated with a new
+      institution if applicable. 
+      
+              Routines:
+                        SD53P491
+                        SDWLCU5
+      
+      2) HD0000000148668 - SC under Make Appt Question   
+      
+      Problem:
+      ========     
+      2.1 The Appointment Type is not consistently updated across files 
+      during the checkout process.  For example, if the original
+      Appointment Type was "Service Connected", but it is determined during
+      the checkout process that the treatment was not service connected on
+      the encounter level, the Service Connected attribute on the VISIT file
+      (#9000010) is updated but the Appointment Type attributes on the 
+      Outpatient Encounter entry and the Patient Appointment multiple 
+      are not updated to "Regular" or the default Hospital Location 
+      appointment type.  
+      
+      2.2 If an appointment type was entered with a stand alone encounter
+      through the PCE module or CPRS GUI then there was no verification if
+      service connection was changed during the check out process or not at
+      all.  Additionally if the clinic had a credit stop code, an additional 
+      credit visit and encounter entry were created.  Those entries were 
+      also left unverified.  
+       
+      2.3 After releasing patch SD*5.3*394 it was found that some sites had a
+      locally added entry in APPOINTMENT TYPE file (#409.1) with ien=11. The 
+      locally added entry conflicted with a later released national "Service 
+      Connected" entry also filed as IEN 11. A related concern is the 
+      possibility of a corresponding BILLABLE APPOINTMENT TYPE file (#352.1) 
+      entry not being configured properly.
+       
+      The Service Connected Appointment Type is set up as billable in the 
+      BILLABLE APPOINTMENT TYPE file (#352.1). The determination for billing 
+      is made, as before, from the classification assigned to the encounter 
+      during checkout. Local modification to the Service Connected entry in 
+      the BILLABLE APPOINTMENT TYPE file (#352.1) can cause billing 
+      inconsistencies.
+        
+      Solution:
+      =========
+      2.1 Routine SDAMVSC has been modified to properly update the Appointment 
+      Type to either Service Connected, Hospital Location default type, or
+      Regular depending on the final determination on the encounter level 
+      stored in the VISIT file (#9000010) Service Connected field (#80001).  
+      Routine SDAMVSC is called by the SDAM APPT TYPE VALIDATION protocol
+      which subscribes to the SDAM APPOINTMENT EVENTS protocol.  
+  
+      2.2 Routine SDAMVSC was modified to ensure stand-alone encounter 
+      appointment types also match those of the related VISIT file (#9000010)
+      entry.  (See 2.1 above.)
+         
+      2.3 The post-install routine SD53P491 will verify that the Service 
+      Connected Billable Appointment Type is set up correctly, and if not the
+      site will be requested to file a Remedy Ticket directed to 
+      Integrated Billing (IB) to correct the situation.
+      The warning will be printed during the installation if applicable.
+      
+      A one time integration agreement, DBIA 5029 VERIFY SC APPOINTMENT TYPE,
+      has been created to allow this patch to verify that the Service 
+      Connected Billable Appointment Type is set up correctly.       
+  
+      Integrated Billing handles SC Appointment Types exactly the same way as
+      the Regular Appointment Types. It uses the classification question, not
+      the Appointment Type, as the determining factor to determine if the event
+      is non-billable due to Service Connected care. Therefore billing should
+      not be adversely affected if the Appointment Type is Service Connected 
+      and the SC Classification is set to NO. Since the encounter is identified
+      as not for SC care via classification it is billed even if the 
+      Appointment Type is Service Connected.
+       
+      The post-install will update the Appointment Type to be consistent with
+      the classification determination in the VISIT file (#9000010). Only 
+      encounters with Service Connected flag set to '0'- NO or 
+      '1'- YES will be updated. The updated Outpatient Encounter '0' nodes  
+      and Appointment multiples will be saved in temporary global ^XTMP during
+      the post-init for verification. Temporary global format is:
+      
+      ^XTMP("SD53P491-"_$J,DFN,SDT,SCE) - for identified Outpatient Encounters
+      ^XTMP("SD53P491AP-"_$J,DFN,SDT,SCE) - for Appointment multiple
+            where
+            DFN is the internal entry of the patient in the Patient file (#2)
+            SDT stands for date/time of encounter appointment
+            SCE is the 'ien' of the modified Outpatient Encounter entry. 
+      
+      The installation message will separately indicate how many encounters and 
+      appointment multiples are corrected.
+       
+                   Routine: SDAMVSC
+                            SD53P491
+      
+      3) HD0000000122687 - 358 - PAIT BACKGROUND JOB
+      
+      Problem:
+      ========
+      3.1 The Patient Appointment Information Transmission (PAIT) incorrectly
+      generates a warning completion message with a request to create a 
+      Remedy ticket. This happens if only one batch is generated, even if the
+      transmission completed successfully and generated a completion message.
+      This design assumed that more than one batch was required to complete 
+      PAIT transmissions. However, there are sites where the PAIT 
+      transmission is completed in one batch.
+        
+      3.2 PAIT Start message generated for a VistA site whose SD-PAIT
+      Logical Link is shut down generates the following message:
+       
+      Please start NOIS call for station XXX
+      SD-PAIT Logical Link has to be started.
+      
+      without indicating to whom this problem should be referred.
+       
+      Solution:
+      =========
+      3.1 Routine SDRPA04 has been modified to prevent sending a message
+      instructing the VA Service Desk to create a Remedy ticket. 
+      A completion message with a warning will be sent to the local 
+      SD-PAIT mail Group rather than the VA Service Desk.
+      Additionally, PAIT completion messages have been modified to
+      refer to Remedy, not NOIS. Example:
+        
+  Subj: 500 - PAIT BACKGROUND JOB  [#2105425] 11/01/06@14:46  13 lines
+  From: POSTMASTER  In 'IN' basket.   Page 1  *New*
+  ----------------------------------------------------------------------------
+   
+  The PAIT job has completed - TASK #: 4082933 Log #: 40 on 11/1/06@14:46
+  Started: 11/1/06                        Last Scanned: 10/30/06
+  Pending appointments:         23
+  Final appointments:           45
+                         ----------
+  Total appointments:           68   Number of batches: 1
+   
+  Fac Log Bch Appt #  Date finished  IP Address  Gen  Sent Com R Com P  Status
+  -----------------------------------------------------------------------
+  500| 40|  1|     68|11/1/06@14:46|10.6.208.19| 136| 125| 125| 125| Shutdown
+   
+  SD-PAIT Logical Link has to be started, initiate Remedy ticket for Scheduling
+   PAIT.
+   
+                Routine: SDRPA04
+      
+      3.2 Modified PAIT start message to indicate who to refer the problem to 
+      if the SD-PAIT Logical Link is shut down.
+       
+      Please start a REMEDY ticket for station XXX
+      SD-PAIT Logical Link has to be started.
+      Refer the ticket to Scheduling PAIT.
+      
+                Routine: SDRPA00
+       
+      4) HD0000000141312 - 673 have not completed PAIT
+      
+      Problem:
+      =======
+      The SD-PAIT Last Run Repair [SD-PAIT REPAIR] option, used when there 
+      was an unexpected interruption of the PAIT transmission, errors out 
+      when acknowledgement(s) for already transmitted batches are received.
+       
+      Solution:
+      ========
+      Routine SDRPA04 was modified to anticipate that some entries in the 
+      PATIENT APPOINTMENT INFO LOG file (#409.6) might already be deleted if 
+      acknowledgements arrived during the transmission. Option SD-PAIT Last 
+      Run Repair [SD-PAIT REPAIR] finalizes 'broken' transmissions, which is 
+      required before starting a retransmission. The related completion 
+      message will be sent as before.  Additionally since routine SDRPA03 
+      essentially duplicated code in SDRPA04, it was condensed into SDRPA04
+      and SDRPA04 is now called from SDRPA00. 
+      
+                 Routine: SDRPA04
+                          SDRPA00
+      
+      5) HD0000000150073 - Fix Rejects but keep coming back, plus two are 
+                           test patients
+      
+      Problem:
+      ========
+      PAIT does not validate dates associated with appointment data.  It has 
+      been found that VistA allows transmitting some 'odd' dates such as 1800 
+      etc. in Desired Date and occasionally Appointment Date. Those appointment 
+      dates cause the records to be rejected by Austin. The Rejected 
+      Transmissions option [SD-PAIT REJECTED] is listing all entries with 
+      rejection codes instead of listing only entries with the Retention Flag 
+      set to 'Y'.
+       
+      Solution:
+      =========
+      The related PAIT routines that retrieve various date fields from VistA
+      have been modified to validate the date value before sending them
+      to Austin.
+      Sort Template [SD-PAIT REJECTED APPT] has been modified to list only
+      rejections from the latest transmission, with the Retention Flag set to 
+      'Y'.  Each rejected entry's Retention Flag is changed to 'Y' to 
+      retransmit the appointment again.
+        
+               Routines: SDRPA00
+                         SDRPA05
+                              
+               Other components: [SD-PAIT REJECTED APPT] Sort Template 
+                          (# 409.6)
+      
+      6) HD0000000153308 - PAIT BATCH ACKNOWLEDGEMENT message trouble
+      
+      Problem:
+      ========
+      Messages identifying acknowledgements received for transmitted PAIT 
+      batches do not always properly count received acknowledgements.
+      
+      Solution:
+      =========
+      Implemented incremental locking mechanism to address the problem.
+       
+                   Routine: SDRPA06
+      
+      7) HD0000000153485 - Null entry for a new patient prompt asks for 
+                           confirmation
+      
+      Problem:
+      ========
+      In the Appointment Management action: PT  Change Patient, if the user
+      selects no patient (i.e., responds with a <CR> only), the next prompt 
+      still tries to confirm selection as though a patient had been selected.
+       
+      Solution:
+      ======== 
+      Modified PAT^SDAM10 to correct the problem, and display messages
+      to inform the user what kind of action has been taken, if any. The 
+      following messages may be displayed if no new patient is selected:
+       
+             "Patient has not been changed."
+             "Patient has not been selected."
+             "View of clinic remains in affect."
+            
+                Routine: SDAM10
+      
+      8) HD0000000063359 - SPO-1002-50568  Wait list output unintelligible.
+      
+      Problem:
+      ========
+      While running the SC Veterans Awaiting Appointments [SCRPW SC VETS 
+      AWAITING APPTS] in "detailed" mode, with the delimited output, it works
+      as long as the output does not exceed 132 characters. However, if the
+      output exceeds 132 characters it wraps on the screen.  When it is
+      'captured' into a text file with "^" as the delimiter, the wrapped data
+      is visible, but when it is opened into an Excel spreadsheet the data is
+      not usable.  
+      
+      Solution:
+      ========
+      Routines SCRPW62 and SCRPW63 were modified to mark the end of a wrapped
+      line without <CR> in the report. 
+      The following steps are required to convert this report to Excel:
+      1. Copy it into Word and replace '!^p' with null.
+      2 - Save this file in *.txt format.
+      3 - Open this file in Excel from (All Files (*.*)). It will have the
+          expected delimiter: '^', and <CR> only at the end of a line.
+      
+      *In some situations, it may also be necessary to replace '!' with null.  
+      
+              Routines: SCRPW62
+                        SCRPW63
+      
+      9) HD0000000127368 - Problem when selecting dates
+       
+      Problem:
+      ========
+      While running option Appointment List [SDLIST], and selecting the
+      date '12/13/05', the system assumes '12/13/2105'.
+      
+      Solution:
+      =========
+      It was found that ^%DT was called with input %DT="AEXF" where 'F'
+      indicates: "FUTURE DATE ASSUMED". This letter was removed from the
+      input string, making %DT="AEX", and selected dates are recognized
+      as expected.
+      
+                   Routine: SDAL
+      
+      10) HD0000000140993 - <SUBSCRIPT>XEC^DIK1 when running SD WAIT LIST 
+                            CLEANUP
+        
+      Problem:
+      ========
+      An error occurred when running the SD Wait List Cleanup [SD WAIT 
+      LIST CLEANUP] option if an entry in the SD WL CLINIC LOCATION
+      file (#409.32) was pointing to a HOSPITAL LOCATION file (#44) entry 
+      that did not have anything in the INSTITUTION field (#3).
+      This problem was caused by a trigger on the CLINIC field (#.01)
+      in the SD WL CLINIC LOCATION file (#409.32). Even if an entry in the  
+      SD WL CLINIC LOCATION file (#409.32) was corrected by
+      updating it with an institution, that entry was removed during
+      the re-indexing if there was a conflict with the related clinic set up.
+       
+      Solution:
+      =========
+      The trigger was removed from the SD WL CLINIC LOCATION file (#409.32), 
+      and the method of determining the institution for the SD WL CLINIC 
+      LOCATION file (#409.32) entries was redesigned.
+      Additionally three routines involved in the EWL cleanup process have
+      been modified to implement a new identification of an institution as 
+      described in section 1.1. A message is generated listing clinics
+      that need to be set up properly with the institution. Another message 
+      indicates which entry in the SD WL CLINIC LOCATION file (#409.32) was 
+      updated with the institution from the related clinic set up. 
+      Post-install routine SD53P491 calls SDWLCU5 to perform some actions 
+      normally performed by option SD Wait List Cleanup 
+      [SD WAIT LIST CLEANUP].
+        
+                     Routines: SDWLCU3
+                               SDWLCU5
+                               SDWLCU6 
+                               SD53P491
+      
+      11) HD0000000135819 - INSTITUTION NOT UPDATING IN FILE 409.3
+       
+      Problem:
+      ========
+      Note:  Editing the DIVISION field of the Hospital Location file #44
+      using option Set up a Clinic [SDBUILD] does not update the INSTITUTION
+      field (#2) in the SD WL CLINIC LOCATION file (#409.32).  If there
+      is no institution entered for an entry in file 409.32, users are 
+      prevented from accessing the Wait List for that clinic.
+      
+       
+      Solution:
+      =========
+      If a clinic's DIVISION field (#3.5) is changed in the HOSPITAL LOCATION
+      file (#44), the corresponding INSTITUTION fields (#2,#.02) in EWL files 
+      SD WL CLINIC LOCATION (#409.32) and SD WAIT LIST (#409.3) must be 
+      updated with the path described in problem #1.  That path is not 
+      automatic and is primarily made necessary when a division is entered 
+      in the HOSPITAL LOCATION file (#44) in error. Each time a division 
+      correction takes place, the SD Wait List Cleanup [SD WAIT LIST CLEANUP]
+      option must be run to update the SD WL CLINIC LOCATION file (#409.32) 
+      and the SD WAIT LIST file (#409.3). The related routines have been 
+      modified.  If necessary, the post-install routine will perform an update 
+      during the patch installation.
+      
+                  Routines: SDWLCU3
+                            SDWLCU5
+                            SD53P491
+       
+      12) HD0000000161129 - SD WAIT LIST PAR ENTER/EDIT  allows to enter a 
+                            clinic without activation date.
+      
+      Problem:
+      =======
+      When using option Wait List (Sch/PCMM) Parameter Enter/Edit [SD WAIT 
+      LIST PAR ENTER/EDIT] for a clinic set up, and after entering an 
+      institution the user enters '^' for the DATE ACTIVATED prompt then
+      'null' is accepted even though this field is mandatory. Without that
+      date the clinic is not accessible for use in the EWL.
+      
+      Solution:
+      =========
+      The functionality of option Wait List (Sch/PCMM) Parameter Enter/Edit
+      [SD WAIT LIST PAR ENTER/EDIT] for Wait List Clinic Location was 
+      modified.  The institution is accepted based on the clinic 
+      configuration from the path outlined in section 1.1. If the mandatory
+      DATE ACTIVATED field is not entered, the entry is deleted.
+      
+      Example:  
+        
+      Enter response: 2  Wait List Clinic Location
+       
+      Select Clinic: JOE'S CLINIC                  - ANYVA 
+      
+      DATE ACTIVATED: ^
+      
+      This ENTRY requires an ACTIVATION DATE. ENTRY deleted.    
+      
+                Routine: SDWLPE
+      
+      13) HD0000000164123 - SD WAIT LIST PAR ENTER/EDIT allows to inactivate a 
+                            clinic that has open EWL entries.
+      
+      Problem:
+      ========
+      When using the option Wait List (Sch/PCMM) Parameter Enter/Edit 
+      [SD WAIT LIST PAR ENTER/EDIT] to modify the parameters in the WAIT LIST 
+      CLINIC LOCATION file (#409.32), a user is allowed to inactivate a clinic
+      by entering an INACTIVATION DATE even though there are open EWL entries
+      in the SD WAIT LIST file (#409.3).  
+           
+      Solution:
+      =========
+      
+      Modified code to identify existing open EWL entries for a particular
+      clinic by looking into "SC" cross reference instead of "C" cross 
+      reference.
+      
+      Example:
+      
+      Enter response: 2  Wait List Clinic Location
+      
+      Select Clinic: JOE'S CLINIC                  - ANYVA(000)
+      DATE ACTIVATED: MAY 26,2006//   (No Editing)
+      This Clinic has Patients on the Wait List and can not be inactivated.
+      
+                    Routine: SDWLPE
+      
+      14) HD0000000166261 - ERRONEOUS REMARKS DISPLAY UPON CHECKOUT
+      
+      Problem:
+      ========
+      
+      Text from the REMARKS field # .091 of the Patient file #2 is displayed
+      under Appointment Management Check Out when it belongs to the previous 
+      patient that the user accessed. There is no update to the patient 
+      demographics local array 'VADM' after switching to another patient in
+      Appointment Management.
+      
+      Solution:
+      =========
+      
+      A call is executed to DEM^VADPT to create a new demographics array for
+      each newly selected patient. The remarks for the newly selected patient
+      are now displayed after entering/editing diagnosis, immediately before 
+      the classification entry.
+      
+                       Routine: SDAM10
+      
+      15) HD0000000194210 - Data not passed from CPRS to PCE.
+                   $ZE= <SUBSCRIPT>EN+23^SDAMVSC
+      Problem.
+      ========
+      An error occurred when there was an attempt to 'Delete Check Out' when
+      an outpatient encounter entry was in an incomplete state. Routine 
+      SDAMVSC is called via a scheduling protocol to determine if the 
+      appointment type is related to Service Connected status or not, and to 
+      change it appropriately if needed. If local variable SDOED contains 
+      incomplete data from ^SCE(SDOE,0), the process did not quit, causing a
+      NULL subscript <SUBSCRIPT> error.
+      
+      Solution.
+      ========
+      One line of code will be added before evaluating classification from 
+      a visit pointed to by the outpatient encounter. If necessary, the process
+      will quit without generating an error.
+       
+      Q:'SDVSTD      ;                <-------------- will be added  
+      Q:'$D(^AUPNVSIT(SDVSTD,800))    <-- a part of 2.1 modification
+       
+      16) HD0000000246529  - Inactivation Date in file 409.32 cannot be earlier 
+                             than Activation Date.
+ 
+      Problem.
+      ========
+      When using menu Wait List Parameter Enter/Edit [SD WAIT LIST PAR 
+      ENTER/EDIT] and selecting Wait List Clinic Location (409.32), an 
+      inactivation date earlier than the activation date is accepted. 
+      See example:
+ 
+                     Wait List Parameter Enter/Edit 
+ Select one of the following:
+ 
+     1. Wait List Service/Specialty (409.31)
+     2. Wait List Clinic Location (409.32)
+      Enter response: 2  Wait List Clinic Location
+ 
+ Select Clinic: JOES'S CLINIC                   - ANYVA HCS 
+ 
+ DATE ACTIVATED: APR 21,2008//   (No Editing)
+ DATE INACTIVATED: T-2  (APR 20, 2008)
+       
+ NOTE: The inactivation date was entered on Apr 22, 2008.
+ 
+     Solution:
+     ==========
+     The INPUT TRANSFORM and the DESCRIPTION of the DATE INACTIVATED field 
+     (#3) in the SD WL CLINIC LOCATION file (#409.32) were modified. The 
+     following explanation (in quotes below) was added to existing help 
+     text:
+ 
+       Date clinic can no longer be used by the Wait List(Sch/PCMM). 
+ 
+       "It cannot be earlier than the activation date."
+ 
+ Example:
+ 
+     Enter response: 2  Wait List Clinic Location
+ 
+ Select Clinic: ANESTHESIOLOGY
+ 
+ DATE ACTIVATED: T  (APR 22, 2008)
+ 
+ DATE INACTIVATED: T-3  (APR 19, 2008)??
+ 
+      Examples of Valid Dates:
+        JAN 20 1957 or 20 JAN 57 or 1/20/57 or 012057
+        T   (for TODAY),  T+1 (for TOMORROW),  T+2,  T+7,  etc.
+        T-1 (for YESTERDAY),  T-3W (for 3 WEEKS AGO), etc.
+      If the year is omitted, the computer uses CURRENT YEAR.  Two digit year
+        assumes no more than 20 years in the future, or 80 years in the past.
+      You may omit the precise day, as:  JAN, 1957
+ 
+ DATE INACTIVATED: ??
+         Date clinic can no longer be used by the Wait List(Sch/PCMM).
+         It cannot be earlier than the activation date.
+    
+      Examples of Valid Dates:
+        JAN 20 1957 or 20 JAN 57 or 1/20/57 or 012057
+        T   (for TODAY),  T+1 (for TOMORROW),  T+2,  T+7,  etc.
+        T-1 (for YESTERDAY),  T-3W (for 3 WEEKS AGO), etc.
+      If the year is omitted, the computer uses CURRENT YEAR.  Two digit year
+        assumes no more than 20 years in the future, or 80 years in the past.
+      You may omit the precise day, as:  JAN, 1957
+  
+  DOCUMENTATION RETRIEVAL:
+  ======================== 
+  The manual that has changed with this patch is as follows:
+   
+  Electronic Wait List
+  --------------------
+  EWL User Manual
+    
+  The updated manual will be posted to the VistA Documentation Library
+  (VDL) immediately after the release of the patch.
+   
+  The updated user manual may also be obtained via FTP.  
+ 
+  File Name               Contents                 Retrieval Format
+  ---------               --------                 ----------------
+  SD_53_P491_UM.PDF       Updated User Manual            BINARY
+  
+  
+  The preferred method is to FTP the file from:
+  
+  download.vista.med.va.gov
+  
+  This transmits the files from the first available FTP server.  Sites
+  may also elect to retrieve software directly from a specific server
+  as follows:
+  
+  CIO FIELD OFFICE   FTP ADDRESS                 DIRECTORY
+  ----------------   -------------------------   --------------------
+  Albany             ftp.fo-albany.med.va.gov    [anonymous.software]
+  Hines              ftp.fo-hines.med.va.gov     [anonymous.software]
+  Salt Lake City     ftp.fo-slc.med.va.gov       [anonymous.software]
+  
+  
+  INSTALLATION INSTRUCTIONS:
+  ==========================
+  Users can be on the system during the installation of this patch.   
+  Because some options will be out of order during the install and post-init, 
+  it is recommended that it be installed in off-peak hours.
+  
+  In some cases, installation could take over an hour.
+ 
+  It is required that the installation be monitored for possible actions to
+  be performed thereafter, see the patch description. For that purpose the 
+  installation should not be queued, and the post-install messages must be 
+  reviewed and followed up.
+   
+  A MailMan message will be sent to the installer and to the SD EWL BACKGROUND
+  UPDATE Mail Group detailing EWL clinics whose institution field has been
+  corrected. Clinics that aren't set up correctly will be listed as well.
+  After the recommended corrections are made the SD Wait List Cleanup 
+  [SD WAIT LIST CLEAN UP] option should be run. 
+   
+  A Remedy ticket must be created if a message with text "IT IS MANDATORY
+  THAT YOU CREATE AN INTEGRATED BILLING REMEDY TICKET" is sent from the
+  post-install. 
+  
+  After patch installation, you may keep or delete post install routine 
+  SD53P491. If necessary, it can be executed by invoking POST^SD53P491 from 
+  the programmer prompt.    
+    
+  1.  LOAD TRANSPORT GLOBAL
+      ---------------------
+      Choose the PackMan message containing this patch and invoke the
+      INSTALL/CHECK MESSAGE PackMan option.
+   
+  2.  START UP KIDS
+      [XPD MAIN]
+            Edits and Distribution ...
+            Utilities ...
+            Installation ...
+      Select Kernel Installation & Distribution System Option:  INStallation
+                                                           --- 
+      1     Load a Distribution
+      2     Verify Checksums in Transport Global
+      3     Print Transport Global
+      4     Compare Transport Global to Current System
+      5     Backup a Transport Global
+      6     Install Package(s)
+            Restart Install of Package(s)
+            Unload a Distribution
+   
+  3.  From this menu, you may elect to use the following options
+      (when prompted for INSTALL NAME, enter SD*5.3*491):
+   
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch.  It will NOT
+          backup any other changes such as DDs or templates.
+   
+      b.  Compare Transport Global to Current System - This option will
+          allow you to view all changes that will be made when the patch
+          is installed.  It compares all components of the patch
+          (routines, DDs, templates, etc.).
+   
+      c.  Verify Checksums in Transport Global - This option will ensure
+          the integrity of the routines that are in the transport global.
+   
+      d.  Print Transport Global - This option will allow you to view
+          the components of the KIDS build.
+   
+  4.  Use the Install Package(s) option and select the package SD*5.3*491.
+   
+      a.  When prompted "Want KIDS to INHIBIT LOGONS during the
+          install? NO//" respond NO.
+   
+      b.  When prompted "Want to DISABLE Scheduled Options, Menu Options,
+          and Protocols? YES//" respond YES.
+   
+          1) When prompted "Enter options you wish to mark as "Out of
+             Order":" enter the following option:
+   
+             Appointment Management  [SDAM APPT MGT]
+             Make Appointment        [SDM]
+             Cancel Appointment      [SD CANCEL APPOINTMENT]
+             Wait List (Sch/PCMM) Parameter Enter/Edit
+                                     [SD WAIT LIST PAR ENTER/EDIT]
+             SC Veterans Awaiting Appointments [SCRPW SC VETS AWAITING APPTS]
+             Rejected Transmissions  [SD-PAIT REJECTED]
+             Manual Startup PAIT Transmission  [SD-PAIT MANUAL TRANSMISSION]
+             Taskman PAIT Transmission   [SD-PAIT TASKED TRANSMISSION]
+             SD-PAIT Last Run Repair [SD-PAIT REPAIR]
+             SD Wait List Cleanup    [SD WAIT LIST CLEANUP]
+             Appointment List        [SDLIST]
+                    
+          2) When prompted "Enter protocols you wish to mark as "Out of
+             Order":" enter the following names:
+   
+             SDAM PATIENT CHANGE
+             SDAM APPT MAKE
+             SDAM MENU 
+             SDAM APPOINTMENT EVENTS
+             SDAM APPT TYPE VALIDATION
+             SD-PAIT-EVENT       PAIT TRANSMISSION EVENT  
+             SD-PAIT-SUBS       SC PAIT SUBSCRIBERS  
+   
+   
+  EXAMPLE INSTALLATION:
+   
+  Install Started for SD*5.3*491 : 
+                May 12, 2008@11:15:02
+  
+ Build Distribution Date: May 08, 2008
+  
+  Installing Routines:
+                May 12, 2008@11:15:02
+  
+  Installing Data Dictionaries: 
+                May 12, 2008@11:15:03
+  
+  Installing PACKAGE COMPONENTS: 
+  
+  Installing SORT TEMPLATE
+                May 12, 2008@11:15:03
+  
+  Running Post-Install Routine: POST^SD53P491
+ 
+     SD*5.3*491 Post-Install .....
+ 
+ 
+  Deleting cross-reference definition - trigger of the CLINIC field
+  in the SD WL CLINIC LOCATION file (# 409.32)
+ 
+       >> Verifying 'Service Connected' Billable Appointment Type (#352.1)
+  
+ * ERROR IN CONFIGURATION OF ENTRY IEN=11 IN FILE 352.1 *
+ IT IS MANDATORY THAT YOU CREATE AN INTEGRATED BILLING REMEDY TICKET
+ Entry 11 should be configured for the SERVICE CONNECTED appointment type.
+  --------------------------
+ 
+   SD*5.3*491 SC Billable Appointment Type error checking is complete
+ 
+ 
+ Starting Appointment Type verification for Outpatient Encounter file entries
+ with encounter-level Service connection for encounter entries created
+ Jan 20, 2006 or later
+ 
+ 
+   40930 OUTPATIENT ENCOUNTER entry(ies) updated with an Appointment Type.
+   17415 APPOINTMENT Multiple entry(ies) in the PATIENT file updated
+        with an Appointment Type.
+ 
+ 
+ Appointment Type correction to file 409.68 and to sub-file 2.98 finished.
+ 
+ 
+ Checking file 409.32 and 409.3 for valid national institutions and pointers
+ that don't match institutions of the Medical Center Division of their related
+ Hospital Location
+ 
+ EWL Clinic entry for JOE'S CLINIC updated with today's activation date.
+ EWL Clinic entry for JOE's CLINIC 2 updated with today's activation date.
+ 
+ The Medical Center Division for file 44 Clinic 491TEST (1206)
+ has a different Institution  than the file 409.32 entry for EWL.
+ EWL Clinic INSTITUTION:  - 
+ Clinic INSTITUTION: ANYVA - 000
+ Updated EWL Clinic to match.
+ 
+ 
+ The Medical Center Division for file 44 Clinic 491TEST5 (1211)
+ has a different Institution  than the file 409.32 entry for EWL.
+ EWL Clinic INSTITUTION: ANYVA  - 999
+ Clinic INSTITUTION: ANYVA - 000
+ Updated EWL Clinic to match.
+ 
+ 2 wait list entry(ies) for 491TEST5 clinic updated in SD WAIT LIST file #409.3.
+ EWL Clinic entry for 491TEST5 updated with today's activation date.
+ 
+ SD WL CLINIC LOCATION file update is finished.
+ Open EWL entries in the SD WAIT LIST file have also been updated.
+ 
+ If invalid/local Institution pointers were indicated above for
+ Hospital Location file #44, correct the DIVISION on those clinics
+ and/or the INSTITUTION FILE POINTER of the Medical Center Division
+ that the clinic points to, then run option SD WAIT LIST CLEANUP
+ which will update institutions in EWL files 409.32 and 409.3.
+ 
+ NOTE: SD WAIT LIST CLEANUP must be run any time corrections are made to
+                                    SD*5.3*491                                 
+ ------------------------------------------------------------------------------
+ a Hospital Location file #44 entry's DIVISION or to an INSTITUTION FILE 
+ POINTER in the Medical Center division file #40.8.
+ 
+ Verification and update of file 409.32 and 409.3
+  with proper institution finished.
+ 
+    SD*5.3*491 Post-Install finished....
+  
+  Updating Routine file...
+  
+  Updating KIDS files...
+  
+  SD*5.3*491 Installed. 
+                May 12, 2008@11:28:06
+  
+  Not a production UCI
+  
+  NO Install Message sent 
+ ------------------------------------------------------------------------------
+           +------------------------------------------------------------+
+   100%    |             25             50             75               |
+ Complete  +------------------------------------------------------------+
+ 
+ 
+ 
+ 
+ Install Completed
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.3;Scheduling;**[Patch List]**;AUG 13, 1993;Build 53
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: SCRPW62
+    Before: B30887240   After: B35851518  **267,269,358,491**
+ Description of Changes:
+  
+  
+
+Routine Name: SCRPW63
+    Before: B81169858   After: B82534339  **267,269,357,491**
+ Description of Changes:
+  
+  
+
+Routine Name: SD53P491
+    Before:       n/a   After: B90496427  **491**
+Routine Name: SDAL
+    Before: B25089836   After: B25084907  **37,46,106,171,177,80,266,491**
+Routine Name: SDAM10
+    Before:  B8130933   After:  B8926237  **189,258,403,478,491**
+Routine Name: SDAMVSC
+    Before:  B6558440   After:  B8458150  **394,417,491**
+Routine Name: SDRPA00
+    Before: B79872528   After: B83224590  **290,333,349,376,491**
+Routine Name: SDRPA03
+    Before: B31121600   After:    Delete  
+Routine Name: SDRPA04
+    Before: B37937936   After: B41493577  **376,491**
+Routine Name: SDRPA05
+    Before: B24254070   After: B24753499  **290,333,349,376,491**
+Routine Name: SDRPA06
+    Before: B58400495   After: B58773674  **290,333,349,376,491**
+Routine Name: SDWLCU3
+    Before: B12290803   After:  B9829968  **280,491**
+Routine Name: SDWLCU5
+    Before: B26978724   After: B43176687  **280,427,491**
+Routine Name: SDWLCU6
+    Before: B10350160   After: B10460494  **427,491**
+Routine Name: SDWLPE
+    Before: B17821077   After: B27362076  **263,280,288,397,491**
+Routine Name: SDWLREB
+    Before: B76814897   After: B72917718  **467,491**
+ 
+Routine list of preceding patches: 266, 357, 358, 376, 397, 417, 427, 467
+                           478
+
+=============================================================================
+User Information:
+Entered By  : WOLF,ED                       Date Entered  : JUN 30, 2006
+Completed By: CHANDARANA,RISHAN             Date Completed: AUG 06, 2008
+Released By : HEUER,CINDY                   Date Released : AUG 06, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

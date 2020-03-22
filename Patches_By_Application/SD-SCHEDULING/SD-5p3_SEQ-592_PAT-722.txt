@@ -1,0 +1,446 @@
+$TXT Created by              T at DEVVVV.DOMAIN.EXT  (KIDS) on Monday, 03/25/19 at 07:41
+=============================================================================
+Run Date: NOV 06, 2019                     Designation: SD*5.3*722
+Package : SD - SCHEDULING                     Priority: EMERGENCY
+Version : 5.3       SEQ #592                    Status: Released
+                  Compliance Date: NOV 20, 2019
+=============================================================================
+
+Associated patches: (v)SD*5.3*672  <<= must be installed BEFORE `SD*5.3*722'
+                    (v)SD*5.3*701  <<= must be installed BEFORE `SD*5.3*722'
+                    (v)SD*5.3*717  <<= must be installed BEFORE `SD*5.3*722'
+
+Subject: FIX FOR LARGE BACKGROUND JOBS CAUSING FILEFULL
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ **************************************************************************
+ *                  POTENTIAL ERRORS UPON INSTALL                         *
+ *------------------------------------------------------------------------*
+ * Please note that when installing SD*5.3*722 the site may receive       *
+ * APPTSTS+8^SDEC50 errors until SD*5.3*723, Fix for Appointments with No *
+ * Resource is installed.  These errors are a result of missing clinic    *
+ * resources. The site should no longer receive this error after          *
+ * installation of SD*5.3*723. Please ensure SD*5.3*723 is immediately    *
+ * installed after SD*5.3*722.                                            *
+ *                                                                        *
+ * If there is a delay in installing SD*5.3*723, it is possible that      *
+ * erroneous encounters will be opened.                                   *
+ **************************************************************************
+  
+ This patch addresses a problem where a large background job can be created
+ that takes several hours to complete and consumes gigabytes of TMP global
+ storage. If enough TMP global space is consumed, a MUMPS FILEFULL
+ error will result which will stop VistA from working.
+  
+ This background job, which uses APPSDGET^SDEC55A, gets created when a user
+ selects an appointment from the Pending Appointments list in VistA Scheduling
+ Graphical User Interface (VS GUI) that does not have a link to the SDEC
+ APPOINTMENT (#409.84) file. That link is established via FAPPTGET^SDEC50,
+ which initially populates the list used in the Pending Appointments pane. When
+ the appointment is associated with an entry in the SDEC RESOURCE (#409.831)
+ file, and there are multiple SDEC RESOURCE (#409.831) entries that link to
+ the same HOSPITAL LOCATION (#44) entry, then the Pending Appointments list
+ may be populated without the SDEC APPOINTMENT (#409.84) link.
+  
+ After installing this patch, all appointments will populate the Pending
+ Appointments list with a link to SDEC APPOINTMENT (#409.84), and the
+ system will no longer create these resource-intensive background jobs.
+  
+ This patch also addresses one of several issues causing the clinic schedule
+ and availability slots to disagree between VistA and VS GUI. Previously, when
+ there were multiple SDEC RESOURCE (#409.831) entries tied to the same
+ clinic, the clinic schedule view in VS GUI would only display appointments
+ for one resource at a time, but the availability slot counts would be
+ based on the clinic regardless of resource. Now, all appointments for the
+ clinic will be shown in the clinic schedule view as opposed to a single
+ resource. Because of this, the slot counts should match with the displayed
+ appointments.
+  
+  
+ Patch Components:
+ -----------------
+  
+ Files & Fields Associated:
+  
+ File Name (Number)         Field Name (Number)  New/Modified/Deleted
+ ------------------         -------------------  --------------------
+ SDEC APPOINTMENT (#409.84) PATIENT (#.05)       Modified
+  
+  
+ Forms Associated:
+  
+ Form Name    File #    New/Modified/Deleted
+ ---------    ------    --------------------
+ N/A
+  
+  
+ Mail Groups Associated:
+  
+ Mail Group Name    New/Modified/Deleted
+ ---------------    --------------------
+ N/A
+  
+  
+ Options Associated:
+  
+ Option Name    Type    New/Modified/Deleted
+ -----------    ----    -------------------- 
+ N/A
+  
+  
+ Protocols Associated:
+  
+ Protocol Name    New/Modified/Deleted
+ -------------    -------------------- 
+ N/A
+  
+  
+ Security Keys Associated:
+  
+ Security Key Name
+ -----------------
+ N/A
+  
+  
+ Templates Associated:
+  
+ Template Name    Type    File Name (Number)  New/Modified/Deleted 
+ -------------    ----    ------------------  --------------------
+ N/A
+  
+  
+ Additional Information:
+ N/A
+  
+  
+ New Service Requests (NSRs):
+ ----------------------------  
+ N/A
+  
+  
+ Patient Safety Issues (PSIs):
+ -----------------------------
+ N/A
+  
+  
+ Defect Tracking System Ticket(s) & Overview:
+ --------------------------------------------
+ 1. INC3753291/Rational Team Concert (RTC) 897064 NTX - FILEFULL
+    errors --- SDEC55A
+  
+ Problem:
+ -------
+ When a user clicks on an appointment in the Pending Appointments list and the
+ code that populates that list has not returned a link to the SDEC APPOINTMENT
+ file (#409.84) -- this happens when there is more than one entry in the
+ SDEC RESOURCE (#409.831) file for a given clinic in the HOSPITAL LOCATION
+ (#44) file -- then a background job is created that takes hours to complete
+ and generates gigabytes of data in the TMP global. Several of these will
+ cause a FILEFULL error that can stop VistA from functioning.
+  
+ Resolution:
+ ----------
+ The code that populates the Pending Appointments list has been rewritten so
+ that it cannot return an appointment without first finding its link to the
+ SDEC APPOINTMENT (#409.84) file regardless of the number of resources linked
+ to the clinic for the appointment.
+  
+ 2.  RTC 935033 Display of overlaid appointments in expanded entry
+  
+ Problem:
+ -------
+ When an appointment is cancelled and another appointment for the same 
+ patient and same time is made, the data in the PATIENT (#2) file is 
+ overlaid even though a new entry is made in the SDEC APPOINTMENT 
+ (#409.84) file. However, data for the cancelled appointment was not being 
+ cleared out of the PATIENT (#2) file, allowing the comments and
+ appointment made time from the original appointment to display when
+ looking at the new appointment.
+  
+ Resolution:
+ ----------
+ Data from the original appointment is now cleared out of the PATIENT (#2) 
+ file, so the new appointment no longer shows with information from the 
+ original appointment in expanded entry.
+  
+ 3. RTC 823105 Mismatch in time slot display between expanded entry and
+ GUI
+  
+ Problem:
+ -------
+ Because a cancelled appointment is not properly flagged as cancelled, a
+ later appointment for the same patient displayed data from the previously
+ cancelled appointment.
+  
+ Resolution:
+ ----------
+ When an appointment is cancelled, the appointment in the Appointment
+ multiple of the HOSPITAL LOCATION file (#44) is marked cancelled.
+  
+ 4. RTC 937962 Incorrect Date Time Format error in Pending Appointments
+  
+ Problem:
+ -------
+ When the Pending Appointments list contained an appointment on a date 
+ with a single digit (such as the 4th), an error message would appear 
+ stating that there was an incorrect date format.
+  
+ Resolution:
+ ----------
+ This error message no longer appears.
+  
+ 5. RTC 938186 GUI Crash on canceling appointment in two different clinics
+  
+ Problem:
+ -------
+ If an appointment was cancelled and an appointment for the same Veteran 
+ and same time, but in a different clinic, was scheduled in its place, and 
+ then the user attempted to cancel the new appointment from VS GUI, the 
+ GUI would crash, and the appointment would remain uncancelled.
+  
+ Resolution:
+ ----------
+ This crash no longer happens.
+  
+ 6. RTC 944824 Action Required after No Show or Cancel
+  
+ Problem:
+ -------
+ When a user no-showed or cancelled an appointment in VS GUI, the 
+ appointment would show as Action Required in Computerized Patient
+ Record System (CPRS) and would appear on the Encounter Action 
+ Required Report, even though no more action was required
+ for that appointment.
+  
+ Resolution:
+ ----------
+ The code that populates the Pending Appointments list has been fixed so 
+ that it is no longer relinking the Outpatient Encounter that was unlinked
+ during the no-show or cancellation process, which corrects the status in
+ CPRS and associated reports.
+  
+ 7.  RTC 961482 - Cancelled Appointment Status in Pending Appointment List 
+ does not update for inpatients
+  
+ Problem:
+ -------
+ During regression testing, the appointment status in the Pending
+ Appointments list was not updated when inpatient appointments were
+ cancelled.
+  
+ Resolution:
+ ----------
+ Code changed so appointment status is updated.
+  
+ 8.  RTC 963076 - Cannot reschedule a cancelled appointment for an
+ inpatient.
+  
+ Problem:
+ -------
+ During regression testing, an inpatient appointment that was cancelled
+ could not be rescheduled for the same time and clinic.
+  
+ Resolution:
+ ----------
+ Code changed to correct the error.
+  
+ 9.  RTC 961472 - Drag and drop for an inpatient creates an error.
+  
+ Problem:
+ -------
+ During regression testing, dragging and dropping an inpatient appointment
+ caused an error.
+  
+ Resolution:
+ ----------
+ Code changed to correct the error.
+  
+ 10. RTC 963079 - Error message when cancelling inpatient appointment from 
+ the Pending Appointments list
+  
+ Problem:
+ -------
+ During regression testing, cancelling an inpatient appointment from the 
+ Pending Appointments list resulted in an error.
+  
+ Resolution:
+ ----------
+ Code changed to correct the error.
+ 
+ Known Defects and Anomalies:
+ An existing anomaly in the SDEC APPOINTMENT File (409.84) was 
+ brought to light when patches SD*5.3*722 and SD*5.3*723 were installed. The 
+ Pending Appointments List in the VSE GUI is now populated using data from 
+ the VSE SDEC Appointment File instead of data from the Patient File.
+  
+ Impact:
+ When the SDCANCEL option is used to cancel clinic availability for all or 
+ part of a day, data in the appointment is updated in the 
+ HOSPITAL LOCATION File (#44) and in the PATIENT File (#2), but not 
+ in the SDEC APPOINTMENT File (#409.84).
+  
+ Therefore, when a set of appointments for a clinic has been cancelled 
+ using SDCANCEL option, the Pending Appointments List will show an 
+ incorrect appointment status of "Future Appointment" or 
+ "No Action Taken," even though the appointment has been cancelled 
+ and the clinic is closed.
+  
+ Workaround:
+ When a patient calls to schedule a new appointment, if the appointment in 
+ the Pending Appointments list displays "Future Appointment" or 
+ "No Action Taken," the scheduler must also check the Calendar View to 
+ ensure the appointment is still valid.
+  
+ If the Calendar shows the day is blocked off, the appointment will still 
+ be visible on the schedule for the blocked off day. Cancelling the 
+ appointment from the Calendar will correctly cancel the appointment in VSE.
+  
+ Follow these steps in this order so that appointments will not be 
+ improperly displayed:  
+  
+ 1. Manually cancel each individual appointment using VS GUI or 
+ VistA as Cancelled by Clinic.
+ 2. Use the Cancel Clinic Availability option [SDCANCEL] to cancel the 
+ day, marking the day as unavailable to schedule.
+  
+ NOTE: Do Not Use Cancel Clinic Availability [SDCANCEL] first. This 
+ will automatically mark the appointments as cancelled in the 
+ HOSPITAL LOCATION File (#44) but not in the SDEC APPOINTMENT File (#409.84).
+ 
+  
+ Test Sites:
+ ----------
+ North Texas Health Care System
+ Fayetteville Health Care System
+  
+  
+ Software and Documentation Retrieval Instructions:
+ ---------------------------------------------------- 
+ Software being released as a host file and/or documentation describing 
+ the new functionality introduced by this patch are available.
+  
+ The preferred method is to retrieve files from download.vista.domain.ext.
+ This transmits the files from the first available server. Sites may 
+ also elect to retrieve files directly from a specific server. 
+  
+ Sites may retrieve the software and/or documentation directly using Secure File 
+ Transfer Protocol (SFTP) from the ANONYMOUS.SOFTWARE directory at the following 
+ OI Field Offices:
+  
+ Hines: domain.ext  
+ Salt Lake City: domain.ext
+  
+ Documentation can also be found on the VA Software Documentation Library at:
+ http://www4.domain.ext/vdl/
+  
+ Patch Installation:
+  
+ Pre/Post Installation Overview:
+ -------------------------------
+ The post-install routine SD722PST will build the new APTDT cross reference
+ on the SDEC APPOINTMENT (#409.84) file. Per site's discretion, routine
+ SD722PST may be deleted using the XTRDEL option, but is not required.
+ No manual pre- or post-installation steps are required.
+  
+   Pre-Installation Instructions:
+  
+   This patch may be installed with users on the system although it is
+   recommended that it be installed during non-peak hours to minimize
+   potential disruption to users.  This patch should take 15-20 minutes to
+   install. Patch SD*5.3*723 should be installed immediately after
+   Patch SD*5.3*722. If there is a delay in installing SD*5.3*723, it is 
+   possible that erroneous encounters will be opened.
+  
+  
+ Installation Instructions:
+ --------------------------
+  
+ 1. Choose the PackMan message containing this patch.
+  
+ 2. Choose the INSTALL/CHECK MESSAGE PackMan option. 
+  
+ 3. From the Kernel Installation and Distribution System Menu, select the
+ Installation Menu.  From this menu, you may elect to use the following
+ options. When prompted for the INSTALL NAME enter the patch number (ex. 
+ SD*5.3*722):
+ a. Backup a Transport Global - This option will create a backup message of
+ any routines exported with this patch. It will not backup any other changes
+ such as DDs or templates.
+ b. Compare Transport Global to Current System - This option will (allow you
+ to view all changes that will be made when this patch is installed. It
+ compares all components of this patch routines, DDs, templates, etc.).
+ c. Verify Checksums in Transport Global - This option will allow you to
+ ensure the integrity of the routines that are in the transport global.
+  
+ 4.  From the Installation Menu, select the Install Package(s) option and
+ choose the patch to install.
+  
+ 5. When prompted 'Want KIDS to Rebuild Menu Trees Upon Completion of
+ Install? NO//', respond NO.
+  
+ 6. When prompted 'Want KIDS to INHIBIT LOGONs during the install? NO//',
+ respond NO.
+  
+ 7. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+ Protocols? NO//', respond NO.
+  
+ 8. If prompted 'Delay Install (Minutes):  (0 - 60): 0//' respond 0.
+  
+  
+ Back-Out Plan:
+ --------------------
+ To back out this patch, restore the transport global that was saved
+ in Step 3.a. of the installation. If desired, delete the APTDT cross-reference
+ and its data from the SDEC APPOINTMENT (#409.84) file. After backing out the
+ routine changes, there will no longer be any functionality tied to the
+ cross-reference.
+ 
+ 
+ 
+ 
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.3;Scheduling;**[Patch List]**;Aug 13, 1993;Build 26
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: SD722PST
+    Before:       n/a   After:   B512423  **722**
+Routine Name: SDEC01B
+    Before: B45005907   After: B45849869  **627,642,722**
+Routine Name: SDEC02
+    Before: B68680067   After: B83466208  **627,642,658,672,722**
+Routine Name: SDEC07B
+    Before: B86344811   After: B60597834  **627,658,665,669,722**
+Routine Name: SDEC08
+    Before:B217036692   After:B210557907  **627,651,658,665,722**
+Routine Name: SDEC26
+    Before: B15946491   After: B17286312  **627,658,722**
+Routine Name: SDEC50
+    Before:B102324779   After:B161237359  **627,658,665,672,722**
+Routine Name: SDEC55A
+    Before: B88296381   After: B89324584  **627,671,701,722**
+ 
+Routine list of preceding patches: 669, 672, 701
+
+=============================================================================
+User Information:
+Entered By  :                               Date Entered  : JAN 08, 2019
+Completed By:                               Date Completed: NOV 06, 2019
+Released By :                               Date Released : NOV 06, 2019
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,382 @@
+$TXT Created by                at CLN1G2.AAC.DOMAIN.EXT  (KIDS) on Wednesday, 10/02/19 at 11:49
+=============================================================================
+Run Date: JAN 21, 2020                     Designation: LR*5.2*531
+Package : LR - LAB SERVICE                    Priority: Mandatory
+Version : 5.2       SEQ #431                    Status: Released
+                  Compliance Date: FEB 21, 2020
+=============================================================================
+
+Associated patches: (v)LR*5.2*65   <<= must be installed BEFORE `LR*5.2*531'
+                    (v)LR*5.2*432  <<= must be installed BEFORE `LR*5.2*531'
+
+Subject: LRCONJAM AND CUMULATIVE HEADER ISSUES
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ This patch addresses the following issues:
+  
+ 1. If the option LRTASK CONJAM is utilized to place controls on worklists 
+    nightly and if auto-verify logic is utilized for those worklists, 
+    auto-verify will log an interface error.
+  
+ 2. Cumulative report vertical headers may be defined more than once per 
+    major header if the user edits the cumulative report configuration.
+    
+ Files & Fields Associated:
+  
+ File Name (Number)      Field Name (Number)          New/Modified/Deleted
+ ------------------      --------------------------   --------------------
+ MINOR HEADER SUB-FIELD  MINOR HEADER (#.01)          Modified
+ (#64.52)                TYPE OF DISPLAY (#2)         Modified
+  
+ Associated ticket(s):
+ =====================
+  
+ 1. INC6002321: LRTASK CONJAM and Auto-Verify issue
+ 2. INC7270320: Cumulative Report Vertical Format Configuration Issue
+  
+ Blood Bank Review:
+ ==================
+ EFFECT ON BLOOD BANK FUNCTIONAL REQUIREMENTS: Patch LR*5.2*531 does not 
+ contain any changes to the VISTA BLOOD BANK Software as defined by 
+ ProPath standard titled: BBM Team Review of VistA Patches.
+  
+ EFFECT ON BLOOD BANK FUNCTIONAL REQUIREMENTS: Patch LR*5.2*531 does not 
+ alter or modify any software design safeguards or safety critical 
+ elements functions.
+  
+ RISK ANALYSIS: Changes made by patch LR*5.2*531 have no adverse effect on 
+ Blood Bank software functionality, therefore RISK is none.
+  
+ VALIDATION REQUIREMENTS BY OPTION: Because of the nature of the changes 
+ made, no specific validation requirements exist as a result of 
+ installation of this patch.
+  
+ Associated NSR(s):
+ ==================
+  
+ N/A
+  
+ Defect Tracking System Ticket(s) & Overview:
+ ===========================================
+  
+ 1. INC6002321: LRTASK CONJAM and Auto-Verify issue
+  
+    Problem:
+    -------
+  
+    If the option LRTASK CONJAM is utilized to place controls on 
+    worklists nightly and if auto-verify logic is utilized for those
+    worklists, auto-verify will log an interface error of "data name not
+    in accession or Load/Worklist test profile".
+  
+    Resolution:
+    ----------
+  
+    The issue began occurring after the release of LR*5.2*512 which 
+    corrected an issue in that the PARENT TEST (#8.1) field in the
+    ACCESSION (#68) file was not being retrieved consistently during result
+    verification logic.
+  
+    The root cause of this issue is that the option LRTASK CONJAM ("LOAD 
+    CONTROLS ON THE ACCESSION LISTS.") does not set the PARENT TEST (#8.1) 
+    field in the ACCESSION (#68) file. This patch modifies routine 
+    LRCONJAM to set the field.  In addition, a one second timeout was added
+    two lock conditions because of findings by XINDEX.
+  
+ 2. INC7270320: Cumulative Report Vertical Format Configuration Issue 
+  
+    Problem:
+    -------
+  
+    Only one vertical format minor header should be defined per major 
+    header of a cumulative report due to pre-existing formatting logic
+    during printing and display.  However, if a user edits previously
+    defined vertical headers, multiple vertical headers may be defined.
+  
+    In addition, if a user attempts to define a new vertical header when 
+    one is already defined, the message displayed to the user is "NO CAN
+    DO". The message text should state that more than one vertical header
+    is not allowed, and a vertical header is already defined for a minor
+    header under the major header.
+  
+    Resolution:
+    ----------
+     
+    Modify the data dictionary for the minor header TYPE OF DISPLAY(#2) 
+    field in the LAB REPORTS (#64.5) file to add an INPUT TRANSFORM which
+    will not allow editing a pre-existing minor header from the horizontal
+    format to the vertical format.
+  
+    In addition, modify the data dictionary INPUT TRANSFORM to replace the 
+    "NO CAN DO" message text and replace with a message clarifying the
+    configuration logic when a vertical format minor header has already 
+    been defined.  Also, the HELP-PROMPT text for both MINOR HEADER and
+    TYPE OF DISPLAY are modified to mixed case at request of the DBA, no
+    wording changes were made.
+  
+  
+ Test Sites:
+ ==========
+ VA Longbeach Heathcare System
+ Pittsburg VAMC
+  
+  
+ Data Dictionaries Before:
+ ========================
+ 64.52,.01 MINOR HEADER      0;1 FREE TEXT (Multiply asked)
+  
+           INPUT TRANSFORM:  K:X[""""!($A(X)=45) X I $D(X) K:$L(X)>
+                             80!($L(X)<2) X Q:$D(DIU(0))  I $D(X) F ZI=0:0 
+                             S ZI=$O(^LAB(64.5,1,1,DA(1),1,ZI)) Q:ZI<1  S 
+                             F=$S($P(^(ZI,0),U,3)="V":1,1:"") I F W !,"NO 
+                             CAN DO" K X Q
+           LAST EDITED:      FEB 05, 1987 
+           HELP-PROMPT:      ANSWER MUST BE 2-80 CHARACTERS IN LENGTH AND 
+                             ONLY 1 VERTICAL FORMAT IS ALLOWED PER MAJOR 
+                             HEADER 
+           DESCRIPTION:
+                             The minor, or sub, heading.  
+           DELETE TEST:      1,0)= I '$D(^XUSEC("LRLIASON",DUZ))
+  
+           NOTES:            XXXX--CAN'T BE ALTERED EXCEPT BY PROGRAMMER
+           CROSS-REFERENCE:  64.52^B 
+                             1)= S ^LAB(64.5,DA(2),1,DA(1),1,"B",$E(X,
+                             1,30),DA)=""
+                             2)= K ^LAB(64.5,DA(2),1,DA(1),1,"B",$E(X,
+                             1,30),DA)
+  
+ 64.52,2   TYPE OF DISPLAY        0;3 SET (Required)
+  
+                             'H' FOR HORIZONTAL; 
+                             'V' FOR VERTICAL; 
+           LAST EDITED:      DEC 17, 1986 
+           HELP-PROMPT:      FORMATS CANNOT BE MIXED WITHIN A MAJOR HEADER 
+           DESCRIPTION:      'HORIZONTAL' & 'VERTICAL' refer to the
+                             placement of the test names.  
+  
+           CROSS-REFERENCE:  64.52^C^MUMPS 
+                             1)= F I=0:0 S I=$O(^LAB(64.5,1,1,DA(1),1,I)) 
+                             Q:I<1  S F=$P(^(I,0),U,3) I X="V",F="H" W !!,
+                             *7,"WARNING: MIXING VERT. & HOR. FORMATS 
+                             WITHIN A MAJOR HEADER ",!,"MAY CORRUPT THE 
+                             CUMULATIVE!" Q
+                             2)= Q
+  
+           CROSS-REFERENCE:  64.52^AZZ^MUMPS 
+                             1)= S ^LAB(64.5,"AZ",DA(1),DA)=""
+                             2)= S ^LAB(64.5,"AZ",DA(1),DA)=""
+  
+  
+  
+ Data Dictionaries After:
+ =======================
+ 64.52,.01 MINOR HEADER           0;1 FREE TEXT (Multiply asked)
+  
+           INPUT TRANSFORM:  K:X[""""!($A(X)=45) X I $D(X) K:$L(X)>80!
+                             ($L(X)<2) X Q:$D(DIU(0))  I $D(X) F ZI=0:0 S 
+                             ZI=$O(^LAB(64.5,1,1,DA(1),1,ZI)) Q:ZI<1  S F=
+                             $S($P(^(ZI,0),U,3)="V":1,1:"") I F W !,"Only 
+                             one vertical header allowed." K X Q
+           LAST EDITED:      FEB 05, 1987 
+           HELP-PROMPT:      Answer must be 2-80 characters in length and 
+                             only 1 vertical format is allowed per major 
+                             header 
+           DESCRIPTION:
+                             The minor, or sub, heading.  
+  
+           DELETE TEST:      1,0)= I '$D(^XUSEC("LRLIASON",DUZ))
+  
+           NOTES:            XXXX--CAN'T BE ALTERED EXCEPT BY PROGRAMMER
+  
+           CROSS-REFERENCE:  64.52^B 
+                             1)= S ^LAB(64.5,DA(2),1,DA(1),1,"B",$E(X,1,
+                             30),DA)=""
+                             2)= K ^LAB(64.5,DA(2),1,DA(1),1,"B",$E(X,1
+                             ,30),DA)
+  
+ 64.52,2   TYPE OF DISPLAY        0;3 SET (Required)
+                             'H' FOR HORIZONTAL; 
+                             'V' FOR VERTICAL; 
+         INPUT TRANSFORM:    D TODIT^LRWU
+           LAST EDITED:      DEC 17, 1986 
+           HELP-PROMPT:      Formats cannot be mixed within a major header 
+           DESCRIPTION:      'HORIZONTAL' & 'VERTICAL' refer to the
+                             placement of the test names.  
+           CROSS-REFERENCE:  64.52^C^MUMPS 
+                             1)= F I=0:0 S I=$O(^LAB(64.5,1,1,DA(1),1,I)) 
+                             Q:I<1  S F=$P(^(I,0),U,3) I X="V",F="H" W !!,
+                             *7,"WARNING: MIXING VERT. & HOR. FORMATS  
+                             WITHIN A MAJOR HEADER ",!,"MAY CORRUPT THE 
+                             CUMULATIVE!" Q
+  
+                             2)= Q
+  
+           CROSS-REFERENCE:  64.52^AZZ^MUMPS 
+                             1)= S ^LAB(64.5,"AZ",DA(1),DA)=""
+                             2)= S ^LAB(64.5,"AZ",DA(1),DA)=""
+  
+  
+  
+  
+  
+ Patch Installation:
+  
+ Pre-Installation Instructions:
+ =============================
+ This patch may be loaded with users on the system. You may wish to 
+ install it during non-peak hours. Installation will take less than 1 
+ minute. 
+  
+ NOTE: Kernel patches must be current on the target system to avoid 
+ problems loading and/or installing this patch.
+  
+ Installation Instructions:
+ =========================
+    1. Choose the PackMan message containing this patch.
+  
+    2. Use the 'INSTALL/CHECK MESSAGE' option of the PackMan menu. This
+       option will load the KIDS patch onto your system.
+  
+    3. On the 'Kernel Installation & Distribution System' Menu (KIDS),
+       select the 'Installation' menu.
+  
+    4. From this menu, you may elect to use the following option. When 
+       prompted for the INSTALL NAME select the package 'LR*5.2*531':
+  
+       a. Print Transport Global - This option will allow you to print 
+          only a summary of the patch, to print a summary of the patch and
+          the routines in the transport global, or to print only the
+          routines in the transport global.
+  
+       b. Compare Transport Global to Current System - This option will 
+          allow you to view all changes that will be made when this patch
+          is installed. It compares all components of this patch (routines,
+          DDs, templates, etc.).
+       
+    5. From the Installation Menu, select Backup a Transport Global - This 
+       option will create a backup message of any routines exported with 
+       this patch. It will not backup any other changes such as DDs or
+       templates.
+  
+    6. Use the 'Install Package(s)' option under the 'Installation' menu 
+       and select the package 'LR*5.2*531'.
+  
+    7. When prompted 'Want KIDS to INHIBIT LOGONs during the install? 
+       NO//', choose 'NO'.
+  
+    8. When prompted 'Want to DISABLE Scheduled Options, Menu Options, 
+       and Protocols? NO//', choose 'NO'.
+  
+  
+  
+ Installation Verification:
+ =========================
+ Review the Data Dictionary changes listed above using VA FileMan. The 
+ example below illustrates the MINOR HEADER sub-file.  And will display 
+ the MINOR HEADER and TYPE OF DISPLAY fields
+  
+ VA FileMan 22.2
+  
+ Select OPTION: 8  DATA DICTIONARY UTILITIES
+ Select DATA DICTIONARY UTILITY OPTION: 1  LIST FILE ATTRIBUTES
+  START WITH What File: LAB REPORTS//      (1 entry)
+       GO TO What File: LAB REPORTS//      (1 entry)
+       Select SUB-FILE: MAJOR HEADER  
+       Select SUB-FILE: MINOR HEADER  
+       Select SUB-FILE: 
+ Select LISTING FORMAT: STANDARD//   
+ Start with field: FIRST// 
+ DEVICE: ;;9999  HOME  (CRT)    Right Margin: 80// 
+  
+  
+  
+ Back-out/Rollback Strategy:
+ ==========================
+ In the event of a catastrophic failure, the Facility CIO may make the 
+ decision to back-out the patch.
+   
+ It is imperative that you have performed a backup of the routines 
+ included in this patch prior to installation.
+  
+ The back-out plan is to restore the routine from the backup created and 
+ editing the Data Dictionaries returning them to original pre-install
+ state.
+  
+ To verify the back-out completed successfully, ensure the checksum 
+ matches the pre-patch checksum from the patch descriptions and the INPUT 
+ TRANSFORMS have been edited as follows.
+  
+ Using FileMan, go to UTILITY FUNCTIONS, INPUT TRANSFORM (SYNTAX)
+  
+ Select OPTION: 6  UTILITY FUNCTIONS
+ Select UTILITY OPTION: 5  INPUT TRANSFORM (SYNTAX)
+  
+ Modify what File: LAB REPORTS//           (1 entry)
+ Select FIELD: MAJOR HEADER    (multiple)
+ Select MAJOR HEADER SUB-FIELD: MINOR HEADER    (multiple)
+ Select MINOR HEADER SUB-FIELD: MINOR HEADER  
+ MINOR HEADER INPUT TRANSFORM: K:X[""""!($A(X)=45) X I $D(X) 
+ K:$L(X)>80!($L(X)<2) X Q:$D(DIU(0))  I $D(X) F ZI=0:0 S
+ ZI=$O(^LAB(64.5,1,1,DA(1),1,ZI)) 
+ Q:ZI<1  S F=$S($P(^(ZI,0),U,3)="V":1,1:"") I F W !,"Only one vertical
+ header allowed." K X Q  Replace Only one vertical header allowed. With NO
+ CAN DO
+   Replace 
+    K:X[""""!($A(X)=45) X I $D(X) K:$L(X)>80!($L(X)<2) X Q:$D(DIU(0))  I 
+ $D(X) F ZI=0:0 S ZI=$O(^LAB(64.5,1,1,DA(1),1,ZI)) Q:ZI<1  S
+ F=$S($P(^(ZI,0),U,3)="V":1,1 :"") I F W !,"NO CAN DO" K X Q
+ 'HELP'-PROMPT: Answer must be 2-80 characters in length and only 1 
+ vertical form
+ at is allowed per major header  Replace 
+ XECUTABLE 'HELP': 
+  
+ MAXIMUM LENGTH OF 'MINOR HEADER':  (1-250): 80// 
+  
+  
+ Select OPTION: 6  UTILITY FUNCTIONS
+ Select UTILITY OPTION: 5  INPUT TRANSFORM (SYNTAX)
+  
+ Modify what File: LAB REPORTS//           (1 entry)
+ Select FIELD: MAJOR HEADER    (multiple)
+ Select MAJOR HEADER SUB-FIELD: MINOR HEADER    (multiple)
+ Select MINOR HEADER SUB-FIELD: TYPE OF DISPLAY  
+ TYPE OF DISPLAY INPUT TRANSFORM: D TODIT^LRWU  Replace ... With Q
+   Replace 
+    Q
+ 'HELP'-PROMPT: Formats cannot be mixed within a major header
+            Replace 
+ XECUTABLE 'HELP': 
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.2;LAB SERVICE;**[Patch List]**;Sep 27, 1994;Build 7
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: LRCONJAM
+    Before: B24815980   After: B25348647  **65,531**
+Routine Name: LRWU
+    Before: B18476250   After: B21954587  **42,138,153,432,531**
+ 
+Routine list of preceding patches: 65, 432
+
+=============================================================================
+User Information:
+Entered By  :                               Date Entered  : SEP 16, 2019
+Completed By:                               Date Completed: JAN 17, 2020
+Released By :                               Date Released : JAN 21, 2020
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,854 @@
+$TXT Created by LRUSER,ONE at LABHDR.FS.FO-ALBANY.MED.VA.GOV  (KIDS) on Monday, 12/14/09 at 14:46
+=============================================================================
+Run Date: JUL 14, 2010                     Designation: LA*5.2*68
+Package : LA - AUTOMATED LAB INSTRUMENTS      Priority: Mandatory
+Version : 5.2        SEQ #56                    Status: Released
+                  Compliance Date: AUG 14, 2010
+=============================================================================
+
+Associated patches: (v)LA*5.2*27   <<= must be installed BEFORE `LA*5.2*68'
+                    (v)LA*5.2*46   <<= must be installed BEFORE `LA*5.2*68'
+                    (v)LA*5.2*51   <<= must be installed BEFORE `LA*5.2*68'
+                    (v)LA*5.2*61   <<= must be installed BEFORE `LA*5.2*68'
+                    (v)LA*5.2*64   <<= must be installed BEFORE `LA*5.2*68'
+                    (v)LA*5.2*69   <<= must be installed BEFORE `LA*5.2*68'
+                    (v)LA*5.2*70   <<= must be installed BEFORE `LA*5.2*68'
+                    (v)LA*5.2*71   <<= must be installed BEFORE `LA*5.2*68'
+
+Subject: Lab - Health Data Repository (HDR) and Commercial Off the Shelf (COTS) Interface
+
+Category: 
+  - Routine
+  - Enhancement (Mandatory)
+  - Data Dictionary
+
+Description:
+============
+
+ Blood Bank Clearance
+ ====================
+ VISTA Laboratory Package patch LA*5.2*68 contains changes to software
+ controlled by VHA DIRECTIVE 99-053, titled VISTA BLOOD BANK SOFTWARE.  Changes
+ include:
+     New style indexes have been created for the following sub-files
+     of the LAB DATA file (#63):
+         ELECTRON MICROSCOPY (#63.02)
+         SURGICAL PATHOLOGY (#63.08)
+         CYTOPATHOLOGY (#63.09)
+  
+ All of the above changes have been reviewed by the VISTA Blood Bank Developer
+ and found to have no impact on the VISTA BLOOD BANK SOFTWARE control functions.
+  
+  
+ RISK ANALYSIS:   Changes made by patch LA*5.2*68 have no effect on Blood Bank
+ software functionality, therefore RISK is none.
+  
+ EFFECT ON BLOOD BANK FUNCTIONAL REQUIREMENTS:  Patch LA*5.2*68 does not alter
+ or modify any software design safeguards or safety critical elements functions.
+  
+  
+ POTENTIAL IMPACT ON SITES:  This patch contains changes to 0 routines and 1
+ file identified in Veterans Health Administration (VHA) Directive 99-053, group
+ B listing. The changes have no effect on Blood Bank functionality or medical
+ device control functions. There is no adverse potential to sites.
+  
+ ========================================
+  
+ This patch supports the VA Health Data Repository (HDR) effort, allowing
+ changes to LAB DATA file (#63) to be transmitted to the HDR via a VistA
+ Laboratory HL7 Result (ORU) message.
+  
+ Additionally, it provides the capability for the transmission of the HL7 ORU
+ message containing patient laboratory results to subscribers of the HL7 event
+ protocol LA7 LAB RESULTS AVAILABLE (EVN) as these results are made available
+ within the Laboratory package. The following subscripts are supported by the
+ event: "CH", "MI", "SP", "CY", "EM". See post-install instructions for enabling
+ this capability.
+  
+ VistA Laboratory Subscript     Traditional Functional Sections
+       CH                       Chemistry, Hematology, Coagulation,
+                                Serology, Urinalysis, etc.
+       MI                       Microbiology, Virology, Mycology, Parasitology
+       SP                       Surgical Pathology
+       CY                       Cytopathology
+       EM                       Electron Microscopy 
+  
+ ****************************************************************************
+ Health Data Repository
+ 
+ Patch LA*5.2*68 allows the HL7 ORU message containing patient laboratory
+ results to be transmitted to the subscriber, LA7 LAB RESULTS TO HDR (SUB).
+ This subscriber protocol is used to transmit laboratory results to the VA HDR.
+  
+ After you activate sending messages to the HDR, extracting existing laboratory
+ data (HDR historical) will follow, so that there will be an overlap with no
+ gaps of laboratory data within the HDR.
+  
+ Once you activate sending messages to the HDR, do not inactivate, as this can
+ cause gaps of laboratory data within the HDR.
+  
+ If you must inactivate sending messages to the HDR, contact the HDR program
+ office, so that the laboratory data can be tracked and recovered. 
+ 
+ *****************************************************************************
+  
+  
+ 1. The following protocols are added to the PROTOCOL file (#101)
+  
+ NAME: LA7 LAB RESULTS ACTION
+   ITEM TEXT: Lab process results for HL7 messaging
+   TYPE: action
+   PACKAGE: AUTOMATED LAB INSTRUMENTS
+  DESCRIPTION:   Action protocol to setup sending lab results to HL7 message
+  subscribers via protocol LA7 LAB RESULTS AVAILABLE (EVN) - Lab Results
+  Available Event.  This protocol should be attached to protocol LAB RESULTS
+  => EXTERNAL PACKAGE [LR7O ALL EVSEND RESULTS] which is an extended action
+  protocol triggered by the lab result verification process.
+   ENTRY ACTION: D QUEUE^LA7HDR          TIMESTAMP: 59056,40855
+  
+  
+ NAME: LA7 LAB RESULTS AVAILABLE (EVN)  ITEM TEXT: Lab Results Available Event
+   TYPE: event driver
+  DESCRIPTION: A VistA Laboratory package HL7 ORU result message is created
+  and sent by the HL package for transmission to any subscribers of event
+  protocol LA7 LAB  RESULTS AVAILABLE (EVN).
+  
+  It provides the capability for the generation of a Laboratory HL7 ORU
+  message containing patient laboratory results to subscribers of the HL7
+  event protocol LA7 LAB RESULTS AVAILABLE (EVN) as these results are made
+  available within the Laboratory package.
+  
+  The following subscripts are supported by the event:
+    "CH", "MI", "SP", "CY", "EM".
+  
+   TIMESTAMP: 59725,36770                SENDING APPLICATION: LA7LAB
+   TRANSACTION MESSAGE TYPE: ORU         EVENT TYPE: R01
+   MESSAGE STRUCTURE: ORU_R01            ACCEPT ACK CODE: AL
+   APPLICATION ACK TYPE: NE              VERSION ID: 2.4
+   RESPONSE PROCESSING ROUTINE: D ACK^LA7VHL
+   SUBSCRIBERS: LA7 LAB RESULTS TO HDR (SUB)
+  
+  
+ NAME: LA7 LAB RESULTS TO HDR (SUB)      ITEM TEXT: Send Lab Results to HDR
+   TYPE: subscriber
+  DESCRIPTION:   This protocol should be attached to the HL7 event protocol
+  LA7 LAB RESULTS AVAILABLE (EVN). See this protocol for further information.
+  
+  This subscriber protocol is used by the Laboratory package to indicate to
+  the HL package to send laboratory results to the VA Health Data Repository
+  (HDR).
+  
+  It utilizes the "Router" Subscriber Protocol supported by the VistA HL
+  package. The routing logic uses the value of the parameter passed into the
+  router to determine which Laboratory package subscript should be sent to
+  the HDR.
+  
+  Examples:
+  
+  ROUTING LOGIC: D RTR^LA7HDR("CH;") will only send to HDR-IMS results
+  associated with Laboratory "CH" subscript.
+  
+  ROUTING LOGIC: D RTR^LA7HDR("MI;") will only send to HDR-IMS results
+  associated with Laboratory "MI" subscript.
+  
+  ROUTING LOGIC: D RTR^LA7HDR("CH;MI;SP;") will only send to HDR-IMS results
+  associated with Laboratory "CH", "MI", and "SP" subscripts.
+  
+   TIMESTAMP: 59056,40125                RECEIVING APPLICATION: LA7HDR
+   EVENT TYPE: R01                       LOGICAL LINK: VDEFVIE4
+   RESPONSE MESSAGE TYPE: ACK            SENDING FACILITY REQUIRED?: YES
+   RECEIVING FACILITY REQUIRED?: YES     ROUTING LOGIC: D RTR^LA7HDR("CH;")
+  
+  NOTE: This subscriber protocol is distributed with the ROUTING LOGIC
+        disabled. See post-installation instructions for guidance to
+        enable the protocol.
+  
+ 2. The following option is added to the OPTION file (#19)
+  
+ NAME: LA7 HDR RECOVER    MENU TEXT: Recover/Transmit Lab HDR Result Messages
+  TYPE: run routine
+  PACKAGE: AUTOMATED LAB INSTRUMENTS
+  DESCRIPTION:   Option to recover from failed Lab HDR ORU Result message
+ generation and/or transmission failure. This option allows the user to select
+ those VistA Laboratory accessions that need to be transmitted to the VA HDR and
+ other subscribers of the VistA Laboratory Result Available HL7 message
+ capability via the protocol Lab Results Available Event [LA7 LAB RESULTS
+ AVAILABLE (EVN)].
+  
+ If the original message generation/transmission failed due to system or
+ communication problems then using this option will allow the generation of new
+ HL7 messages with the results associated with the selected accessions.
+ Accessions can be selected using the human-readable accession designation (area
+ abbreviation modified date accession number - "CH 1225 100") or the accession's
+ associated 10 character unique identifier (UID).
+  
+  ROUTINE: RECOVER^LA7HDR
+  UPPERCASE MENU TEXT: RECOVER/TRANSMIT LAB HDR RESUL
+  
+ This option is assigned to the Lab liaison menu option [LRLIAISON] and can be
+ assigned to other uses as needed that support/monitor message transmission to
+ the VA HDR and other subscribers.
+  
+ 3. The LA7HDR routine, if the configuration LA7HDR in LA7 MESSAGE PARAMETER
+ file (#62.48) has an active status, queues the record for transmission to the
+ HDR via a HL7 ORU result message which is transmitted by the HL package to any
+ subscribers of event protocol LA7 LAB RESULTS AVAILABLE (EVN) in addition to
+ the HDR subscriber LA7 LAB RESULTS TO HDR (SUB).
+  
+    The LA7 LAB RESULTS TO HDR (SUB) subscriber protocol uses the logical link
+ VDEFVIE4. This is a router subscriber protocol which determines which Lab HL7
+ messages are sent to the HDR. See protocol description for further information.
+  
+  
+  
+ 4. Anatomic Pathology is not "CPRS-aware" and is unable to notify CPRS of
+ release of anatomic pathology results. HDR will be notified of availability of
+ anatomic pathology results via three new-style cross-references in LAB DATA
+ file (#63). These indexes will also trigger generation of the Lab HL7 ORU
+ message if this capability has been enabled.
+  
+    The three new cross-references are:
+  
+ Subfile #63.02
+  
+   New-Style Indexes:
+  
+   AC (#98)    FIELD    MUMPS        ACTION
+       Short Descr:  Notify HDR and others that this report is available.
+       Description:  This MUMPS cross-reference triggers the sending of this
+                     report to the Health Data Repository (HDR) and other
+                     subscribers when electron microscopy results are
+                     released.
+         Set Logic:  D APQ^LA7HDR(DA(1),"EM",DA)
+        Kill Logic:  Q
+              X(1):  REPORT RELEASE DATE (63.02,.11) (Subscr 1) (forwards)
+  
+ Subfile #63.08
+  
+   New-Style Indexes:
+  
+   AD (#95)    FIELD    MUMPS        ACTION
+       Short Descr:  Notify HDR and others that this report is available.
+       Description:  This MUMPS cross-reference triggers the sending of this
+                     report to the Health Data Repository (HDR) and other
+                     subscribers when surgical pathology results are
+                     released.
+         Set Logic:  D APQ^LA7HDR(DA(1),"SP",DA)
+        Kill Logic:  Q
+              X(1):  REPORT RELEASE DATE/TIME (63.08,.11) (Subscr 1)
+                     (forwards)
+  
+ Subfile #63.09
+  
+   New-Style Indexes:
+  
+   AD (#96)    FIELD    MUMPS        ACTION
+       Short Descr:  Notify HDR and others that this report is available.
+       Description:  This MUMPS cross-reference triggers the sending of this
+                     report to the Health Data Repository (HDR) and other
+                     subscribers when cytology results are released.
+         Set Logic:  D APQ^LA7HDR(DA(1),"CY",DA)
+        Kill Logic:  Q
+              X(1):  REPORT RELEASE DATE/TIME  (63.09,.11)  (Subscr 1)
+                     (forwards)
+  
+  
+ 5. Microbiology results. The current Laboratory package does not support LOINC
+ encoding of microbiology results. A default encoding is enabled to LOINC encode
+ standard microbiology tests and antibiotics.  LOINC codes valid as of version
+ 2.14.
+  
+ Default mapping of NLT/LOINC codes to standard fields within the MICROBIOLOGY
+ (#5) multiple of LAB DATA file (#63):
+  
+  
+  Test                               Order NLT     Result NLT     LOINC Code
+  Bacteriology report (#11)          87993.0000
+  Gram stain (#11.6)                 87993.0000    87754.0000     664-3
+  Bacteriology organism (#12)        87993.0000    87570.0000     11475-1
+  Bacteria colony count (#12,1)                    87719.0000     564-5
+  Parasite report (#14)              87505.0000
+  Parasite organism (#16)            87505.0000    87576.0000     17784-0
+  Mycology report (#18)              87994.0000
+  Fungal organism (#20)              87994.0000    87578.0000     580-1
+  Fungal colony count (#20,1)        87994.0000    87723.0000     19101-5
+  Mycobacterium report (#22)         87995.0000
+  Acid Fast stain (#24)              87995.0000    87756.0000     11545-1
+  Acid Fast stain quantity (#25)     87995.0000    87583.0000     11545-1
+  Mycobacterium organism (#26)       87995.0000    87589.0000     543-9
+  Mycobacterium colony count (#26,1) 87995.0000    87719.0000     564-5
+  Virology report (#33)              87996.0000
+  Viral agent (#36)                  87996.0000    87590.0000     6584-7
+  
+  Bacteriology or mycobacterium (TB) organism's susceptibilities -
+   is based on local site's mapping of NATIONAL VA LAB CODE field (#64)
+   in ANTIMICROBIAL SUSCEPTIBILITY file (#62.06) and the related default
+   LOINC code associated with this VA NLT code. Use option Map/Unmap
+   Antimicrobial Default LOINC Code [LR LOINC MAP ANTIMICROBIAL] to
+   configure the default LOINC code for each antibiotic.
+  
+ 6. Surgical Pathology results. The current Laboratory package does not support
+ LOINC encoding of surgical pathology results.  LOINC codes valid as of version
+ 2.14.
+  
+ Default mapping of NLT/LOINC codes to standard fields within the SURGICAL
+ PATHOLOGY (#8) multiple of LAB DATA file (#63):
+  
+  Test                            Order NLT     Result NLT     LOINC Code
+  Specimen (#.012)                88515.0000    88539.0000     22633-2
+  Brief clinical history (#.013)  88515.0000    88542.0000     22636-5
+  Preoperative diagnosis (#.014)  88515.0000    88544.0000     10219-4
+  Operative findings (#.015)      88515.0000    88546.0000     10215-2
+  Postoperative diagnosis (#.016) 88515.0000    88547.0000     10218-6
+  Gross description (#1)          88515.0000    88549.0000     22634-0
+  Microscopic description (#1.1)  88515.0000    88563.0000     22635-7
+  Frozen section (#1.3)           88515.0000    88569.0000     22635-7
+  Surgical path diagnosis (#1.4)  88515.0000    88571.0000     22637-3
+  Supplementary report (#1.2)     88515.0000    88589.0000     22639-9
+  Specimen weight (#2)            88515.0000    81233.0000     3154-2
+  
+  
+ 7. Cytology results. The current Laboratory package does not support LOINC
+ encoding of cytology results.  LOINC codes valid as of version 2.14.
+  
+ Default mapping of NLT/LOINC codes to standard fields within the CYTOPATHOLOGY
+ (#9) multiple of LAB DATA file (#63):
+  
+  Test                            Order NLT     Result NLT     LOINC Code
+  Specimens (#.012)               88593.0000    88539.0000     22633-2
+  Brief clinical history (#.013)  88593.0000    88542.0000     22636-5
+  Preoperative diagnosis (#.014)  88593.0000    88544.0000     10219-4
+  Operative findings (#.015)      88593.0000    88542.0000     10215-2
+  Postoperative diagnosis (#.016) 88593.0000    88547.0000     10218-6
+  Gross description (#1)          88593.0000    88549.0000     22634-0
+  Microscopic examination (#1.1)  88593.0000    88563.0000     22635-7
+  Supplementary report (#1.2)     88593.0000    88589.0000     22639-9
+  Cytopathlogy diagnosis (#1.4)   88593.0000    88571.0000     22637-3
+  
+  
+ 8. Electron microscopy results. The current Laboratory package does not support
+ LOINC encoding of electron microscopy.
+  
+ Default mapping of NLT/LOINC codes to standard fields within the EM (#2)
+ multiple of LAB DATA file (#63):
+  
+  Test                            Order NLT     Result NLT     LOINC Code
+  Specimens (#.012)               88597.0000    88057.0000     22633-2
+  Brief clinical history (#.013)  88597.0000    88542.0000     22636-5
+  Preoperative diagnosis (#.014)  88597.0000    88544.0000     10219-4
+  Operative findings (#.015)      88597.0000    88542.0000     10215-2
+  Postoperative diagnosis (#.016) 88597.0000    88547.0000     10218-6
+  Gross description (#1)          88597.0000    88549.0000     22634-0
+  Microscopic examination (#1.1)  88597.0000    88563.0000     22635-7
+  Supplementary report (#1.2)     88597.0000    88589.0000     22639-9
+  EM diagnosis (#1.4)             88597.0000    88571.0000     22637-3
+  
+  
+ 9. It corrects a defect identified during patch development with processing
+ input parameters for the GCPR^LA7QRY API. If the input parameter LA7SC
+ specified specific subscripts to search then the API would search those
+ subscripts for any search code even when specific search codes were passed to
+ the API in the LA7SC array.
+  
+ 10. Converts several FileMan DBS calls on INSTITUTION file (#4) to using
+ supported API's $$NS^XUAF4 and $$STA^XUAF4.
+  
+ 11. It corrects a defect identified during patch development with processing
+ input parameters for the GCPR^LA7QRY API. If the input parameters LA7SDT and
+ LA7EDT specified specific results available date range the API could return
+ anatomic pathology results which have not been released. This API has been
+ corrected to check the REPORT RELEASE DATE field (#.11) for subscripts "CY",
+ EM", "SP".
+  
+ 12. Remedy ticket HD0000000096207 reported a problem with the error code
+ returned by the Lab API LA7QRY. A FileMan DBS error code was erroneously
+ being returned to the calling application. Routines LA7QRY, LA7QRY1, and
+ LA7QRY2 has been modified to use a different name spaced variable LA7QERR to
+ return to the calling application any error conditions. Additionally, routine
+ LA7VOBX1 has been modified to use another name spaced variable LA7DDERR to
+ handle FileMan DBS error conditions related to FileMan data dictionary calls.
+  
+ 13. It corrects a defect identified by MyHeatheVet regarding encoding of the
+ following fields in the OBR segment relating to anatomic pathology reports:
+  OBR-32 - Principal result interpreter
+  OBR-33 - Assistant result interpreter
+  OBR-34 - Technician
+  OBR-35 - Transcriptionist
+  
+ The name component of these fields was being encoded with the wrong HL7
+ delimiter (component separator). The name component will be encoded with the
+ subcomponent separator per the HL7 standard.
+  
+ 14. To integrate the VistA-Office EHR with the regular VistA system as
+  well as adding functionality also available in the Indian Health Services
+  system, the GQPR^LA7QRY API has been modified to allow for VistA-Office
+  EHR to use data specifically geared toward clinical operations, whether
+  in a hospital or a standalone clinic. The use of an Electronic
+  Health Record number as opposed to a SSN for patient identification is
+  supported as an identifier accepted as input to this API.
+  
+  The entry point GCPR^LA7QRY remains unchanged. However, the parameter
+  used to pass the patient identifier should contain a 2nd piece indicating
+  the type of identifier contained in the 1st piece.
+  
+  It supports the following types of patient identifiers
+    SS = Social Security number
+    PI = VA MPI Integration Control Number
+    MR = medical record number of patient in file PATIENT/IHS (#9000001)
+  
+  To regular VistA users this modification will not be seen.
+  
+ 15. To support HDR-Historical which uses the GRPR^LA7QRY API to extract
+ historical laboratory test results, the input parameter LA7SC to GCPR^LA7QRY
+ supports a 2nd piece. When the 2nd piece of input parameter LA7SC equals 1 the
+ API will return results encoded using VUID's when available.
+  
+ 16. Remedy tickets HD0000000141922/HD0000000148089 reported a problem with
+ failure of generation of MailMan bulletin LA7 ORDER STATUS CHANGED at
+ collection laboratory facility. Routine LA7VMSG1 changed to set interface type
+ to set flag in Lab HL7 ORU message indicating an order status change to trigger
+ bulletin generation at collecting site.
+  
+  
+ ASSOCIATED E3R
+ --------------
+  None
+  
+  
+ ASSOCIATED REMEDY
+ -----------------
+  HD0000000096207
+  HD0000000141922
+  HD0000000148089
+  
+ TEST SITES
+ ----------
+  Atlanta VAMC
+  Biloxi VAMC
+  Boston HCS
+  El Paso VAMC
+  Houston VAMC
+  Milwaukee VAMC
+  North Chicago VAMC
+  Northampton VAMC
+  Palo Alto HCS
+  Philadelphia VAMC
+  Pittsburgh HCS
+  Puget Sound HCS
+  Salt Lake City VAMC
+  South Texas HCS
+  VA Greater Los Angeles HCS
+  
+  
+ DOCUMENTATION:
+  =============
+   The files listed below may be obtained via FTP.  The preferred method is
+   to FTP the files from:
+  
+      download.vista.med.va.gov
+  
+   This transmits the files from the first available FTP server.  Sites may
+   also elect to retrieve files directly from a specific server as
+   follows:
+  
+      CIO FIELD OFFICE   FTP ADDRESS                 DIRECTORY
+      ----------------   -------------------------   --------------------
+      Albany             ftp.fo-albany.med.va.gov    [anonymous.software]
+      Hines              ftp.fo-hines.med.va.gov     [anonymous.software]
+      Salt Lake City     ftp.fo-slc.med.va.gov       [anonymous.software]
+  
+  
+      File Name                 Contents                    Retrieval Format
+      ---------                 --------                    ----------------
+  LA_5_2HL7spec_68.doc  Lab-VA HDR and COTS HL7 Interface        Binary
+                        Specification for Patch LA*5.2*68
+  
+  LA_5_2HL7spec_68.pdf  Lab-VA HDR and COTS HL7 Interface        Binary
+                        Specification for Patch LA*5.2*68
+  
+  LA_5_2RN_P68.doc      Lab-VA HDR and COTS Interface            Binary
+                        Release Notes for Patch LA*5.2*68
+  
+  LA_5_2RN_P68.pdf      Lab-VA HDR and COTS Interface            Binary
+                        Release Notes for Patch LA*5.2*68
+  
+  LA_5_2UG_P68.doc      Lab-VA HDR and COTS Interface User       Binary
+                        Guide for Patch LA*5.2*68
+   
+  LA_5_2UG_P68.pdf      Lab-VA HDR and COTS Interface User       Binary
+                        Guide for Patch LA*5.2*68
+ 
+ 
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+  
+   The install time for this patch is less than 5 minute. This patch
+   can be installed when Laboratory users are on the system.
+   Suggested time to install: non-peak requirement hours.
+  
+  
+ NOTE: Kernel patches must be current on the target system to avoid
+       problems loading and/or installing this patch.
+  
+       Patch installation needs to be coordinated with the Laboratory
+       Information Manager (LIM/ADPAC).
+  
+  1.   LOAD TRANSPORT GLOBAL
+       ---------------------------------------
+       Choose the PackMan message containing this patch and invoke the
+       INSTALL/CHECK   MESSAGE PackMan option.
+  
+  
+  2.   START UP KIDS
+       Start up the Kernel Installation and distribution System
+       Menu [XPD MAIN]:
+               Edits and Distribution ...
+                            Utilities ...
+                          Installation ...
+  
+      Select Kernel Installation & Distribution System Option: Installation
+                                                               ----
+                 1      Load a Distribution
+                 2      Verify Checksums in Transport Global
+                 3      Print Transport Global
+                 4      Compare Transport Global to Current System
+                 5      Backup a Transport Global
+                 6      Install Package(s)
+                        Restart Install of Package(s)
+                        Unload a Distribution
+  
+       Select Installation Option:
+  
+  3.   Select Installation Option:
+       -------------------------------
+       NOTE:  The following are OPTIONAL - (When prompted for the
+       INSTALL NAME, enter LA*5.2*68):
+       a.  Backup a Transport Global - This option will create a
+           backup message of any routines exported with this patch.
+           It will not backup any other changes such as DD's or templates.
+       b.  Compare Transport Global to Current System - This option
+           will allow you to view all changes that will be made when this
+           patch is installed. It compares all components of this patch
+           (routines, DD's, templates, etc.).
+       c.  Verify Checksums in Transport Global - This option will
+           allow you to ensure the integrity of the routines that are in
+           the transport global.
+  
+  4.   Select Installation Option:  Install Package(s)
+                                    ------------------
+       **This is the step to start the installation of this KIDS patch:
+  
+       a.  Choose the Install Package(s) option to start the patch install.
+           (When prompted for the INSTALL NAME, enter LA*5.2*68.)
+       b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+           NO//' answer NO (unless otherwise indicated)
+       c.  When prompted 'Want to DISABLE Scheduled Options, Menu Options,
+           and Protocols? NO//' answer NO (unless otherwise indicated)
+  
+  
+  
+  Note: Routine LA68 will be deleted after successful patch installation.
+  
+  
+ POST-INSTALLATION INSTRUCTIONS:
+ ===============================
+  
+ HL7 Event Protocol
+ The HL7 event protocol LA7 LAB RESULTS AVAILABLE (EVN) supports subscripts:
+  CH, MI, SP, CY, and EM.
+  
+ NOTE: Use the following steps only when activating the transmission of
+ laboratory data to the VA HDR and/or interfacing to a Commercial Off the Shelf
+ System (COTS) or other VistA subscriber. No further action is required, if
+ there is no requirement to activate this interface.
+  
+  To activate messaging to the VA HDR perform steps 1, 2, and 3.
+  To activate messaging to COTS and other VistA subscribers
+     perform steps 1 and 4.
+  
+ 1. To utilize the building and transmission of HL7 Lab ORU result messages.
+  
+    Enable the configuration 'LA7HDR' in LA7 MESSAGE PARAMETER file
+    (#62.48). This is accomplished by setting the field STATUS (#2) to
+    'ACTIVE' using VA File Manager. Setting this field to 'INACTIVE' will
+    turn off generation of this Lab HL7 message.
+  
+    Select VA FileMan Option:  Enter or Edit File Entries
+  
+    INPUT TO WHAT FILE: LA7 MESSAGE PARAMETER// 62.48  LA7 MESSAGE PARAMETER
+     EDIT WHICH FIELD: ALL// STATUS
+     THEN EDIT FIELD:
+  
+    Select LA7 MESSAGE PARAMETER CONFIGURATION: LA7HDR
+    STATUS: INACTIVE// ACTIVE  ACTIVE
+  
+  
+ 2. Set up the VDEFVIE4 link for Laboratory data transmission
+  a. Use the HL7 Main Menu: Select Filer and Link Management Options option to
+     edit logical link VDEFVIE4.
+  b. Enable Auto Startup and add the IP address and port number.
+     IP address: 10.224.67.234 Port number: 5021
+  c. Use the HL7 Main Menu, Start/Stop Links option to start the VDEFVIE4 link.
+  d. Use the HL7 Main Menu, Site Parameters Edit option to select VDEF view and
+     add VDEFVIE4 to the view. 
+   
+ 3. Activate the interface to the VA HDR
+  a. On the HL package, Interface Developer Options [HL MENU INTERFACE TK],
+     use the Protocol Edit [HL EDIT INTERFACE] menu option to edit the protocol
+     LA7 LAB RESULTS TO HDR (SUB).
+  b. On the second ScreenMan screen, remove the leading (;) character from the
+     Routing Logic field.
+  c. Enter the Save command to retain the changes to the protocol. 
+  
+                            HL7 SUBSCRIBER                       PAGE 2 OF 2
+                          LA7 LAB RESULTS TO HDR (SUB)
+ ---------------------------------------------------------------------------
+  
+       RECEIVING APPLICATION: LA7HDR
+  
+       RESPONSE MESSAGE TYPE: ACK                            EVENT TYPE: R01
+  
+  SENDING FACILITY REQUIRED?: YES          RECEIVING FACILITY REQUIRED?: YES
+  
+          SECURITY REQUIRED?:
+  
+                LOGICAL LINK: VDEFVIE4
+  
+  PROCESSING RTN:
+  
+   ROUTING LOGIC: ;D RTR^LA7HDR("CH;")  <-- remove leading ";" character
+ ____________________________________________________________________________
+  
+ COMMAND:                                     Press <PF1>H for help    Insert
+  
+  After the change the field should look like:
+   ROUTING LOGIC: D RTR^LA7HDR("CH;")
+  
+ 4. Transmit Lab HL7 ORU result messages to another system, such as a Commercial
+    Off the Shelf System (COTS)
+   a. Create an HL7 subscriber protocol, as documented in the HL7 Site Manager &
+      Developer Manual version 1.6*56.
+   b. Attach the HL7 subscriber protocol as a subscriber to HL7 event protocol,
+      LA7 LAB RESULTS AVAILABLE (EVN)
+ 
+ 5. On the HL package, Interface Developer Options [HL MENU INTERFACE TK] menu
+    option, use the Protocol Edit [HL EDIT INTERFACE] option to add the HL7
+    subscriber. 
+   
+  
+ 
+ Inactivate Message Generation and Transmission 
+ 
+ Notify the HDR Project Office in the event that this interface is deactivated
+  and the interface to the HDR was previously activated
+ 
+ Use step 2 to inactivate message generation/transmission to a specific
+  subscriber.
+ 
+ 1. Inactivate Lab HL7 ORU message generation and transmission to all
+    subscribers of event protocol, LA7 LAB RESULTS AVAILABLE (EVN).
+  
+  a. Disable the configuration LA7HDR in the LA7 MESSAGE PARAMETER file (#62.48),
+     and set the field Status (#2) to Inactive using VA File Manager Enter or
+     Edit File Entries [DIEDIT].
+  
+  b. When this field is set to Inactive, the generation of the Lab HL7 ORU
+     message is turned off.
+  
+ 2. Inactivate message transmission to a specific subscriber
+  
+  a. On the HL package, Interface Developer Options [HL MENU INTERFACE TK] menu
+     option, use the Protocol Edit [HL EDIT INTERFACE] option to remove the
+     related subscriber protocol from the event protocol LA7 LAB RESULTS
+     AVAILABLE (EVN).
+  
+  b. For the VA HDR, remove subscriber protocol LA7 LAB RESULTS TO HDR (SUB).
+  
+  
+  
+ INSTALLATION EXAMPLE
+ ====================
+  
+ Select Installation Option: 6  Install Package(s) Select INSTALL NAME:
+ LA*5.2*68 Loaded from Distribution  2/4/05@10:21
+      => LA*5.2*68
+  
+ This Distribution was loaded on Feb 04, 2005@10:21 with header of
+    LA*5.2*68
+    It consisted of the following Install(s):
+       LA*5.2*68
+  Checking Install for Package LA*5.2*68 Will first run the
+  Environment Check Routine, LA68
+  
+  
+                         --- Environment Check is Ok ---
+  
+ Install Questions for LA*5.2*68
+  
+ Incoming Files:
+  
+  
+    62.48     LA7 MESSAGE PARAMETER  (including data) Note:  You already have
+ the 'LA7 MESSAGE PARAMETER' File.  I will OVERWRITE your data with mine.
+  
+  
+    63        LAB DATA  (Partial Definition) Note:  You already have the 'LAB
+ DATA' File.
+  
+  
+  Want KIDS to Rebuild Menu Trees Upon Completion of Install? NO//
+  
+  Want KIDS to INHIBIT LOGONs during the install? NO// NO
+  Want to DISABLE Scheduled Options, Menu Options, and Protocols? NO// NO
+  
+ Enter the Device you want to print the Install messages.  You can queue the
+ install by enter a 'Q' at the device prompt.  Enter a '^' to abort the install.
+  
+  
+ DEVICE: HOME//  TELNET VIRTUAL
+  
+  
+  Install Started for LA*5.2*68 :
+                Feb 04, 2005@10:21:55
+  
+ Build Distribution Date: Feb 04, 2005
+  
+  Installing Routines:.............
+                Feb 04, 2005@10:21:55
+  
+  Running Pre-Install Routine: PRE^LA68.
+  
+                Sending install started alert to mail group G.LMI
+  
+                           *** Pre install started ***
+  
+                            --- No action required---
+  
+                          *** Pre install completed ***
+  
+  Installing Data Dictionaries: ...
+                Feb 04, 2005@10:21:55
+  
+  Installing Data:
+                Feb 04, 2005@10:21:55
+  
+  Installing PACKAGE COMPONENTS:
+  
+  Installing HL7 APPLICATION PARAMETER...
+  
+  Installing PROTOCOL..
+   Located in the LA7 (LAB MESSAGING) namespace..
+   Located in the LA7 (LAB MESSAGING) namespace..
+   Located in the LA7 (LAB MESSAGING) namespace..
+                Feb 04, 2005@10:21:55
+  
+  Running Post-Install Routine: POST^LA68.
+  
+                           *** Post install started ***
+  
+           *** Clearing facility name for LA7LAB entry in file #771 ***
+  
+                     *** Clearing facility name completed ***
+  
+                          *** Post install completed ***
+  
+               Sending install completion alert to mail group G.LMI
+  
+  Updating Routine file......
+  
+  Updating KIDS files.......
+  
+  LA*5.2*68 Installed.
+                Feb 04, 2005@10:21:55
+  
+  Install Message sent #xxxx
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.2;AUTOMATED LAB INSTRUMENTS;**[Patch List]**;Sep 27, 1994;Build 56
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: LA68
+    Before:       n/a   After: B17816218  **68**
+Routine Name: LA7HDR
+    Before:       n/a   After: B39353571  **68**
+Routine Name: LA7HDR1
+    Before:       n/a   After: B37911850  **68**
+Routine Name: LA7QRY
+    Before:  B5873978   After:  B8496816  **46,69,68**
+Routine Name: LA7QRY1
+    Before: B12341981   After: B34477085  **46,61,68**
+Routine Name: LA7QRY2
+    Before: B24752999   After: B38475048  **46,69,68**
+Routine Name: LA7VHLU
+    Before: B42350744   After: B44857108  **46,62,64,68**
+Routine Name: LA7VHLU2
+    Before: B19775199   After: B28776777  **46,61,64,68**
+Routine Name: LA7VHLU3
+    Before: B15291257   After: B55573792  **46,64,68**
+Routine Name: LA7VHLU4
+    Before: B25336667   After: B25782007  **46,64,68**
+Routine Name: LA7VHLU5
+    Before: B40473983   After: B49053645  **46,64,68**
+Routine Name: LA7VHLU9
+    Before:       n/a   After: B16600197  **68**
+Routine Name: LA7VIN5
+    Before: B52231590   After: B62438539  **46,64,68**
+Routine Name: LA7VMSG1
+    Before: B51506932   After: B52098570  **56,46,61,64,68**
+Routine Name: LA7VOBR
+    Before: B23749256   After: B25844567  **46,64,68**
+Routine Name: LA7VOBRA
+    Before: B37451712   After: B39455733  **46,64,68**
+Routine Name: LA7VOBRB
+    Before:       n/a   After: B12807459  **68**
+Routine Name: LA7VOBX
+    Before: B25091305   After: B30185961  **46,64,68**
+Routine Name: LA7VOBX1
+    Before: B15262892   After: B28786998  **46,61,63,64,71,68**
+Routine Name: LA7VOBX2
+    Before: B15453740   After: B21393582  **46,64,68**
+Routine Name: LA7VOBX3
+    Before: B33632644   After: B83540167  **46,64,68**
+Routine Name: LA7VOBXA
+    Before: B31676928   After: B53603815  **46,70,64,68**
+Routine Name: LA7VORC
+    Before:  B8007778   After: B18625097  **46,64,68**
+Routine Name: LA7VORM1
+    Before: B52156055   After: B57485485  **27,51,46,61,64,68**
+Routine Name: LA7VORU
+    Before: B58855542   After: B24122155  **27,46,61,64,71,68**
+Routine Name: LA7VORU1
+    Before: B35283793   After: B61414246  **46,64,68**
+Routine Name: LA7VORU2
+    Before:  B6677596   After:  B5334202  **46,64,68**
+Routine Name: LA7VORUA
+    Before:  B8112587   After: B11624236  **61,64,68**
+Routine Name: LA7VORUB
+    Before:       n/a   After: B37430566  **68**
+ 
+Routine list of preceding patches: 69, 71
+
+=============================================================================
+User Information:
+Entered By  : MCCORMACK,JOHN                Date Entered  : JUL 11, 2003
+Completed By: MANIES,BRENDA                 Date Completed: JUL 13, 2010
+Released By : BELSCHWINDER,MICHAEL          Date Released : JUL 14, 2010
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,218 @@
+$TXT Created by THOMPSON,SETH at VMPDEV20.FO-BAYPINES.MED.VA.GOV  (KIDS) on Thursday, 11/20/08 at 12:23
+=============================================================================
+Run Date: JUL 29, 2009                     Designation: PSO*7*266
+Package : PSO - OUTPATIENT PHARMACY           Priority: Mandatory
+Version : 7       SEQ #279                      Status: Released
+                  Compliance Date: AUG 29, 2009
+=============================================================================
+
+Associated patches: (v)PSO*7*206   <<= must be installed BEFORE `PSO*7*266'
+                    (v)PSO*7*303   <<= must be installed BEFORE `PSO*7*266'
+                    (v)PSO*7*315   <<= must be installed BEFORE `PSO*7*266'
+
+Subject: DAYS SUPPLY, REFILL, & DATE CORRECTIONS
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch will correct the system from allowing 90 day supply 
+ prescriptions from having 11 refills.  It will also prevent the system 
+ from allowing 9999999999 as a refill amount.  The patch is also 
+ correcting problems with incorrect BINGO board and suspense date 
+ information.
+  
+ ASSOCIATED NSR:
+ ===============
+ N/A
+  
+ ASSOCIATED REMEDY:
+ ==================
+ 1) HD0000000153822   90 day supply with 11 refills allowed.
+     Duplicates: HD0000000186337     Drug Change And No Refills.
+ 2) HD0000000129050   Allowable Refills
+ 3) HD0000000198754   BINGO BOARD DISPLAYING INCORRECT RX #
+ 4) HD0000000120910   Incorrect Suspend Date 
+  
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ San Diego, CA
+ Oklahoma City, OK
+ Central Plains HCS
+  
+ REMEDY TICKET OVERVIEW:
+ =======================
+ 1) HD0000000153822    90 day supply with 11 refills allowed.
+  
+ Problem:
+ --------
+ Having a 90 days supply and 11 refills is longer than the maximum length 
+ for any prescription. Apparently there was no check in place to base the
+ number of days supply on the number of refills, only vice versa.
+  
+ Resolution:
+ ----------- 
+ Change the software to force a change in refills when the days supply is 
+ edited to be more than allowed for the current number of refills.
+ Example:
+ An active prescription with 11 refills and 30 days supply being edited to 
+ have 90 days supply results in the following message.
+ DAYS SUPPLY:  (1-90): 30// 90
+ Too many refills for amount of days supply, Refill change forced.
+ # OF REFILLS:  (0-3): 3//
+  
+ Technical:
+ ----------
+ Modify PSODIR1 to limit the days supply based on the number of refills.
+  
+ 2) HD0000000129050   Allowable Refills
+  
+ Problem:  
+ --------
+ An RX PATIENT STATUS file (#53) entry with the REFILL field (#4) not set
+ (null) would cause the allowance of 999999999999 refills.
+  
+ Resolution:
+ -----------
+ When editing refills, the patient status is not set (null) the number of
+ refills will now be set to 0.
+  
+ Technical:
+ ----------
+ Modify PSODIR1 so that before comparing the amount of refills set by the 
+ RX PATIENT STATUS file (#53), check if it is empty, if so set it to 0.
+  
+ 3) HD0000000198754   BINGO BOARD DISPLAYING INCORRECT RX #
+  
+ Problem:  
+ --------
+ In a certain combination of refilling and creating a new order, a 
+ prescription number would be incorrectly added to the wrong patient's
+ PATIENT NOTIFICATION (Rx READY) file (#52.11) entry. This would lead
+ to the bingo board displaying a prescription number for the wrong patient.
+  
+ Resolution:
+ -----------
+ This only happens with a certain combination of finishing and entering 
+ new orders. When this combination occurred, the PATIENT NOTIFICATION (Rx
+ READY) file (#52.11) entry was not being filed until a second prescription
+ is processed. The change will force the filing for each prescription.
+  
+ Technical:
+ ----------
+ Change the requirements for calling of ^PSORXL and ^PSOBING1 in routines 
+ PSOORFIN and PSOORFI5 so that they are called in the correct 
+ circumstances.
+  
+ 4) HD0000000120910   Incorrect Suspend Date 
+  
+ Problem:  
+ --------
+ If a prescription is refilled twice before the label is printed, the Last 
+ Fill Date will be reset to the fill date of the first refill when the
+ label is printed.
+  
+ Resolution:
+ -----------
+ Recalculate the Last Fill Date when the label is printed to check for the 
+ actual last fill, instead of using the wrong date that hung around from
+ the first refill.
+  
+ Technical:
+ ----------
+ Upon printing the label (routines PSOLBL and PSOLLLI) recalculate the 
+ fill date.
+  
+ DATA DICTIONARY CHANGES:
+ ========================
+ N/A
+  
+ TEMPLATES:
+ ==========
+ N/A
+  
+ DISTRIBUTION:
+ =============
+ This patch is exported using KIDS.
+  
+  
+ INSTALLATION INSTRUCTIONS:
+ ==========================
+ It is recommended that this patch be installed after normal business
+ hours.  The installation time should be less than 2 minutes. Outpatient
+ Pharmacy users should NOT be on the system at the time of install.
+  
+   
+ 1. Use the INSTALL/CHECK MESSAGE option on the PackMan menu. [Note:
+    TEXT PRINT/DISPLAY option in the PackMan menu will display the
+    patch text only].
+      
+ 2. From the Kernel Installation and Distribution System (KIDS)
+    menu, select the Installation menu.
+  
+ 3. From this menu, you may elect to use the following options:
+    (when prompted for INSTALL NAME, enter PSO*7.0*266)
+     
+    a.  Backup a Transport Global - this option will create a backup
+        message of any routines exported with the patch.  It will
+        NOT backup any other changes such as DDs or templates.
+    b.  Compare Transport Global to Current System  - this option
+        will allow you to view all changes that will be made when
+        the patch is installed.  It compares all components of the
+        patch (routines, DDs, templates, etc.).
+    c.  Verify Checksums in Transport Global - this option will
+        allow you to ensure the integrity of the routines that are
+        in the transport global.
+    d.  Print Transport Global - this option will allow you to view
+        the components of the KIDS build.
+     
+ 4. Use the Install Package(s) option and select the package
+    PSO*7.0*266
+     
+ 5. When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+    NO//', respond NO.
+     
+ 6. When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+    Protocols? NO//', respond NO.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;7.0;OUTPATIENT PHARMACY;**[Patch List]**;DEC 1997;Build 4
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PSODIR1
+    Before: B73077319   After: B83728736  **23,46,78,102,121,131,146,166,
+                                           184,222,268,206,266**
+Routine Name: PSOLBL
+    Before: B63370114   After: B64018530  **8,19,30,36,47,71,92,120,157,
+                                           244,206,225,303,266**
+Routine Name: PSOLLLI
+    Before: B66487353   After: B67178881  **120,157,189,161,244,200,206,
+                                           225,303,266**
+Routine Name: PSOORFI5
+    Before: B19569325   After: B19521565  **225,315,266**
+Routine Name: PSOORFIN
+    Before: B59016480   After: B61371213  **7,15,27,32,44,46,84,106,111,
+                                           117,131,146,139,195,225,315,
+                                           266**
+ 
+Routine list of preceding patches: 303, 315
+
+=============================================================================
+User Information:
+Entered By  : THOMPSON,SETH                 Date Entered  : FEB 26, 2007
+Completed By: HEFFERNAN,COREY               Date Completed: JUN 11, 2009
+Released By : CAMPBELL,THOMAS               Date Released : JUL 29, 2009
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

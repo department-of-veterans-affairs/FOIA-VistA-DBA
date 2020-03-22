@@ -1,0 +1,180 @@
+$TXT Created by DAVIS,PAULETTE T at DEVCRN.FO-ALBANY.MED.VA.GOV  (KIDS) on Friday, 01/25/08 at 13:03
+=============================================================================
+Run Date: FEB 12, 2008                     Designation: RG*1*53
+Package : RG - CLINICAL INFO RESOURCE NETWORK Priority: Mandatory
+Version : 1        SEQ #50                      Status: Released
+                  Compliance Date: MAR 14, 2008
+=============================================================================
+
+Associated patches: (v)RG*1*44     <<= must be installed BEFORE `RG*1*53'
+                    (v)RG*1*47     <<= must be installed BEFORE `RG*1*53'
+                    (v)RG*1*48     <<= must be installed BEFORE `RG*1*53'
+
+Subject: FAILED RPC RESULTS IN 'PLEASE CHECK BACK LATER' MESSAGE
+
+Category: 
+  - Routine
+
+Description:
+============
+
+  NOTE:  RG* and MPIF* patches should NOT be installed on legacy
+  systems to avoid issues with the legacy systems ending up as
+  Treating Facilities.
+   
+  RG*1.0*44, RG*1.0*47, and RG*1.0*48 are required builds for
+  patch RG*1*53.
+     
+  Issue #1
+  A Remote Procedure Call (RPC) sends a request for data to the Master
+  Patient Index (MPI) from VistA for the Primary View Display from MPI
+  [RG PRIMARY VIEW FROM MPI] option, the PVR View PV Rej Detail action,
+  and the PR  MPI Primary View action on the MPI/PD Exception Handling
+  [RG EXCEPTION HANDLING] option.
+   
+  In the code, an assessment is made to see if data has returned for the
+  query.  The software attempts to get the status of the query for up to
+  30 seconds.  In the event of a delay that exceeds the allotted 30 seconds
+  (e.g., due to network failure or a connectivity issue), the RPC fails.
+  When a subsequent query is attempted using these options/actions for
+  the same patient, the user sees the following message and is unable to
+  resend a new query for that patient.
+  "Query data has NOT returned from the MPI; please check back later."
+   
+  Information pertaining to the request is stored in a temporary global.
+  The "check back later" message was occurring because the entry for the
+  patient/Integration Control Number (ICN) in the temporary global was not
+  being deleted after the failed RPC attempt.
+   
+  This issue has been resolved by killing the appropriate ^XTMP global
+  for the ICN if the RPC call fails.  That allows the query to be resent.
+   
+  Additionally, the format for the ^XTMP global is being changed with
+  this patch.  Previously, the zero node for the ^XTMP("RGPVMPI") and
+  ^XTMP("RGPVREJ") globals was reset two days into the future for each
+  new query.  With daily usage, that prevented the ^XTMP purge from
+  deleting older query data in these globals.  The format has been
+  modified so that each query has a zero node, by ICN, and thus, will
+  be systematically purged by the KERNEL's Clean Old Job Nodes in XUTL
+  [XQ XUTL $J NODES] option.
+    
+  Documentation Update:
+  =====================
+  The following MASTER PATIENT INDEX/PATIENT DEMOGRAPHICS (MPI/PD)
+  VISTA documentation is available, updated for patch RG*1.0*53.
+  Facilities should download the revised documentation listed as
+  follows:
+  
+      User Manual                         RG1_0_UM.PDF
+      Release Notes                       RG1_0_RN.PDF
+      Exception Handling                  RG1_0_EH.PDF
+   
+  The preferred retrieval method is to FTP from the ANONYMOUS.SOFTWARE
+  directory at: DOWNLOAD.VISTA.MED.VA.GOV
+  This transmits the file from the first available FTP server.
+  Sites may also elect to retrieve software directly from one
+  of the following servers.
+  
+  OI Field Office         FTP Address                  Directory
+  ------------------------------------------------------------------
+  Albany             ftp.fo-albany.med.va.gov     ANONYMOUS.SOFTWARE
+  Hines              ftp.fo-hines.med.va.gov      ANONYMOUS.SOFTWARE
+  Salt Lake City     ftp.fo-slc.med.va.gov        ANONYMOUS.SOFTWARE
+  
+  Note:  These files must be transferred in binary or IMAGE,
+         not ASCII, mode.
+   
+  The documents can also be downloaded from the VistA Documentation
+  Library (VDL) Web page in both Acrobat PDF and MS-Word DOC formats:
+   
+      http://www.va.gov/vdl/application.asp?appid=16
+   
+  Associated Remedy Ticket(s):
+  ============================
+  HD219821 - MPI
+  HD223804 - Query data not returned
+   
+  Associated New Service Request (NSR):
+  =====================================
+  There is no associated NSR with the patch.
+    
+  Test Sites:
+  ===========
+  Louisville VAMC
+  Maryland HCS
+  Oklahoma City VAMC
+     
+  Post-Install Routine:
+  =====================
+  Post-install routine, RGP53PST, will delete the ^XTMP("RGPVREJ") and
+  ^XTMP("RGPVMPI") globals as the format for this data is being changed
+  with this patch.
+    
+  Installation Instructions:
+  ==========================
+  This patch takes less than 2 minutes to install.  This patch should
+  be loaded during non-peak hours to minimize disruption to the users.
+   
+  1.  Users are allowed on the system during patch installation.
+   
+  2.  Use the INSTALL/CHECK MESSAGE option on the PackMan menu.
+      Note:  TEXT PRINT/DISPLAY option in the PackMan menu will display
+      the patch text only.
+     
+  3.  From the Kernel Installation and Distribution System Menu, select
+      the Installation menu.
+   
+  4.  From this menu, you may elect to use the following options:
+      (a)  Backup a Transport Global.
+      (b)  Compare Transport Global to Current System.
+      (c)  Verify Checksums in Transport Global.
+      (d)  Print Transport Global.
+   
+  5.  Use the Install Package(s) option and select the package RG*1.0*53.
+   
+  6.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? NO//',
+      respond NO.
+   
+  7.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, and
+      Protocols? YES//', respond YES.  The following OPTIONS should be
+      disabled during the installation.
+   
+      MPI/PD Exception Handling [RG EXCEPTION HANDLING]
+      Primary View Display from MPI [RG PRIMARY VIEW FROM MPI]
+   
+  8. Routine RGP53PST can be deleted from your system after successful
+     installation.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;1.0;CLINICAL INFO RESOURCE NETWORK;**[Patch List]**;30 Apr 99;Build 2
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: RGEX06
+    Before:  B8462958   After:  B8799992  **48,53**
+Routine Name: RGEX07
+    Before:  B4853896   After:  B4862923  **44,53**
+Routine Name: RGP53PST
+    Before:       n/a   After:  B1795800  **53**
+Routine Name: RGPVMPI
+    Before: B17890972   After: B18263878  **48,53**
+Routine Name: RGPVREJ
+    Before: B16898530   After: B16940995  **44,47,53**
+ 
+Routine list of preceding patches: 47, 48
+
+=============================================================================
+User Information:
+Entered By  : DAVIS,PAULETTE                Date Entered  : DEC 19, 2007
+Completed By: ALDERMAN,MATT S               Date Completed: FEB 06, 2008
+Released By : ALEXANDER,DIANNE              Date Released : FEB 12, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

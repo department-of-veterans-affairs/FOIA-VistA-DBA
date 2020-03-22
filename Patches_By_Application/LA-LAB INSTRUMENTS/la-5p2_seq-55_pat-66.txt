@@ -1,0 +1,491 @@
+$TXT Created by MCCORAMCK,JOHN at LABUI.FS.FO-ALBANY.MED.VA.GOV  (KIDS) on Tuesday, 07/22/08 at 15:02
+=============================================================================
+Run Date: AUG 12, 2008                     Designation: LA*5.2*66
+Package : LA - AUTOMATED LAB INSTRUMENTS      Priority: Mandatory
+Version : 5.2        SEQ #55                    Status: Released
+                  Compliance Date: SEP 12, 2008
+=============================================================================
+
+Associated patches: (v)LA*5.2*57   <<= must be installed BEFORE `LA*5.2*66'
+                    (v)HL*1.6*93   <<= must be installed BEFORE `LA*5.2*66'
+                    (v)HL*1.6*122  <<= must be installed BEFORE `LA*5.2*66'
+                    (v)LA*5.2*72   <<= must be installed BEFORE `LA*5.2*66'
+
+Subject: LAB UNIVERSAL INTERFACE HL V1.6 UPGRADE
+
+Category: 
+  - Routine
+  - Other
+  - Enhancement (Mandatory)
+
+Description:
+============
+
+  Blood Bank Team Coordination
+  ============================
+  EFFECT ON BLOOD BANK FUNCTIONAL REQUIREMENTS: Patch LA*5.2*66 does not contain
+  any changes to the VISTA BLOOD BANK Software as defined by VHA DIRECTIVE
+  2004-058 titled VISTA BLOOD BANK SOFTWARE VERSION 5.2.
+  
+  EFFECT ON BLOOD BANK FUNCTIONAL REQUIREMENTS: Patch LA*5.2*66 does not alter or
+  modify any software design safeguards or safety critical elements functions.
+  
+  RISK ANALYSIS: Changes made by patch LA*5.2*66 have no effect on Blood Bank
+  software functionality, therefore RISK is none.
+  
+  VALIDATION REQUIREMENTS BY OPTION: Because of the nature of the changes made,
+  no specific validation requirements exist as a result of installation of this
+  patch.
+  
+  ************************************************************************
+  
+  This patch upgrades the Lab Universal Interface (UI) from VistA's Health Level
+  Seven (HL) v1.5 to HL v1.6 including the use of v1.6 TCP/IP functionality.  It
+  supports the current Lab UI HL7 Interface Specifications based on the HL7
+  Standard V2.2.
+  
+  The current UI interface using the HL v1.5 interface will continue to function
+  after patch installation.  The transition to the HL V1.6 interface can be
+  accomplished after patch installation on a connection by connection basis.
+  When possible, switching from the old interface to the new interface should be
+  done on a per instrument basis instead of all instruments at once.  Follow the
+  post installation instructions to convert an interface to the HL V1.6
+  interface.
+  
+     Note: New Generic Instrument Manager (GIM) software must be obtained
+           from the vendor in order for this new interface to work.
+  
+  Before the release of this patch lab instruments interfaced through TCP/IP were
+  using a non-supported modification of an HL7 routine.  This patch will allow
+  sites to interface their automated testing devices via supported TCP/IP
+  functionality and will allow the sites to manage these interfaces using the HL7
+  v1.6 package's tools.
+  
+  HL7 messages are HL7 version 2.2 and the messaging is composed of ORM~O01 and
+  ORU~R01 messages.  Messaging uses original acknowledgement mode.  ORM messages
+  use "LA7LAB" as the Sending Application and "LA7UIx" as the Receiving
+  Application.  ORU messages use "LA7UIx" as the Sending Application and "LA7LAB"
+  as the Receiving Application.
+  
+  The PROTOCOL (#101), HL7 APPLICATION PARAMETER (#771), HL LOGICAL LINK (#870)
+  and LA7 MESSAGE PARAMETER (#62.48) files each have ten entries using a naming
+  convention that contains "LA7UIx" (where "x" is an integer) such as "LA7UI1
+  ORU-R01 EVENT 2.2" and "LA7UI1."  This convention allows the site to interface
+  with multiple generic instrument managers.
+  
+  To setup an auto-instrument, the MESSAGE CONFIGURATION field (#8) of the AUTO
+  INSTRUMENT file (#62.4) must be set to the appropriate LA7 MESSAGE PARAMETER
+  file (#62.48) entry (ie LA7UI1).  Also, the FILE BUILD ENTRY field (#93) should
+  equal "EN" and the FILE BUILD ROUTINE field (#94) should equal "LA7UID".
+  
+  In order to send/receive messages the configuration needs to be set ACTIVE via
+  its STATUS field (#2) of LA7 MESSAGE PARAMETER file (#62.48).  The
+  configuration must also specify which routine is used to process messages in
+  LA7 MESSAGE PARAMETER file (#62.48) PROCESS DOWNLOAD field (#6) which should be
+  set to "D EN^LA7UIO" for Lab Universal Interfaces.
+  
+    AUTO INSTRUMENT (#62.4)
+      MESSAGE CONFIGURATION (#8) = LA7 MESSAGE PARAMETER entry (ie LA7UI1)
+      FILE BUILD ENTRY (#93) = EN
+      FILE BUILD ROUTINE (#94) = LA7UID
+  
+  
+    LA7 MESSAGE PARAMETER (#62.48)
+      STATUS (#2) = ACTIVE
+      PROCESS DOWNLOAD (#6) = D EN^LA7UIO
+  
+  
+  1)  The v1.5 interface constructed ORM message segments that were not in
+  compliance with the HL7 standard.  Previously an ORC segment was followed by
+  one or more OBR segments.  The HL7 standard specifies that ORC/OBR segments
+  should exist as a pair so in this interface each ordered test will be sent in
+  the ORM message as an ORC/OBR segment pair.  Example:
+    PID...
+    PV1...
+    ORC...
+    OBR...
+    ORC...
+    OBR...
+  
+  
+  2)  HL7 message data is now checked for conflicts with HL7 delimiters.  If data
+  conflicts with the message's delimiters then the data with be escape encoded
+  according to HL7 rules.
+  
+  
+  3)  In an ORM message, OBR-18 is constructed as an HL7 string data type.  The
+  HL7 v1.5 interface constructed it as a coded element (CE) data type.
+  
+  
+  4)  For Lab UI messages, if the specimen received does not match the HL7 0070
+  table, an interface error message will be created unless the specimen is
+  related to the LAB CONTROL NAME file (#62.3).
+  
+  
+  5)  For Lab UI messages, any units/reference ranges received from an instrument
+  are discarded as the units/reference ranges from the associated LABORATORY TEST
+  file (#60) are used.
+  
+  
+  6)  For Lab UI messages, abnormal flags received from an instrument are not
+  stored.
+  
+  7)  The Lab UI Auto Download process (routine LA7ADL) is changed to support the
+  FileMan system wide lock timeout via supported API LOCK^DILF.
+  
+  8. To provide for data entry consistency, results received via this
+  interface are validated against the input transform for the data field
+  used to store the test results. Test results received from an instrument
+  that do not conform to the input transform for the related Lab Data Name
+  will be rejected.
+  
+  If SET OF CODES is utilized as the data type for a particular interfaced
+  test, the internally stored code needs to be brought into alignment with
+  what the instrument is reporting. If the instrument sends a result that
+  does not match what is entered in the SET OF CODES that result is
+  considered not to be verifiable data.
+  
+  
+  
+  Associated Remedy:
+  ===============
+  HD0000000192820  lab DI at Lyons is not working Resolution:
+                   Resolved by site.
+                   thru UI No software changes required.
+  HD0000000069104  NETWORKING DATA INNOVATIONS INSTRUMENT MGR
+  HD0000000069215  LAB DI - migrate from v1.5 to v1.6 TCP
+  HD0000000069217  Slow DHCP processing of lab instrument data
+  
+  Associated E3R:
+  ===============
+  N/A
+  
+  
+  Test Sites
+  ==========
+   MILWAUKEE, WI -VAMC (large)
+   NEW JERSEY HCS (large, integrated)
+   TUCSON, AZ -VAMC (large)
+  
+  
+  NEW OPTION:
+  ========
+  
+    [LA7 UI SETUP]     Lab Universal Interface Setup
+      Allows configuring Lab Universal Interface entries (LA7UI*) in the
+      LAB MESSAGE PARAMETER file (#62.48) and corresponding entries in the
+      AUTO INSTRUMENT file (#62.4) which use the Lab Universal Interface.
+  
+    This option is attached to menu option Lab Universal Interface Menu
+    [LA7 MAIN MENU].
+  
+  
+  PROTOCOLS:
+  ==========
+  The following protocols are new:
+  
+     LA7UI ORM-O01 EVENT 2.2
+        ORM event driver for Lab Universal Interface (HL7 v1.6 upgrade)
+        using HL7 messaging v2.2
+  
+     LA7UI ORM-O01 SUBS 2.2
+        ORM subscriber for Lab Universal Interface (HL7 v1.6 upgrade) using
+        HL7 messaging v2.2
+  
+     LA7UI ORU-R01 SUBS 2.2
+        ORU subscriber for Lab Universal Interface (HL7 v1.6 upgrade) using
+        HL7 messaging v2.2
+  
+     The following are ORU event drivers for Lab Universal Interface (HL7
+     v1.6 upgrade) using HL7 messaging v2.2 :
+       LA7UI1 ORU-R01 EVENT 2.2
+       LA7UI2 ORU-R01 EVENT 2.2
+       LA7UI3 ORU-R01 EVENT 2.2
+       LA7UI4 ORU-R01 EVENT 2.2
+       LA7UI5 ORU-R01 EVENT 2.2
+       LA7UI6 ORU-R01 EVENT 2.2
+       LA7UI7 ORU-R01 EVENT 2.2
+       LA7UI8 ORU-R01 EVENT 2.2
+       LA7UI9 ORU-R01 EVENT 2.2
+       LA7UI10 ORU-R01 EVENT 2.2
+  
+  
+  
+  Documentation Retrieval:
+  ========================
+   Documentation is available on the ANONYMOUS.SOFTWARE directory at one of
+   the following Office of Information (OI) Field Offices.  Sites may
+   retrieve documentation in one of the following ways:
+  
+   1.  The preferred method is to FTP the files from:
+             download.vista.med.va.gov
+       which will transmit the files from the first available FTP server.
+  
+   2.  Sites may also elect to retrieve documentation directly from a
+       specific server as follows:
+          Albany          ftp.fo-albany.med.va.gov
+          Hines           ftp.fo-hines.med.va.gov
+          Salt Lake City  ftp.fo-slc.med.va.gov
+  
+  
+       The documentation distribution includes:
+  
+  File Name          Contents                       Retrieval Formats
+  ---------          --------                       -----------------
+  LAB_52_LA66_INSTALL_USER_GUIDE.doc
+                     Laboratory UI HL V1.6 Upgrade
+                     Installation and User Guide
+                     Patch LA*5.2*66                BINARY
+  
+  LAB_52_LA66_INSTALL_USER_GUIDE.pdf
+                     Laboratory UI HL V1.6 Upgrade
+                     Installation and User Guide
+                     Patch LA*5.2*66                BINARY
+  
+  LAB_52_LA66_HL7_SPECIFICATIONS.doc
+                     Laboratory UI HL V1.6 Upgrade
+                     Installation and User Guide
+                     Patch LA*5.2*66                BINARY
+  
+  LAB_52_LA66_HL7_SPECIFICATIONS.pdf
+                     Laboratory UI HL V1.6 Upgrade
+                     Installation and User Guide
+                     Patch LA*5.2*66                BINARY
+  
+  
+   3.  Documentation can also be retrieved from the VistA Documentation
+       Library (VDL) at  http://www.va.gov/vdl/
+  
+  
+  
+  INSTALLATION INSTRUCTIONS
+  =========================
+  
+    The install time for this patch is less than 2 minutes.  This patch
+    should be installed when Laboratory users are off the system.
+  
+    The Lab Universal Interface Auto Download should be shutdown before
+    installing this patch.  This can be done via the Start/Stop Auto
+    Download Background Job [LA7 ADL START/STOP] menu option.
+  
+    The KIDS environment check determines if the Lab UI Auto Download
+    process is currently running:
+  
+      If it is running it will be automatically shutdown during patch
+      installation and automatically restarted after patch installation.
+  
+      If the Lab UI Auto Download process is not running at patch
+      installation time then KIDS will take no action with the Lab UI Auto
+      download process.
+  
+    After patch installation is complete, check the status of the Lab UI
+    Auto Download process using the option Start/Stop Auto Download
+    Background Job [LA7 ADL START/STOP] and configure to normal
+    operational setting (see step 6 below).
+  
+  
+    Suggested time to install: non-peak requirement hours.
+    The installation should NOT be queued.
+  
+     Note: Patch installation needs to be coordinated with the Laboratory
+           Information Manager (LIM/ADPAC).
+  
+    1.  Use the 'INSTALL/CHECK MESSAGE' option of the PackMan menu.  This
+        option will load the KIDS patch onto your system.
+  
+    2.  On the 'Kernel Installation & Distribution System' Menu (KIDS),
+        select the 'Installation' menu.
+  
+    3.  Use the 'Verify Checksum in Transport Global' option and verify
+        that all routines have the correct checksums.
+  
+    4.  On the KIDS menu, under the 'Installation' menu, use the following
+        options:
+          Print Transport Global
+          Compare Transport Global to Current System
+          Backup a Transport Global
+  
+    5.  Use the 'Install Package(s)' option under the 'Installation' menu
+        and select the package 'LA*5.2*66'.
+  
+        When prompted
+          'Want KIDS to Rebuild Menu Trees Upon Completion of Install?'
+        choose 'NO'.  Note: Responding "Yes" to the prompt for rebuilding
+        menu trees can significantly increase install time.
+  
+        When prompted
+           'Want KIDS to INHIBIT LOGONs during the install?
+        choose 'NO'.
+  
+        When prompted
+            'Want to DISABLE Scheduled Options, Menu Options, and
+             Protocols?  YES//'
+        choose 'NO' unless the site has additional laboratory options that
+        should be disabled during install.
+  
+    6. If the Lab Universal Interface Auto Download process was stopped
+       manually, restart it via the Start/Stop Auto Download Background
+       Job [LA7 ADL START/STOP] menu option.
+  
+       If the process was stopped by the KIDS install itself, the process
+       will restart automatically.
+  
+  
+    Note: Routine LA66 will be deleted after successful patch installation.
+  
+  
+  IMPLEMENTATION INSTRUCTIONS
+  ------------------------------
+   See LABORATORY UNIVERSAL INTERFACE (UI) HEALTH LEVEL (HL) V1.6 UPGRADE
+       INSTALLATION AND USER GUIDE  PATCH LA*5.2*66
+  
+  
+  INSTALLATION EXAMPLE
+  ====================
+  
+  Select Installation Option: Install Package(s) Select INSTALL NAME: LA*5.2*66
+     Loaded from Distribution  9/13/07@15:03:06
+       => LA*5.2*66  ;Created on Sep 13, 2007@13:07:05
+  
+  This Distribution was loaded on Sep 13, 2007@15:03:06 with header of
+     LA*5.2*66  ;Created on Sep 13, 2007@13:07:05
+     It consisted of the following Install(s):
+        LA*5.2*66 Checking Install for Package LA*5.2*66 Will first run the
+  Environment Check Routine, LA66
+  
+                 Sending install started alert to mail group G.LMI
+              Shutting down Lab Universal Interface Auto Download Job
+  ..........
+                      N O T E:  If you abort this installation
+                restart the Lab Universal Interface background job.
+  
+                            --- Environment is okay ---
+  
+  Install Questions for LA*5.2*66
+  
+  Incoming Files:
+  
+  
+     62.48     LA7 MESSAGE PARAMETER  (including data) Note:  You already have
+  the 'LA7 MESSAGE PARAMETER' File.  I will OVERWRITE your data with mine.
+  
+  Want KIDS to Rebuild Menu Trees Upon Completion of Install? YES// n  NO
+  
+  
+  Want KIDS to INHIBIT LOGONs during the install? YES// n  NO Want to DISABLE
+  Scheduled Options, Menu Options, and Protocols? NO// n  NO
+  
+  Enter the Device you want to print the Install messages.  Enter a '^' to abort
+  the install.
+  
+  DEVICE: HOME//   TELNET
+  
+  
+   Install Started for LA*5.2*66 :
+                 Sep 13, 2007@15:03:27
+  
+  Build Distribution Date: Sep 13, 2007
+  
+   Installing Routines:
+                 Sep 13, 2007@15:03:28
+  
+   Running Pre-Install Routine: PRE^LA66
+                            *** Pre install started ***
+                           *** Pre install completed ***
+  
+   Installing Data Dictionaries:
+                 Sep 13, 2007@15:03:28
+  
+   Installing Data:
+                 Sep 13, 2007@15:03:28
+  
+   Installing PACKAGE COMPONENTS:
+  
+   Installing HL LOGICAL LINK
+  
+   Installing HL7 APPLICATION PARAMETER
+  
+   Installing PROTOCOL
+    Located in the LA7 (LAB MESSAGING) namespace.
+    Located in the LA7 (LAB MESSAGING) namespace.
+    Located in the LA7 (LAB MESSAGING) namespace.
+    Located in the LA7 (LAB MESSAGING) namespace.
+    Located in the LA7 (LAB MESSAGING) namespace.
+    Located in the LA7 (LAB MESSAGING) namespace.
+    Located in the LA7 (LAB MESSAGING) namespace.
+    Located in the LA7 (LAB MESSAGING) namespace.
+    Located in the LA7 (LAB MESSAGING) namespace.
+    Located in the LA7 (LAB MESSAGING) namespace.
+    Located in the LA7 (LAB MESSAGING) namespace.
+    Located in the LA7 (LAB MESSAGING) namespace.
+    Located in the LA7 (LAB MESSAGING) namespace.
+  
+   Installing OPTION
+                 Sep 13, 2007@15:03:29
+  
+                                     LA*5.2*66
+  ------------------------------------------------------------------------
+   Running Post-Install Routine: POST^LA66
+                            *** Post install started ***
+           *** Updating facility name for LA7UI* entries in file #771 ***
+                      *** Updating facility name completed ***
+                    --- No actions required for post install ---
+                Restarting Lab Universal Interface Auto Download Job
+                           *** Post install completed ***
+                Sending install completion alert to mail group G.LMI
+  
+   Updating Routine file...
+  
+   Updating KIDS files...
+  
+   LA*5.2*66 Installed.
+                 Sep 13, 2007@15:03:32
+  
+   Install Message sent #nnnnn
+  ------------------------------------------------------------------------
+            --------------------------------------------------------------
+    100%    |             25             50             75               |
+  Complete  --------------------------------------------------------------
+  
+  
+  Install Completed
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;5.2;AUTOMATED LAB INSTRUMENTS;**[Patch List]**;Sep 27, 1994;Build 30
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: LA66
+    Before:       n/a   After: B45918619  **66**
+Routine Name: LA7ADL
+    Before: B31686404   After: B36417256  **17,25,23,57,66**
+Routine Name: LA7UCFG
+    Before:       n/a   After:  B4239468  **66**
+Routine Name: LA7UID
+    Before:  B3568485   After:  B3685088  **17,57,66**
+Routine Name: LA7UIO
+    Before:       n/a   After:  B9066917  **66**
+Routine Name: LA7UIO1
+    Before:       n/a   After: B26968525  **66**
+Routine Name: LA7VIN4
+    Before: B71473160   After: B73244122  **46,64,67,66**
+Routine Name: LA7VIN5A
+    Before: B66941793   After: B70776537  **46,64,67,72,66**
+ 
+Routine list of preceding patches: 57, 72
+
+=============================================================================
+User Information:
+Entered By  : MCCORMACK,JOHN                Date Entered  : OCT 07, 2002
+Completed By: ELIJAH,VICKEY                 Date Completed: JUL 31, 2008
+Released By : SAUNDERS,TOM                  Date Released : AUG 12, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

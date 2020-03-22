@@ -1,0 +1,466 @@
+$TXT Created by FORT,WALLY at NXT.KERNEL.FO-OAKLAND.MED.VA.GOV  (KIDS) on Monday, 03/03/08 at 09:40
+=============================================================================
+Run Date: APR 16, 2008                     Designation: XU*8*440
+Package : XU - KERNEL                         Priority: Mandatory
+Version : 8       SEQ #391                      Status: Released
+                  Compliance Date: MAY 17, 2008
+=============================================================================
+
+Associated patches: (v)XU*8*241    <<= must be installed BEFORE `XU*8*440'
+                    (v)XU*8*278    <<= must be installed BEFORE `XU*8*440'
+                    (v)XU*8*363    <<= must be installed BEFORE `XU*8*440'
+                    (v)XU*8*391    <<= must be installed BEFORE `XU*8*440'
+                    (v)XU*8*409    <<= must be installed BEFORE `XU*8*440'
+                    (v)XU*8*425    <<= must be installed BEFORE `XU*8*440'
+
+Subject: Modifications for mixed VMS/Linux
+
+Category: 
+  - Routine
+  - Data Dictionary
+  - Input Template
+
+Description:
+============
+
+ Patch Tracking #: 45997830
+ Test Sites: Walla Walla VAMC, Roseburg VAMC, White City VAMC
+ Blood Bank Clearance: 12/20/2007
+  
+ HD167579
+ With the advent of the RDPC the VA may use mixed OS environments
+ with a Cache ECP App/Data server model. In this environment output devices
+ need different $IO values depending on where the job is running.
+ This patch supports this new environment.
+  
+ Atlanta had a problem where two nodes both had a TNA device open and 
+ neither could print.  In investigating it was discovered that the Device 
+ LOCKing code in the device handler did not work.  The nature of the free 
+ text field GLOBAL TO LOCK/UNLOCK (#36) in the Device File (#3.5) did not 
+ make sense, and has been changed to a set of codes and renamed to GLOBAL 
+ LOCK. This lock will be held the entire time the device is open.
+ The POST-INIT will change any string in the old field to a Yes in the 
+ new field.
+  
+ Changes in this patch:
+ ZIS, Change to set local variable %ZIS("PRI") with the flag for Mixed OS 
+ from $$PRI^%ZOSV.
+  
+ ZIS1, Changed to support Global Lock. Commented code.
+  
+ ZIS2, Changed to get IO value from the Primary or Secondary field depending 
+ on %ZIS("PRI").
+  
+ ZIS3, Changed to support Global Lock. Commented code.
+  
+ ZIS4ONT,ZIS4GTM Changed to use new error trap on OPEN and to optional set
+ a lock on ^%ZIS("lock",IO).
+  
+ ZIS6, Changed to support Global Lock. Commented code.
+  
+ ZISC, Changed to unlock the device lock.
+  
+ ZISS1, HD202452 Changed to allow $$TAG^RTN in terminal type fields.
+  
+ ZISHONT, Changed to get IO value from the Primary or Secondary field 
+ depending on %ZIS("PRI"). Has change to $$DEL from patch XU*8*473 to delete 
+ groups of files at a time, plus code to check that the files did get 
+ deleted.
+  
+ ZOSVONT change in the $$SID api to convert a logical name used in the cache 
+ cpf file to the physical name the server reports from the $ZU(12,"") call 
+ (HD196800). This required adding two new fields (#504, 505) to the Kernel 
+ System Parameters file (#8989.3). Commented out the Sharelic code as it is 
+ not needed with Cache version 5. Some other changes to ZOSVONT were in 
+ patch XU*8*425. Added a QUIT to the JOBPAR call. (HD232867)
+  
+ The option XUDEVEDITSDP will be removed from the option file.
+ It was on the XUDEVEDIT menu. Current systems use HFS and not SDP.
+ At some sites this has caused an error in the error trap,
+ <UNDEFINED>XPAND+1^XQ83A This is part of microsurgery and the next
+ menu rebuild will correct it.
+  
+  
+ New or modified Fields added to the Kernel Site Parameter file.
+ STANDARD DATA DICTIONARY #8989.3 -- KERNEL SYSTEM PARAMETERS FILE   
+                                             JUN 7,2007@08:16:30  PAGE 1
+ STORED IN ^XTV(8989.3,(1 ENTRY)  SITE: SF CIOFO, KERNEL PATCH ACCOUNT   UCI: 
+  
+ DATA          NAME                  GLOBAL        DATA
+ ELEMENT       TITLE                 LOCATION      TYPE
+ ---------------------------------------------------------------------------
+  
+ 8989.3,.05    MIXED OS               0;5 SET
+  
+               Mixed OS                  
+                               '0' FOR No; 
+                               '1' FOR VMS/Linux; 
+               LAST EDITED:    JUN 07, 2007 
+               DESCRIPTION:    This field tells Kernel that this is a MIXED OS
+                               environment.  This is only supported on a Cache
+                               ECP client/server setup.  The PRIMARY OS is VMS
+                               and the SECONDARY OS is non-VMS.  
+  
+             TECHNICAL DESCR:  This is used to select which field to use when
+                               selecting OS specific data fields in a mixed OS
+                               environment.  The support is for Cache in a ECP
+                               client/server mode with only two OS's at a
+                               time.  In a mixed environment the primary OS is
+                               always VMS, the secondary is not VMS (i.e..
+                               Linux or NT) Some of the fields that need mixed
+                               values are DEFAULT HFS DIRECTORY/SECONDARY HFS
+                               DIRECTORY $IO/SECONDARY $I.
+  
+ 8989.3,320    PRIMARY HFS DIRECTORY  DEV;1 FREE TEXT
+  
+               INPUT TRANSFORM:  K:$L(X)>50!($L(X)<1) X
+               LAST EDITED:      DEC 11, 2006 
+               HELP-PROMPT:      Enter a directory path for HFS files (1-50 
+                                 char) 
+               DESCRIPTION:      This field holds a Primary (default) directory
+                                 path to be used whenever a HOST file is
+                                 referenced and a Directory is not included.  
+                                 Example: Cache/VMS might have USER$:[TEMP] 
+                                          Cache/NT might have T:\TEMP\ 
+                                          Cache/Linux might have /var/tmp/ If
+                                 this field is left blank then HOST files that
+                                 don't have an explicit directory path will go
+                                 to the current processes working directory.  
+  
+ 8989.3,320.2  SECONDARY HFS DIRECTORY DEV;2 FREE TEXT
+  
+               INPUT TRANSFORM:  K:$L(X)>50!($L(X)<1) X
+               LAST EDITED:      DEC 11, 2006 
+               HELP-PROMPT:      Enter a directory path for HFS files (1-50 
+                                 char) 
+               DESCRIPTION:      This field holds the secondary HFS directory
+                                 path.
+  
+  
+ 8989.3,504    LOGICAL DISK NAME      SID;4 FREE TEXT
+  
+               INPUT TRANSFORM:  K:$L(X)>30!($L(X)<2) X
+               LAST EDITED:      JUL 31, 2007 
+               HELP-PROMPT:      Answer must be 2-30 characters in length. 
+               DESCRIPTION:      This field holds a logical disk name that is
+                                 stored in the cache cpf file for client system
+                                 in a ECP client-server setup.  
+  
+  
+ 8989.3,505    PHYSICAL DISK          SID;5 FREE TEXT
+  
+               INPUT TRANSFORM:  K:$L(X)>30!($L(X)<2) X
+               LAST EDITED:      JUL 31, 2007 
+               HELP-PROMPT:      Answer must be 2-30 characters in length. 
+               DESCRIPTION:      This field hold the Physical disk name that
+                                 Cache VMS converts the logical name(#504) in
+                                 to.
+  
+ New or modified Fields added to the Device file.
+ STANDARD DATA DICTIONARY #3.5 -- DEVICE FILE     JUN 7,2007@08:42:22  PAGE 1
+ STORED IN ^%ZIS(1,  (32 ENTRIES)   SITE: SF CIOFO, KERNEL PATCH ACCOUNT 
+  
+ DATA          NAME                  GLOBAL        DATA
+ ELEMENT       TITLE                 LOCATION      TYPE
+ ---------------------------------------------------------------------------
+ 3.5,36        GLOBAL LOCK            GBL;1 SET
+  
+                                 '0' FOR No; 
+                                 '1' FOR Yes; 
+               OUTPUT TRANSFORM: S Y=Y
+               LAST EDITED:      NOV 08, 2007 
+               DESCRIPTION:      This field tells the device handler if it
+                                 should use a global lock to control 
+                                 access to a device.
+  
+               TECHNICAL DESCR:  This field locks ^%ZIS("lock",IO) in the 
+                                 device handler.  It is cleared in %ZISC.  
+                                 It is not limited to CHAN devices anymore.
+                                  
+                                 In the past this field held a global to lock
+                                 but there was no code to support it.  Old
+                                 description: Identify a global to lock/unlock
+                                 to be used to limit the access to a given
+                                 channel to one client.
+  
+ 3.5,52        SECONDARY $I           2;1 FREE TEXT
+  
+               INPUT TRANSFORM:  K:$L(X)>40!($L(X)<1) X
+               LAST EDITED:      APR 26, 2007 
+               HELP-PROMPT:      Enter the $IO for the secondary system (1-40 
+                                 char) 
+               DESCRIPTION:      This field holds the $IO value to be used if
+                                 this is the secondary system in a mixed OS
+                                 environment.  It is not used otherwise.  It is
+                                 only used for output devices.  
+  
+               NOTES:            XXXX--CAN'T BE ALTERED EXCEPT BY PROGRAMMER
+  
+ Updated Kernel Site Parameter edit, page 3:
+ --------------------------------------------------------------------------
+                        Kernel Site Parameter edit
+             DOMAIN:NXT.KERNEL.FO-OAKLAND.MED.VA.GOV          
+  
+     MAX SPOOL LINES PER USER: 99999  
+ MAX SPOOL DOCUMENTS PER USER: 99 
+ MAX SPOOL DOCUMENT LIFE-SPAN: 60 
+  
+  
+                  MIXED OS: VMS/Linux     <<<< New Field
+ DEFAULT DIRECTORY FOR HFS: USER$:[TEMP]                                      
+   SECONDARY HFS DIRECTORY: /var/tmp/        <<<< New Field
+  
+  
+ DNS IP: 10.6.21.10,10.6.21.192                                      
+  
+ NEW PERSON IDENTIFIERS:
+  
+ ________________________________________________________________________
+  
+ New Option on the Select Kernel Management Menu Option:
+     Edit Logical/Physical Mapping [XU SID EDIT]     
+  
+ This is only valid in a Cache v5.2 client/server configuration.
+ This lets you edit the fields that support the
+ LOGICAL to PHYSICAL translation for the System ID.
+  
+  
+ LOGICAL DISK NAME: VA4$// 
+ PHYSICAL DISK: _$1$DGA4//
+  
+ --------------------------------------------------------------------------
+ Updated the Device edit Forms for HFS, RES and TRM types.
+ --------------------------------------------------------------------------
+                       EDIT A HOST FILE SERVER DEVICE
+  
+    NAME: HFS                                 LOCATION: Host Disk File      
+  
+      $I: USER$:[TEMP]MIXED.TXT                     
+  Alt $I: /tmp/mixed.txt   <<<< New Field                               
+ SUBTYPE: P-OTHER                  
+  
+        ASK PARAMETERS: YES                  MARGIN WIDTH:
+         ASK HOST FILE: YES                   PAGE LENGTH:
+ ASK HFS I/O OPERATION: NO                VOLUME SET(CPU):
+  
+    OPEN PARAMETERS: ("NWS")                                            
+   PRE-OPEN EXECUTE:
+ POST-CLOSE EXECUTE:
+  
+            QUEUING: ALLOWED           SUPPRESS FORM FEED: YES
+ ___________________________________________________________________________
+  
+ Sample Device file entries:
+  NAME: HFS                               $I: USER$:[TEMP]MIXED.TXT
+    ASK DEVICE: NO                        ASK PARAMETERS: NO
+    LOCATION OF TERMINAL: Disk            ASK HOST FILE: NO
+    ASK HFS I/O OPERATION: YES            SECONDARY $I: /tmp/mixed.txt
+    OPEN COUNT: 5                         SUBTYPE: P-OTHER
+    TYPE: HOST FILE SERVER
+    OPEN PARAMETERS: ("NWS")
+  
+  
+ NAME: NULL                              $I: _NLA0:
+   ASK DEVICE: NO                        ASK PARAMETERS: NO
+   SIGN-ON/SYSTEM DEVICE: NO             LOCATION OF TERMINAL: Bit Bucket
+   SECONDARY $I: /dev/null               OPEN COUNT: 8523
+   SUBTYPE: P-OTHER                      TYPE: TERMINAL
+  
+ NAME: BROWSER                           $I: USER$:[BROWSER]DDBR.TXT
+   ASK DEVICE: YES                       ASK PARAMETERS: NO
+   SIGN-ON/SYSTEM DEVICE: NO             QUEUING: NOT ALLOWED
+   LOCATION OF TERMINAL: BROWSER         ASK HOST FILE: NO
+   ASK HFS I/O OPERATION: NO             SECONDARY $I: /tmp/ddbr.txt
+   OPEN COUNT: 1                         OPEN PARAMETERS: ("NWS")
+   POST-CLOSE EXECUTE: D POST^DDBRZIS I $G(IO("CLOSE"))'="" N % S %=$$DEL1^%ZISH(
+ IO("CLOSE"))
+   PRE-OPEN EXECUTE: N X S X=$$TEST^DDBRT S:X IO=$$UNIQUE^%ZISUTL(IO) I 'X S %ZIS
+ QUIT=1,X="Browser not selectable from current terminal." W $C(7),!,X
+   SUBTYPE: P-BROWSER                    TYPE: HOST FILE SERVER
+  
+  
+ NAME: P-MESSAGE-HFS-ONT                 $I: USER$:[TEMP]XMHFS.TMP
+   ASK DEVICE: NO                        ASK PARAMETERS: NO
+   SIGN-ON/SYSTEM DEVICE: NO             QUEUING: ALLOWED
+   LOCATION OF TERMINAL: HFS FILE==> MESSAGE
+   ASK HOST FILE: NO                     ASK HFS I/O OPERATION: NO
+   SECONDARY $I: /tmp/xmhfs.tmp          OPEN PARAMETERS: ("NWS")
+   PRE-OPEN EXECUTE: D EN^XMAPHOST Q:$G(POP)  S IO=$$UNIQUE^%ZISUTL(IO)
+   SUBTYPE: P-MESSAGE-HFS-ONT            TYPE: HOST FILE SERVER
+  
+ Sample TELNET entries:
+ NAME: TELNET/LINUX                      $I: /dev/pts/
+   ASK DEVICE: YES                       SIGN-ON/SYSTEM DEVICE: YES
+   LOCATION OF TERMINAL: Telnet Terminal
+   OPEN COUNT: 101                       SUBTYPE: C-VT320
+   TYPE: VIRTUAL TERMINAL
+  
+  
+ NAME: TELNET/VMS                        $I: TNA
+   ASK DEVICE: YES                       ASK PARAMETERS: NO
+   SIGN-ON/SYSTEM DEVICE: YES            LOCATION OF TERMINAL: Telnet terminal
+   OPEN COUNT: 8657                      SUBTYPE: C-VT320
+   TYPE: VIRTUAL TERMINAL
+  
+ =========================================================================
+ Installation:
+ >>>Please note that this installation CAN NOT be queued. 
+ >>>Do not allow users to log in to the system during installation.
+ >>>Allow KIDS to inhibit new sign-ons.
+ >>>TaskMan should be in a wait state.
+  
+   1.  Use the 'INSTALL/CHECK MESSAGE' option on the PackMan menu. This
+       option will load the KIDS package onto your system.
+  
+   2.  The patch has now been loaded into a Transport global on your
+       system. You now need to use KIDS to install the Transport global.
+       On the KIDS menu, under the 'Installation' menu, use the following
+       options:
+  
+          Verify Checksums in Transport Global
+          Print Transport Global
+          Compare Transport Global to Current System
+          Backup a Transport Global
+  
+   3.  Users can remain on the system. There is a chance of an EDITED
+       error from ZIS* routines.
+       This patch can not be queued.
+       Also place TaskMan in a wait state. (DO WAIT^ZTMKU)
+  
+   4.  Installation will take less than 2 minutes.
+       In Programmer mode:
+       Use "D ^XPDKRN" then
+          Install Package(s)  'XU*8.0*440'
+                               ==========
+       Please accept the defaults for the following install questions:
+       
+       Want KIDS to Rebuild Menu Trees Upon Completion of Install? NO//
+  
+       Want KIDS to INHIBIT LOGONs during the install? YES//
+  
+       Want to DISABLE Scheduled Options, Menu Options, and Protocols? NO//
+  
+ >>    The post-init will start RELOAD^ZTMGRSET
+  
+ SAMPLE INSTALLATION
+  
+ Select Installation Option:  Install Package(s)
+ Select INSTALL NAME:    XU*8.0*440     Loaded from Distribution ...
+  
+ Install Questions for XU*8.0*440
+  
+ Incoming Files:
+  
+    3.5       DEVICE  (Partial Definition)
+ Note:  You already have the 'DEVICE' File.
+  
+    8989.3    KERNEL SYSTEM PARAMETERS  (Partial Definition)
+ Note:  You already have the 'KERNEL SYSTEM PARAMETERS' File.
+  
+ Want KIDS to Rebuild Menu Trees Upon Completion of Install? NO// 
+  
+ Want KIDS to INHIBIT LOGONs during the install? YES// 
+ Want to DISABLE Scheduled Options, Menu Options, and Protocols? NO// 
+  
+ Enter the Device you want to print the Install messages.
+ You can queue the install by enter a 'Q' at the device prompt.
+ Enter a '^' to abort the install.
+  
+ DEVICE: HOME//   Telnet terminal
+ ... 
+  
+  Running Post-Install Routine: POST^XU8P440
+      3 'GBL' nodes converted.
+  
+ ZTMGRSET Version 8.0 Patch level **34,36,69,94,121,127,136,191,275,355**
+ HELLO! I exist to assist you in correctly initializing the current 
+ account.
+  
+ This is namespace or uci ISC,ISC.
+ Should I continue? N//Y   <====
+                       ==
+ I think you are using OpenM-NT
+ Which MUMPS system should I install?
+  
+ 1 = VAX DSM(V6), VAX DSM(V7)
+ 2 = MSM-PC/PLUS, MSM for NT or UNIX
+ 3 = Cache (VMS, NT, Linux), OpenM-NT
+ 4 = Datatree, DTM-PC, DT-MAX
+ 5 = 
+ 6 = 
+ 7 = GT.M (VMS)
+ 8 = GT.M (Unix)
+ System: 3//  <====
+         ==
+ Patch number to load: 440    <====
+                       ===
+ I will now rename a group of routines specific to your operating system.
+ Routine: ZOSVONT      Loaded, Saved as %ZOSV
+ Routine: 
+ Routine: ZIS4ONT      Loaded, Saved as %ZIS4
+ Routine:.... 
+ Installing ^%Z editor
+ ALL DONE
+ .. 
+  Install Message sent #....
+  
+   6.  Enable user's login.
+       Remove TaskMan from the wait state. (DO RUN^ZTMKU)
+  
+  
+ =============================================================================
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;8.0;KERNEL;**[Patch List]**;Jul 10, 1995;Build 13
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: XU8P440
+    Before:       n/a   After:  B1835580  **440**
+Routine Name: XUPROD
+    Before:  B3450271   After:  B5031849  **284,440**
+Routine Name: ZIS
+    Before: B17316797   After: B20530056  **18,23,69,112,199,191,275,363,440**
+Routine Name: ZIS1
+    Before: B23639948   After: B24679317  **18,49,69,104,112,199,391,440**
+Routine Name: ZIS2
+    Before: B19355855   After: B20845932  **69,104,112,118,136,241,440**
+Routine Name: ZIS3
+    Before: B12189703   After: B13908684  **18,36,69,104,391,440**
+Routine Name: ZIS4GTM
+    Before: B20959123   After: B19862476  **275,425,440**
+Routine Name: ZIS4ONT
+    Before: B26749275   After: B27677822  **34,59,69,191,278,293,440**
+Routine Name: ZIS6
+    Before: B20992086   After: B20359601  **24,49,69,118,127,136,440**
+Routine Name: ZISC
+    Before: B22818610   After: B22332594  **24,36,49,69,199,216,275,409,440**
+Routine Name: ZISEDIT
+    Before:  B1953846   After:  B2624513  **440**
+Routine Name: ZISHONT
+    Before: B45855984   After: B60012686  **34,65,84,104,191,306,385,440**
+Routine Name: ZISS1
+    Before: B13994274   After: B15833338  **69,440**
+Routine Name: ZOSVONT
+    Before: B21543448   After: B22002850  **34,94,107,118,136,215,293,
+                                           284,385,425,440**
+Routine Name: ZTLOAD4
+    Before: B11756579   After: B11458324  **440**
+ 
+Routine list of preceding patches: 241, 278, 363, 391, 409, 425
+
+=============================================================================
+User Information:
+Entered By  : FORT,WALLY                    Date Entered  : NOV 15, 2006
+Completed By: SINGH,GURBIR                  Date Completed: APR 14, 2008
+Released By : TILLIS,LEWIS                  Date Released : APR 16, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

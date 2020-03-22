@@ -1,0 +1,298 @@
+$TXT Created by SMITH,ROBERT at VMPDEV20.FO-BAYPINES.MED.VA.GOV  (KIDS) on Monday, 06/21/10 at 15:18
+=============================================================================
+Run Date: SEP 23, 2010                     Designation: PSD*3*68
+Package : PSD - CONTROLLED SUBSTANCES         Priority: Mandatory
+Version : 3        SEQ #59                      Status: Released
+                  Compliance Date: OCT 24, 2010
+=============================================================================
+
+Associated patches: (v)PSD*3*60    <<= must be installed BEFORE `PSD*3*68'
+                    (v)PSD*3*62    <<= must be installed BEFORE `PSD*3*68'
+
+Subject: PSD NURSE DISP & PSD NURSE DISPENSING REPORTS
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch corrects 2 problems with the Activity Report [PSD NURSE DISP
+ REPORT] and 2 problems with the Sign Out Dose for Patient [PSD NURSE
+ DISPENSING] report.
+  
+  
+ ASSOCIATED NSR(S):
+ ==================
+ N/A
+  
+  
+ ASSOCIATED PATIENT SAFETY:
+ ==========================
+ PSPO #1509
+  
+  
+ ASSOCIATED REMEDY:
+ ==================
+ 1. HD0000000067437 - Change in count & inability to track
+    Duplicates:
+    HD0000000272224 - Report Discrepancy
+    HD0000000286953 - Nursing Activity Report - Incorrect Balance
+  
+ 2. HD0000000114292 - Activity report for transferred doesn't show activity
+                      until after next activity occurs.
+    Duplicate:
+    HD0000000201452 - No Activity Showing on Activity Report
+  
+ 3. HD0000000343422 - Option displays wrong drug w/ PSD NURSE DISPENSING
+  
+ 4. HD0000000355446 - <undefined>DRUG+18^PSDRF *NAOU
+  
+  
+ PARTICIPATING TEST SITES:
+ =========================
+ Martinsburg VAMC
+ VA New York Harbor HCS
+ Oklahoma City VAMC
+  
+  
+ REMEDY OVERVIEW:
+ ================
+ 1. HD0000000067437 - Change in count & inability to track
+  
+  Problem:
+  --------
+  It has been reported that the Activity Report [PSD NURSE DISP REPORT]
+  option does not print the correct drug balances.  After investigating,
+  it was found that the balances shown were correct, but not all
+  transactions were showing on the Activity Report.
+  
+  Resolution:
+  -----------
+  The routine that creates and prints the Activity Report will be modified
+  to account for all drug transactions that affect the balance of the drug
+  for the Narcotics Area Of Use (NAOU) being reported for.
+  
+  Technical:
+  ----------
+  PSDAPT1 routine will be modified to:
+  1) loop through the ^PSD(58.81,"ACT" index for starting and ending dates
+  for the drug(s) specified by the user. The routine will then verify that
+  the transaction was for the requested NAOU.  The routine will then store
+  that transaction number in the ^TMP("PSDPAT1",$J global.
+  2) The routine will loop through the DRUG ACCOUNTABILITY STATS file (#58.8)
+  for the drug(s) specified by the user. It will then check the dates of the
+  transaction created in the DRUG ACCOUNTABILITY TRANSACTION file (#58.81)
+  and store the transaction number in the ^TMP("PSDPAT1",$J global.
+  3) The routine will loop through the ^TMP("PSDPAT1",$J global and examine
+  the events of the transaction and store the data in the ^TMP("PSDPAT",$J
+  global used to print the report.
+  
+  
+ 2. HD0000000114292 - Activity report for transferred doesn't show activity
+                      until after next activity occurs.
+  
+  Problem:
+  --------
+  The Activity Report [PSD NURSE DISP REPORT] option for the NAOUs reflect
+  the GS (Greensheet) info for the  transferred to  ward, but omits the data
+  for the transferred from ward.
+  
+  Resolution:
+  -----------
+  The solution for problem 1 will also correct this problem since they are 
+  the same report and the same routine.
+  
+  
+ 3. HD0000000343422 - Option displays wrong drug w/ PSD NURSE DISPENSING
+  
+  Problem:
+  --------
+  A nurse scanned in a drug using The Sign Out Dose for Patient [PSD NURSE 
+  DISPENSING] option but the drug displayed on the screen was not the drug
+  which had been scanned.  This is caused when a Drug's IEN (Internal Entry
+  Number) finds a match in the RX# field (#60) index "D" on the DRUG
+  ACCOUNTABILITY TRANSACTION file (#58.81). It then stores the Drug's IEN
+  in the RX# field (#60) and creates an RX# index "D" for that transaction.
+  
+  The probability of this happening is very low.  It has been known to 
+  happen at a few sites once.  Since the possibility exists that the 
+  patient could be given the wrong medication, this has resulted in Patient
+  Safety Issue PSPO #1509.
+  
+  Note:  BCMA will scan the drug correctly and display an error message 
+  should the nurse mistakenly change the drug that she pulled originally.
+  
+  Resolution:
+  -----------
+  1. The routine that is called by the Sign Out Dose for Patient [PSD NURSE
+     DISPENSING] option will be modified to not store the Drug's IEN in the
+     RX# field (#60) of the DRUG ACCOUNTABILITY TRANSACTION file (#58.81).
+  
+ 2. Post-Install routine PSD68P will be run as a background job via
+    Taskman. It will look for existing incorrectly matched DRUG
+    ACCOUNTABILITY TRANSACTION file (#58.81) RX# field (#60) entries
+    and remove them along with the RX# index "D". A report will be
+    sent to the installer of the patch and holders of the PSDMGR
+    security key in MailMan entitled 'PSD*3*68 POST INSTALL Report'.
+    The report will contain the Transaction #, Drug Name and
+    Dispensing # for each record deleted. A sample of this report is
+    below:
+  
+ Subj: PSD*3*68 POST INSTALL Report  [#573883] 04/14/10@14:11  90 lines
+ From: PSD*3*68 POST INSTALL  In 'IN' basket.   Page 1
+ --------------------------------------------------------------------------
+ PSD*3*68 DRUG ACCOUNTABILITY TRANSACTION Drug Dispensing # Index Repair
+  
+ The following Drug Dispensing # Index for the DRUG ACCOUNTABILITY 
+ TRANSACTION
+ file have been fixed.
+  
+ Transaction#  Drug Name                                    Dispensing#
+  
+  1116349      METHADONE 5MG TAB                              62197
+  
+  1116350      METHADONE 5MG TAB                              62197
+  
+  1116262      MORPHINE POWDER                                62200
+  
+  1116265      MORPHINE POWDER                                62200
+  
+  1116267      LORAZEPAM 4MG/ML 10ML                          62201
+  
+  
+  Technical:
+  ----------
+  1) PSDRF routine will be modified to not store the RX# field (#60) of
+  the DRUG ACCOUNTABILITY TRANSACTION file (#58.81) if a match is found in
+  the RX# index "D" and the date of the transaction found in the "D" index
+  is greater than one year old.
+  2) PSD68P routine will be created to loop through all of the DRUG
+  ACCOUNTABILITY TRANSACTION file (#58.81). If the transaction is a NAOU
+  transaction, the routine will then check the RX# field(#60) for data. If
+  the RX# field (#60) is not null, that data will be stored in the ^TMP($J,
+  "PSD68P",PSDNAOU,PSDPN,PSDDRG,PSDTRN) global. Next the routine loops
+  through the ^TMP($J,"PSD68P" global and check the ^PSD(58.81,"D",PSDPN
+  (PSDPN=RX#) global for data. If data exists, the routine will then verify
+  that the transaction drug matches the ^TMP($J,"PSD68P" drug (PSDRG=drug).
+  If the transaction drug and the ^TMP($J,"PSD68P" drug do not match, the
+  data in the RX# field (#60) will be removed and the
+  ^PSD(58.81,"D",PSDPN,PSDTRN) (PSDTRN=transaction #)global will be
+  killed.  After all of the transactions have been checked, the routine
+  will send a MAILMAN message to all users holding the "PSDMGR" SECURITY
+  KEY listing the transactions modified.
+  If no transactions are modified, the MAILMAN message will say
+  "There was NO incorrect Drug Dispensing # Indexes found." 
+  
+  
+ 4. HD0000000355446 - <undefined>DRUG+18^PSDRF *NAOU
+  
+  Problem:
+  --------
+  User receives an error when using the Sign Out Dose For Patient [PSD NURSE
+  DISPENSING] option and enters a Pharmacy Dispensing # (Greensheet) that has
+  a dispense date greater than one year old.
+  
+  Resolution:
+  -----------
+  The routine that is called by the Sign Out Dose for Patient [PSD NURSE
+  DISPENSING] option to sign out a drug for a patient will be modified to
+  set a variable indicating that a match was not found for a Pharmacy
+  Dispensing # or a Drug. If the variable exists after exiting the drug
+  lookup, the routine will then go to the end of the job.
+  
+  Technical:
+  ----------
+  PSDRF routine will be modified at DRUG+9^PSDRF to check for the existence
+  of the PSDEND variable. If the PSDEND variable exists, the routine will go
+  to END^PSDRF. PSDRF will also be modified at DRUG+16^PSDRF to set the
+  variable PSDEND=1 if no matches are found for the Pharmacy Dispensing # or
+  Drug IEN.
+  
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+ If installed during the normal workday, it is recommended that the 
+ the Controlled Substance users be off the system.  Other VISTA users
+ will not be affected.
+  
+ Install Time - Less then 2 minutes.
+  
+  1.  This patch may be queued to run in the background during a period
+      when it won't be necessary to inhibit logon's or disable any
+      options.  
+  
+  2.  Start up the Kernel Installation and Distribution System Menu
+      [XPD MAIN]: 
+  
+           Edits and Distribution ...  
+           Utilities ...  
+           Installation ...  
+  
+      Select Kernel Installation & Distribution System Option: Installation
+                                                               ---
+           1      Load a Distribution
+           2      Verify Checksums in Transport Global
+           3      Print Transport Global
+           4      Compare Transport Global to Current System
+           5      Backup a Transport Global
+           6      Install Package(s)
+                  Restart Install of Package(s)
+                  Unload a Distribution
+  
+  3.  From this menu, you may elect to use the following options
+      (When prompted for the INSTALL NAME, enter PSD*3.0*68):
+      
+      a.  Verify Checksums in Transport Global - This option will
+          allow you to ensure the integrity of the routines that are
+          in the transport global.  Since post-init routine PSD68P will be 
+          automatically deleted after the successful installation of this
+          patch, you must use this option if you would like to verify the
+          checksums for all of the included routines.
+      b.  Compare Transport Global to Current System - This option
+          will allow you to view all changes that will be made when
+          this patch is installed.  It compares all components of this
+          patch (routines, DD's, templates, etc.).
+      c.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will
+          not backup any other changes such as DD's or templates.
+  
+  4.  Use the Install Package(s) option and select the package
+      PSD*3.0*68.
+  
+      a.  When prompted 'Want KIDS to INHIBIT LOGONs during the
+          install? NO//', answer NO.
+      b.  When prompted 'Want to DISABLE Scheduled Options and Menu 
+          Options and Protocols? NO//', answer NO.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;3.0; CONTROLLED SUBSTANCES ;**[Patch List]**;30 Oct 09;Build 12
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PSD68P
+    Before:       n/a   After: B13127128  **68**
+Routine Name: PSDPAT1
+    Before: B63600329   After: B73058275  **7,62,68**
+Routine Name: PSDPAT2
+    Before:  B2198141   After: B45069536  **68**
+Routine Name: PSDRF
+    Before: B25117230   After: B25617376  **25,51,60,68**
+ 
+Routine list of preceding patches: 60, 62
+
+=============================================================================
+User Information:
+Entered By  : SMITH,ROBERT J                Date Entered  : OCT 08, 2009
+Completed By: WERNER,GARY                   Date Completed: AUG 16, 2010
+Released By : VECE,VIRGINIA                 Date Released : SEP 23, 2010
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

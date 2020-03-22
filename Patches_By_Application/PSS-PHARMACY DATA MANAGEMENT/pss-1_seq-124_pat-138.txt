@@ -1,0 +1,408 @@
+$TXT Created by SMITH,ROBERT at VMPDEV20.FO-BAYPINES.MED.VA.GOV  (KIDS) on Thursday, 08/28/08 at 12:30
+=============================================================================
+Run Date: OCT 08, 2008                     Designation: PSS*1*138
+Package : PSS - PHARMACY DATA MANAGEMENT      Priority: Mandatory
+Version : 1       SEQ #124                      Status: Released
+                  Compliance Date: NOV 08, 2008
+=============================================================================
+
+Associated patches: (v)PSS*1*83    <<= must be installed BEFORE `PSS*1*138'
+
+Subject: DOSAGE FORM NOUN AND VA CLASSIFICATION FIX
+
+Category: 
+  - Routine
+  - Data Dictionary
+
+Description:
+============
+
+ This patch will correct the 2 issues:
+  
+ 1:  When the NOUN in the DOSAGE FORM contains a "&", it causes CPRS to
+     error when ordering medications.
+  
+ 2:  The VA CLASSIFICATION field (#2) of the DRUG file (#50) allows the 
+     user to delete the data in this field which is matched to National
+     Drug File.
+  
+ Associated NSR(s):
+ ==================
+ N/A
+  
+  
+ Associated Remedy Ticket(s)
+ ===========================
+ 1: HD0000000206450 - & in the NOUN field of the Dosage Form file
+    Duplicate:
+    HD0000000204678 - UNDEF IN PSJHL9
+  
+ 2: HD0000000249646 - 6 VA CLASSIFICATION Field
+  
+  
+ Participating Test Sites:
+ =========================
+ Bronx VAMC
+ Central AL HCS
+ Oklahoma City VAMC
+  
+  
+ Remedy Ticket Overview:
+ =======================
+ 1: HD0000000206450 - & in the NOUN field of the Dosage Form file
+  
+    Problem:
+    --------
+    When the NOUN in the DOSAGE FORM contains a "&", it causes CPRS to
+    error when ordering medications.
+  
+    Resolution:
+    -----------
+    a) Routines PSSORUTL & PSSOPKI1 will be modified to call AMP^PSSORPH1
+    routine and convert the "&" to "AND" if the NOUN field (#50.6066,.01)
+    contains a "&".
+  
+    b) The INPUT TRANSFORM for the NOUN field (#50.6066,.01) of the DOSAGE
+    FORM file (#50.606) will be modified to replace the "&" during data
+    entry with "AND".
+  
+    c) The INPUT TRANSFORM for the LOCAL POSSIBLE DOSAGE field 
+    (#50.0904,.01) of the DRUG file (#50) will be modified to replace the
+    "&" during data entry with "AND".
+  
+    d) Post-Install routine PSSP138 will loop through the DOSAGE FORM
+    file (#50.606) and look for all "&" in the NOUN and replace them with
+    "AND".  It will also loop through the LOCAL POSSIBLE DOSAGE field
+    (#.01) of the LOCAL POSSIBLE DOSAGE sub-file (#50.904) of the DRUG file
+    (#50).  It will search for any "&" within that field and replace it
+    with "AND".
+  
+    This post-install routine will also send 2 MailMan messages to the 
+    installer of the patch.  The first message will contain information 
+    regarding Dosage Form NOUNS which have been converted.  The second 
+    message will contain information regarding any Local Possible Dosages 
+    which have been converted.
+  
+    These MailMan messages should be forwarded to the Pharmacy ADPAC for 
+    review.
+  
+    Sample MailMan Message 1:
+    =========================
+    Subj: PSS*1*138 Dosage Form Repair Report  [#513629] 
+    From: PSS*1*138 POST INSTALL  In 'IN' basket.   Page 1
+    ---------------------------------------------------------------------
+    PSS*1*138 Dosage Form Repair
+    The following Dosage Form NOUNS have been converted
+  
+    DOSAGE FORM                            IEN     NOUN
+  
+    TAB,ORAL                               153     TABS AND TABLETS
+  
+    ***** End Of Report *****
+   
+  
+    Sample MailMan Message 2:
+    =========================
+    Subj: PSS*1*138 Local Possible Dosage Repair Report  [#513630]
+    From: PSS*1*138 POST INSTALL  In 'IN' basket.   Page 1  *New*
+    -------------------------------------------------------------------------
+    PSS*1*138 Local Possible Dosage Repair
+    The following Local Possible Dosages have been fixed
+  
+    Drug                                   IEN     Local Possible Dosage
+  
+    NITROGLYCERIN 2% OINT                  2       ONE AND ONE-HALF INCH
+    ALBUTEROL SULFATE 2MG/5ML SYRUP        3       ONE AND ONE-HALF 
+    TEASPOONFUL (3M G)
+    INSULIN SYRINGE 0.5ML 30G 5/16IN       1       SYRINGE AND NEEDLE
+    INSULIN SYRINGE 1ML 0.5IN              2       SYRINGE AND NEEDLE
+    TUBERCULIN SYRINGE 1ML 26G 3/8IN       1       SYRINGE AND NEEDLE
+    INSULIN SYRINGE 0.5ML LOW DOSE 0.5IN   2       SYRINGE AND NEEDLE
+    SYRINGE 2.5-3ML/NDL 25G 5/8IN          1       SYRINGE AND NEEDLE
+  
+    ***** End Of Report *****
+  
+  
+ 2: HD0000000249646 - 6 VA CLASSIFICATION Field
+  
+    Problem:
+    --------
+    The VA CLASSIFICATION field (#2) of the DRUG file (#50) allows user to
+    delete the data in this field which is matched to National Drug File.
+  
+    Resolution:
+    -----------
+    The DELETE TEST within the VA CLASSIFICATION field (#2) of the DRUG
+    file (#50) will be modified to prevent the user from deleting a value
+    in that field.
+  
+  
+ Data Dictionary Changes:
+ ========================
+  
+    Before:
+    -------
+    DATA DICTIONARY #50 -- DRUG FILE
+  
+ DATA        NAME                  GLOBAL        DATA
+ ELEMENT     TITLE                 LOCATION      TYPE
+ -------------------------------------------------------------------------------
+ 50,2          VA CLASSIFICATION      0;2 FREE TEXT
+  
+               INPUT TRANSFORM:  K:X[""""!($A(X)=45) X I $D(X) K:$L(X)<1!($L(X)>
+                                 5) X I $D(X) K:$S($D(^PSDRUG(DA,"ND")):+^("ND")
+                                 ,1:0) X W:'$D(X) "   Uneditable" Q:'$D(X)  S DI
+                                 C="^PS(50.605,",DIC(0)="EQM" D ^DIC K:Y<0 X S:Y
+                                 >0 X=$P(Y,"^",2)
+               LAST EDITED:      OCT 20, 2000 
+               HELP-PROMPT:      Enter the VA Classification. 
+               DESCRIPTION:
+                                   This is the VA classification for this drug.  
+  
+               TECHNICAL DESCR:
+                                 free text 
+  
+               EXECUTABLE HELP:  S DIC="^PS(50.605,",DIC(0)="EQM" D ^DIC
+               DELETE TEST:      2,0)= I $D(^PSDRUG(DA,"ND")),+("ND") D EN^DDIOL
+                                 ("Deletions are not allowed")
+  
+               GROUP:            PS
+               NOTES:            XXXX--CAN'T BE ALTERED EXCEPT BY PROGRAMMER
+                                 TRIGGERED by the NATIONAL DRUG CLASS field of 
+                                 the DRUG File 
+  
+ 50.0904,.01     LOCAL POSSIBLE DOSAGE  0;1 FREE TEXT (Multiply asked)
+  
+                 INPUT TRANSFORM:  K:$L(X)>60!($L(X)<1) X
+                 HELP-PROMPT:      Answer must be 1-60 characters in length. 
+                 DESCRIPTION:      This field represents the Dosage selections
+                                   that will display in CPRS for this drug when
+                                   the Pharmacy Orderable Item that this drug is
+                                   matched to is selected. These dosages will be
+                                   presented for selection only if there are no
+                                   Possible Dosages available for the Pharmacy
+                                   type of order being entered. Local Possible
+                                   Dosages should be created when a drug does 
+                                   not have any Possible Dosages. The Possible
+                                   Dosages can only be created when the VA
+                                   Product File match of the drug meet specified
+                                   criteria.  
+  
+                 CROSS-REFERENCE:  50.0904^B 
+                                 1)= S ^PSDRUG(DA(1),"DOS2","B",$E(X,1,30),DA)=""
+                                 2)= K ^PSDRUG(DA(1),"DOS2","B",$E(X,1,30),DA)
+  
+ DATA DICTIONARY #50.606 -- DOSAGE FORM
+  
+ DATA          NAME                  GLOBAL        DATA
+ ELEMENT       TITLE                 LOCATION      TYPE
+ -------------------------------------------------------------------------------
+ 50.6066,.01   NOUN                   0;1 FREE TEXT (Multiply asked)
+  
+               INPUT TRANSFORM:  K:$L(X)>30!($L(X)<1) X
+               LAST EDITED:      MAR 04, 2000 
+               HELP-PROMPT:      Answer must be 1-30 characters in length. 
+               DESCRIPTION:      These are the nouns that are associated with
+                                 this Dosage form. It will be used by Outpatient
+                                 Pharmacy to build a Sig for an OE/RR order.  It
+                                 will also be used for building local possible
+                                 doses as part of the pharmacy ordering
+                                 enhancements for both Outpatient Pharmacy and
+                                 Inpatient Medications.  
+  
+               NOTES:            XXXX--CAN'T BE ALTERED EXCEPT BY PROGRAMMER
+  
+               CROSS-REFERENCE:  50.6066^B 
+                                 1)= S ^PS(50.606,DA(1),"NOUN","B",$E(X,1,30),DA
+                                 )=""
+  
+                                 2)= K ^PS(50.606,DA(1),"NOUN","B",$E(X,1,30),DA
+                                 )
+  
+  
+    After:
+    ------
+    DATA DICTIONARY #50 -- DRUG FILE
+  
+ DATA        NAME                  GLOBAL        DATA
+ ELEMENT     TITLE                 LOCATION      TYPE
+ -------------------------------------------------------------------------------
+ 50,2          VA CLASSIFICATION      0;2 FREE TEXT
+  
+               INPUT TRANSFORM:  K:X[""""!($A(X)=45) X I $D(X) K:$L(X)<1!($L(X)>
+                                 5) X I $D(X) K:$S($D(^PSDRUG(DA,"ND")):+^("ND")
+                                 ,1:0) X W:'$D(X) "   Uneditable" Q:'$D(X)  S DI
+                                 C="^PS(50.605,",DIC(0)="EQM" D ^DIC K:Y<0 X S:Y
+                                 >0 X=$P(Y,"^",2)
+               LAST EDITED:      OCT 20, 2000 
+               HELP-PROMPT:      Enter the VA Classification. 
+               DESCRIPTION:
+                                   This is the VA classification for this drug.  
+  
+               TECHNICAL DESCR:
+                                 free text 
+  
+               EXECUTABLE HELP:  S DIC="^PS(50.605,",DIC(0)="EQM" D ^DIC
+               DELETE TEST:      2,0)= I +$G(^PSDRUG(DA,"ND")) D EN^DDIOL("Delet
+                                 ions are not allowed")
+  
+               GROUP:            PS
+               NOTES:            XXXX--CAN'T BE ALTERED EXCEPT BY PROGRAMMER
+                                 TRIGGERED by the NATIONAL DRUG CLASS field of 
+                                 the DRUG File 
+  
+ 50.0904,.01     LOCAL POSSIBLE DOSAGE  0;1 FREE TEXT (Multiply asked)
+  
+                 INPUT TRANSFORM:  D AMPCHK^PSSORPH1 K:$L(X)>60!($L(X)<1) X
+                 HELP-PROMPT:      Answer must be 1-60 characters in length. 
+                 DESCRIPTION:      This field represents the Dosage selections
+                                   that will display in CPRS for this drug when
+                                   the Pharmacy Orderable Item that this drug is
+                                   matched to is selected. These dosages will be
+                                   presented for selection only if there are no
+                                   Possible Dosages available for the Pharmacy
+                                   type of order being entered. Local Possible
+                                   Dosages should be created when a drug does 
+                                   not have any Possible Dosages. The Possible
+                                   Dosages can only be created when the VA
+                                   Product File match of the drug meet specified
+                                   criteria.  
+  
+                 CROSS-REFERENCE:  50.0904^B 
+                                 1)= S ^PSDRUG(DA(1),"DOS2","B",$E(X,1,30),DA)=""
+                                 2)= K ^PSDRUG(DA(1),"DOS2","B",$E(X,1,30),DA)
+  
+ DATA DICTIONARY #50.606 -- DOSAGE FORM
+  
+ DATA          NAME                  GLOBAL        DATA
+ ELEMENT       TITLE                 LOCATION      TYPE
+ -------------------------------------------------------------------------------
+ 50.6066,.01   NOUN                   0;1 FREE TEXT (Multiply asked)
+  
+               INPUT TRANSFORM:  D AMPCHK^PSSORPH1 K:$L(X)>30!($L(X)<1) X
+               LAST EDITED:      JUL 16, 2008 
+               HELP-PROMPT:      Answer must be 1-30 characters in length. 
+               DESCRIPTION:      These are the nouns that are associated with
+                                 this Dosage form. It will be used by Outpatient
+                                 Pharmacy to build a Sig for an OE/RR order.  It
+                                 will also be used for building local possible
+                                 doses as part of the pharmacy ordering
+                                 enhancements for both Outpatient Pharmacy and
+                                 Inpatient Medications.  
+  
+               NOTES:            XXXX--CAN'T BE ALTERED EXCEPT BY PROGRAMMER
+  
+               CROSS-REFERENCE:  50.6066^B 
+                                 1)= S ^PS(50.606,DA(1),"NOUN","B",$E(X,1,30),DA
+                                 )=""
+  
+                                 2)= K ^PS(50.606,DA(1),"NOUN","B",$E(X,1,30),DA
+                                 )
+  
+ Installation Instructions:
+ ==========================
+ If installed during the normal workday, it is recommended that the 
+ Pharmacy Data Management users be off the system.  Other VISTA users
+ will not be affected.
+  
+ Install Time - less than 5 minutes
+  
+ The Post Install routine PSSP138 creates two mail messages that are sent to the 
+ installer. These messages should be forwarded to the Pharmacy ADPAC and/or
+ designee for review.
+  
+ 1.  LOAD TRANSPORT GLOBAL 
+     ---------------------
+     Choose the PackMan message containing this patch and invoke the 
+     INSTALL/CHECK MESSAGE PackMan option.  
+              
+ 2.  START UP KIDS 
+     -------------
+     Start up the Kernel Installation and Distribution System Menu 
+     [XPD MAIN]: 
+  
+          Edits and Distribution ...  
+          Utilities ...  
+          Installation ...  
+  
+ Select Kernel Installation & Distribution System Option: INStallation 
+                                                          ---
+          Load a Distribution 
+          Print Transport Global 
+          Compare Transport Global to Current System 
+          Verify Checksums in Transport Global 
+          Install Package(s) 
+          Restart Install of Package(s) 
+          Unload a Distribution 
+          Backup a Transport Global 
+  
+ Select Installation Option: 
+  
+ 3.  Select Installation Option: 
+     ---------------------------
+     NOTE:  The following are OPTIONAL - (When prompted for the INSTALL
+            NAME, enter PSS*1.0*138):
+  
+     a.  Backup a Transport Global - This option will create a backup
+         message of any routines exported with this patch. It will not
+         backup any other changes such as DD's or templates.
+     b.  Compare Transport Global to Current System - This option will
+         allow you to view all changes that will be made when this patch
+         is installed.  It compares all components of this patch
+         (routines, DD's, templates, etc.).
+     c.  Verify Checksums in Transport Global - This option will allow
+         you to ensure the integrity of the routines that are in the
+         transport global.
+  
+ 4.  Select Installation Option: Install Package(s) 
+                                 ------------------
+     a.  Choose the Install Package(s) option to start the patch
+         install and when prompted for Install Name, enter PSS*1.0*138.
+  
+     b.  When prompted 'Want KIDS to INHIBIT LOGONs during the install? NO//' 
+         answer NO
+  
+     c.  When prompted 'Want to DISABLE Scheduled Options, Menu Options, 
+         and Protocols? NO//' answer NO
+  
+  
+ Post-installation Instructions:
+ ===============================
+ The installer of this patch should check their MailMan account for the 
+ following 2 messages with the following titles and forward them to their
+ Pharmacy ADPAC.
+  
+    PSS*1*138 Dosage Form Repair Report
+    PSS*1*138 Local Possible Dosage Repair Report 
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;1.0;PHARMACY DATA MANAGEMENT;**[Patch List]**;9/30/97;Build 5
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PSSOPKI1
+    Before: B73244254   After: B73974524  **61,69,83,138**
+Routine Name: PSSORPH1
+    Before: B15501536   After: B15826443  **34,38,49,64,69,138**
+Routine Name: PSSORUTL
+    Before: B78187426   After: B78946465  **34,38,49,53,69,83,138**
+Routine Name: PSSP138
+    Before:       n/a   After: B14530398  **138**
+ 
+Routine list of preceding patches: 83
+
+=============================================================================
+User Information:
+Entered By  : SMITH,ROBERT J                Date Entered  : JUL 16, 2008
+Completed By: WERNER,GARY                   Date Completed: OCT 07, 2008
+Released By : TEAGUE,LYN                    Date Released : OCT 08, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,273 @@
+$TXT Created by CRUMLEY,JAMIE at CHEY19.FO-BAYPINES.MED.VA.GOV  (KIDS) on Friday, 03/06/09 at 11:41
+=============================================================================
+Run Date: JUL 02, 2009                     Designation: OR*3*283
+Package : OR - ORDER ENTRY/RESULTS REPORTING  Priority: Mandatory
+Version : 3       SEQ #272                      Status: Released
+                  Compliance Date: AUG 02, 2009
+=============================================================================
+
+Associated patches: (v)OR*3*243    <<= must be installed BEFORE `OR*3*283'
+
+Subject: EVENT DELAYED ORDERS RELEASES TWO COPIES
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ 1. A site reported a problem with duplicate orders in Inpatient
+ Medications V. 5.0. If there were delayed-event orders manually released
+ at the same time that the associated event occurred, duplicate orders were
+ sent to the service. PSI-07-128
+  
+ 2. Two of the test sites reported a problem regarding the change in item 
+ #1 adversely affecting delayed Radiology orders.
+  
+ 3. Two test sites reported a problem of receiving intermittent errors in 
+ the ORWDX routine.
+  
+ 4. During unit testing of the changes for the problem of duplicate 
+ orders, an issue was found with locking of patient events. When multiple 
+ orders for the same event are manually released, a lock on the patient 
+ event remains after the process is completed.
+  
+ Associated Remedy:
+ ==================
+ 1. HD0000000199004    Discontinued order not showing in CPRS
+    HD0000000069901    duplicate
+    HD0000000070256    duplicate      
+    HD0000000092874    duplicate
+    HD0000000165137    duplicate
+    HD0000000174026    duplicate
+    HD0000000280582    duplicate
+    HD0000000300668    duplicate
+    HD0000000309370    duplicate
+    HD0000000321525    duplicate
+ 2. HD0000000281619    Radiology event-delayed orders problem
+    HD0000000284481    duplicate
+ 3. HD0000000298397    Intermittent ORWDX errors
+ 4. HD0000000307535    Manual release of delayed orders could leave event 
+                       lock
+ Associated NSR(s):
+ ==================
+ N/A
+  
+ Test Sites:
+ ===========
+ Charleston, SC
+ Cleveland, OH
+ San Diego, CA
+ North Texas HCS
+ Tampa, FL
+ Heartland-East 
+  
+  
+ Overview:
+ =========
+ 1. HD0000000199004     Discontinued order not showing in CPRS
+  
+    Problem:
+    --------
+    A series of delayed orders for Inpatient Medications was written. The 
+    orders were released to the service manually from the Computerized 
+    Patient Record System (CPRS) GUI at the same time the associated
+    patient movement was performed. This resulted in some of the orders
+    being duplicated in Inpatient Medications.
+  
+    Resolution:
+    -----------
+    The locking logic in the release process has been modified to handle 
+    this situation. If the movement and manual release begin at the same 
+    time, only one will be allowed to process the orders. Routine ORWDX 
+    was modified to handle this.
+  
+    In addition to the locking issue that was identified, there was a 
+    check added to ORWDX to ensure that the order had not already been 
+    released by a movement if the user selected manual release. This check 
+    already existed in the movement routine.
+  
+ 2. HD0000000281619     Delayed Radiology orders discontinuing on release
+  
+    Problem:
+    --------
+    Delayed Radiology orders were being rejected by Radiology upon manual 
+    release. The error message was 'missing/invalid location'.
+  
+    Resolution:
+    -----------
+    Routine ORWDX has been modified to record the location and treating    
+    specialty for an order after the lock is successful, but before 
+    transmitting the order to the service.
+  
+ 3. HD0000000298397     Intermittent ORWDX errors
+  
+    Problem:
+    --------
+    Under certain conditions, an error occurs in ORWDX when attempting to
+    build the error message back to the user.
+  
+    Resolution:
+    -----------
+    Routine ORWDX has been modified to ensure the error message array
+    contains all the appropriate information so that no error will occur
+    when the patient event is locked.
+  
+ 4. HD0000000307535     Manual release of delayed orders could leave event 
+                        lock
+  
+    Problem:
+    --------
+    When manually releasing more than one delayed order for a single 
+    patient event, the event can remain locked once the process finishes.
+    Specifically, ^ORE(100.2,event number,0) will remain locked.
+  
+    The problem is that routine ORWDX issues an incremental lock for the 
+    patient event associated with each order that is being released.
+    However, when the process completes, a single 'unlock' is issued. For 
+    example: three orders, associate with event number 9573 are manually 
+    released. When the process completes, the following entry remains in
+    the lock table:
+    38) 20E5C892 2       ^["^^_$1$DGA228:[CHEY19.VBB]"]ORE(100.2,9573, 0)
+  
+    Solution:
+    ---------
+    Routine ORWDX has been modified to only issue one lock per event, 
+    regardless of the number of orders released that are associated with
+    the event.
+  
+ Installation Instructions
+ =========================
+ This patch can be loaded with users in the system. Installation time is 
+ less than five minutes.
+  
+ Suggested time to install: non-peak requirement hours.
+  
+  1.  Choose the PackMan message containing this patch and invoke the
+      INSTALL/CHECK MESSAGE PackMan option.
+  
+  2.  Start up the Kernel Installation and Distribution System Menu
+      [XPD MAIN]: 
+  
+           Edits and Distribution ...  
+           Utilities ...  
+           Installation ...  
+  
+      Select Kernel Installation & Distribution System Option: Installation
+                                                               ---
+           1      Load a Distribution
+           2      Verify Checksums in Transport Global
+           3      Print Transport Global
+           4      Compare Transport Global to Current System
+           5      Backup a Transport Global
+           6      Install Package(s)
+                  Restart Install of Package(s)
+                  Unload a Distribution
+  
+  2.  From this menu, you may elect to use the following options
+      (When prompted for the INSTALL NAME, enter OR*3.0*283
+      
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will
+          not backup any other changes such as DD's or templates.
+      b.  Compare Transport Global to Current System - This option
+          will allow you to view all changes that will be made when
+          this patch is installed.  It compares all components of this
+          patch (routines, DD's, templates, etc.).
+      c.  Verify Checksums in Transport Global - This option will
+          allow you to ensure the integrity of the routines that are
+          in the transport global.
+  
+  3.  Use the Install Package(s) option and select the package
+      OR*3.0*283
+  
+      a.  When prompted 'Want KIDS to INHIBIT LOGONs during the install?
+          NO//', answer NO. 
+      b.  When prompted 'Want to DISABLE Scheduled Options and Menu Options
+          and Protocols? NO//', answer NO.
+  
+   
+  
+ INSTALLATION EXAMPLE:
+ ===================== 
+  
+ Select INSTALL NAME: OR*3.0*283       Loaded from Distribution 
+ <site loaded D/T>
+      => OR*3*283 
+  
+ This Distribution was loaded on <site loaded D/T> with header of
+    Released OR*3*283 
+    It consisted of the following Install(s):
+      OR*3.0*283
+ Checking Install for Package OR*3.0*283
+  
+ Install Questions for OR*3.0*283
+  
+  
+ Want KIDS to INHIBIT LOGONs during the install? NO// 
+ Want to DISABLE Scheduled Options, Menu Options, and Protocols? NO// 
+  
+ Enter the Device you want to print the Install messages.
+ You can queue the install by enter a 'Q' at the device prompt.
+ Enter a '^' to abort the install.
+  
+ DEVICE: HOME//   TCP
+  
+  
+  
+  
+  Install Started for OR*3.0*283 : 
+                Nov 05, 2007@17:46:14
+  
+                                    
+                                 OR*3.0*283
+ -------------------------------------------------------------------------
+ Build Distribution Date: Nov 05, 2007
+  
+  Installing Routines:
+                Nov 05, 2007@17:46:14
+  
+  Updating Routine file...
+  
+  Updating KIDS files...
+  
+  OR*3.0*283 Installed. 
+                Nov 05, 2007@17:46:19
+  
+  
+ Install Message sent  #12434
+ --------------------------------------------------------------------------
+  
+           +------------------------------------------------------------+
+   100%    |             25             50             75               |
+ Complete  +------------------------------------------------------------+
+   
+ Install Completed 
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;3.0;ORDER ENTRY/RESULTS REPORTING;**[Patch List]**;Dec 17, 1997;Build 9
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: ORWDX
+    Before: B62342605   After: B67312349  **10,85,125,131,132,141,164,
+                                           178,187,190,195,215,246,243,
+                                           283**
+ 
+Routine list of preceding patches: 243
+
+=============================================================================
+User Information:
+Entered By  : CRUMLEY,JAMIE                 Date Entered  : DEC 04, 2007
+Completed By: HULET,LEE ANN                 Date Completed: JUL 01, 2009
+Released By : SCHMIT,BECKY                  Date Released : JUL 02, 2009
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

@@ -1,0 +1,284 @@
+$TXT Created by DAYON,RUFINO at DEV.DEV.FO-HINES.MED.VA.GOV  (KIDS) on Wednesday, 02/27/08 at 13:02
+=============================================================================
+Run Date: APR 16, 2008                     Designation: RA*5*86
+Package : RA - RADIOLOGY/NUCLEAR MEDICINE     Priority: Mandatory
+Version : 5        SEQ #75                      Status: Released
+                  Compliance Date: MAY 17, 2008
+=============================================================================
+
+Associated patches: (v)RA*5*1     <<= must be installed BEFORE `RA*5*86'
+                    (v)RA*5*75     <<= must be installed BEFORE `RA*5*86'
+                    (v)RA*5*85     <<= must be installed BEFORE `RA*5*86'
+
+Subject: VistA RAD/CPRS: Patient Class disagrees with Patient Location
+
+Category: 
+  - Data Dictionary
+  - Routine
+  - Input Template
+
+Description:
+============
+
+ Please take note that the release of RA*5.0*86 will be backward
+ compatible to Computerized Patient Record System (CPRS) v26.
+ This patch was written to evaluate the version of CPRS running at
+ the facility where installed and execute the CPRS and Vista 
+ Radiology/Nuclear Medicine specific business rules as they apply
+ to the placement of a radiology specific patient order.
+  
+ Description of the issue which has had its genesis with the advent of
+ CPRSv27:
+  
+ If, when signing a radiology order in CPRS (version 27 or greater), the
+ requesting location (a record in the HOSPITAL LOCATION #44 file) is
+ defined as a clinic and the patient class for the patient is an inpatient,
+ VistA Radiology returns the following error message to the user
+ in CPRS (version 27 or greater): "Patient Class disagrees with Patient
+ Location" and the order is rejected by the event subscriber.
+  
+  
+ This same error occurs if the requesting location is defined as a ward and
+ the patient class for the patient is an outpatient.
+  
+ Here are a couple of typical scenarios: 
+ ---------------------------------------
+ Inpatients are seen in specialty clinics such as audiology and
+ hemodialysis as part of a consult.
+  
+ An outpatient has regularly scheduled clinic appointments such
+ hemodialysis. When that patient is admitted, he/she continues to be seen
+ in hemodialysis clinic, only now as an inpatient.
+  
+ An outpatient is being seen in his regularly scheduled clinic appointment 
+ and during the course of the visit decompensates and is admitted, but is 
+ still physically in the clinic receiving care until transport to the ward 
+ can be arranged.
+  
+ Screening logic change for HOSPITAL LOCATION lookups
+ ----------------------------------------------------
+ As a result of this patch the screening logic used to display wards to 
+ the user has changed. Prior to RA*5.0*86 a hospital location was deemed a 
+ ward if the TYPE (#2) field for a record in the HOSPITAL LOCATION file 
+ was set to 'W'. With the release of RA*5.0*86 a hospital location will be 
+ deemed a ward if:
+  
+ 1) The HOSPITAL LOCATION record points to a record in the WARD LOCATION
+    (#42) file. Note: this HOSPITAL LOCATION record cannot be defined with
+    a TYPE attribute of 'Clinic', 'File Area', or 'Imaging'.
+ 2) The "pointed to" WARD LOCATION location record must point back to the
+    correct HOSPITAL LOCATION record.
+  
+ Once the hospital location is deemed to be a ward a check is made to
+ determine if the ward is active.
+  
+  
+  
+ DATA DICTIONARIES
+ =================
+   
+  File 70 RAD/NUC MED PATIENT
+       Subfile 70.02  REGISTERED EXAMS
+            Subfile 70.03  EXAMINATIONS
+                 Field 22  REQUESTING LOCATION
+                   Modified the field description
+  
+  File 75.1 RAD/NUC MED ORDERS
+       Field 22  REQUESTING LOCATION
+         Modified the field description and removed the AUDIT node and
+         identifier.
+  
+  
+ INPUT TEMPLATE EXPORTED
+ =======================
+ [RA ORDER EXAM] from RAD/NUC MED ORDERS file, #75.1
+ [RA QUICK EXAM ORDER] from RAD/NUC MED ORDERS file, #75.1
+  
+ INPUT TEMPLATE RECOMPILED AT THE INSTALLING SITE
+ ================================================
+ [RA REGISTER] from RAD/NUC MED PATIENT file, #70
+  
+  
+ ASSOCIATED REMEDY TICKET(s)
+ =========================
+ HD0000000194134
+ When signing a Radiology orders in CPRS. If the order location defines in 
+ the order file is for a clinic and the patient class in the order file is 
+ Inpatient. Radiology returns an error message to the user in CPRS 
+ "Patient Class disagrees with Patient Location".
+  
+ ASSOCIATED NSR(s)
+ =================
+ N/A
+  
+  
+ TEST SITES                                Version of CPRS GUI
+ ==========                                ===================
+ Cleveland                                         V27
+ Puget Sound                                       V26
+ Manchester                                        V26
+ Charleston                                     V26 and V27
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+ Since input templates are being re-compiled, it is best if this patch
+ is installed outside of normal working hours. Radiology users should be
+ off the system and users should not place radiology orders through CPRS
+ while this patch is being installed. The install time for this patch
+ should be under five minutes.
+  
+ NOTE: MailMan and Kernel patches must be current on the target system to
+       avoid problems loading and installing this patch.
+  
+  1.  Use the 'Delete Routines' [XTRDEL] option to delete the following
+      compiled routines for the following input templates:
+  
+      File                  Input Template       Compiled Routine Namespace
+      ----                  --------------       --------------------------
+      RAD/NUC MED ORDERS    RA ORDER EXAM        RACTOE*
+                            RA QUICK EXAM ORDER  RACTQE*
+  
+      RAD/NUC MED PATIENT   RA REGISTER          RACTRG*
+  
+      We suggest that this step be taken so that re-compilation of the RA
+      ORDER EXAM, RA QUICK EXAM ORDER, & RA REGISTER input templates
+      guarantee a new set of compiled input template routines. Failure to
+      delete the compiled input template routines for the RA ORDER EXAM, RA
+      QUICK EXAM ORDER, & RA REGISTER input templates will not prevent
+      installation of this patch.
+      
+      Here is an example of using the 'Delete Routines' option:
+  
+      Select the 'Systems Manager Menu' via EVE. You should see a number of
+      items under the Systems Manager Menu. This is the option you want to 
+      select:
+  
+           Programmer Options ... 
+  
+      Select Systems Manager Menu Option:  Programmer Options
+      You should see a number of items under the Programmer Options Menu.
+      This is the option you want to select:
+  
+           Routine Tools ...
+  
+      Select Programmer Options Option:  Routine Tools
+      You should see a number of items under the Routine Tools Menu. This
+      is the option you want to select:
+  
+           Delete Routines 
+  
+      Select Routine Tools Option: Delete Routines
+  
+      ROUTINE DELETE
+  
+      All Routines? No => No   Be very deliberate when answering this
+                               question!
+  
+      Routine: RACTOE*
+      Routine: RACTQE*
+      Routine: RACTRG*
+      
+      Please note that the RA ORDER EXAM, RA QUICK EXAM ORDER, & RA 
+      REGISTER input templates will be recompiled during the installation
+      of RA*5.0*86.
+  
+  
+  2.  Use the 'INSTALL/CHECK MESSAGE' option of your PackMan menu to load
+      the KIDS distribution onto your system. 
+  
+  3.  From the Kernel Installation & Distribution System menu, select 
+      the 'Installation' menu.
+  
+      From this menu you may select the following options prior to 
+      installing the patch:
+  
+    a.  Backup a Transport Global - this option will create a backup
+        message of any routines exported with the patch.
+    
+    b.  Compare Transport Global to Current System - this option will
+        allow you to view all changes that will be made when the patch
+        is installed.
+    
+    c.  Verify Checksums in Transport Global - this option will ensure
+        the integrity of the routines that are in the transport global.
+  
+  4.  Use the 'Install Package(s)' option under the 'Installation' menu.
+      When prompted for INSTALL NAME, enter: RA*5.0*86
+   
+       When prompted "Want KIDS to INHIBIT LOGONs during the install?
+       NO//", respond NO.
+   
+       When prompted "Want to DISABLE Scheduled Options, Menu Options and
+       Protocols? YES//", respond YES
+  
+         When prompted "Enter options you wish to mark as 'Out of Order':",
+         enter the following to disable all Rad/Nuc Med options:
+      
+         RA*
+   
+         When prompted "Enter protocols you wish to mark as 'Out of 
+         Order':", enter the following to disable all Rad/Nuc Med
+         protocols:
+   
+         RA*
+   
+  5.  Verify that the patch installation completed correctly by using the
+      KIDS 'Utilities...' [XPD UTILITY] option 'Install File Print' [XPD
+      PRINT INSTALL FILE] and selecting this patch (RA*5.0*86).
+  
+  6.  The pre and post-init routine, RA86PST, can be deleted.
+  
+  7.  All radiology, and those users utilizing CPRS to place radiology 
+      orders, can resume their normal activities.
+  
+ ROUTINE SUMMARY:
+ ================
+  
+ The following are the routines included in this patch. The second line of
+ of these routines now looks like: 
+  
+      ;;5.0;Radiology/Nuclear Medicine;**[patch list]**;Mar 16, 1998
+  
+                        CHECK^XTSUMBLD results
+  
+ Routine         Before Patch     After Patch    Patch List 
+ -------         ------------     -----------    ----------
+ RA86PST         *New*            1787366        **86**
+ RAO7RO1         3720896          3720896        **2,75,86**
+ RAO7RON         5160294          5176859        **41,75,86**
+ RAORD1          17915862         16280901       **10,45,41,75,86**
+ RAORD1A         7484239          2408425        **1,86**
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+VERSION ;;5.0;Radiology/Nuclear Medicine;**[Patch List]**;Mar 16, 1998;Build 7
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: RA86PST
+    Before:       n/a   After:  B4043648  **86**
+Routine Name: RAO7RO1
+    Before:  B7990676   After:  B8274058  **2,75,86**
+Routine Name: RAO7RON
+    Before: B14011011   After: B15527328  **41,75,86**
+Routine Name: RAORD1
+    Before: B48840656   After: B55527737  **10,45,41,75,86**
+Routine Name: RAORD1A
+    Before: B19507146   After:  B8492484  **1,86**
+ 
+Routine list of preceding patches: 1, 75
+
+=============================================================================
+User Information:
+Entered By  : CEBELINSKI,GREGORY            Date Entered  : JUN 22, 2007
+Completed By: REZNIK,CHARMAINE              Date Completed: APR 04, 2008
+Released By : HOLZMANN,ROBERT               Date Released : APR 16, 2008
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT

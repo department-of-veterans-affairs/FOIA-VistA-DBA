@@ -1,0 +1,240 @@
+$TXT Created by SMITH,ROBERT at VMPDEV20.FO-BAYPINES.MED.VA.GOV  (KIDS) on Tuesday, 02/17/09 at 11:51
+=============================================================================
+Run Date: APR 07, 2009                     Designation: PSA*3*70
+Package : PSA - DRUG ACCOUNTABILITY           Priority: Mandatory
+Version : 3        SEQ #54                      Status: Released
+                  Compliance Date: MAY 08, 2009
+=============================================================================
+
+Associated patches: (v)PSA*3*42    <<= must be installed BEFORE `PSA*3*70'
+                    (v)PSA*3*60    <<= must be installed BEFORE `PSA*3*70'
+                    (v)PSA*3*63    <<= must be installed BEFORE `PSA*3*70'
+                    (v)PSA*3*64    <<= must be installed BEFORE `PSA*3*70'
+                    (v)PSA*3*68    <<= must be installed BEFORE `PSA*3*70'
+
+Subject: UNDEFINED ERRORS, OUTDATED MEDS RPT, INCORRECT COST CALCULATION
+
+Category: 
+  - Routine
+
+Description:
+============
+
+ This patch addresses the following problems:
+  
+ 1.  HD0000000257764 - UNDEF ERROR
+ When editing the ORDER UNIT for a Supply Item of a verified order, the
+ application errors with an undefined error.
+  
+ 2.  HD0000000255967 - UNDEF ERROR <UNDEFINED>EDIT1+36^PSAUTL1
+ During Order Processing, if 2 users attempt to edit the same order at the 
+ same time, the application will error.
+  
+ 3. HD0000000266899 - When running the Outdated Medications [PSA OUTDATED 
+ MEDICATIONS] report and the user quits unexpectedly to exit, the 
+ ^TMP("PSA",$J global is left behind causing the All Location 
+ Dispense/Purge [PSA IV ALL LOCATIONS]option to error.
+  
+ 4. HD0000000265183 - When an invoice contains a blank Order Unit and a 
+ zero quantity, it appears on an error report.  When this error condition 
+ occurs, all supply items that follow are included in the error report.
+  
+ 5. HD0000000273421 - The cost on the Items To Be Returned report should 
+ be calculated based on the number of Dispense Units returned multiplied 
+ by Price Per Dispense Unit from the DRUG file (#50). Instead, it is 
+ multiplying the number of containers by the Price Per Dispense Unit.
+  
+  
+ ASSOCIATED REMEDY TICKETS:
+ ==========================
+ 1.  HD0000000257764 - UNDEF ERROR
+ 2.  HD0000000255967 - UNDEF ERROR <UNDEFINED>EDIT1+36^PSAUTL1
+     Duplicate:  HD0000000255975 - <SUBSCRIPT>INVOICE+4^PSAPROC7
+ 3.  HD0000000266899 - Error when running PSA IV ALL LOCATIONS
+ 4.  HD0000000265183 - Blank Order Unit on zero qty received causes 
+                       supplies to appear on error report
+ 5.  HD0000000273421 - Cost Calculated Incorrectly on Outdated Meds
+  
+ ASSOCIATED NSR(s): 
+ ================== 
+ N/A
+  
+ PARTICIPATING TEST SITES:
+ ========================= 
+ Bronx, NY
+ Chillicothe, OH
+ Palo Alto, CA
+  
+ REMEDY OVERVIEW:
+ ================ 
+ 1.  HD0000000257764 - UNDEF ERROR
+  
+ PROBLEM
+ ======= 
+ When editing the ORDER UNIT for a Supply Item of a verified order, the
+ application errors with an undefined error.
+  
+ RESOLUTION
+ ==========
+ PSAVER3 routine will be modified to test for the PSAERR variable within
+ the supply item section and quit that section if PSAERR & PSASUP variables
+ contain a value other than 0.
+  
+ 2.  HD0000000255967 - UNDEF ERROR <UNDEFINED>EDIT1+36^PSAUTL1
+  
+ PROBLEM
+ ======= 
+ During Order Processing, if 2 users attempt to edit the same order at the 
+ same time, the application will error.
+  
+ RESOLUTION
+ ==========
+ PSAPROC8 routine will be modified to set the ^XTMP("PSAPVL" global with
+ the ^XTMP("PSAPV",psacrtl# and the users DUZ.  This will be used to
+ indicate that the invoice is currently being processed by another user.
+ Routines PSAPROC1 & PSAPROC2 will be modified to call PSAPROC8 to verify
+ that no other user is processing the invoice.  If the invoice is currently
+ being processed, the user will received a message identifying who is
+ processing that invoice.
+  
+ 3. HD0000000266899 - Error when running PSA IV ALL LOCATIONS
+  
+ PROBLEM
+ =======
+ When running the Outdated Medications [PSA OUTDATED MEDICATIONS] report
+ and the user quits unexpectedly to exit, the ^TMP("PSA",$J global is left
+ behind causing the All Location Dispense/Purge [PSA IV ALL LOCATIONS]
+ option to error. The error is caused when the $J value left behind in the
+ ^TMP("PSA",$J global from the failed Outdated Medications [PSA OUTDATED
+ MEDICATIONS] report and is used as the IEN for PHARMACY LOCATION field
+ (#.01) of the DRUG ACCOUNTABILITY STATS file (#58.8).
+  
+ RESOLUTION
+ ==========
+ PSAOP3 routine will be modified to test the validity of the value returned
+ by the PHARMACY LOCATION field (#.01) of the DRUG ACCOUNTABILITY STATS
+ file (#58.8) lookup while looping through the ^XTMP("PSA" global.  If the
+ lookup returns a false value, the loop will quit that iteration.
+ Routines PSAOUT will also be modified to use ^XTMP("PSAOUT" instead of
+ ^XTMP("PSA".
+  
+ 4. HD0000000265183 - Blank Order Unit on zero qty received causes supplies
+                      to appear on error report
+  
+ PROBLEM
+ =======
+ When an invoice contains a blank Order Unit and a zero quantity, it 
+ appears on an error report.  When this error condition occurs, all supply 
+ items that follow are included in the error report.
+  
+ RESOLUTION
+ ==========
+ PSAVER3 routine will be modified to check for the PSASUP & PSAERR variables
+ within the SUPPLY section.  If both of these variables exist, the routine will
+ quit and continue on with the next line item.
+  
+ 5. HD0000000273421 - Cost Calculated Incorrectly on Outdated Meds
+  
+ PROBLEM
+ =======
+ The cost on the Items To Be Returned report should be calculated based on
+ the number of Dispense Units returned multiplied by Price Per Dispense
+ Unit from the DRUG file (#50). Instead, it is multiplying the number of
+ containers by the Price Per Dispense Unit.
+  
+ RESOLUTION
+ ==========
+ PSAOUT routine will be modified to use the number of Dispense Units
+ returned by the Price Per Dispense Unit.
+  
+  
+ INSTALLATION INSTRUCTIONS
+ =========================
+ Suggested time to install: non-peak requirement hours. The patch should be
+ installed when NO Drug Accountability users are on the system.
+  
+ Install Time - less than 5 minutes (unless otherwise indicated)
+  
+  1.  Start up the Kernel Installation and Distribution System Menu
+      [XPD MAIN]: 
+  
+           Edits and Distribution ...  
+           Utilities ...  
+           Installation ...  
+  
+      Select Kernel Installation & Distribution System Option: Installation
+                                                               ---
+           1      Load a Distribution
+           2      Verify Checksums in Transport Global
+           3      Print Transport Global
+           4      Compare Transport Global to Current System
+           5      Backup a Transport Global
+           6      Install Package(s)
+                  Restart Install of Package(s)
+                  Unload a Distribution
+  
+  2.  From this menu, you may elect to use the following options
+      (When prompted for the INSTALL NAME, enter PSA*3.0*70):
+  
+      a.  Backup a Transport Global - This option will create a backup
+          message of any routines exported with this patch. It will
+          not backup any other changes such as DD's or templates.
+      b.  Compare Transport Global to Current System - This option
+          will allow you to view all changes that will be made when
+          this patch is installed.  It compares all components of this
+          patch (routines, DD's, templates, etc.).
+      c.  Verify Checksums in Transport Global - This option will
+          allow you to ensure the integrity of the routines that are
+          in the transport global.
+  
+  3.  Use the Install Package(s) option and select the package
+      PSA*3.0*70.
+  
+      a.  When prompted 'Want KIDS to INHIBIT LOGONs during the
+          install? NO//', answer NO.
+      b.  When prompted 'Want to DISABLE Scheduled Options and Menu 
+          Options and Protocols? NO//', answer NO.
+
+Routine Information:
+====================
+The second line of each of these routines now looks like:
+ ;;3.0; DRUG ACCOUNTABILITY/INVENTORY INTERFACE;**[Patch List]**; 10/24/97;Build 12
+
+The checksums below are new checksums, and
+ can be checked with CHECK1^XTSUMBLD.
+
+Routine Name: PSAOP3
+    Before:  B2157207   After:  B2325842  **21,70**
+Routine Name: PSAOUT
+    Before: B72887272   After: B73425251  **51,64,68,70**
+Routine Name: PSAPROC
+    Before: B76150646   After: B77154032  **3,12,21,70**
+Routine Name: PSAPROC1
+    Before: B40487833   After: B41172320  **12,21,50,60,70**
+Routine Name: PSAPROC2
+    Before: B70245487   After: B71381092  **34,50,70**
+Routine Name: PSAPROC8
+    Before: B42624373   After: B67886786  **3,64,70**
+Routine Name: PSAVER3
+    Before: B71438317   After: B72006337  **3,19,21,64,70**
+Routine Name: PSAVERA
+    Before: B44372640   After: B44615569  **21,36,40,53,63,70**
+Routine Name: PSAVERA1
+    Before: B59601347   After: B60705765  **21,61,63,70**
+Routine Name: PSAVERA3
+    Before:  B8881546   After: B13969445  **21,42,70**
+ 
+Routine list of preceding patches: 42, 60, 63, 68
+
+=============================================================================
+User Information:
+Entered By  : SMITH,ROBERT J                Date Entered  : AUG 06, 2008
+Completed By: SESSLER,APRIL                 Date Completed: MAR 13, 2009
+Released By : WASHINGTON,JANET P            Date Released : APR 07, 2009
+=============================================================================
+
+
+Packman Mail Message:
+=====================
+
+$END TXT
